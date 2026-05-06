@@ -258,10 +258,8 @@
       <div class="fgrid mb3">
         <div class="fg"><label>Client</label><select id="cs-client"></select></div>
         <div class="fg"><label>Pompe</label><select id="cs-pump"></select></div>
-        <div class="fg"><label>Litres</label><input type="number" id="cs-liters" placeholder="0.00" step="0.1" min="0.1"/></div>
-        <div class="fg"><label>Prix/L (MAD)</label><input type="number" id="cs-price" placeholder="auto" readonly style="background:#F5F6F7"/></div>
       </div>
-      <div class="fg mb3"><label>Montant estimé (MAD)</label><input type="text" id="cs-amount-display" readonly style="background:#F5F6F7;font-size:18px;font-weight:800;color:var(--orange);"/></div>
+      <div class="fg mb3"><label>Montant (MAD)</label><input type="number" id="cs-amount" placeholder="0.00" step="0.01" min="0.01" style="font-size:18px;font-weight:800;color:var(--orange);padding:10px;"/></div>
       <div class="fg"><label>Notes</label><input type="text" id="cs-notes-f" placeholder="facultatif"/></div>
     </div>
     <div class="modal-ft">
@@ -885,15 +883,16 @@ async function submitCreditSale() {
   if (!S.activeShift) { toast('Aucun poste ouvert — ouvrez un poste d\'abord', 'wn'); return; }
   const clientId = parseInt(document.getElementById('cs-client').value);
   const pumpId   = parseInt(document.getElementById('cs-pump').value);
-  const liters   = parseFloat(document.getElementById('cs-liters').value);
-  if (!clientId || !pumpId || !liters || liters <= 0) { toast('Veuillez remplir tous les champs', 'er'); return; }
+  const amount   = parseFloat(document.getElementById('cs-amount').value);
+  if (!clientId || !pumpId || !amount || amount <= 0) { toast('Veuillez remplir tous les champs', 'er'); return; }
   try {
     await api('POST', '/credits/sales', {
-      shift_id: S.activeShift.id, credit_client_id: clientId, pump_id: pumpId, liters,
+      shift_id: S.activeShift.id, credit_client_id: clientId, pump_id: pumpId, amount,
       notes: document.getElementById('cs-notes-f').value
     });
     closeModal('m-credit-sale');
-    toast('Vente crédit enregistrée — ' + liters + ' L');
+    document.getElementById('cs-amount').value = '';
+    toast('Vente crédit enregistrée — ' + fmt(amount) + ' MAD');
     if (document.querySelector('#p-credits.active')) loadCredits();
     if (document.querySelector('#p-shift.active')) loadShiftPage();
   } catch (e) { toast(e.message, 'er'); }
@@ -906,23 +905,8 @@ async function deleteCreditSale(id) {
 }
 
 function populateCreditSaleModal() {
-  const sel = document.getElementById('cs-client');
-  sel.innerHTML = S.clients.map(c => `<option value="${c.id}">${c.name}${c.company ? ' ('+c.company+')' : ''}</option>`).join('');
-  const psel = document.getElementById('cs-pump');
-  psel.innerHTML = S.pumps.filter(p=>p.status==='active').map(p => `<option value="${p.id}" data-price="${p.price_per_liter}">${p.name} — ${p.fuel_name}</option>`).join('');
-  psel.onchange = () => {
-    const opt = psel.selectedOptions[0];
-    document.getElementById('cs-price').value = opt ? parseFloat(opt.dataset.price).toFixed(3) : '';
-    updateCreditAmount();
-  };
-  document.getElementById('cs-liters').oninput = updateCreditAmount;
-  psel.dispatchEvent(new Event('change'));
-}
-
-function updateCreditAmount() {
-  const liters = parseFloat(document.getElementById('cs-liters').value) || 0;
-  const price  = parseFloat(document.getElementById('cs-price').value)  || 0;
-  document.getElementById('cs-amount-display').value = (liters * price).toFixed(2) + ' MAD';
+  document.getElementById('cs-client').innerHTML = S.clients.map(c => `<option value="${c.id}">${c.name}${c.company ? ' ('+c.company+')' : ''}</option>`).join('');
+  document.getElementById('cs-pump').innerHTML = S.pumps.filter(p=>p.status==='active').map(p => `<option value="${p.id}">${p.name} — ${p.fuel_name}</option>`).join('');
 }
 
 // ─── PRODUCTS ──────────────────────────────────────────────

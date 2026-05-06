@@ -69,8 +69,8 @@ router.get('/sales', requireAuth, (req, res) => {
 });
 
 router.post('/sales', requireAuth, (req, res) => {
-  const { shift_id, credit_client_id, pump_id, liters, notes } = req.body || {};
-  if (!shift_id || !credit_client_id || !pump_id || !liters)
+  const { shift_id, credit_client_id, pump_id, amount, notes } = req.body || {};
+  if (!shift_id || !credit_client_id || !pump_id || !amount)
     return res.status(400).json({ error: 'Champs obligatoires manquants' });
 
   const shift = db.prepare("SELECT * FROM shifts WHERE id=? AND status='open'").get(shift_id);
@@ -79,7 +79,7 @@ router.post('/sales', requireAuth, (req, res) => {
   const ft = db.prepare(`SELECT ft.price_per_liter FROM pumps p JOIN fuel_types ft ON ft.id=p.fuel_type_id WHERE p.id=?`).get(pump_id);
   if (!ft) return res.status(400).json({ error: 'Pompe introuvable' });
 
-  const amount = +(liters * ft.price_per_liter).toFixed(2);
+  const liters = +(amount / ft.price_per_liter).toFixed(2);
 
   const id = db.prepare(`
     INSERT INTO credit_sales (shift_id, credit_client_id, pump_id, liters, price_per_liter, amount, recorded_by, notes)
