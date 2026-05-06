@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>YEX WEB — Connexion</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",Arial,sans-serif;background:#1D2D3E;min-height:100vh;display:grid;place-items:center;padding:20px}
+  .card{background:#fff;border-radius:10px;width:400px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden}
+  .card-top{background:#1D2D3E;padding:28px 32px;text-align:center}
+  .card-top .logo{font-size:40px;margin-bottom:10px}
+  .card-top h1{color:#fff;font-size:20px;font-weight:800}
+  .card-top p{color:rgba(255,255,255,.6);font-size:13px;margin-top:4px}
+  .card-body{padding:28px 32px}
+  .fg{display:flex;flex-direction:column;gap:5px;margin-bottom:16px}
+  .fg label{font-size:12px;font-weight:700;color:#6A6D70;text-transform:uppercase;letter-spacing:.5px}
+  .fg input{padding:10px 12px;border:1px solid #D9D9D9;border-radius:4px;font-size:14px;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+  .fg input:focus{outline:none;border-color:#0070F2;box-shadow:0 0 0 2px rgba(0,112,242,.15)}
+  .btn{width:100%;padding:11px;background:#0070F2;color:#fff;border:none;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;transition:background .12s;font-family:inherit}
+  .btn:hover{background:#0057C2}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+  .err{background:#FFEBEE;border-left:4px solid #BB0000;color:#B71C1C;padding:10px 14px;border-radius:4px;font-size:13px;margin-bottom:14px;display:none}
+  .footer{text-align:center;padding:14px 32px;border-top:1px solid #EEEEEF;font-size:11px;color:#ABABAB}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-top">
+    <div class="logo">⛽</div>
+    <h1>YEX WEB</h1>
+    <p>Gestion Station Service — Maroc</p>
+  </div>
+  <div class="card-body">
+    <div class="err" id="err-msg"></div>
+    <div class="fg">
+      <label>Identifiant</label>
+      <input id="usr" type="text" placeholder="ex: aida.hmimidi" autocomplete="username"/>
+    </div>
+    <div class="fg">
+      <label>Mot de Passe</label>
+      <input id="pwd" type="password" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="btn" id="btn-login">Se Connecter</button>
+  </div>
+  <div class="footer">v1.0 · Station Hmimidi · Maroc</div>
+</div>
+
+<script>
+const btnLogin = document.getElementById('btn-login');
+const errMsg   = document.getElementById('err-msg');
+
+async function login() {
+  const username = document.getElementById('usr').value.trim();
+  const password = document.getElementById('pwd').value;
+  errMsg.style.display = 'none';
+  if (!username || !password) { showErr('Veuillez saisir vos identifiants.'); return; }
+  btnLogin.disabled = true;
+  btnLogin.textContent = 'Connexion…';
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await r.json();
+    if (!r.ok) { showErr(data.error || 'Erreur de connexion'); return; }
+    localStorage.setItem('fm_token', data.token);
+    localStorage.setItem('fm_user', JSON.stringify(data.user));
+    window.location.href = '/app';
+  } catch { showErr('Impossible de contacter le serveur.'); }
+  finally { btnLogin.disabled = false; btnLogin.textContent = 'Se Connecter'; }
+}
+function showErr(msg) { errMsg.textContent = msg; errMsg.style.display = 'block'; }
+btnLogin.addEventListener('click', login);
+document.addEventListener('keydown', e => e.key === 'Enter' && login());
+
+// Redirect if already logged in
+if (localStorage.getItem('fm_token')) window.location.href = '/app';
+</script>
+</body>
+</html>

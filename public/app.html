@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>YEX WEB</title>
+<link rel="stylesheet" href="/css/fiori.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- SHELL BAR -->
+<header id="shell">
+  <div class="shell-brand"><span>⛽</span> YEX WEB</div>
+  <div class="shell-title"><strong>Gestion Station Service</strong></div>
+  <button class="shell-btn" title="Tableau de bord" onclick="goTo('dashboard')">🏠</button>
+  <div class="shell-user" onclick="goTo('settings')">
+    <div class="shell-avatar" id="sh-av">?</div>
+    <span id="sh-name">…</span>
+  </div>
+  <button class="shell-btn" onclick="logout()" title="Déconnexion">🚪</button>
+</header>
+
+<!-- LAYOUT -->
+<div id="layout">
+
+  <!-- SIDE NAV -->
+  <nav id="nav">
+    <div class="nav-section">Opérations</div>
+    <div class="nav-item active" data-p="dashboard"><span class="ni">📊</span>Tableau de Bord</div>
+    <div class="nav-item" data-p="shift"><span class="ni">🕐</span>Poste en Cours</div>
+    <div class="nav-item" data-p="shifts-history"><span class="ni">📋</span>Historique Postes</div>
+
+    <div class="nav-divider"></div>
+    <div class="nav-section">Finances</div>
+    <div class="nav-item" data-p="credits"><span class="ni">🤝</span>Créances Clients <span class="nav-badge" id="nb-credits">0</span></div>
+    <div class="nav-item" data-p="products"><span class="ni">🛢️</span>Produits & Huiles</div>
+
+    <div class="nav-divider"></div>
+    <div class="nav-section">Administration</div>
+    <div class="nav-item" data-p="pumps"><span class="ni">⛽</span>Pompes & Prix</div>
+    <div class="nav-item" data-p="settings"><span class="ni">⚙️</span>Paramètres</div>
+
+    <div class="nav-footer">v1.0 · YEX WEB</div>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="sub-header">
+      <div class="breadcrumb"><span onclick="goTo('dashboard')">Accueil</span><span class="sep">›</span><span id="bc">Tableau de Bord</span></div>
+      <div id="page-title">Tableau de Bord</div>
+      <div id="page-actions"></div>
+    </div>
+
+    <div id="content">
+
+      <!-- ══ PAGE: DASHBOARD ══ -->
+      <div class="page active" id="p-dashboard">
+        <div id="dash-alerts"></div>
+        <div class="tiles" id="dash-tiles"></div>
+        <div class="g2">
+          <div class="section">
+            <div class="s-head"><div class="s-title">📈 Chiffre d'Affaires — 7 Jours</div></div>
+            <div class="s-body"><div class="chart-box"><canvas id="ch-weekly"></canvas></div></div>
+          </div>
+          <div class="section">
+            <div class="s-head"><div class="s-title">⛽ Répartition Carburant Aujourd'hui</div></div>
+            <div class="s-body"><div class="chart-box"><canvas id="ch-split"></canvas></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="s-head">
+            <div class="s-title">🤝 Créances en Cours (Top 5)</div>
+            <button class="btn btn-g btn-sm" onclick="goTo('credits')">Voir tout →</button>
+          </div>
+          <div class="s-body-flush" style="overflow-x:auto">
+            <table class="t"><thead><tr><th>Client</th><th>Société</th><th class="num">Solde Dû (MAD)</th><th>Statut</th></tr></thead>
+            <tbody id="dash-debts"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PAGE: POSTE EN COURS ══ -->
+      <div class="page" id="p-shift">
+        <div id="shift-content"></div>
+      </div>
+
+      <!-- ══ PAGE: HISTORIQUE POSTES ══ -->
+      <div class="page" id="p-shifts-history">
+        <div class="section">
+          <div class="s-head"><div class="s-title">📋 Liste des Postes</div></div>
+          <div class="s-body-flush" style="overflow-x:auto">
+            <table class="t">
+              <thead><tr><th>N°</th><th>Ouvert par</th><th>Ouverture</th><th>Fermeture</th><th>CA Carb.</th><th>Crédits</th><th>Produits</th><th class="num">Caisse Nette</th><th>Statut</th><th></th></tr></thead>
+              <tbody id="hist-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PAGE: CRÉANCES ══ -->
+      <div class="page" id="p-credits">
+        <div class="tiles" id="credit-tiles"></div>
+        <div class="g2">
+          <div class="section">
+            <div class="s-head">
+              <div class="s-title">👥 Clients Crédit</div>
+              <div class="fxg">
+                <button class="btn btn-p btn-sm" onclick="openModal('m-add-client')">+ Nouveau Client</button>
+              </div>
+            </div>
+            <div class="s-body-flush" style="overflow-x:auto">
+              <table class="t"><thead><tr><th>Nom</th><th>Société</th><th>Téléphone</th><th class="num">Solde Dû</th><th></th></tr></thead>
+              <tbody id="clients-body"></tbody></table>
+            </div>
+          </div>
+          <div class="section">
+            <div class="s-head">
+              <div class="s-title">📝 Dernières Ventes Crédit</div>
+              <button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">+ Vente Crédit</button>
+            </div>
+            <div class="s-body-flush" style="overflow-x:auto">
+              <table class="t"><thead><tr><th>Client</th><th>Pompe</th><th>Litres</th><th class="num">Montant</th><th>Date</th></tr></thead>
+              <tbody id="csales-body"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PAGE: PRODUITS ══ -->
+      <div class="page" id="p-products">
+        <div class="section mb4">
+          <div class="s-head">
+            <div class="s-title">🛢️ Catalogue Produits</div>
+            <div class="fxg">
+              <button class="btn btn-g btn-sm" onclick="openModal('m-sell-product')">🛒 Vendre</button>
+              <button class="btn btn-p btn-sm" onclick="openModal('m-add-product')">+ Ajouter</button>
+            </div>
+          </div>
+          <div class="s-body-flush" style="overflow-x:auto">
+            <table class="t">
+              <thead><tr><th>Réf.</th><th>Produit</th><th>Catégorie</th><th>Unité</th><th class="num">Prix (MAD)</th><th class="num">Stock</th><th>Statut Stock</th><th></th></tr></thead>
+              <tbody id="products-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section">
+          <div class="s-head"><div class="s-title">📋 Dernières Ventes Produits</div></div>
+          <div class="s-body-flush" style="overflow-x:auto">
+            <table class="t"><thead><tr><th>Produit</th><th>Qté</th><th class="num">Prix U.</th><th class="num">Total</th><th>Date</th></tr></thead>
+            <tbody id="psales-body"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PAGE: POMPES & PRIX ══ -->
+      <div class="page" id="p-pumps">
+        <div class="g2">
+          <div class="section">
+            <div class="s-head">
+              <div class="s-title">⛽ Pompes</div>
+              <button class="btn btn-p btn-sm" onclick="openModal('m-add-pump')">+ Pompe</button>
+            </div>
+            <div class="s-body-flush" style="overflow-x:auto">
+              <table class="t"><thead><tr><th>Pompe</th><th>Carburant</th><th>Statut</th><th></th></tr></thead>
+              <tbody id="pumps-body"></tbody></table>
+            </div>
+          </div>
+          <div class="section">
+            <div class="s-head">
+              <div class="s-title">💰 Prix Carburant</div>
+              <button class="btn btn-p btn-sm" onclick="openModal('m-add-fuel')">+ Type</button>
+            </div>
+            <div class="s-body-flush" style="overflow-x:auto">
+              <table class="t"><thead><tr><th>Carburant</th><th class="num">Prix (MAD/L)</th><th></th></tr></thead>
+              <tbody id="fuels-body"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PAGE: PARAMÈTRES ══ -->
+      <div class="page" id="p-settings">
+        <div class="g2">
+          <div class="section">
+            <div class="s-head"><div class="s-title">👤 Mon Compte</div></div>
+            <div class="s-body">
+              <div id="user-info" class="mb4"></div>
+              <hr class="div"/>
+              <div class="s-title mb3">Changer le Mot de Passe</div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <div class="fg"><label>Mot de passe actuel</label><input type="password" id="cp-cur" placeholder="••••••••"/></div>
+                <div class="fg"><label>Nouveau mot de passe</label><input type="password" id="cp-new" placeholder="••••••••"/></div>
+                <div class="fg"><label>Confirmer</label><input type="password" id="cp-cnf" placeholder="••••••••"/></div>
+                <button class="btn btn-p" onclick="changePwd()">Enregistrer</button>
+              </div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="s-head"><div class="s-title">ℹ️ À Propos</div></div>
+            <div class="s-body">
+              <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px;">
+                <div class="fxb"><span class="muted">Application</span><span class="fw7">YEX WEB</span></div>
+                <div class="fxb"><span class="muted">Version</span><span>1.0.0</span></div>
+                <div class="fxb"><span class="muted">Technologie</span><span>Node.js + SQLite</span></div>
+                <div class="fxb"><span class="muted">Interface</span><span>SAP Fiori Horizon</span></div>
+                <div class="fxb"><span class="muted">Administrateurs</span><span>Aida & Younes Hmimidi</span></div>
+                <div class="fxb"><span class="muted">Pays</span><span>🇲🇦 Maroc</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ══════════════════ MODALS ══════════════════ -->
+
+<!-- OPEN SHIFT -->
+<div class="overlay" id="m-open-shift">
+  <div class="modal modal-lg">
+    <div class="modal-hd"><span>🕐</span><h3>Ouvrir un Nouveau Poste</h3><button class="x" onclick="closeModal('m-open-shift')">×</button></div>
+    <div class="modal-body">
+      <div class="msg msg-i mb3">Saisissez les relevés des compteurs au début du poste pour chaque pompe active.</div>
+      <div id="open-shift-form"></div>
+      <div class="fg mt3"><label>Notes (facultatif)</label><textarea id="os-notes" style="height:60px;resize:vertical;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;"></textarea></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-open-shift')">Annuler</button>
+      <button class="btn btn-s" onclick="submitOpenShift()">✅ Ouvrir le Poste</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLOSE SHIFT -->
+<div class="overlay" id="m-close-shift">
+  <div class="modal modal-lg">
+    <div class="modal-hd"><span>🔒</span><h3>Fermer le Poste</h3><button class="x" onclick="closeModal('m-close-shift')">×</button></div>
+    <div class="modal-body">
+      <div class="msg msg-w mb3">Saisissez les relevés des compteurs à la FIN du poste. Le système calculera automatiquement le chiffre d'affaires.</div>
+      <div id="close-shift-form"></div>
+      <div class="fg mt3"><label>Notes de fermeture (facultatif)</label><textarea id="cs-notes" style="height:60px;resize:vertical;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;"></textarea></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-close-shift')">Annuler</button>
+      <button class="btn btn-d" onclick="submitCloseShift()">🔒 Fermer & Calculer</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREDIT SALE -->
+<div class="overlay" id="m-credit-sale">
+  <div class="modal">
+    <div class="modal-hd"><span>🤝</span><h3>Enregistrer une Vente Crédit</h3><button class="x" onclick="closeModal('m-credit-sale')">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid mb3">
+        <div class="fg"><label>Client</label><select id="cs-client"></select></div>
+        <div class="fg"><label>Pompe</label><select id="cs-pump"></select></div>
+        <div class="fg"><label>Litres</label><input type="number" id="cs-liters" placeholder="0.00" step="0.1" min="0.1"/></div>
+        <div class="fg"><label>Prix/L (MAD)</label><input type="number" id="cs-price" placeholder="auto" readonly style="background:#F5F6F7"/></div>
+      </div>
+      <div class="fg mb3"><label>Montant estimé (MAD)</label><input type="text" id="cs-amount-display" readonly style="background:#F5F6F7;font-size:18px;font-weight:800;color:var(--orange);"/></div>
+      <div class="fg"><label>Notes</label><input type="text" id="cs-notes-f" placeholder="facultatif"/></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-credit-sale')">Annuler</button>
+      <button class="btn btn-w" onclick="submitCreditSale()">✅ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREDIT PAYMENT -->
+<div class="overlay" id="m-credit-payment">
+  <div class="modal">
+    <div class="modal-hd"><span>💰</span><h3>Enregistrer un Paiement</h3><button class="x" onclick="closeModal('m-credit-payment')">×</button></div>
+    <div class="modal-body">
+      <div id="cp-client-info" class="mb3"></div>
+      <div class="fgrid">
+        <div class="fg"><label>Montant reçu (MAD)</label><input type="number" id="cp-amount" placeholder="0.00" step="0.01"/></div>
+        <div class="fg"><label>Notes</label><input type="text" id="cp-notes" placeholder="facultatif"/></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-credit-payment')">Annuler</button>
+      <button class="btn btn-s" onclick="submitPayment()">✅ Valider Paiement</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CLIENT -->
+<div class="overlay" id="m-add-client">
+  <div class="modal">
+    <div class="modal-hd"><span>👤</span><h3>Nouveau Client Crédit</h3><button class="x" onclick="closeModal('m-add-client')">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label>Nom Complet *</label><input id="ac-name" placeholder="Nom du client"/></div>
+        <div class="fg"><label>Téléphone</label><input id="ac-phone" placeholder="+212 6XX XXX XXX"/></div>
+        <div class="fg"><label>Société</label><input id="ac-company" placeholder="Nom de la société"/></div>
+        <div class="fg"><label>Notes</label><input id="ac-notes" placeholder="facultatif"/></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-add-client')">Annuler</button>
+      <button class="btn btn-p" onclick="submitAddClient()">Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- SELL PRODUCT -->
+<div class="overlay" id="m-sell-product">
+  <div class="modal">
+    <div class="modal-hd"><span>🛒</span><h3>Vente Produit</h3><button class="x" onclick="closeModal('m-sell-product')">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label>Produit *</label><select id="sp-product" onchange="updateSellTotal()"></select></div>
+        <div class="fg"><label>Quantité *</label><input type="number" id="sp-qty" value="1" min="1" oninput="updateSellTotal()"/></div>
+      </div>
+      <div class="fg mt3"><label>Total (MAD)</label><input type="text" id="sp-total" readonly style="background:#F5F6F7;font-size:18px;font-weight:800;color:var(--green);"/></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-sell-product')">Annuler</button>
+      <button class="btn btn-s" onclick="submitSellProduct()">✅ Vendre</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PRODUCT -->
+<div class="overlay" id="m-add-product">
+  <div class="modal">
+    <div class="modal-hd"><span>📦</span><h3>Ajouter un Produit</h3><button class="x" onclick="closeModal('m-add-product')">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label>Référence *</label><input id="ap-ref" placeholder="HUI-001"/></div>
+        <div class="fg"><label>Désignation *</label><input id="ap-name" placeholder="Nom du produit"/></div>
+        <div class="fg"><label>Catégorie</label>
+          <select id="ap-cat"><option>Huiles</option><option>Filtres</option><option>Accessoires</option><option>Autre</option></select>
+        </div>
+        <div class="fg"><label>Unité</label><input id="ap-unit" value="unité"/></div>
+        <div class="fg"><label>Prix Vente (MAD) *</label><input type="number" id="ap-price" placeholder="0.00" step="0.01"/></div>
+        <div class="fg"><label>Stock Initial</label><input type="number" id="ap-stock" value="0" min="0"/></div>
+        <div class="fg"><label>Stock Minimum</label><input type="number" id="ap-min" value="5" min="0"/></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-add-product')">Annuler</button>
+      <button class="btn btn-p" onclick="submitAddProduct()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PUMP -->
+<div class="overlay" id="m-add-pump">
+  <div class="modal">
+    <div class="modal-hd"><span>⛽</span><h3>Ajouter une Pompe</h3><button class="x" onclick="closeModal('m-add-pump')">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label>Nom *</label><input id="np-name" placeholder="Pompe 5"/></div>
+        <div class="fg"><label>Type Carburant *</label><select id="np-ft"></select></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-add-pump')">Annuler</button>
+      <button class="btn btn-p" onclick="submitAddPump()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD FUEL TYPE -->
+<div class="overlay" id="m-add-fuel">
+  <div class="modal">
+    <div class="modal-hd"><span>💧</span><h3>Nouveau Type Carburant</h3><button class="x" onclick="closeModal('m-add-fuel')">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label>Nom *</label><input id="nf-name" placeholder="Gazoil Premium"/></div>
+        <div class="fg"><label>Prix (MAD/L) *</label><input type="number" id="nf-price" placeholder="10.50" step="0.01"/></div>
+        <div class="fg"><label>Couleur</label><input type="color" id="nf-color" value="#0070F2" style="height:40px;padding:4px;cursor:pointer;"/></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-add-fuel')">Annuler</button>
+      <button class="btn btn-p" onclick="submitAddFuel()">Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PRICE -->
+<div class="overlay" id="m-edit-price">
+  <div class="modal">
+    <div class="modal-hd"><span>💰</span><h3>Modifier le Prix</h3><button class="x" onclick="closeModal('m-edit-price')">×</button></div>
+    <div class="modal-body">
+      <div class="fg"><label>Nouveau Prix (MAD/L) *</label><input type="number" id="ep-price" placeholder="10.50" step="0.001"/></div>
+      <input type="hidden" id="ep-id"/>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-edit-price')">Annuler</button>
+      <button class="btn btn-p" onclick="submitEditPrice()">Mettre à Jour</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHIFT DETAIL -->
+<div class="overlay" id="m-shift-detail">
+  <div class="modal modal-lg">
+    <div class="modal-hd"><span>📋</span><h3>Détail du Poste</h3><button class="x" onclick="closeModal('m-shift-detail')">×</button></div>
+    <div class="modal-body" id="shift-detail-body" style="max-height:70vh;overflow-y:auto;"></div>
+    <div class="modal-ft"><button class="btn btn-p" onclick="closeModal('m-shift-detail')">Fermer</button></div>
+  </div>
+</div>
+
+<!-- TOAST AREA -->
+<div id="toasts"></div>
+
+<!-- ════════════════════════════
+     JAVASCRIPT
+════════════════════════════ -->
+<script>
+'use strict';
+
+// ─── STATE ─────────────────────────────────────────────────
+const S = { user: null, pumps: [], fuelTypes: [], activeShift: null, products: [], clients: [] };
+const pageNames = { dashboard:'Tableau de Bord', shift:'Poste en Cours', 'shifts-history':'Historique Postes', credits:'Créances Clients', products:'Produits & Huiles', pumps:'Pompes & Prix', settings:'Paramètres' };
+let paymentClientId = null;
+let chartWeekly = null, chartSplit = null;
+
+// ─── AUTH ───────────────────────────────────────────────────
+const token = () => localStorage.getItem('fm_token');
+const headers = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() });
+
+async function api(method, path, body) {
+  const opts = { method, headers: headers() };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch('/api' + path, opts);
+  if (r.status === 401) { logout(); throw new Error('Session expirée'); }
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || 'Erreur serveur');
+  return data;
+}
+
+function logout() { localStorage.removeItem('fm_token'); localStorage.removeItem('fm_user'); window.location.href = '/'; }
+
+// ─── TOAST ──────────────────────────────────────────────────
+function toast(msg, type = 'ok') {
+  const icons = { ok:'✅', er:'❌', wn:'⚠️', in:'ℹ️' };
+  const el = document.createElement('div');
+  el.className = `toast t-${type}`;
+  el.innerHTML = `<span>${icons[type]||'✅'}</span><span>${msg}</span>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ─── MODALS ─────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); }));
+
+// ─── NAV ────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item[data-p]').forEach(el => el.addEventListener('click', () => goTo(el.dataset.p)));
+function goTo(p) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.p === p));
+  document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+  const pg = document.getElementById('p-' + p);
+  if (pg) pg.classList.add('active');
+  document.getElementById('bc').textContent = pageNames[p] || p;
+  document.getElementById('page-title').textContent = pageNames[p] || p;
+  document.getElementById('page-actions').innerHTML = '';
+  loadPage(p);
+}
+
+// ─── PAGE ACTIONS ────────────────────────────────────────────
+const pageActions = {
+  shift: () => {
+    const el = document.getElementById('page-actions');
+    if (S.activeShift) {
+      el.innerHTML = `<button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">🤝 Vente Crédit</button>
+        <button class="btn btn-g btn-sm" onclick="openModal('m-sell-product')">🛒 Vente Produit</button>
+        <button class="btn btn-d btn-sm" onclick="openModal('m-close-shift')">🔒 Fermer Poste</button>`;
+    } else {
+      el.innerHTML = `<button class="btn btn-s" onclick="prepareOpenShift()">▶️ Ouvrir un Poste</button>`;
+    }
+  },
+  credits: () => {
+    document.getElementById('page-actions').innerHTML = `<button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">🤝 Vente Crédit</button>`;
+  }
+};
+
+// ─── PAGE LOADERS ───────────────────────────────────────────
+async function loadPage(p) {
+  if (pageActions[p]) pageActions[p]();
+  switch(p) {
+    case 'dashboard':      await loadDashboard(); break;
+    case 'shift':          await loadShiftPage(); break;
+    case 'shifts-history': await loadHistory();   break;
+    case 'credits':        await loadCredits();   break;
+    case 'products':       await loadProducts();  break;
+    case 'pumps':          await loadPumps();      break;
+    case 'settings':       loadSettings();         break;
+  }
+}
+
+// ─── DASHBOARD ──────────────────────────────────────────────
+async function loadDashboard() {
+  const [dash, weekly, split] = await Promise.all([
+    api('GET', '/dashboard'),
+    api('GET', '/dashboard/weekly'),
+    api('GET', '/dashboard/fuel-split'),
+  ]);
+
+  // Alerts
+  const alertsEl = document.getElementById('dash-alerts');
+  alertsEl.innerHTML = '';
+  if (dash.open_shift) alertsEl.innerHTML += `<div class="msg msg-s mb3">✅ Poste ouvert — démarré ${fmtDT(dash.open_shift.opened_at)} par ${dash.open_shift.opened_by_name||'?'}</div>`;
+  else alertsEl.innerHTML += `<div class="msg msg-w mb3">⚠️ Aucun poste ouvert. Cliquez sur <strong>Poste en Cours</strong> pour en ouvrir un.</div>`;
+  if (dash.low_stock > 0) alertsEl.innerHTML += `<div class="msg msg-w mb3">📦 ${dash.low_stock} produit(s) en stock faible.</div>`;
+
+  // Tiles
+  document.getElementById('dash-tiles').innerHTML = [
+    { ic:'💰', val: fmt(dash.today.fuel_revenue) + ' MAD', lbl:"CA Carburant Auj.", sub:"Carburant vendu aujourd'hui", sc:'', tc:'var(--green)' },
+    { ic:'⛽', val: dash.today.liters_sold.toFixed(1) + ' L', lbl:'Litres Vendus Auj.', sub:'Volume journalier', sc:'', tc:'var(--blue)' },
+    { ic:'🤝', val: fmt(dash.total_debt) + ' MAD', lbl:'Total Créances', sub: dash.total_clients + ' clients crédit', sc: dash.total_debt > 0 ? 'warn' : '', tc:'var(--orange)' },
+    { ic:'🛢️', val: dash.low_stock, lbl:'Produits Stock Faible', sub:'Réapprovisionnement requis', sc: dash.low_stock > 0 ? 'warn' : '', tc:'var(--red)' },
+    { ic:'🏦', val: fmt(dash.today.net_cash) + ' MAD', lbl:'Caisse Nette Auj.', sub:'Fuel - Crédits + Produits', sc:'up', tc:'var(--purple)' },
+    { ic:'🧾', val: fmt(dash.today.product_revenue) + ' MAD', lbl:'CA Produits Auj.', sub:'Huiles & accessoires', sc:'', tc:'#37474F' },
+  ].map(t => `<div class="tile" style="--tile-color:${t.tc}" onclick="goTo('dashboard')">
+    <div class="tile-ic">${t.ic}</div>
+    <div class="tile-val">${t.val}</div>
+    <div class="tile-lbl">${t.lbl}</div>
+    <div class="tile-sub ${t.sc}">${t.sub}</div>
+  </div>`).join('');
+
+  // Weekly chart
+  const labels = weekly.map(r => r.day);
+  const fuelData = weekly.map(r => r.fuel);
+  const netData  = weekly.map(r => r.net);
+
+  if (chartWeekly) chartWeekly.destroy();
+  chartWeekly = new Chart(document.getElementById('ch-weekly'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'CA Carburant', data: fuelData, backgroundColor: 'rgba(0,112,242,0.7)', borderRadius: 4 },
+        { label: 'Caisse Nette', data: netData,  backgroundColor: 'rgba(24,137,24,0.5)',  borderRadius: 4 },
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+  });
+
+  // Fuel split chart
+  if (chartSplit) chartSplit.destroy();
+  if (split.length) {
+    chartSplit = new Chart(document.getElementById('ch-split'), {
+      type: 'doughnut',
+      data: { labels: split.map(r => r.name), datasets: [{ data: split.map(r => r.liters), backgroundColor: split.map(r => r.color_hex), borderWidth: 2, borderColor: '#fff' }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+    });
+  } else {
+    document.getElementById('ch-split').insertAdjacentHTML('afterend', '<p class="muted tc" style="padding:30px">Aucune donnée aujourd\'hui</p>');
+  }
+
+  // Top debtors
+  const clients = await api('GET', '/credits/clients');
+  const top5 = [...clients].sort((a,b) => b.balance_due - a.balance_due).slice(0, 5);
+  document.getElementById('dash-debts').innerHTML = top5.map(c => `
+    <tr>
+      <td class="fw7">${c.name}</td>
+      <td class="muted">${c.company||'—'}</td>
+      <td class="num fw7 c-r">${fmt(c.balance_due)} MAD</td>
+      <td><span class="st ${c.balance_due > 0 ? 'st-r' : 'st-g'}">${c.balance_due > 0 ? 'Débiteur' : 'À jour'}</span></td>
+    </tr>`).join('') || '<tr><td colspan="4" class="tc muted" style="padding:20px">Aucune créance en cours</td></tr>';
+}
+
+// ─── SHIFT PAGE ─────────────────────────────────────────────
+async function loadShiftPage() {
+  const shift = await api('GET', '/shifts/current');
+  S.activeShift = shift;
+  const el = document.getElementById('shift-content');
+  pageActions.shift();
+
+  if (!shift) {
+    el.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;gap:20px;text-align:center">
+        <div style="font-size:64px">🔑</div>
+        <div style="font-size:22px;font-weight:800">Aucun poste ouvert</div>
+        <div class="muted">Ouvrez un poste pour commencer à enregistrer les ventes.</div>
+        <button class="btn btn-s" style="font-size:16px;padding:12px 32px;" onclick="prepareOpenShift()">▶️ Ouvrir un Poste</button>
+      </div>`;
+    return;
+  }
+
+  // Build pump readings map: start/end per pump
+  const readMap = {};
+  for (const r of shift.pump_readings) {
+    if (!readMap[r.pump_id]) readMap[r.pump_id] = { name: r.pump_name, fuel: r.fuel_name, price: r.price_per_liter };
+    if (r.reading_type === 'start') readMap[r.pump_id].start = r.meter_value;
+  }
+
+  const pumpRows = Object.entries(readMap).map(([pid, r]) => `
+    <tr>
+      <td class="fw7">${r.name}</td>
+      <td>${r.fuel}</td>
+      <td class="num">${r.start?.toLocaleString('fr-FR', { minimumFractionDigits: 1 }) || '—'}</td>
+      <td class="num muted">—</td>
+      <td class="num muted">—</td>
+      <td class="num muted">${r.price?.toFixed(3)} MAD/L</td>
+    </tr>`).join('');
+
+  const totalCredit  = shift.credit_sales.reduce((s, r) => s + r.amount, 0);
+  const totalProduct = shift.product_sales.reduce((s, r) => s + r.total_amount, 0);
+
+  el.innerHTML = `
+    <div class="obj-hd mb4">
+      <div class="obj-icon" style="background:var(--green-lt)">🕐</div>
+      <div>
+        <div class="obj-ttl">Poste N° ${shift.id} — En Cours</div>
+        <div class="obj-sub">Ouvert par <strong>${shift.opened_by_name}</strong> · ${fmtDT(shift.opened_at)}</div>
+      </div>
+      <div class="obj-kpis">
+        <div class="obj-kpi"><div class="kv c-o">${fmt(totalCredit)} MAD</div><div class="kl">Crédits accordés</div></div>
+        <div class="obj-kpi"><div class="kv c-g">${fmt(totalProduct)} MAD</div><div class="kl">Ventes produits</div></div>
+      </div>
+    </div>
+
+    <div class="section mb4">
+      <div class="s-head"><div class="s-title">⛽ Relevés Pompes (Début de Poste)</div></div>
+      <div class="s-body-flush" style="overflow-x:auto">
+        <table class="t"><thead><tr><th>Pompe</th><th>Carburant</th><th class="num">Compteur Début</th><th class="num">Compteur Fin</th><th class="num">Litres Vendus</th><th class="num">Prix/L</th></tr></thead>
+        <tbody>${pumpRows}</tbody></table>
+      </div>
+    </div>
+
+    ${shift.credit_sales.length ? `
+    <div class="section mb4">
+      <div class="s-head"><div class="s-title">🤝 Ventes Crédit ce Poste</div></div>
+      <div class="s-body-flush" style="overflow-x:auto">
+        <table class="t"><thead><tr><th>Client</th><th>Pompe</th><th class="num">Litres</th><th class="num">Montant</th><th>Heure</th><th></th></tr></thead>
+        <tbody>${shift.credit_sales.map(s => `
+          <tr>
+            <td class="fw7">${s.client_name}</td>
+            <td>${s.pump_name}</td>
+            <td class="num">${s.liters} L</td>
+            <td class="num fw7 c-o">${fmt(s.amount)} MAD</td>
+            <td class="muted sm">${fmtDT(s.sale_time)}</td>
+            <td><button class="btn btn-d btn-xs" onclick="deleteCreditSale(${s.id})">✕</button></td>
+          </tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>` : ''}
+
+    ${shift.product_sales.length ? `
+    <div class="section">
+      <div class="s-head"><div class="s-title">🛢️ Ventes Produits ce Poste</div></div>
+      <div class="s-body-flush" style="overflow-x:auto">
+        <table class="t"><thead><tr><th>Produit</th><th>Réf.</th><th class="num">Qté</th><th class="num">Prix U.</th><th class="num">Total</th><th>Heure</th><th></th></tr></thead>
+        <tbody>${shift.product_sales.map(s => `
+          <tr>
+            <td class="fw7">${s.product_name}</td>
+            <td class="muted sm">${s.reference}</td>
+            <td class="num">${s.quantity}</td>
+            <td class="num">${s.unit_price?.toFixed(2)} MAD</td>
+            <td class="num fw7 c-g">${fmt(s.total_amount)} MAD</td>
+            <td class="muted sm">${fmtDT(s.sale_time)}</td>
+            <td><button class="btn btn-d btn-xs" onclick="deleteProductSale(${s.id})">✕</button></td>
+          </tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>` : ''}`;
+}
+
+// ─── OPEN SHIFT ─────────────────────────────────────────────
+async function prepareOpenShift() {
+  const pumps = await api('GET', '/pumps');
+  const active = pumps.filter(p => p.status === 'active');
+  document.getElementById('open-shift-form').innerHTML = `
+    <div class="fgrid3" style="margin-bottom:4px">
+      <div style="grid-column:1/-1" class="mb2">
+        <table class="t"><thead><tr><th>Pompe</th><th>Carburant</th><th class="num">Prix/L</th><th class="num">Compteur Début *</th></tr></thead>
+        <tbody>${active.map(p => `
+          <tr>
+            <td class="fw7">${p.name}</td>
+            <td>${p.fuel_name}</td>
+            <td class="num">${p.price_per_liter?.toFixed(3)} MAD</td>
+            <td><input type="number" class="os-reading" data-pump="${p.id}" step="0.1" min="0" placeholder="0.0" style="width:130px;padding:7px 10px;border:1px solid var(--border);border-radius:4px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;"/></td>
+          </tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>`;
+  openModal('m-open-shift');
+}
+
+async function submitOpenShift() {
+  const inputs = document.querySelectorAll('.os-reading');
+  const readings = [];
+  let valid = true;
+  inputs.forEach(inp => {
+    const v = parseFloat(inp.value);
+    if (isNaN(v) || v < 0) { inp.style.borderColor = 'var(--red)'; valid = false; }
+    else { inp.style.borderColor = ''; readings.push({ pump_id: parseInt(inp.dataset.pump), meter_value: v }); }
+  });
+  if (!valid || !readings.length) { toast('Veuillez saisir tous les compteurs', 'er'); return; }
+  try {
+    const shift = await api('POST', '/shifts', { readings, notes: document.getElementById('os-notes').value });
+    S.activeShift = shift;
+    closeModal('m-open-shift');
+    toast('Poste N° ' + shift.id + ' ouvert avec succès');
+    goTo('shift');
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+// ─── CLOSE SHIFT ────────────────────────────────────────────
+function prepareCloseShift() {
+  if (!S.activeShift) return;
+  const startMap = {};
+  for (const r of S.activeShift.pump_readings)
+    if (r.reading_type === 'start') startMap[r.pump_id] = { name: r.pump_name, fuel: r.fuel_name, price: r.price_per_liter, start: r.meter_value };
+
+  document.getElementById('close-shift-form').innerHTML = `
+    <table class="t" style="margin-bottom:4px">
+      <thead><tr><th>Pompe</th><th>Carburant</th><th class="num">Compteur Début</th><th class="num">Compteur Fin *</th></tr></thead>
+      <tbody>${Object.entries(startMap).map(([pid, r]) => `
+        <tr>
+          <td class="fw7">${r.name}</td>
+          <td>${r.fuel}</td>
+          <td class="num">${r.start?.toLocaleString('fr-FR', { minimumFractionDigits: 1 }) || '—'}</td>
+          <td><input type="number" class="cs-reading" data-pump="${pid}" step="0.1" min="${r.start||0}" value="${r.start||0}" style="width:130px;padding:7px 10px;border:1px solid var(--border);border-radius:4px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;"/></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  openModal('m-close-shift');
+}
+
+async function submitCloseShift() {
+  if (!S.activeShift) return;
+  const inputs = document.querySelectorAll('.cs-reading');
+  const readings = [];
+  let valid = true;
+  inputs.forEach(inp => {
+    const v = parseFloat(inp.value);
+    if (isNaN(v) || v < 0) { inp.style.borderColor = 'var(--red)'; valid = false; }
+    else { inp.style.borderColor = ''; readings.push({ pump_id: parseInt(inp.dataset.pump), meter_value: v }); }
+  });
+  if (!valid) { toast('Veuillez saisir tous les compteurs de fin', 'er'); return; }
+  try {
+    const result = await api('POST', '/shifts/' + S.activeShift.id + '/close', { readings, notes: document.getElementById('cs-notes').value });
+    closeModal('m-close-shift');
+    S.activeShift = null;
+    toast('Poste fermé — Caisse nette: ' + fmt(result.calc.netCash) + ' MAD');
+    showShiftSummary(result);
+    goTo('shifts-history');
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+function showShiftSummary(result) {
+  const c = result.calc;
+  const s = result;
+  let html = `
+    <div class="msg msg-s mb3">✅ Poste N° ${s.id} fermé avec succès — ${fmtDT(s.closed_at)}</div>
+    <h3 class="mb3">Récapitulatif Financier</h3>
+    <table class="t mb4">
+      <thead><tr><th>Pompe</th><th>Carburant</th><th class="num">Compteur Début</th><th class="num">Compteur Fin</th><th class="num">Litres</th><th class="num">CA (MAD)</th></tr></thead>
+      <tbody>`;
+
+  const readings = s.pump_readings || [];
+  const startMap = {}, endMap = {};
+  readings.forEach(r => {
+    if (r.reading_type === 'start') startMap[r.pump_id] = r;
+    if (r.reading_type === 'end')   endMap[r.pump_id] = r;
+  });
+  for (const [pid, sr] of Object.entries(startMap)) {
+    const er    = endMap[pid] || {};
+    const liters = Math.max(0, (er.meter_value || 0) - (sr.meter_value || 0));
+    const rev    = liters * (sr.price_per_liter || 0);
+    html += `<tr>
+      <td class="fw7">${sr.pump_name}</td>
+      <td>${sr.fuel_name}</td>
+      <td class="num">${sr.meter_value?.toLocaleString('fr-FR', {minimumFractionDigits:1})}</td>
+      <td class="num">${er.meter_value?.toLocaleString('fr-FR', {minimumFractionDigits:1}) || '—'}</td>
+      <td class="num fw7">${liters.toFixed(1)} L</td>
+      <td class="num fw7 c-b">${fmt(rev)} MAD</td>
+    </tr>`;
+  }
+  html += `</tbody></table>
+    <div style="background:var(--bg);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px;">
+      <div class="fxb"><span class="fw7">Total CA Carburant</span><span class="fw8 c-b">${fmt(c.totalFuel)} MAD</span></div>
+      <div class="fxb"><span class="fw7">(-) Ventes Crédit</span><span class="fw7 c-r">- ${fmt(c.totalCredit)} MAD</span></div>
+      <div class="fxb"><span class="fw7">(+) Ventes Produits</span><span class="fw7 c-g">+ ${fmt(c.totalProduct)} MAD</span></div>
+      <hr class="div"/>
+      <div class="fxb"><span style="font-size:16px;font-weight:800">💵 CAISSE NETTE</span><span style="font-size:22px;font-weight:800;color:var(--green)">${fmt(c.netCash)} MAD</span></div>
+    </div>`;
+  document.getElementById('shift-detail-body').innerHTML = html;
+  openModal('m-shift-detail');
+}
+
+// ─── HISTORY ───────────────────────────────────────────────
+async function loadHistory() {
+  const shifts = await api('GET', '/shifts');
+  document.getElementById('hist-body').innerHTML = shifts.map(s => {
+    const cls = s.status === 'open' ? 'st-g' : 'st-gr';
+    const lbl = s.status === 'open' ? 'Ouvert' : 'Fermé';
+    return `<tr>
+      <td class="fw7">#${s.id}</td>
+      <td>${s.opened_by_name||'?'}</td>
+      <td class="muted sm">${fmtDT(s.opened_at)}</td>
+      <td class="muted sm">${s.closed_at ? fmtDT(s.closed_at) : '—'}</td>
+      <td class="num">${s.total_fuel_revenue != null ? fmt(s.total_fuel_revenue) + ' MAD' : '—'}</td>
+      <td class="num c-r">${s.total_credit_deducted != null ? fmt(s.total_credit_deducted) + ' MAD' : '—'}</td>
+      <td class="num c-g">${s.total_product_sales != null ? fmt(s.total_product_sales) + ' MAD' : '—'}</td>
+      <td class="num fw8 ${s.status==='closed'?'c-b':''}">${s.net_cash != null ? fmt(s.net_cash) + ' MAD' : '—'}</td>
+      <td><span class="st ${cls}">${lbl}</span></td>
+      <td><button class="btn btn-g btn-xs" onclick="viewShift(${s.id})">Détail</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" class="tc muted" style="padding:20px">Aucun poste enregistré</td></tr>';
+}
+
+async function viewShift(id) {
+  const s = await api('GET', '/shifts/' + id);
+  showShiftSummary({ ...s, calc: { totalFuel: s.total_fuel_revenue||0, totalCredit: s.total_credit_deducted||0, totalProduct: s.total_product_sales||0, netCash: s.net_cash||0 } });
+}
+
+// ─── CREDITS ───────────────────────────────────────────────
+async function loadCredits() {
+  const [clients, sales] = await Promise.all([
+    api('GET', '/credits/clients'),
+    api('GET', '/credits/sales'),
+  ]);
+  S.clients = clients;
+
+  const totalDebt = clients.reduce((s, c) => s + c.balance_due, 0);
+  document.getElementById('credit-tiles').innerHTML = [
+    { ic:'👥', val: clients.length, lbl:'Clients Crédit', tc:'var(--blue)' },
+    { ic:'💳', val: fmt(totalDebt) + ' MAD', lbl:'Total Dû', tc:'var(--red)' },
+    { ic:'✅', val: clients.filter(c=>c.balance_due===0).length, lbl:'Comptes À Jour', tc:'var(--green)' },
+    { ic:'⚠️', val: clients.filter(c=>c.balance_due>0).length, lbl:'Comptes Débiteurs', tc:'var(--orange)' },
+  ].map(t => `<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
+
+  document.getElementById('clients-body').innerHTML = clients.map(c => `
+    <tr>
+      <td class="fw7">${c.name}</td>
+      <td class="muted">${c.company||'—'}</td>
+      <td class="muted sm">${c.phone||'—'}</td>
+      <td class="num fw7 ${c.balance_due>0?'c-r':'c-g'}">${fmt(c.balance_due)} MAD</td>
+      <td>
+        ${c.balance_due > 0 ? `<button class="btn btn-s btn-xs" onclick="openPayment(${c.id},'${esc(c.name)}',${c.balance_due})">💰 Payer</button>` : ''}
+      </td>
+    </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucun client</td></tr>';
+
+  document.getElementById('csales-body').innerHTML = sales.slice(0, 30).map(s => `
+    <tr>
+      <td class="fw7">${s.client_name}</td>
+      <td>${s.pump_name}</td>
+      <td class="num">${s.liters} L</td>
+      <td class="num fw7 c-o">${fmt(s.amount)} MAD</td>
+      <td class="muted sm">${fmtDT(s.sale_time)}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucune vente crédit</td></tr>';
+
+  document.getElementById('nb-credits').textContent = clients.filter(c=>c.balance_due>0).length || 0;
+}
+
+function openPayment(clientId, name, balance) {
+  paymentClientId = clientId;
+  document.getElementById('cp-client-info').innerHTML = `
+    <div class="msg msg-w">Solde actuel de <strong>${name}</strong>: <strong>${fmt(balance)} MAD</strong></div>`;
+  document.getElementById('cp-amount').value = balance.toFixed(2);
+  openModal('m-credit-payment');
+}
+
+async function submitPayment() {
+  const amount = parseFloat(document.getElementById('cp-amount').value);
+  if (!amount || amount <= 0) { toast('Montant invalide', 'er'); return; }
+  try {
+    await api('POST', '/credits/payments', {
+      credit_client_id: paymentClientId,
+      amount,
+      shift_id: S.activeShift?.id || null,
+      notes: document.getElementById('cp-notes').value
+    });
+    closeModal('m-credit-payment');
+    toast('Paiement de ' + fmt(amount) + ' MAD enregistré');
+    loadCredits();
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+async function submitCreditSale() {
+  if (!S.activeShift) { toast('Aucun poste ouvert — ouvrez un poste d\'abord', 'wn'); return; }
+  const clientId = parseInt(document.getElementById('cs-client').value);
+  const pumpId   = parseInt(document.getElementById('cs-pump').value);
+  const liters   = parseFloat(document.getElementById('cs-liters').value);
+  if (!clientId || !pumpId || !liters || liters <= 0) { toast('Veuillez remplir tous les champs', 'er'); return; }
+  try {
+    await api('POST', '/credits/sales', {
+      shift_id: S.activeShift.id, credit_client_id: clientId, pump_id: pumpId, liters,
+      notes: document.getElementById('cs-notes-f').value
+    });
+    closeModal('m-credit-sale');
+    toast('Vente crédit enregistrée — ' + liters + ' L');
+    if (document.querySelector('#p-credits.active')) loadCredits();
+    if (document.querySelector('#p-shift.active')) loadShiftPage();
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+async function deleteCreditSale(id) {
+  if (!confirm('Annuler cette vente crédit ?')) return;
+  try { await api('DELETE', '/credits/sales/' + id); toast('Vente annulée'); loadShiftPage(); }
+  catch (e) { toast(e.message, 'er'); }
+}
+
+function populateCreditSaleModal() {
+  const sel = document.getElementById('cs-client');
+  sel.innerHTML = S.clients.map(c => `<option value="${c.id}">${c.name}${c.company ? ' ('+c.company+')' : ''}</option>`).join('');
+  const psel = document.getElementById('cs-pump');
+  psel.innerHTML = S.pumps.filter(p=>p.status==='active').map(p => `<option value="${p.id}" data-price="${p.price_per_liter}">${p.name} — ${p.fuel_name}</option>`).join('');
+  psel.onchange = () => {
+    const opt = psel.selectedOptions[0];
+    document.getElementById('cs-price').value = opt ? parseFloat(opt.dataset.price).toFixed(3) : '';
+    updateCreditAmount();
+  };
+  document.getElementById('cs-liters').oninput = updateCreditAmount;
+  psel.dispatchEvent(new Event('change'));
+}
+
+function updateCreditAmount() {
+  const liters = parseFloat(document.getElementById('cs-liters').value) || 0;
+  const price  = parseFloat(document.getElementById('cs-price').value)  || 0;
+  document.getElementById('cs-amount-display').value = (liters * price).toFixed(2) + ' MAD';
+}
+
+// ─── PRODUCTS ──────────────────────────────────────────────
+async function loadProducts() {
+  const [products, sales] = await Promise.all([
+    api('GET', '/products'),
+    api('GET', '/products/sales'),
+  ]);
+  S.products = products;
+
+  document.getElementById('products-body').innerHTML = products.map(p => {
+    const low = p.stock_qty <= p.stock_min;
+    const out = p.stock_qty === 0;
+    const sc  = out ? 'st-r' : low ? 'st-o' : 'st-g';
+    const sl  = out ? 'Rupture' : low ? 'Stock Faible' : 'En Stock';
+    return `<tr>
+      <td class="muted sm">${p.reference}</td>
+      <td class="fw7">${p.name}</td>
+      <td>${p.category}</td>
+      <td class="muted">${p.unit}</td>
+      <td class="num fw7">${p.price?.toFixed(2)}</td>
+      <td class="num fw7 ${out?'c-r':low?'c-o':'c-g'}">${p.stock_qty}</td>
+      <td><span class="st ${sc}">${sl}</span></td>
+      <td>
+        <button class="btn btn-g btn-xs" onclick="editProductPrice(${p.id},${p.price},'${esc(p.name)}')">✏️</button>
+        <button class="btn btn-d btn-xs" onclick="deleteProduct(${p.id})">✕</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" class="tc muted" style="padding:20px">Aucun produit</td></tr>';
+
+  document.getElementById('psales-body').innerHTML = sales.slice(0, 30).map(s => `
+    <tr>
+      <td class="fw7">${s.product_name}</td>
+      <td class="num">${s.quantity}</td>
+      <td class="num">${s.unit_price?.toFixed(2)} MAD</td>
+      <td class="num fw7 c-g">${fmt(s.total_amount)} MAD</td>
+      <td class="muted sm">${fmtDT(s.sale_time)}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucune vente</td></tr>';
+
+  populateSellModal();
+}
+
+function populateSellModal() {
+  document.getElementById('sp-product').innerHTML = S.products.filter(p=>p.stock_qty>0)
+    .map(p => `<option value="${p.id}" data-price="${p.price}">${p.name} (Stock: ${p.stock_qty})</option>`).join('');
+  updateSellTotal();
+}
+
+function updateSellTotal() {
+  const opt = document.getElementById('sp-product').selectedOptions[0];
+  const qty = parseInt(document.getElementById('sp-qty').value) || 0;
+  const price = opt ? parseFloat(opt.dataset.price) : 0;
+  document.getElementById('sp-total').value = (qty * price).toFixed(2) + ' MAD';
+}
+
+async function submitSellProduct() {
+  if (!S.activeShift) { toast('Aucun poste ouvert', 'wn'); return; }
+  const product_id = parseInt(document.getElementById('sp-product').value);
+  const quantity   = parseInt(document.getElementById('sp-qty').value);
+  if (!product_id || !quantity || quantity < 1) { toast('Champs invalides', 'er'); return; }
+  try {
+    await api('POST', '/products/sales', { shift_id: S.activeShift.id, product_id, quantity });
+    closeModal('m-sell-product');
+    toast('Vente enregistrée');
+    loadProducts();
+    if (document.querySelector('#p-shift.active')) loadShiftPage();
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+async function submitAddProduct() {
+  const ref = document.getElementById('ap-ref').value.trim();
+  const name = document.getElementById('ap-name').value.trim();
+  const price = parseFloat(document.getElementById('ap-price').value);
+  if (!ref || !name || !price) { toast('Référence, nom et prix requis', 'er'); return; }
+  try {
+    await api('POST', '/products', { reference:ref, name, category:document.getElementById('ap-cat').value, unit:document.getElementById('ap-unit').value, price, stock_qty:parseInt(document.getElementById('ap-stock').value)||0, stock_min:parseInt(document.getElementById('ap-min').value)||5 });
+    closeModal('m-add-product');
+    toast('Produit ajouté');
+    loadProducts();
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Désactiver ce produit ?')) return;
+  try { await api('DELETE', '/products/' + id); toast('Produit désactivé'); loadProducts(); }
+  catch (e) { toast(e.message, 'er'); }
+}
+
+async function deleteProductSale(id) {
+  if (!confirm('Annuler cette vente produit ?')) return;
+  try { await api('DELETE', '/products/sales/' + id); toast('Vente annulée'); loadShiftPage(); }
+  catch (e) { toast(e.message, 'er'); }
+}
+
+function editProductPrice(id, price, name) {
+  document.getElementById('ep-id').value = id;
+  document.getElementById('ep-price').value = price;
+  document.querySelector('#m-edit-price .modal-hd h3').textContent = 'Prix : ' + name;
+  openModal('m-edit-price');
+}
+async function submitEditPrice() {
+  const id = document.getElementById('ep-id').value;
+  const price = parseFloat(document.getElementById('ep-price').value);
+  if (!price || price <= 0) { toast('Prix invalide', 'er'); return; }
+  try { await api('PUT', '/products/' + id, { price }); closeModal('m-edit-price'); toast('Prix mis à jour'); loadProducts(); }
+  catch (e) { toast(e.message, 'er'); }
+}
+
+// ─── PUMPS & FUEL TYPES ─────────────────────────────────────
+async function loadPumps() {
+  const [pumps, fuels] = await Promise.all([
+    api('GET', '/pumps'),
+    api('GET', '/pumps/fuel-types'),
+  ]);
+  S.pumps = pumps; S.fuelTypes = fuels;
+
+  document.getElementById('pumps-body').innerHTML = pumps.map(p => `
+    <tr>
+      <td class="fw7">${p.name}</td>
+      <td><span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${p.color_hex};"></span>${p.fuel_name}</span></td>
+      <td><span class="st ${p.status==='active'?'st-g':p.status==='maintenance'?'st-o':'st-gr'}">${p.status}</span></td>
+      <td>
+        <button class="btn btn-g btn-xs" onclick="togglePumpStatus(${p.id},'${p.status==='active'?'maintenance':'active'}','${esc(p.name)}')">
+          ${p.status==='active'?'⏸ Maintenance':'▶ Activer'}
+        </button>
+      </td>
+    </tr>`).join('');
+
+  document.getElementById('fuels-body').innerHTML = fuels.map(ft => `
+    <tr>
+      <td class="fw7"><span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border-radius:50%;background:${ft.color_hex};"></span>${ft.name}</span></td>
+      <td class="num fw8 c-o">${ft.price_per_liter?.toFixed(3)} MAD/L</td>
+      <td>
+        <button class="btn btn-g btn-xs" onclick="editFuelPrice(${ft.id},${ft.price_per_liter},'${esc(ft.name)}')">✏️ Modifier Prix</button>
+      </td>
+    </tr>`).join('');
+
+  document.getElementById('np-ft').innerHTML = fuels.map(ft => `<option value="${ft.id}">${ft.name}</option>`).join('');
+}
+
+async function togglePumpStatus(id, newStatus, name) {
+  if (!confirm(`Passer ${name} en statut "${newStatus}" ?`)) return;
+  try { await api('PUT', '/pumps/' + id, { status: newStatus }); toast(`${name} — statut mis à jour`); loadPumps(); }
+  catch (e) { toast(e.message, 'er'); }
+}
+
+async function submitAddPump() {
+  const name = document.getElementById('np-name').value.trim();
+  const ft   = document.getElementById('np-ft').value;
+  if (!name || !ft) { toast('Nom et type carburant requis', 'er'); return; }
+  try { await api('POST', '/pumps', { name, fuel_type_id: ft }); closeModal('m-add-pump'); toast('Pompe ajoutée'); loadPumps(); }
+  catch (e) { toast(e.message, 'er'); }
+}
+
+async function submitAddFuel() {
+  const name  = document.getElementById('nf-name').value.trim();
+  const price = parseFloat(document.getElementById('nf-price').value);
+  const color = document.getElementById('nf-color').value;
+  if (!name || !price) { toast('Nom et prix requis', 'er'); return; }
+  try { await api('POST', '/pumps/fuel-types', { name, price_per_liter: price, color_hex: color }); closeModal('m-add-fuel'); toast('Type carburant créé'); loadPumps(); }
+  catch (e) { toast(e.message, 'er'); }
+}
+
+function editFuelPrice(id, price, name) {
+  document.getElementById('ep-id').value = id;
+  document.getElementById('ep-price').value = price;
+  document.querySelector('#m-edit-price .modal-hd h3').textContent = 'Prix : ' + name;
+  // Override submit to use fuel-types endpoint
+  document.querySelector('#m-edit-price .modal-ft .btn-p').onclick = () => submitEditFuelPrice(id);
+  openModal('m-edit-price');
+}
+async function submitEditFuelPrice(id) {
+  const price = parseFloat(document.getElementById('ep-price').value);
+  if (!price || price <= 0) { toast('Prix invalide', 'er'); return; }
+  try { await api('PUT', '/pumps/fuel-types/' + id, { price_per_liter: price }); closeModal('m-edit-price'); toast('Prix carburant mis à jour'); loadPumps(); document.querySelector('#m-edit-price .modal-ft .btn-p').onclick = submitEditPrice; }
+  catch (e) { toast(e.message, 'er'); }
+}
+
+async function submitAddClient() {
+  const name = document.getElementById('ac-name').value.trim();
+  if (!name) { toast('Nom requis', 'er'); return; }
+  try {
+    await api('POST', '/credits/clients', { name, phone: document.getElementById('ac-phone').value, company: document.getElementById('ac-company').value, notes: document.getElementById('ac-notes').value });
+    closeModal('m-add-client');
+    toast('Client créé');
+    loadCredits();
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+// ─── SETTINGS ───────────────────────────────────────────────
+function loadSettings() {
+  const u = S.user;
+  document.getElementById('user-info').innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;padding:12px;background:var(--bg);border-radius:8px;">
+      <div style="width:48px;height:48px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:16px;font-weight:800;">${initials(u?.full_name)}</div>
+      <div>
+        <div class="fw7" style="font-size:15px">${u?.full_name}</div>
+        <div class="muted">${u?.username} · ${u?.role}</div>
+      </div>
+    </div>`;
+}
+
+async function changePwd() {
+  const cur = document.getElementById('cp-cur').value;
+  const nw  = document.getElementById('cp-new').value;
+  const cnf = document.getElementById('cp-cnf').value;
+  if (!cur || !nw || !cnf) { toast('Tous les champs sont requis', 'er'); return; }
+  if (nw !== cnf) { toast('Les mots de passe ne correspondent pas', 'er'); return; }
+  if (nw.length < 5) { toast('Le mot de passe doit contenir au moins 5 caractères', 'er'); return; }
+  try {
+    await api('PUT', '/auth/password', { current_password: cur, new_password: nw });
+    toast('Mot de passe mis à jour avec succès');
+    ['cp-cur','cp-new','cp-cnf'].forEach(id => document.getElementById(id).value = '');
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+// ─── UTILS ─────────────────────────────────────────────────
+function fmt(n) { return (n||0).toLocaleString('fr-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtDT(dt) {
+  if (!dt) return '—';
+  try {
+    const d = new Date(dt.replace(' ', 'T'));
+    return d.toLocaleString('fr-MA', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  } catch { return dt; }
+}
+function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+function esc(s) { return (s||'').replace(/'/g, "\\'"); }
+
+// ─── BOOT ───────────────────────────────────────────────────
+async function boot() {
+  if (!token()) { window.location.href = '/'; return; }
+  try {
+    const user = await api('GET', '/auth/me');
+    S.user = user;
+    document.getElementById('sh-name').textContent = user.full_name;
+    document.getElementById('sh-av').textContent   = initials(user.full_name);
+
+    const [pumps, fuels, clients, activeShift] = await Promise.all([
+      api('GET', '/pumps'),
+      api('GET', '/pumps/fuel-types'),
+      api('GET', '/credits/clients'),
+      api('GET', '/shifts/current'),
+    ]);
+    S.pumps = pumps; S.fuelTypes = fuels; S.clients = clients; S.activeShift = activeShift;
+
+    document.getElementById('nb-credits').textContent = clients.filter(c=>c.balance_due>0).length || 0;
+
+    // Pre-populate credit sale modal selects
+    populateCreditSaleModal();
+
+    await loadDashboard();
+  } catch (e) {
+    console.error(e);
+    if (e.message === 'Session expirée') logout();
+  }
+}
+
+// Intercept credit sale modal open to refresh selects
+document.getElementById('m-credit-sale').addEventListener('transitionend', () => populateCreditSaleModal());
+// Button wiring for close shift
+document.querySelector('#m-close-shift .modal-ft .btn-d').addEventListener('click', submitCloseShift);
+// Close shift button in page actions (dynamic)
+document.getElementById('content').addEventListener('click', e => {
+  if (e.target.closest('.btn-d') && e.target.textContent.includes('Fermer Poste')) prepareCloseShift();
+});
+
+boot();
+</script>
+</body>
+</html>

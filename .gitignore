@@ -1,0 +1,7 @@
+node_modules/
+fuelmaster.db-shm
+fuelmaster.db-wal
+server_out.txt
+server_err.txt
+.claude/
+*.bat
