@@ -293,51 +293,55 @@ nav{flex:1;padding:8px 0;overflow-y:auto}
 
     <!-- ══ RAPPROCHEMENT ══ -->
     <div class="page" id="p-reconcile">
-      <!-- Summary bar -->
-      <div class="tiles" id="rc-tiles" style="margin-bottom:16px"></div>
 
-      <!-- Statement balance input -->
-      <div class="section" style="max-width:500px;margin-bottom:20px">
-        <div class="s-head"><div class="s-title">📄 Solde du Relevé Bancaire</div></div>
-        <div class="s-body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-          <div class="fg" style="flex:1;min-width:160px">
-            <label>Date du relevé</label>
-            <input type="date" id="rc-date"/>
-          </div>
-          <div class="fg" style="flex:1;min-width:160px">
-            <label>Solde final du relevé (MAD)</label>
-            <input type="number" id="rc-statement-bal" placeholder="0.00" step="0.01" oninput="rcUpdate()"/>
-          </div>
-          <button class="btn btn-s" onclick="rcValidate()" id="rc-validate-btn" disabled>✅ Valider le rapprochement</button>
+      <!-- Top comparison bar -->
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:0;margin-bottom:20px;border-radius:14px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)">
+        <!-- App side -->
+        <div style="background:#fff;padding:24px 28px">
+          <div style="font-size:11px;font-weight:700;color:#6A6D70;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">📱 Solde dans l'App (cochées)</div>
+          <div id="rc-app-bal" style="font-size:32px;font-weight:900;color:#1D2D3E">— MAD</div>
+          <div style="font-size:12px;color:#6A6D70;margin-top:4px" id="rc-app-sub">Rapproché : <span id="rc-already-bal">0</span> MAD · <span id="rc-pending-count">0</span> en attente</div>
+        </div>
+        <!-- Ecart middle -->
+        <div id="rc-ecart-mid" style="background:#F5F5F7;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 28px;min-width:160px">
+          <div style="font-size:11px;font-weight:700;color:#6A6D70;text-transform:uppercase;margin-bottom:6px">ÉCART</div>
+          <div id="rc-ecart-val" style="font-size:28px;font-weight:900">—</div>
+          <div id="rc-ecart-msg" style="font-size:11px;margin-top:4px;text-align:center"></div>
+        </div>
+        <!-- Statement side -->
+        <div style="background:#fff;padding:24px 28px">
+          <div style="font-size:11px;font-weight:700;color:#6A6D70;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">🏦 Solde du Relevé Bancaire</div>
+          <input type="number" id="rc-statement-bal" placeholder="Entrez le solde du relevé..." step="0.01"
+            style="font-size:26px;font-weight:900;color:#1D2D3E;border:none;border-bottom:2px solid #E5E5EA;width:100%;background:transparent;outline:none;padding:4px 0"
+            oninput="rcUpdate()"/>
+          <div style="font-size:12px;color:#6A6D70;margin-top:8px">Date du relevé : <input type="date" id="rc-date" style="border:none;color:#1D2D3E;font-weight:600;background:transparent;outline:none"/></div>
         </div>
       </div>
 
-      <!-- Écart indicator -->
-      <div id="rc-ecart-bar" style="display:none;padding:14px 20px;border-radius:10px;margin-bottom:16px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:12px"></div>
+      <!-- Validate button -->
+      <div style="text-align:right;margin-bottom:16px">
+        <button class="btn btn-ghost btn-sm" onclick="rcSelectAll()" style="margin-right:6px">Tout cocher</button>
+        <button class="btn btn-ghost btn-sm" onclick="rcClearAll()" style="margin-right:12px">Tout décocher</button>
+        <button class="btn btn-s" onclick="rcValidate()" id="rc-validate-btn" disabled>✅ Valider le rapprochement</button>
+      </div>
 
-      <!-- Unreconciled transactions -->
+      <!-- Transaction list -->
       <div class="section">
-        <div class="s-head">
-          <div class="s-title">⭕ Transactions à Rapprocher</div>
-          <div style="font-size:12px;color:#6A6D70;margin-left:auto" id="rc-checked-info">0 sélectionnée(s)</div>
-          <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="rcSelectAll()">Tout sélectionner</button>
-          <button class="btn btn-ghost btn-sm" onclick="rcClearAll()">Tout désélectionner</button>
-        </div>
+        <div class="s-head"><div class="s-title">Transactions non rapprochées</div><div style="font-size:12px;color:#6A6D70;margin-left:auto" id="rc-checked-info"></div></div>
         <div style="overflow-x:auto">
           <table class="t" id="rc-table">
             <thead><tr>
-              <th style="width:32px"><input type="checkbox" id="rc-check-all" onchange="rcToggleAll(this.checked)"/></th>
+              <th style="width:36px"><input type="checkbox" id="rc-check-all" onchange="rcToggleAll(this.checked)"/></th>
               <th>DATE</th><th>TYPE</th><th>DESCRIPTION</th><th>BÉNÉFICIAIRE</th>
-              <th class="num">DÉBIT</th><th class="num">CRÉDIT</th><th class="num">SOLDE</th>
+              <th class="num">SORTIE</th><th class="num">ENTRÉE</th>
             </tr></thead>
             <tbody id="rc-body"></tbody>
-            <tfoot id="rc-foot"></tfoot>
           </table>
         </div>
-        <div id="rc-empty" style="text-align:center;padding:40px;color:#6A6D70;display:none">
-          <div style="font-size:40px">✅</div>
-          <div style="font-weight:700;margin-top:8px">Tout est rapproché !</div>
-          <div style="font-size:13px;margin-top:4px">Aucune transaction en attente</div>
+        <div id="rc-empty" style="text-align:center;padding:48px;color:#6A6D70;display:none">
+          <div style="font-size:48px">✅</div>
+          <div style="font-weight:700;font-size:16px;margin-top:8px">Tout est rapproché !</div>
+          <div style="font-size:13px;margin-top:4px">Aucune transaction en attente de rapprochement</div>
         </div>
       </div>
     </div>
@@ -864,82 +868,71 @@ async function loadReconcile() {
   rcData = await api('GET', '/reconcile/unreconciled');
   document.getElementById('rc-date').value = today();
   document.getElementById('rc-statement-bal').value = '';
-  renderRcTiles();
   renderRcTable();
   rcUpdate();
-}
-
-function renderRcTiles() {
-  const already = rcData.reconciled_balance;
-  const pending = rcData.rows.reduce((s, r) => s + (IN_TYPES.includes(r.type) ? r.amount : -r.amount), 0);
-  document.getElementById('rc-tiles').innerHTML = `
-    <div class="tile"><div class="tile-label">✅ Solde Rapproché</div><div class="tile-val">${fmt(already)} MAD</div></div>
-    <div class="tile tile-warn"><div class="tile-label">⏳ Transactions en attente</div><div class="tile-val">${rcData.rows.length}</div></div>
-    <div class="tile"><div class="tile-label">💰 Montant en attente</div><div class="tile-val">${fmt(Math.abs(pending))} MAD</div></div>
-  `;
 }
 
 function renderRcTable() {
   const tbody = document.getElementById('rc-body');
   const empty = document.getElementById('rc-empty');
+  const table = document.getElementById('rc-table');
   if (!rcData.rows.length) {
-    tbody.innerHTML = '';
-    document.getElementById('rc-table').style.display = 'none';
-    empty.style.display = 'block';
-    return;
+    tbody.innerHTML = ''; table.style.display = 'none'; empty.style.display = 'block'; return;
   }
-  document.getElementById('rc-table').style.display = '';
-  empty.style.display = 'none';
+  table.style.display = ''; empty.style.display = 'none';
   tbody.innerHTML = rcData.rows.map(r => {
     const isIn = IN_TYPES.includes(r.type);
-    const bal  = r.running_balance != null ? `<span class="${r.running_balance>=0?'bal-positive':'bal-negative'}">${fmt(r.running_balance)}</span>` : '—';
     return `<tr class="${isIn?'row-in':'row-out'}" data-id="${r.id}" data-sign="${isIn?1:-1}" data-amount="${r.amount}">
-      <td style="text-align:center"><input type="checkbox" class="rc-chk" onchange="rcUpdate()" data-id="${r.id}"/></td>
-      <td class="muted sm">${fmtDateShort(r.txn_date)}</td>
+      <td style="text-align:center;padding:10px 8px"><input type="checkbox" class="rc-chk" style="width:16px;height:16px;cursor:pointer" onchange="rcUpdate()" data-id="${r.id}"/></td>
+      <td class="muted sm" style="white-space:nowrap">${fmtDateShort(r.txn_date)}</td>
       <td><span class="type-pill ${isIn?'tp-in':'tp-out'}">${TYPE_LABELS[r.type]||r.type}</span></td>
       <td>${r.description||'—'}</td>
-      <td>${r.beneficiary||'—'}</td>
-      <td class="num c-r fw7">${!isIn ? fmt(r.amount)+' MAD' : '—'}</td>
-      <td class="num c-g fw7">${isIn  ? fmt(r.amount)+' MAD' : '—'}</td>
-      <td class="num">${bal}</td>
+      <td class="muted">${r.beneficiary||'—'}</td>
+      <td class="num c-r fw7">${!isIn ? fmt(r.amount)+' MAD' : ''}</td>
+      <td class="num c-g fw7">${isIn  ? fmt(r.amount)+' MAD' : ''}</td>
     </tr>`;
   }).join('');
 }
 
 function rcUpdate() {
-  const stmtBal = parseFloat(document.getElementById('rc-statement-bal').value) || 0;
-  const checked = [...document.querySelectorAll('.rc-chk:checked')];
+  const stmtBal  = parseFloat(document.getElementById('rc-statement-bal').value);
+  const checked  = [...document.querySelectorAll('.rc-chk:checked')];
   const checkedNet = checked.reduce((s, c) => {
     const tr = c.closest('tr');
     return s + parseFloat(tr.dataset.sign) * parseFloat(tr.dataset.amount);
   }, 0);
-  const newBal = rcData.reconciled_balance + checkedNet;
-  const ecart  = stmtBal - newBal;
+  const appBal = rcData.reconciled_balance + checkedNet;
+  const hasStmt = !isNaN(stmtBal) && document.getElementById('rc-statement-bal').value !== '';
+  const ecart   = hasStmt ? stmtBal - appBal : null;
+  const ok      = ecart !== null && Math.abs(ecart) < 0.01;
 
-  const info   = document.getElementById('rc-checked-info');
-  info.textContent = `${checked.length} sélectionnée(s) — Solde calculé : ${fmt(newBal)} MAD`;
+  // App side
+  document.getElementById('rc-app-bal').textContent       = fmt(appBal) + ' MAD';
+  document.getElementById('rc-already-bal').textContent   = fmt(rcData.reconciled_balance);
+  document.getElementById('rc-pending-count').textContent = rcData.rows.length;
+  document.getElementById('rc-checked-info').textContent  = `${checked.length} / ${rcData.rows.length} cochée(s)`;
 
-  const bar = document.getElementById('rc-ecart-bar');
-  bar.style.display = stmtBal ? 'flex' : 'none';
-  if (stmtBal) {
-    const ok = Math.abs(ecart) < 0.01;
-    bar.style.background = ok ? '#D1FAE5' : '#FEF3C7';
-    bar.style.color = ok ? '#065F46' : '#92400E';
-    bar.style.border = ok ? '2px solid #6EE7B7' : '2px solid #FCD34D';
-    bar.innerHTML = ok
-      ? `<span style="font-size:24px">✅</span> Parfait ! Le solde correspond exactement au relevé.`
-      : `<span style="font-size:24px">⚠️</span> Écart : <span style="font-size:20px">${fmt(Math.abs(ecart))} MAD</span> &nbsp;${ecart > 0 ? '(relevé supérieur — des entrées manquent ?)' : '(solde supérieur — des sorties manquent ?)'}`;
-    document.getElementById('rc-validate-btn').disabled = !ok || !checked.length;
+  // Écart middle panel
+  const mid = document.getElementById('rc-ecart-mid');
+  const val = document.getElementById('rc-ecart-val');
+  const msg = document.getElementById('rc-ecart-msg');
+  if (!hasStmt) {
+    mid.style.background = '#F5F5F7'; val.style.color = '#6A6D70';
+    val.textContent = '—'; msg.textContent = 'Entrez le solde du relevé';
+  } else if (ok) {
+    mid.style.background = '#D1FAE5'; val.style.color = '#065F46';
+    val.textContent = '✅ 0,00'; msg.textContent = 'Parfait — les soldes correspondent !';
   } else {
-    document.getElementById('rc-validate-btn').disabled = true;
+    mid.style.background = '#FEF3C7'; val.style.color = '#92400E';
+    val.textContent = (ecart > 0 ? '+' : '') + fmt(ecart) + ' MAD';
+    msg.textContent = ecart > 0 ? 'Entrées manquantes ?' : 'Sorties manquantes ?';
   }
+
+  document.getElementById('rc-validate-btn').disabled = !ok || !checked.length;
 }
 
-function rcToggleAll(checked) {
-  document.querySelectorAll('.rc-chk').forEach(c => c.checked = checked);
-  rcUpdate();
-}
-function rcSelectAll() { document.getElementById('rc-check-all').checked = true; rcToggleAll(true); }
+function rcToggleAll(v) { document.querySelectorAll('.rc-chk').forEach(c => c.checked = v); rcUpdate(); }
+function rcSelectAll() { document.getElementById('rc-check-all').checked = true;  rcToggleAll(true);  }
 function rcClearAll()  { document.getElementById('rc-check-all').checked = false; rcToggleAll(false); }
 
 async function rcValidate() {
