@@ -1,15 +1,18 @@
-const router  = require('express').Router();
-const bcrypt   = require('bcryptjs');
-const jwt      = require('jsonwebtoken');
-const db       = require('../db');
+const router = require('express').Router();
+const bcrypt  = require('bcryptjs');
+const jwt     = require('jsonwebtoken');
+const { pool } = require('../db');
 const { requireAuth, JWT_SECRET } = require('../middleware');
 
-router.post('/login', (req, res) => {
+const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
+
+router.post('/login', wrap(async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password)
     return res.status(400).json({ error: 'Identifiant et mot de passe requis' });
 
-  const user = db.prepare('SELECT * FROM users WHERE username = ? AND is_active = 1').get(username);
+  const { rows } = await pool.query('SELECT * FROM users WHERE username=$1 AND is_active=1', [username]);
+  const user = rows[0];
   if (!user || !bcrypt.compareSync(password, user.password_hash))
     return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' });
 
@@ -18,20 +21,21 @@ router.post('/login', (req, res) => {
     JWT_SECRET, { expiresIn: '12h' }
   );
   res.json({ token, user: { id: user.id, full_name: user.full_name, username: user.username, role: user.role } });
-});
+}));
 
-router.get('/me', requireAuth, (req, res) => {
-  const user = db.prepare('SELECT id, full_name, username, role FROM users WHERE id = ?').get(req.user.id);
-  res.json(user || {});
-});
+router.get('/me', requireAuth, wrap(async (req, res) => {
+  const { rows } = await pool.query('SELECT id,full_name,username,role FROM users WHERE id=$1', [req.user.id]);
+  res.json(rows[0] || {});
+}));
 
-router.put('/password', requireAuth, (req, res) => {
+router.put('/password', requireAuth, wrap(async (req, res) => {
   const { current_password, new_password } = req.body || {};
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  const { rows } = await pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]);
+  const user = rows[0];
   if (!bcrypt.compareSync(current_password, user.password_hash))
     return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(new_password, 10), req.user.id);
+  await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [bcrypt.hashSync(new_password, 10), req.user.id]);
   res.json({ message: 'Mot de passe mis à jour' });
-});
+}));
 
 module.exports = router;

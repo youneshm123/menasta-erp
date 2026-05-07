@@ -1,28 +1,37 @@
 const router = require('express').Router();
-const db     = require('../db');
+const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
 
-router.get('/', requireAuth, (req, res) => {
-  const { month } = req.query;
-  let q = `SELECT e.*, u.full_name as recorded_by_name FROM expenses e LEFT JOIN users u ON u.id=e.recorded_by`;
-  if (month) q += ` WHERE strftime('%Y-%m', e.expense_date)=?`;
-  q += ` ORDER BY e.expense_date DESC`;
-  res.json(month ? db.prepare(q).all(month) : db.prepare(q).all());
-});
+const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
-router.post('/', requireAuth, (req, res) => {
+router.get('/', requireAuth, wrap(async (req, res) => {
+  const { month } = req.query;
+  let q, params;
+  if (month) {
+    q = `SELECT e.*,u.full_name as recorded_by_name FROM expenses e LEFT JOIN users u ON u.id=e.recorded_by WHERE TO_CHAR(e.expense_date,'YYYY-MM')=$1 ORDER BY e.expense_date DESC`;
+    params = [month];
+  } else {
+    q = `SELECT e.*,u.full_name as recorded_by_name FROM expenses e LEFT JOIN users u ON u.id=e.recorded_by ORDER BY e.expense_date DESC`;
+    params = [];
+  }
+  const { rows } = await pool.query(q, params);
+  res.json(rows);
+}));
+
+router.post('/', requireAuth, wrap(async (req, res) => {
   const { category, description, amount, expense_date, notes } = req.body || {};
   if (!description || !amount) return res.status(400).json({ error: 'Description et montant requis' });
-  const id = db.prepare(`
-    INSERT INTO expenses (category, description, amount, expense_date, notes, recorded_by)
-    VALUES (?,?,?,?,?,?)
-  `).run(category||'Autre', description, amount, expense_date||new Date().toISOString().slice(0,10), notes||null, req.user.id).lastInsertRowid;
-  res.status(201).json(db.prepare('SELECT * FROM expenses WHERE id=?').get(id));
-});
+  const { rows: [{ id }] } = await pool.query(`
+    INSERT INTO expenses (category,description,amount,expense_date,notes,recorded_by)
+    VALUES ($1,$2,$3,$4,$5,$6) RETURNING id
+  `, [category||'Autre', description, amount, expense_date||new Date().toISOString().slice(0,10), notes||null, req.user.id]);
+  const { rows: [e] } = await pool.query('SELECT * FROM expenses WHERE id=$1', [id]);
+  res.status(201).json(e);
+}));
 
-router.delete('/:id', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM expenses WHERE id=?').run(req.params.id);
+router.delete('/:id', requireAuth, wrap(async (req, res) => {
+  await pool.query('DELETE FROM expenses WHERE id=$1', [req.params.id]);
   res.json({ ok: true });
-});
+}));
 
 module.exports = router;

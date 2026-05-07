@@ -1,37 +1,44 @@
-require('./db'); // Initialize DB first
+require('dotenv').config();
 
-const express = require('express');
-const path    = require('path');
-const app     = express();
+const express   = require('express');
+const path      = require('path');
+const { initDB } = require('./db');
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+async function start() {
+  await initDB();
 
-app.use('/api/auth',      require('./routes/auth'));
-app.use('/api/shifts',    require('./routes/shifts'));
-app.use('/api/pumps',     require('./routes/pumps'));
-app.use('/api/credits',   require('./routes/credits'));
-app.use('/api/products',  require('./routes/products'));
-app.use('/api/dashboard', require('./routes/dashboard'));
-app.use('/api/reports',   require('./routes/reports'));
-app.use('/api/expenses',  require('./routes/expenses'));
-app.use('/api/stock',     require('./routes/stock'));
-app.use('/api/cafe',      require('./routes/cafe'));
-app.use('/api/bank',      require('./routes/bank'));
+  const app = express();
+  app.use(express.json());
+  app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/',      (_req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
-app.get('/home',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
-app.get('/app',   (_req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
-app.get('/cafe',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'cafe.html')));
-app.get('/bank',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'bank.html')));
+  app.use('/api/auth',      require('./routes/auth'));
+  app.use('/api/shifts',    require('./routes/shifts'));
+  app.use('/api/pumps',     require('./routes/pumps'));
+  app.use('/api/credits',   require('./routes/credits'));
+  app.use('/api/products',  require('./routes/products'));
+  app.use('/api/dashboard', require('./routes/dashboard'));
+  app.use('/api/reports',   require('./routes/reports'));
+  app.use('/api/expenses',  require('./routes/expenses'));
+  app.use('/api/stock',     require('./routes/stock'));
+  app.use('/api/cafe',      require('./routes/cafe'));
+  app.use('/api/bank',      require('./routes/bank'));
 
-app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ error: 'Erreur serveur interne' });
-});
+  app.get('/',      (_req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+  app.get('/home',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
+  app.get('/app',   (_req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
+  app.get('/cafe',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'cafe.html')));
+  app.get('/bank',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'bank.html')));
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log('\n⛽ MENASTA démarré');
-  console.log(`   http://localhost:${PORT}  — MENASTA\n`);
-});
+  app.use((err, _req, res, _next) => {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur interne' });
+  });
+
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log('\n⛽ MENASTA démarré');
+    console.log(`   http://localhost:${PORT}  — MENASTA\n`);
+  });
+}
+
+start().catch(err => { console.error('Démarrage impossible:', err); process.exit(1); });

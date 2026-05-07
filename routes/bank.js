@@ -1,182 +1,155 @@
 const router = require('express').Router();
-const db     = require('../db');
+const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
 
-// ── Schema + migrations ───────────────────────────────────────
-db.exec(`
-CREATE TABLE IF NOT EXISTS bank_settings (
-  id              INTEGER PRIMARY KEY DEFAULT 1,
-  initial_balance REAL NOT NULL DEFAULT 0,
-  account_name    TEXT NOT NULL DEFAULT 'Compte Bancaire'
-);
-INSERT OR IGNORE INTO bank_settings (id, initial_balance, account_name) VALUES (1, 0, 'Compte Bancaire');
-
-CREATE TABLE IF NOT EXISTS bank_transactions (
-  id              INTEGER PRIMARY KEY AUTOINCREMENT,
-  txn_date        TEXT    NOT NULL DEFAULT (date('now','localtime')),
-  type            TEXT    NOT NULL,
-  category        TEXT    NOT NULL DEFAULT 'Autre',
-  description     TEXT    NOT NULL,
-  amount          REAL    NOT NULL,
-  check_number    TEXT,
-  beneficiary     TEXT,
-  due_date        TEXT,
-  check_status    TEXT    DEFAULT NULL,
-  is_reconciled   INTEGER NOT NULL DEFAULT 0,
-  notes           TEXT,
-  recorded_by     INTEGER REFERENCES users(id),
-  created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
-);
-`);
-try { db.exec('ALTER TABLE bank_transactions ADD COLUMN category TEXT NOT NULL DEFAULT \'Autre\''); } catch(_) {}
-try { db.exec('ALTER TABLE bank_transactions ADD COLUMN due_date TEXT'); } catch(_) {}
-try { db.exec('ALTER TABLE bank_transactions ADD COLUMN is_reconciled INTEGER NOT NULL DEFAULT 0'); } catch(_) {}
-try { db.exec('ALTER TABLE bank_transactions ADD COLUMN reconciled_at TEXT'); } catch(_) {}
+const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
 const IN_TYPES  = ['depot', 'virement_in', 'cheque_in'];
 const OUT_TYPES = ['retrait', 'virement_out', 'cheque_out'];
 const sign = t => IN_TYPES.includes(t) ? 1 : -1;
 
 // ── settings ──────────────────────────────────────────────────
-router.get('/settings', requireAuth, (_req, res) =>
-  res.json(db.prepare('SELECT * FROM bank_settings WHERE id=1').get()));
+router.get('/settings', requireAuth, wrap(async (_req, res) => {
+  const { rows: [s] } = await pool.query('SELECT * FROM bank_settings WHERE id=1');
+  res.json(s);
+}));
 
-router.put('/settings', requireAuth, (req, res) => {
+router.put('/settings', requireAuth, wrap(async (req, res) => {
   const { initial_balance, account_name } = req.body || {};
-  db.prepare('UPDATE bank_settings SET initial_balance=COALESCE(?,initial_balance), account_name=COALESCE(?,account_name) WHERE id=1')
-    .run(initial_balance != null ? initial_balance : null, account_name || null);
-  res.json(db.prepare('SELECT * FROM bank_settings WHERE id=1').get());
-});
+  await pool.query(
+    'UPDATE bank_settings SET initial_balance=COALESCE($1,initial_balance),account_name=COALESCE($2,account_name) WHERE id=1',
+    [initial_balance != null ? initial_balance : null, account_name || null]
+  );
+  const { rows: [s] } = await pool.query('SELECT * FROM bank_settings WHERE id=1');
+  res.json(s);
+}));
 
 // ── balance ───────────────────────────────────────────────────
-router.get('/balance', requireAuth, (_req, res) => {
-  const s       = db.prepare('SELECT * FROM bank_settings WHERE id=1').get();
-  const totIn   = Number(db.prepare(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type IN ('depot','virement_in','cheque_in')`).get().t);
-  const totOut  = Number(db.prepare(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type IN ('retrait','virement_out','cheque_out')`).get().t);
-  const pendOut = Number(db.prepare(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type='cheque_out' AND check_status='pending'`).get().t);
-  const pendIn  = Number(db.prepare(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type='cheque_in'  AND check_status='pending'`).get().t);
-  const balance = s.initial_balance + totIn - totOut;
+router.get('/balance', requireAuth, wrap(async (_req, res) => {
+  const { rows: [s] }        = await pool.query('SELECT * FROM bank_settings WHERE id=1');
+  const { rows: [{ t: ti }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type IN ('depot','virement_in','cheque_in')`);
+  const { rows: [{ t: to }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type IN ('retrait','virement_out','cheque_out')`);
+  const { rows: [{ t: po }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type='cheque_out' AND check_status='pending'`);
+  const { rows: [{ t: pi }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type='cheque_in'  AND check_status='pending'`);
+  const balance = parseFloat(s.initial_balance) + parseFloat(ti) - parseFloat(to);
   res.json({
-    account_name: s.account_name,
-    initial_balance: s.initial_balance,
-    total_in: totIn, total_out: totOut,
+    account_name:       s.account_name,
+    initial_balance:    parseFloat(s.initial_balance),
+    total_in:           parseFloat(ti),
+    total_out:          parseFloat(to),
     balance,
-    forecasted_balance: balance + pendIn - pendOut,
-    pending_out: pendOut, pending_in: pendIn
+    forecasted_balance: balance + parseFloat(pi) - parseFloat(po),
+    pending_out:        parseFloat(po),
+    pending_in:         parseFloat(pi),
   });
-});
+}));
 
 // ── transactions with running balance ─────────────────────────
-router.get('/transactions', requireAuth, (req, res) => {
+router.get('/transactions', requireAuth, wrap(async (req, res) => {
   const { month, search, type, category } = req.query;
-  let where = []; const params = [];
-  if (month)    { where.push(`strftime('%Y-%m', t.txn_date)=?`); params.push(month); }
-  if (type)     { where.push('t.type=?');     params.push(type); }
-  if (category) { where.push('t.category=?'); params.push(category); }
-  if (search)   { where.push('(t.description LIKE ? OR t.beneficiary LIKE ? OR t.check_number LIKE ?)'); params.push('%'+search+'%','%'+search+'%','%'+search+'%'); }
-  const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  let where = []; const params = []; let i = 1;
+  if (month)    { where.push(`TO_CHAR(t.txn_date,'YYYY-MM')=$${i++}`); params.push(month); }
+  if (type)     { where.push(`t.type=$${i++}`);                        params.push(type); }
+  if (category) { where.push(`t.category=$${i++}`);                    params.push(category); }
+  if (search)   { where.push(`(t.description ILIKE $${i} OR t.beneficiary ILIKE $${i} OR t.check_number ILIKE $${i})`); params.push('%'+search+'%'); i++; }
+  const wc = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
-  // Build filtered rows ordered newest first
-  const rows = db.prepare(`
+  const { rows } = await pool.query(`
     SELECT t.*, u.full_name as by_name
     FROM bank_transactions t LEFT JOIN users u ON u.id=t.recorded_by
-    ${whereClause}
-    ORDER BY t.txn_date DESC, t.id DESC
-  `).all(...params);
+    ${wc} ORDER BY t.txn_date DESC, t.id DESC
+  `, params);
 
-  // Running balance: need all txns ordered ASC to compute, then map back
-  const s = db.prepare('SELECT initial_balance FROM bank_settings WHERE id=1').get();
-  const all = db.prepare('SELECT id, type, amount FROM bank_transactions ORDER BY txn_date ASC, id ASC').all();
-  let bal = s.initial_balance;
+  const { rows: [s] }       = await pool.query('SELECT initial_balance FROM bank_settings WHERE id=1');
+  const { rows: all }        = await pool.query('SELECT id,type,amount FROM bank_transactions ORDER BY txn_date ASC, id ASC');
+  let bal = parseFloat(s.initial_balance);
   const balMap = {};
-  for (const r of all) { bal += sign(r.type) * r.amount; balMap[r.id] = bal; }
+  for (const r of all) { bal += sign(r.type) * parseFloat(r.amount); balMap[r.id] = bal; }
 
-  const totIn  = rows.filter(r => IN_TYPES.includes(r.type)).reduce((s,r)=>s+r.amount,0);
-  const totOut = rows.filter(r => OUT_TYPES.includes(r.type)).reduce((s,r)=>s+r.amount,0);
+  const totIn  = rows.filter(r => IN_TYPES.includes(r.type)).reduce((s,r) => s + parseFloat(r.amount), 0);
+  const totOut = rows.filter(r => OUT_TYPES.includes(r.type)).reduce((s,r) => s + parseFloat(r.amount), 0);
 
-  res.json({
-    rows: rows.map(r => ({ ...r, running_balance: balMap[r.id] ?? null })),
-    total_in: totIn, total_out: totOut
-  });
-});
+  res.json({ rows: rows.map(r => ({ ...r, running_balance: balMap[r.id] ?? null })), total_in: totIn, total_out: totOut });
+}));
 
 // ── create transaction ────────────────────────────────────────
-router.post('/transactions', requireAuth, (req, res) => {
+router.post('/transactions', requireAuth, wrap(async (req, res) => {
   const { txn_date, type, category, description, amount, check_number, beneficiary, due_date, check_status, notes } = req.body || {};
   if (!type || !description || !amount) return res.status(400).json({ error: 'Type, description et montant requis' });
   const isCheck = type === 'cheque_in' || type === 'cheque_out';
-  const id = db.prepare(`
+  const { rows: [{ id }] } = await pool.query(`
     INSERT INTO bank_transactions (txn_date,type,category,description,amount,check_number,beneficiary,due_date,check_status,notes,recorded_by)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)
-  `).run(
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id
+  `, [
     txn_date || new Date().toISOString().slice(0,10),
-    type, category || 'Autre', description, amount,
+    type, category||'Autre', description, amount,
     check_number||null, beneficiary||null, due_date||null,
     isCheck ? (check_status||'pending') : null,
     notes||null, req.user.id
-  ).lastInsertRowid;
-  res.status(201).json(db.prepare('SELECT * FROM bank_transactions WHERE id=?').get(id));
-});
+  ]);
+  const { rows: [txn] } = await pool.query('SELECT * FROM bank_transactions WHERE id=$1', [id]);
+  res.status(201).json(txn);
+}));
 
 // ── update check status ───────────────────────────────────────
-router.patch('/checks/:id/status', requireAuth, (req, res) => {
+router.patch('/checks/:id/status', requireAuth, wrap(async (req, res) => {
   const { check_status } = req.body || {};
   if (!['pending','cashed','cancelled'].includes(check_status))
     return res.status(400).json({ error: 'Statut invalide' });
-  db.prepare('UPDATE bank_transactions SET check_status=? WHERE id=?').run(check_status, req.params.id);
-  res.json(db.prepare('SELECT * FROM bank_transactions WHERE id=?').get(req.params.id));
-});
+  await pool.query('UPDATE bank_transactions SET check_status=$1 WHERE id=$2', [check_status, req.params.id]);
+  const { rows: [txn] } = await pool.query('SELECT * FROM bank_transactions WHERE id=$1', [req.params.id]);
+  res.json(txn);
+}));
 
 // ── toggle reconciled ─────────────────────────────────────────
-router.patch('/transactions/:id/reconcile', requireAuth, (req, res) => {
-  const t = db.prepare('SELECT is_reconciled FROM bank_transactions WHERE id=?').get(req.params.id);
-  if (!t) return res.status(404).json({ error: 'Non trouvé' });
-  db.prepare('UPDATE bank_transactions SET is_reconciled=? WHERE id=?').run(t.is_reconciled ? 0 : 1, req.params.id);
-  res.json(db.prepare('SELECT * FROM bank_transactions WHERE id=?').get(req.params.id));
-});
+router.patch('/transactions/:id/reconcile', requireAuth, wrap(async (req, res) => {
+  const { rows } = await pool.query('SELECT is_reconciled FROM bank_transactions WHERE id=$1', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Non trouvé' });
+  await pool.query('UPDATE bank_transactions SET is_reconciled=$1 WHERE id=$2', [rows[0].is_reconciled ? 0 : 1, req.params.id]);
+  const { rows: [txn] } = await pool.query('SELECT * FROM bank_transactions WHERE id=$1', [req.params.id]);
+  res.json(txn);
+}));
 
 // ── delete ────────────────────────────────────────────────────
-router.delete('/transactions/:id', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM bank_transactions WHERE id=?').run(req.params.id);
+router.delete('/transactions/:id', requireAuth, wrap(async (req, res) => {
+  await pool.query('DELETE FROM bank_transactions WHERE id=$1', [req.params.id]);
   res.json({ ok: true });
-});
+}));
 
 // ── all checks ────────────────────────────────────────────────
-router.get('/checks', requireAuth, (_req, res) =>
-  res.json(db.prepare(`
+router.get('/checks', requireAuth, wrap(async (_req, res) => {
+  const { rows } = await pool.query(`
     SELECT t.*, u.full_name as by_name FROM bank_transactions t
     LEFT JOIN users u ON u.id=t.recorded_by
     WHERE t.type IN ('cheque_in','cheque_out')
     ORDER BY CASE check_status WHEN 'pending' THEN 0 WHEN 'cashed' THEN 1 ELSE 2 END, t.txn_date DESC
-  `).all()));
+  `);
+  res.json(rows);
+}));
 
-// ── balance history for chart (last N days) ───────────────────
-router.get('/history', requireAuth, (req, res) => {
+// ── balance history ───────────────────────────────────────────
+router.get('/history', requireAuth, wrap(async (req, res) => {
   const days = Math.min(parseInt(req.query.days) || 30, 365);
-  const s = db.prepare('SELECT initial_balance FROM bank_settings WHERE id=1').get();
-
-  // Get sum before window to compute starting point
+  const { rows: [s] } = await pool.query('SELECT initial_balance FROM bank_settings WHERE id=1');
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
   const cutoffStr = cutoff.toISOString().slice(0,10);
 
-  const beforeBase = Number(db.prepare(`
+  const { rows: [{ t: before }] } = await pool.query(`
     SELECT COALESCE(SUM(CASE WHEN type IN ('depot','virement_in','cheque_in') THEN amount ELSE -amount END),0) as t
-    FROM bank_transactions WHERE txn_date < ?
-  `).get(cutoffStr).t);
+    FROM bank_transactions WHERE txn_date < $1
+  `, [cutoffStr]);
 
-  let runBal = s.initial_balance + beforeBase;
+  let runBal = parseFloat(s.initial_balance) + parseFloat(before);
 
-  // Get daily net for each day in window
-  const daily = db.prepare(`
-    SELECT txn_date as day,
+  const { rows: daily } = await pool.query(`
+    SELECT txn_date::text as day,
       SUM(CASE WHEN type IN ('depot','virement_in','cheque_in') THEN amount ELSE -amount END) as net
-    FROM bank_transactions WHERE txn_date >= ?
+    FROM bank_transactions WHERE txn_date >= $1
     GROUP BY txn_date ORDER BY txn_date ASC
-  `).all(cutoffStr);
+  `, [cutoffStr]);
 
-  // Fill every day in range
+  const dayMap = Object.fromEntries(daily.map(r => [r.day, parseFloat(r.net)]));
   const result = [];
-  const dayMap = Object.fromEntries(daily.map(r => [r.day, r.net]));
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0,10);
@@ -184,66 +157,74 @@ router.get('/history', requireAuth, (req, res) => {
     result.push({ day: key, balance: Math.round(runBal * 100) / 100 });
   }
   res.json(result);
-});
+}));
 
-// ── category stats for a month ────────────────────────────────
-router.get('/stats/categories', requireAuth, (req, res) => {
+// ── category stats ────────────────────────────────────────────
+router.get('/stats/categories', requireAuth, wrap(async (req, res) => {
   const month = req.query.month || new Date().toISOString().slice(0,7);
-  const out = db.prepare(`
+  const { rows: out } = await pool.query(`
     SELECT category, SUM(amount) as total FROM bank_transactions
-    WHERE strftime('%Y-%m',txn_date)=? AND type IN ('retrait','virement_out','cheque_out')
+    WHERE TO_CHAR(txn_date,'YYYY-MM')=$1 AND type IN ('retrait','virement_out','cheque_out')
     GROUP BY category ORDER BY total DESC
-  `).all(month);
-  const inp = db.prepare(`
+  `, [month]);
+  const { rows: inp } = await pool.query(`
     SELECT category, SUM(amount) as total FROM bank_transactions
-    WHERE strftime('%Y-%m',txn_date)=? AND type IN ('depot','virement_in','cheque_in')
+    WHERE TO_CHAR(txn_date,'YYYY-MM')=$1 AND type IN ('depot','virement_in','cheque_in')
     GROUP BY category ORDER BY total DESC
-  `).all(month);
+  `, [month]);
   res.json({ out, in: inp });
-});
+}));
 
 // ── monthly report ────────────────────────────────────────────
-router.get('/report', requireAuth, (req, res) => {
+router.get('/report', requireAuth, wrap(async (req, res) => {
   const month = req.query.month || new Date().toISOString().slice(0,7);
-  const rows = db.prepare(`
-    SELECT txn_date as day,
-      SUM(CASE WHEN type IN ('depot','virement_in','cheque_in')  THEN amount ELSE 0 END) as total_in,
+  const { rows } = await pool.query(`
+    SELECT txn_date::text as day,
+      SUM(CASE WHEN type IN ('depot','virement_in','cheque_in')    THEN amount ELSE 0 END) as total_in,
       SUM(CASE WHEN type IN ('retrait','virement_out','cheque_out') THEN amount ELSE 0 END) as total_out
-    FROM bank_transactions WHERE strftime('%Y-%m',txn_date)=?
+    FROM bank_transactions WHERE TO_CHAR(txn_date,'YYYY-MM')=$1
     GROUP BY txn_date ORDER BY txn_date DESC
-  `).all(month);
-  const totIn  = rows.reduce((s,r)=>s+r.total_in,0);
-  const totOut = rows.reduce((s,r)=>s+r.total_out,0);
+  `, [month]);
+  const totIn  = rows.reduce((s,r) => s + parseFloat(r.total_in), 0);
+  const totOut = rows.reduce((s,r) => s + parseFloat(r.total_out), 0);
   res.json({ month, rows, total_in: totIn, total_out: totOut, net: totIn - totOut });
-});
+}));
 
 // ── reconciliation session ────────────────────────────────────
-router.get('/reconcile/unreconciled', requireAuth, (_req, res) => {
-  const s   = db.prepare('SELECT initial_balance FROM bank_settings WHERE id=1').get();
-  const all = db.prepare('SELECT id, type, amount FROM bank_transactions ORDER BY txn_date ASC, id ASC').all();
-  let bal = s.initial_balance;
+router.get('/reconcile/unreconciled', requireAuth, wrap(async (_req, res) => {
+  const { rows: [s] }    = await pool.query('SELECT initial_balance FROM bank_settings WHERE id=1');
+  const { rows: all }     = await pool.query('SELECT id,type,amount FROM bank_transactions ORDER BY txn_date ASC, id ASC');
+  let bal = parseFloat(s.initial_balance);
   const balMap = {};
-  for (const r of all) { bal += sign(r.type) * r.amount; balMap[r.id] = bal; }
+  for (const r of all) { bal += sign(r.type) * parseFloat(r.amount); balMap[r.id] = bal; }
 
-  const reconciledBal = Number(db.prepare(`
+  const { rows: [{ t: rn }] } = await pool.query(`
     SELECT COALESCE(SUM(CASE WHEN type IN ('depot','virement_in','cheque_in') THEN amount ELSE -amount END),0) as t
     FROM bank_transactions WHERE is_reconciled=1
-  `).get().t) + s.initial_balance;
+  `);
+  const reconciledBal = parseFloat(rn) + parseFloat(s.initial_balance);
 
-  const rows = db.prepare(`
-    SELECT * FROM bank_transactions WHERE is_reconciled=0 ORDER BY txn_date ASC, id ASC
-  `).all();
-
+  const { rows } = await pool.query('SELECT * FROM bank_transactions WHERE is_reconciled=0 ORDER BY txn_date ASC, id ASC');
   res.json({ rows: rows.map(r => ({ ...r, running_balance: balMap[r.id] ?? null })), reconciled_balance: reconciledBal });
-});
+}));
 
-router.post('/reconcile/session', requireAuth, (req, res) => {
+router.post('/reconcile/session', requireAuth, wrap(async (req, res) => {
   const { ids, statement_date } = req.body || {};
   if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ids requis' });
   const date = statement_date || new Date().toISOString().slice(0,10);
-  const stmt = db.prepare('UPDATE bank_transactions SET is_reconciled=1, reconciled_at=? WHERE id=?');
-  db.transaction(() => { for (const id of ids) stmt.run(date, id); })();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const id of ids)
+      await client.query('UPDATE bank_transactions SET is_reconciled=1,reconciled_at=$1 WHERE id=$2', [date, id]);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
   res.json({ ok: true, count: ids.length });
-});
+}));
 
 module.exports = router;

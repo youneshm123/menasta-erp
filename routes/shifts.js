@@ -1,156 +1,156 @@
-const router      = require('express').Router();
-const db          = require('../db');
+const router = require('express').Router();
+const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
 
-// ── helpers ──────────────────────────────────────────────────
-function calcShift(shiftId) {
-  const readings = db.prepare(`
-    SELECT s.pump_id,
-      s.meter_value as start_val,
-      e.meter_value as end_val,
-      ft.price_per_liter
+const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
+
+async function calcShift(shiftId) {
+  const { rows: readings } = await pool.query(`
+    SELECT s.meter_value as start_val, e.meter_value as end_val, ft.price_per_liter
     FROM pump_readings s
-    JOIN pump_readings e   ON e.shift_id = s.shift_id AND e.pump_id = s.pump_id AND e.reading_type = 'end'
-    JOIN pumps p           ON p.id = s.pump_id
-    JOIN fuel_types ft     ON ft.id = p.fuel_type_id
-    WHERE s.shift_id = ? AND s.reading_type = 'start'
-  `).all(shiftId);
+    JOIN pump_readings e ON e.shift_id=s.shift_id AND e.pump_id=s.pump_id AND e.reading_type='end'
+    JOIN pumps p         ON p.id=s.pump_id
+    JOIN fuel_types ft   ON ft.id=p.fuel_type_id
+    WHERE s.shift_id=$1 AND s.reading_type='start'
+  `, [shiftId]);
 
   let totalLiters = 0, totalFuel = 0;
   for (const r of readings) {
-    const liters  = Math.max(0, r.end_val - r.start_val);
-    const revenue = liters * r.price_per_liter;
+    const liters = Math.max(0, r.end_val - r.start_val);
     totalLiters += liters;
-    totalFuel   += revenue;
+    totalFuel   += liters * r.price_per_liter;
   }
-  const totalCredit  = db.prepare('SELECT COALESCE(SUM(amount),0) as t FROM credit_sales WHERE shift_id = ?').get(shiftId).t;
-  const totalProduct = db.prepare('SELECT COALESCE(SUM(total_amount),0) as t FROM product_sales WHERE shift_id = ?').get(shiftId).t;
-  const netCash      = totalFuel - totalCredit + totalProduct;
-  return { totalLiters, totalFuel, totalCredit, totalProduct, netCash };
+  const { rows: [{ t: tc }] } = await pool.query('SELECT COALESCE(SUM(amount),0) as t FROM credit_sales WHERE shift_id=$1', [shiftId]);
+  const { rows: [{ t: tp }] } = await pool.query('SELECT COALESCE(SUM(total_amount),0) as t FROM product_sales WHERE shift_id=$1', [shiftId]);
+  const totalCredit  = parseFloat(tc);
+  const totalProduct = parseFloat(tp);
+  return { totalLiters, totalFuel, totalCredit, totalProduct, netCash: totalFuel - totalCredit + totalProduct };
 }
 
-function shiftDetail(shift) {
-  shift.pump_readings = db.prepare(`
+async function shiftDetail(shift) {
+  const { rows: pr } = await pool.query(`
     SELECT pr.*, p.name as pump_name, ft.name as fuel_name, ft.price_per_liter
     FROM pump_readings pr
-    JOIN pumps p ON p.id = pr.pump_id
-    JOIN fuel_types ft ON ft.id = p.fuel_type_id
-    WHERE pr.shift_id = ?
-    ORDER BY pr.pump_id, pr.reading_type
-  `).all(shift.id);
+    JOIN pumps p     ON p.id=pr.pump_id
+    JOIN fuel_types ft ON ft.id=p.fuel_type_id
+    WHERE pr.shift_id=$1 ORDER BY pr.pump_id, pr.reading_type
+  `, [shift.id]);
+  shift.pump_readings = pr;
 
-  shift.credit_sales = db.prepare(`
+  const { rows: cs } = await pool.query(`
     SELECT cs.*, cc.name as client_name, p.name as pump_name
     FROM credit_sales cs
-    JOIN credit_clients cc ON cc.id = cs.credit_client_id
-    JOIN pumps p ON p.id = cs.pump_id
-    WHERE cs.shift_id = ?
-    ORDER BY cs.sale_time
-  `).all(shift.id);
+    JOIN credit_clients cc ON cc.id=cs.credit_client_id
+    JOIN pumps p ON p.id=cs.pump_id
+    WHERE cs.shift_id=$1 ORDER BY cs.sale_time
+  `, [shift.id]);
+  shift.credit_sales = cs;
 
-  shift.product_sales = db.prepare(`
+  const { rows: ps } = await pool.query(`
     SELECT ps.*, pr.name as product_name, pr.reference
     FROM product_sales ps
-    JOIN products pr ON pr.id = ps.product_id
-    WHERE ps.shift_id = ?
-    ORDER BY ps.sale_time
-  `).all(shift.id);
+    JOIN products pr ON pr.id=ps.product_id
+    WHERE ps.shift_id=$1 ORDER BY ps.sale_time
+  `, [shift.id]);
+  shift.product_sales = ps;
 
   return shift;
 }
 
-// GET /api/shifts
-router.get('/', requireAuth, (req, res) => {
-  const rows = db.prepare(`
+router.get('/', requireAuth, wrap(async (_req, res) => {
+  const { rows } = await pool.query(`
     SELECT s.*, u.full_name as opened_by_name
-    FROM shifts s
-    LEFT JOIN users u ON u.id = s.opened_by
+    FROM shifts s LEFT JOIN users u ON u.id=s.opened_by
     ORDER BY s.opened_at DESC LIMIT 50
-  `).all();
+  `);
   res.json(rows);
-});
+}));
 
-// GET /api/shifts/current
-router.get('/current', requireAuth, (req, res) => {
-  const shift = db.prepare(`
+router.get('/current', requireAuth, wrap(async (_req, res) => {
+  const { rows } = await pool.query(`
     SELECT s.*, u.full_name as opened_by_name
-    FROM shifts s LEFT JOIN users u ON u.id = s.opened_by
-    WHERE s.status = 'open'
-  `).get();
-  if (!shift) return res.json(null);
-  res.json(shiftDetail(shift));
-});
+    FROM shifts s LEFT JOIN users u ON u.id=s.opened_by
+    WHERE s.status='open'
+  `);
+  if (!rows.length) return res.json(null);
+  res.json(await shiftDetail(rows[0]));
+}));
 
-// GET /api/shifts/:id
-router.get('/:id', requireAuth, (req, res) => {
-  const shift = db.prepare(`
+router.get('/:id', requireAuth, wrap(async (req, res) => {
+  const { rows } = await pool.query(`
     SELECT s.*, u.full_name as opened_by_name
-    FROM shifts s LEFT JOIN users u ON u.id = s.opened_by
-    WHERE s.id = ?
-  `).get(req.params.id);
-  if (!shift) return res.status(404).json({ error: 'Poste introuvable' });
-  res.json(shiftDetail(shift));
-});
+    FROM shifts s LEFT JOIN users u ON u.id=s.opened_by
+    WHERE s.id=$1
+  `, [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Poste introuvable' });
+  res.json(await shiftDetail(rows[0]));
+}));
 
-// POST /api/shifts  — open shift + start readings
-router.post('/', requireAuth, (req, res) => {
+router.post('/', requireAuth, wrap(async (req, res) => {
   const { readings, notes } = req.body || {};
   if (!readings || !readings.length)
     return res.status(400).json({ error: 'Relevés de début requis' });
 
-  const open = db.prepare("SELECT id FROM shifts WHERE status='open'").get();
-  if (open) return res.status(400).json({ error: 'Un poste est déjà ouvert (ID ' + open.id + ')' });
+  const { rows: open } = await pool.query("SELECT id FROM shifts WHERE status='open'");
+  if (open.length) return res.status(400).json({ error: 'Un poste est déjà ouvert (ID ' + open[0].id + ')' });
 
-  const shiftId = db.prepare(
-    'INSERT INTO shifts (opened_by, notes) VALUES (?,?)'
-  ).run(req.user.id, notes || '').lastInsertRowid;
-
-  const ins = db.prepare(
-    "INSERT INTO pump_readings (shift_id, pump_id, reading_type, meter_value, recorded_by) VALUES (?,?,'start',?,?)"
+  const { rows: [{ id: shiftId }] } = await pool.query(
+    'INSERT INTO shifts (opened_by,notes) VALUES ($1,$2) RETURNING id',
+    [req.user.id, notes || '']
   );
-  for (const r of readings) ins.run(shiftId, r.pump_id, r.meter_value, req.user.id);
+  for (const r of readings)
+    await pool.query(
+      "INSERT INTO pump_readings (shift_id,pump_id,reading_type,meter_value,recorded_by) VALUES ($1,$2,'start',$3,$4)",
+      [shiftId, r.pump_id, r.meter_value, req.user.id]
+    );
 
-  res.status(201).json(shiftDetail(db.prepare('SELECT * FROM shifts WHERE id=?').get(shiftId)));
-});
+  const { rows: [shift] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [shiftId]);
+  res.status(201).json(await shiftDetail(shift));
+}));
 
-// POST /api/shifts/:id/close  — end readings + compute
-router.post('/:id/close', requireAuth, (req, res) => {
+router.post('/:id/close', requireAuth, wrap(async (req, res) => {
   const { readings, notes } = req.body || {};
-  const shift = db.prepare("SELECT * FROM shifts WHERE id=? AND status='open'").get(req.params.id);
-  if (!shift) return res.status(404).json({ error: 'Poste ouvert introuvable' });
+  const { rows } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='open'", [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Poste ouvert introuvable' });
   if (!readings || !readings.length)
     return res.status(400).json({ error: 'Relevés de fin requis' });
 
-  const ins = db.prepare(
-    "INSERT OR REPLACE INTO pump_readings (shift_id, pump_id, reading_type, meter_value, recorded_by) VALUES (?,?,'end',?,?)"
-  );
-  for (const r of readings) ins.run(shift.id, r.pump_id, r.meter_value, req.user.id);
+  const shift = rows[0];
+  for (const r of readings)
+    await pool.query(`
+      INSERT INTO pump_readings (shift_id,pump_id,reading_type,meter_value,recorded_by)
+      VALUES ($1,$2,'end',$3,$4)
+      ON CONFLICT (shift_id,pump_id,reading_type) DO UPDATE SET meter_value=EXCLUDED.meter_value, recorded_by=EXCLUDED.recorded_by
+    `, [shift.id, r.pump_id, r.meter_value, req.user.id]);
 
-  const calc = calcShift(shift.id);
-  db.prepare(`
+  const calc = await calcShift(shift.id);
+  await pool.query(`
     UPDATE shifts SET
-      status='closed', closed_at=datetime('now','localtime'),
-      total_liters_sold=?, total_fuel_revenue=?, total_credit_deducted=?,
-      total_product_sales=?, net_cash=?, notes=COALESCE(?,notes)
-    WHERE id=?
-  `).run(calc.totalLiters, calc.totalFuel, calc.totalCredit, calc.totalProduct, calc.netCash, notes||null, shift.id);
+      status='closed', closed_at=NOW(),
+      total_liters_sold=$1, total_fuel_revenue=$2, total_credit_deducted=$3,
+      total_product_sales=$4, net_cash=$5, notes=COALESCE($6,notes)
+    WHERE id=$7
+  `, [calc.totalLiters, calc.totalFuel, calc.totalCredit, calc.totalProduct, calc.netCash, notes||null, shift.id]);
 
-  res.json({ ...shiftDetail(db.prepare('SELECT * FROM shifts WHERE id=?').get(shift.id)), calc });
-});
+  const { rows: [updated] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [shift.id]);
+  res.json({ ...await shiftDetail(updated), calc });
+}));
 
-// POST /api/shifts/:id/reopen
-router.post('/:id/reopen', requireAuth, (req, res) => {
-  const shift = db.prepare("SELECT * FROM shifts WHERE id=? AND status='closed'").get(req.params.id);
-  if (!shift) return res.status(404).json({ error: 'Poste fermé introuvable' });
-  const open = db.prepare("SELECT id FROM shifts WHERE status='open'").get();
-  if (open) return res.status(400).json({ error: 'Un poste est déjà ouvert (ID ' + open.id + '). Fermez-le avant de réouvrir.' });
-  db.prepare(`
+router.post('/:id/reopen', requireAuth, wrap(async (req, res) => {
+  const { rows } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='closed'", [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Poste fermé introuvable' });
+  const { rows: open } = await pool.query("SELECT id FROM shifts WHERE status='open'");
+  if (open.length) return res.status(400).json({ error: 'Un poste est déjà ouvert (ID ' + open[0].id + '). Fermez-le avant de réouvrir.' });
+
+  const shift = rows[0];
+  await pool.query(`
     UPDATE shifts SET status='open', closed_at=NULL,
       total_liters_sold=NULL, total_fuel_revenue=NULL,
       total_credit_deducted=NULL, total_product_sales=NULL, net_cash=NULL
-    WHERE id=?
-  `).run(shift.id);
-  res.json(shiftDetail(db.prepare('SELECT * FROM shifts WHERE id=?').get(shift.id)));
-});
+    WHERE id=$1
+  `, [shift.id]);
+  const { rows: [updated] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [shift.id]);
+  res.json(await shiftDetail(updated));
+}));
 
 module.exports = router;
