@@ -4,144 +4,213 @@ const { requireAuth } = require('../middleware');
 
 // ── Schema ────────────────────────────────────────────────────
 db.exec(`
-CREATE TABLE IF NOT EXISTS cafe_products (
+CREATE TABLE IF NOT EXISTS cafe_menu (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   name       TEXT    NOT NULL,
-  category   TEXT    NOT NULL DEFAULT 'Boissons',
-  price      REAL    NOT NULL,
-  is_active  INTEGER NOT NULL DEFAULT 1,
-  created_at TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+  emoji      TEXT    NOT NULL DEFAULT '☕',
+  price      REAL    NOT NULL DEFAULT 7,
+  is_active  INTEGER NOT NULL DEFAULT 1
 );
-CREATE TABLE IF NOT EXISTS cafe_orders (
+CREATE TABLE IF NOT EXISTS cafe_sales (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  total_amount REAL    NOT NULL DEFAULT 0,
-  payment_type TEXT    NOT NULL DEFAULT 'cash',
-  status       TEXT    NOT NULL DEFAULT 'open',
-  note         TEXT,
-  created_by   INTEGER REFERENCES users(id),
+  sale_date    TEXT    NOT NULL,
+  menu_item_id INTEGER NOT NULL REFERENCES cafe_menu(id),
+  quantity     INTEGER NOT NULL DEFAULT 0,
+  unit_price   REAL    NOT NULL DEFAULT 7,
+  total        REAL    NOT NULL DEFAULT 0,
+  recorded_by  INTEGER REFERENCES users(id),
   created_at   TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
-  closed_at    TEXT
+  UNIQUE(sale_date, menu_item_id)
 );
-CREATE TABLE IF NOT EXISTS cafe_order_items (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  order_id    INTEGER NOT NULL REFERENCES cafe_orders(id),
-  product_id  INTEGER NOT NULL REFERENCES cafe_products(id),
-  quantity    INTEGER NOT NULL DEFAULT 1,
-  unit_price  REAL    NOT NULL,
-  total       REAL    NOT NULL
+CREATE TABLE IF NOT EXISTS cafe_stock_items (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  name          TEXT    NOT NULL,
+  unit          TEXT    NOT NULL DEFAULT 'unité',
+  cost_per_unit REAL    NOT NULL DEFAULT 0,
+  is_active     INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS cafe_stock_usage (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  usage_date      TEXT    NOT NULL,
+  stock_item_id   INTEGER NOT NULL REFERENCES cafe_stock_items(id),
+  quantity_used   REAL    NOT NULL DEFAULT 0,
+  cost_per_unit   REAL    NOT NULL DEFAULT 0,
+  total_cost      REAL    NOT NULL DEFAULT 0,
+  recorded_by     INTEGER REFERENCES users(id),
+  created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+  UNIQUE(usage_date, stock_item_id)
 );
 `);
 
-// seed default menu
-if (db.prepare('SELECT COUNT(*) as c FROM cafe_products').get().c === 0) {
-  const ins = db.prepare('INSERT INTO cafe_products (name,category,price) VALUES (?,?,?)');
-  ins.run('Café Express',      'Boissons', 6);
-  ins.run('Café au Lait',      'Boissons', 8);
-  ins.run('Thé',               'Boissons', 5);
-  ins.run('Jus Orange',        'Boissons', 15);
-  ins.run('Eau Minérale',      'Boissons', 5);
-  ins.run('Sandwich',          'Nourriture', 25);
-  ins.run('Croissant',         'Nourriture', 8);
-  ins.run('Crêpe',             'Nourriture', 12);
+// ── Seed ─────────────────────────────────────────────────────
+if (db.prepare('SELECT COUNT(*) as c FROM cafe_menu').get().c === 0) {
+  const ins = db.prepare('INSERT INTO cafe_menu (name,emoji,price) VALUES (?,?,?)');
+  ins.run('Café',            '☕', 7);
+  ins.run('Café au Lait',    '🥛', 7);
+  ins.run('Lait Chocolat',   '🍫', 7);
+  ins.run('Thé',             '🍵', 7);
+  ins.run('Soda',            '🥤', 7);
+}
+if (db.prepare('SELECT COUNT(*) as c FROM cafe_stock_items').get().c === 0) {
+  const ins = db.prepare('INSERT INTO cafe_stock_items (name,unit,cost_per_unit) VALUES (?,?,?)');
+  ins.run('Café en grains',    'kg',     80);
+  ins.run('Lait',              'litre',  8);
+  ins.run('Chocolat en poudre','paquet', 25);
+  ins.run('Soda (canettes)',   'unité',  4);
+  ins.run('Sachets de thé',    'boîte',  15);
+  ins.run('Sucre',             'kg',     6);
+  ins.run('Gobelets',          'paquet', 12);
 }
 
-// GET /api/cafe/products
-router.get('/products', requireAuth, (_req, res) => {
-  res.json(db.prepare('SELECT * FROM cafe_products WHERE is_active=1 ORDER BY category,name').all());
+// ── MENU ─────────────────────────────────────────────────────
+router.get('/menu', requireAuth, (_req, res) =>
+  res.json(db.prepare('SELECT * FROM cafe_menu WHERE is_active=1 ORDER BY id').all()));
+
+router.post('/menu', requireAuth, (req, res) => {
+  const { name, emoji, price } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'Nom requis' });
+  const id = db.prepare('INSERT INTO cafe_menu (name,emoji,price) VALUES (?,?,?)').run(name, emoji||'☕', price||7).lastInsertRowid;
+  res.status(201).json(db.prepare('SELECT * FROM cafe_menu WHERE id=?').get(id));
 });
 
-// POST /api/cafe/products
-router.post('/products', requireAuth, (req, res) => {
-  const { name, category, price } = req.body || {};
-  if (!name || !price) return res.status(400).json({ error: 'Nom et prix requis' });
-  const id = db.prepare('INSERT INTO cafe_products (name,category,price) VALUES (?,?,?)').run(name, category||'Boissons', price).lastInsertRowid;
-  res.status(201).json(db.prepare('SELECT * FROM cafe_products WHERE id=?').get(id));
+router.put('/menu/:id', requireAuth, (req, res) => {
+  const { name, emoji, price, is_active } = req.body || {};
+  db.prepare('UPDATE cafe_menu SET name=COALESCE(?,name), emoji=COALESCE(?,emoji), price=COALESCE(?,price), is_active=COALESCE(?,is_active) WHERE id=?')
+    .run(name||null, emoji||null, price||null, is_active!=null?is_active:null, req.params.id);
+  res.json(db.prepare('SELECT * FROM cafe_menu WHERE id=?').get(req.params.id));
 });
 
-// PUT /api/cafe/products/:id
-router.put('/products/:id', requireAuth, (req, res) => {
-  const { name, category, price, is_active } = req.body || {};
-  db.prepare('UPDATE cafe_products SET name=COALESCE(?,name), category=COALESCE(?,category), price=COALESCE(?,price), is_active=COALESCE(?,is_active) WHERE id=?')
-    .run(name||null, category||null, price||null, is_active!=null?is_active:null, req.params.id);
-  res.json(db.prepare('SELECT * FROM cafe_products WHERE id=?').get(req.params.id));
-});
-
-// DELETE /api/cafe/products/:id  (soft delete)
-router.delete('/products/:id', requireAuth, (req, res) => {
-  db.prepare('UPDATE cafe_products SET is_active=0 WHERE id=?').run(req.params.id);
+router.delete('/menu/:id', requireAuth, (req, res) => {
+  db.prepare('UPDATE cafe_menu SET is_active=0 WHERE id=?').run(req.params.id);
   res.json({ ok: true });
 });
 
-// POST /api/cafe/orders  — create order with items
-router.post('/orders', requireAuth, (req, res) => {
-  const { items, payment_type, note } = req.body || {};
-  if (!items || !items.length) return res.status(400).json({ error: 'Commande vide' });
-  let total = 0;
-  const orderId = db.prepare('INSERT INTO cafe_orders (payment_type, note, created_by) VALUES (?,?,?)').run(payment_type||'cash', note||null, req.user.id).lastInsertRowid;
-  const ins = db.prepare('INSERT INTO cafe_order_items (order_id,product_id,quantity,unit_price,total) VALUES (?,?,?,?,?)');
-  for (const it of items) {
-    const p = db.prepare('SELECT price FROM cafe_products WHERE id=?').get(it.product_id);
-    if (!p) continue;
-    const lineTotal = p.price * it.quantity;
-    ins.run(orderId, it.product_id, it.quantity, p.price, lineTotal);
-    total += lineTotal;
-  }
-  db.prepare('UPDATE cafe_orders SET total_amount=?, status=\'closed\', closed_at=datetime(\'now\',\'localtime\') WHERE id=?').run(total, orderId);
-  res.status(201).json({ ok: true, id: Number(orderId), total });
-});
-
-// GET /api/cafe/orders?date=YYYY-MM-DD
-router.get('/orders', requireAuth, (req, res) => {
+// ── SALES ────────────────────────────────────────────────────
+router.get('/sales', requireAuth, (req, res) => {
   const date = req.query.date || new Date().toISOString().slice(0,10);
-  const orders = db.prepare(`
-    SELECT o.*, u.full_name as by_name
-    FROM cafe_orders o LEFT JOIN users u ON u.id=o.created_by
-    WHERE date(o.created_at)=? AND o.status='closed'
-    ORDER BY o.created_at DESC
+  const items = db.prepare(`
+    SELECT cs.*, cm.name, cm.emoji, cm.price as default_price
+    FROM cafe_menu cm
+    LEFT JOIN cafe_sales cs ON cs.menu_item_id=cm.id AND cs.sale_date=?
+    WHERE cm.is_active=1 ORDER BY cm.id
   `).all(date);
-  for (const o of orders) {
-    o.items = db.prepare(`
-      SELECT ci.*, p.name as product_name, p.category
-      FROM cafe_order_items ci JOIN cafe_products p ON p.id=ci.product_id
-      WHERE ci.order_id=?
-    `).all(o.id);
-  }
-  res.json(orders);
+  const total = items.reduce((s,i)=>s+(i.total||0),0);
+  res.json({ date, items, day_total: total });
 });
 
-// DELETE /api/cafe/orders/:id
-router.delete('/orders/:id', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM cafe_order_items WHERE order_id=?').run(req.params.id);
-  db.prepare('DELETE FROM cafe_orders WHERE id=?').run(req.params.id);
+router.post('/sales', requireAuth, (req, res) => {
+  const { date, entries } = req.body || {};
+  if (!entries || !entries.length) return res.status(400).json({ error: 'Données manquantes' });
+  const d = date || new Date().toISOString().slice(0,10);
+  const ups = db.prepare(`
+    INSERT INTO cafe_sales (sale_date, menu_item_id, quantity, unit_price, total, recorded_by)
+    VALUES (?,?,?,?,?,?)
+    ON CONFLICT(sale_date, menu_item_id) DO UPDATE SET
+      quantity=excluded.quantity, unit_price=excluded.unit_price,
+      total=excluded.total, recorded_by=excluded.recorded_by
+  `);
+  for (const e of entries) {
+    const price = e.unit_price || 7;
+    ups.run(d, e.menu_item_id, e.quantity||0, price, (e.quantity||0)*price, req.user.id);
+  }
   res.json({ ok: true });
 });
 
-// GET /api/cafe/stats?date=YYYY-MM-DD
-router.get('/stats', requireAuth, (req, res) => {
-  const date = req.query.date || new Date().toISOString().slice(0,10);
-  const day  = db.prepare("SELECT COALESCE(SUM(total_amount),0) as total, COUNT(*) as count FROM cafe_orders WHERE date(created_at)=? AND status='closed'").get(date);
-  const topItems = db.prepare(`
-    SELECT p.name, p.category, SUM(ci.quantity) as qty, SUM(ci.total) as revenue
-    FROM cafe_order_items ci
-    JOIN cafe_orders o ON o.id=ci.order_id
-    JOIN cafe_products p ON p.id=ci.product_id
-    WHERE date(o.created_at)=? AND o.status='closed'
-    GROUP BY ci.product_id ORDER BY qty DESC LIMIT 5
-  `).all(date);
-  const byPayment = db.prepare("SELECT payment_type, SUM(total_amount) as total FROM cafe_orders WHERE date(created_at)=? AND status='closed' GROUP BY payment_type").all(date);
-  res.json({ date, day_total: Number(day.total), order_count: Number(day.count), top_items: topItems, by_payment: byPayment });
+// ── STOCK ITEMS ───────────────────────────────────────────────
+router.get('/stock/items', requireAuth, (_req, res) =>
+  res.json(db.prepare('SELECT * FROM cafe_stock_items WHERE is_active=1 ORDER BY id').all()));
+
+router.post('/stock/items', requireAuth, (req, res) => {
+  const { name, unit, cost_per_unit } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'Nom requis' });
+  const id = db.prepare('INSERT INTO cafe_stock_items (name,unit,cost_per_unit) VALUES (?,?,?)').run(name, unit||'unité', cost_per_unit||0).lastInsertRowid;
+  res.status(201).json(db.prepare('SELECT * FROM cafe_stock_items WHERE id=?').get(id));
 });
 
-// GET /api/cafe/report?month=YYYY-MM
-router.get('/report', requireAuth, (req, res) => {
+router.put('/stock/items/:id', requireAuth, (req, res) => {
+  const { name, unit, cost_per_unit, is_active } = req.body || {};
+  db.prepare('UPDATE cafe_stock_items SET name=COALESCE(?,name), unit=COALESCE(?,unit), cost_per_unit=COALESCE(?,cost_per_unit), is_active=COALESCE(?,is_active) WHERE id=?')
+    .run(name||null, unit||null, cost_per_unit!=null?cost_per_unit:null, is_active!=null?is_active:null, req.params.id);
+  res.json(db.prepare('SELECT * FROM cafe_stock_items WHERE id=?').get(req.params.id));
+});
+
+router.delete('/stock/items/:id', requireAuth, (req, res) => {
+  db.prepare('UPDATE cafe_stock_items SET is_active=0 WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+// ── STOCK USAGE ───────────────────────────────────────────────
+router.get('/stock/usage', requireAuth, (req, res) => {
+  const date = req.query.date || new Date().toISOString().slice(0,10);
+  const items = db.prepare(`
+    SELECT csi.*, csu.quantity_used, csu.total_cost,
+           csu.cost_per_unit as used_cost
+    FROM cafe_stock_items csi
+    LEFT JOIN cafe_stock_usage csu ON csu.stock_item_id=csi.id AND csu.usage_date=?
+    WHERE csi.is_active=1 ORDER BY csi.id
+  `).all(date);
+  const total_cost = items.reduce((s,i)=>s+(i.total_cost||0),0);
+  res.json({ date, items, total_cost });
+});
+
+router.post('/stock/usage', requireAuth, (req, res) => {
+  const { date, entries } = req.body || {};
+  if (!entries || !entries.length) return res.status(400).json({ error: 'Données manquantes' });
+  const d = date || new Date().toISOString().slice(0,10);
+  const ups = db.prepare(`
+    INSERT INTO cafe_stock_usage (usage_date, stock_item_id, quantity_used, cost_per_unit, total_cost, recorded_by)
+    VALUES (?,?,?,?,?,?)
+    ON CONFLICT(usage_date, stock_item_id) DO UPDATE SET
+      quantity_used=excluded.quantity_used, cost_per_unit=excluded.cost_per_unit,
+      total_cost=excluded.total_cost, recorded_by=excluded.recorded_by
+  `);
+  for (const e of entries) {
+    const cost = e.cost_per_unit;
+    ups.run(d, e.stock_item_id, e.quantity_used||0, cost, (e.quantity_used||0)*cost, req.user.id);
+  }
+  res.json({ ok: true });
+});
+
+// ── RAPPORT JOURNALIER ────────────────────────────────────────
+router.get('/report/day', requireAuth, (req, res) => {
+  const date = req.query.date || new Date().toISOString().slice(0,10);
+  const sales = db.prepare(`
+    SELECT cs.*, cm.name, cm.emoji FROM cafe_sales cs
+    JOIN cafe_menu cm ON cm.id=cs.menu_item_id
+    WHERE cs.sale_date=? AND cs.quantity>0 ORDER BY cm.id
+  `).all(date);
+  const stock = db.prepare(`
+    SELECT csu.*, csi.name, csi.unit FROM cafe_stock_usage csu
+    JOIN cafe_stock_items csi ON csi.id=csu.stock_item_id
+    WHERE csu.usage_date=? AND csu.quantity_used>0 ORDER BY csi.id
+  `).all(date);
+  const revenue    = sales.reduce((s,r)=>s+r.total,0);
+  const stock_cost = stock.reduce((s,r)=>s+r.total_cost,0);
+  const net_profit = revenue - stock_cost;
+  res.json({ date, sales, stock, revenue, stock_cost, net_profit });
+});
+
+// ── RAPPORT MENSUEL ───────────────────────────────────────────
+router.get('/report/month', requireAuth, (req, res) => {
   const month = req.query.month || new Date().toISOString().slice(0,7);
-  const rows = db.prepare(`
-    SELECT date(created_at) as day, SUM(total_amount) as total, COUNT(*) as count
-    FROM cafe_orders WHERE strftime('%Y-%m',created_at)=? AND status='closed'
-    GROUP BY day ORDER BY day DESC
-  `).all(month);
-  const grand = rows.reduce((s,r)=>s+r.total,0);
-  res.json({ month, days: rows, month_total: grand });
+  const days = db.prepare(`
+    SELECT d.day,
+      COALESCE(r.revenue,0) as revenue,
+      COALESCE(s.stock_cost,0) as stock_cost,
+      COALESCE(r.revenue,0)-COALESCE(s.stock_cost,0) as net_profit
+    FROM (
+      SELECT DISTINCT sale_date as day FROM cafe_sales WHERE strftime('%Y-%m',sale_date)=?
+      UNION
+      SELECT DISTINCT usage_date FROM cafe_stock_usage WHERE strftime('%Y-%m',usage_date)=?
+    ) d
+    LEFT JOIN (SELECT sale_date, SUM(total) as revenue FROM cafe_sales WHERE strftime('%Y-%m',sale_date)=? GROUP BY sale_date) r ON r.sale_date=d.day
+    LEFT JOIN (SELECT usage_date, SUM(total_cost) as stock_cost FROM cafe_stock_usage WHERE strftime('%Y-%m',usage_date)=? GROUP BY usage_date) s ON s.usage_date=d.day
+    ORDER BY d.day DESC
+  `).all(month, month, month, month);
+  const totRevenue   = days.reduce((s,d)=>s+d.revenue,0);
+  const totStockCost = days.reduce((s,d)=>s+d.stock_cost,0);
+  const totProfit    = days.reduce((s,d)=>s+d.net_profit,0);
+  res.json({ month, days, total_revenue: totRevenue, total_stock_cost: totStockCost, total_profit: totProfit });
 });
 
 module.exports = router;
