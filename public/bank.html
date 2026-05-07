@@ -4,101 +4,158 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>YEX WEB — Banque</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --navy:#1A3A5C;--navy-dk:#0F2440;--navy-lt:#EBF2FA;
-  --green:#188918;--red:#BB0000;--blue:#0070F2;--orange:#E65100;--purple:#7B3F9E;
-  --text:#1D1D1F;--muted:#6A6D70;--border:#E5E5EA;--bg:#F5F5F7;
+  --nv:#1A3A5C;--nv-dk:#0F2440;--nv-lt:#EBF2FA;--nv-mid:#2D5A8E;
+  --green:#188918;--red:#BB0000;--blue:#0070F2;--orange:#E65100;--purple:#7B3F9E;--gold:#B8860B;
+  --text:#1D1D1F;--muted:#6A6D70;--border:#E5E5EA;--bg:#F2F4F7;
 }
-body{font-family:"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden}
-#sidebar{width:210px;background:var(--navy-dk);display:flex;flex-direction:column;flex-shrink:0}
-.sb-brand{padding:18px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.1)}
-.sb-brand .ic{font-size:26px}.sb-brand .tx{color:#fff;font-size:15px;font-weight:800}.sb-brand .tx small{display:block;color:rgba(255,255,255,.5);font-size:11px;font-weight:400}
-nav{flex:1;padding:10px 0}
-.nav-item{padding:11px 16px;color:rgba(255,255,255,.7);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .12s}
-.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-item.active{background:rgba(255,255,255,.15);color:#fff;border-left:3px solid #64B5F6}
-.sb-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.1)}
-.sb-foot a{color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;display:block;margin-bottom:4px}
+body{font-family:"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:13px}
+
+/* ── SIDEBAR ── */
+#sidebar{width:220px;background:var(--nv-dk);display:flex;flex-direction:column;flex-shrink:0;box-shadow:2px 0 12px rgba(0,0,0,.2)}
+.sb-brand{padding:20px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-logo{font-size:28px;margin-bottom:4px}
+.sb-name{color:#fff;font-size:16px;font-weight:800}
+.sb-sub{color:rgba(255,255,255,.45);font-size:11px;margin-top:2px}
+nav{flex:1;padding:8px 0;overflow-y:auto}
+.nav-grp{padding:10px 18px 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:1px;text-transform:uppercase}
+.nav-item{padding:10px 18px;color:rgba(255,255,255,.7);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s;border-left:3px solid transparent}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-item.active{background:rgba(255,255,255,.13);color:#fff;border-left-color:#64B5F6}
+.sb-foot{padding:12px 18px;border-top:1px solid rgba(255,255,255,.1)}
+.sb-foot a{color:rgba(255,255,255,.45);font-size:12px;text-decoration:none;display:block;padding:4px 0;transition:color .1s}
 .sb-foot a:hover{color:#fff}
+
+/* ── MAIN ── */
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-#topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-#topbar .tb-title{font-size:15px;font-weight:700}
-.tb-right{display:flex;align-items:center;gap:12px}
-.tb-balance{background:var(--navy-lt);border:1px solid #B3D1F0;border-radius:8px;padding:6px 14px;font-size:14px;font-weight:800;color:var(--navy)}
-#content{flex:1;overflow-y:auto;padding:24px}
+#topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:16px;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+#topbar .tb-title{font-size:15px;font-weight:800;flex:1}
+.balance-pill{background:var(--nv-lt);border:1.5px solid #B3D1F0;border-radius:20px;padding:6px 16px;font-size:13px;font-weight:700;color:var(--nv);white-space:nowrap}
+.forecast-pill{background:#FFF8E1;border:1.5px solid #FFD54F;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:#7B6000;white-space:nowrap}
+#content{flex:1;overflow-y:auto;padding:22px 24px}
 .page{display:none}.page.active{display:block}
-/* tiles */
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-bottom:24px}
-.tile{background:#fff;border-radius:10px;padding:16px 18px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-top:3px solid var(--tile-color,#ccc)}
-.tile-ic{font-size:22px;margin-bottom:6px}.tile-val{font-size:20px;font-weight:900;color:var(--tile-color,#333)}.tile-lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
-/* section */
-.section{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.07);overflow:hidden;margin-bottom:20px}
-.s-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.s-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
-.s-body{padding:18px}
-/* table */
-.t{width:100%;border-collapse:collapse;font-size:13px}
-.t th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
-.t td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
-.t tr:last-child td{border-bottom:none}.t tr:hover td{background:#FAFAFA}
-.num{text-align:right}.fw7{font-weight:700}.fw8{font-weight:900}
-.c-g{color:var(--green)}.c-r{color:var(--red)}.c-b{color:var(--blue)}.c-nv{color:var(--navy)}
-.muted{color:var(--muted)}.sm{font-size:12px}
-/* buttons */
-.btn{padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .12s}
-.btn:hover{opacity:.85}.btn-g{background:#eee;color:#333}.btn-p{background:var(--navy);color:#fff}
+
+/* ── TILES ── */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin-bottom:22px}
+.tile{background:#fff;border-radius:10px;padding:15px 16px;box-shadow:0 1px 5px rgba(0,0,0,.07);border-top:3px solid var(--tc,#ccc);cursor:default}
+.tile-ic{font-size:20px;margin-bottom:5px}.tile-val{font-size:19px;font-weight:900;color:var(--tc)}.tile-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:1px}
+
+/* ── SECTION ── */
+.section{background:#fff;border-radius:10px;box-shadow:0 1px 5px rgba(0,0,0,.07);overflow:hidden;margin-bottom:18px}
+.s-head{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.s-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.s-body{padding:16px 18px}
+
+/* ── TABLE ── */
+.t{width:100%;border-collapse:collapse}
+.t th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap;background:#FAFAFA}
+.t td{padding:9px 12px;border-bottom:1px solid #F0F0F0;vertical-align:middle}
+.t tbody tr:hover td{background:#F7F9FC}
+.t tbody tr.row-in{border-left:3px solid var(--green)}
+.t tbody tr.row-out{border-left:3px solid var(--red)}
+.t tbody tr.row-reconciled td{opacity:.6}
+.num{text-align:right!important}.fw7{font-weight:700}.fw8{font-weight:900}
+.c-g{color:var(--green)}.c-r{color:var(--red)}.c-b{color:var(--blue)}.c-nv{color:var(--nv)}.c-o{color:var(--orange)}
+
+/* ── BADGES ── */
+.type-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap}
+.tp-in{background:#D1FAE5;color:#065F46}.tp-out{background:#FEE2E2;color:#991B1B}
+.cat-pill{display:inline-block;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700;background:#EEF2FF;color:#3730A3}
+.ck-pending{background:#FEF3C7;color:#92400E;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700}
+.ck-cashed{background:#D1FAE5;color:#065F46;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700}
+.ck-cancelled{background:#FEE2E2;color:#991B1B;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;text-decoration:line-through}
+.due-soon{background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px}
+.due-late{background:#FEE2E2;color:#991B1B;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px}
+.reconciled-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:4px}
+
+/* ── BUTTONS ── */
+.btn{padding:7px 14px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .1s,transform .1s;white-space:nowrap}
+.btn:hover{opacity:.85}.btn:active{transform:scale(.97)}
+.btn-g{background:#EBEBEB;color:#333}.btn-p{background:var(--nv);color:#fff}
 .btn-s{background:var(--green);color:#fff}.btn-d{background:var(--red);color:#fff}
-.btn-sm{padding:6px 12px;font-size:12px}.btn-xs{padding:4px 8px;font-size:11px}
-/* forms */
-.fg{display:flex;flex-direction:column;gap:5px}
-.fg label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
-.fg input,.fg select,.fg textarea{padding:9px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit}
-.fg input:focus,.fg select:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 2px rgba(26,58,92,.12)}
+.btn-sm{padding:5px 11px;font-size:11px}.btn-xs{padding:3px 7px;font-size:10px}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted);padding:6px 12px}
+.btn-ghost:hover{border-color:var(--nv);color:var(--nv)}
+
+/* ── FORMS ── */
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.fg input,.fg select,.fg textarea{padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;transition:border-color .1s,box-shadow .1s;background:#fff}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--nv);box-shadow:0 0 0 3px rgba(26,58,92,.1)}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-/* overlay */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:center;justify-content:center}
+
+/* ── OVERLAY ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:center;justify-content:center;padding:16px}
 .overlay.open{display:flex}
-.modal{background:#fff;border-radius:12px;width:480px;max-width:94vw;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.modal-hd{background:var(--navy-dk);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:10px;flex-shrink:0}
-.modal-hd h3{flex:1;font-size:15px;font-weight:700}.modal-hd .x{background:none;border:none;color:rgba(255,255,255,.7);font-size:22px;cursor:pointer;line-height:1}
+.modal{background:#fff;border-radius:14px;width:500px;max-width:100%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.35)}
+.modal-hd{background:var(--nv-dk);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.modal-hd .mh-ic{font-size:20px}.modal-hd h3{flex:1;font-size:14px;font-weight:800}
+.modal-hd .x{background:none;border:none;color:rgba(255,255,255,.6);font-size:22px;cursor:pointer;line-height:1;padding:0 4px}
 .modal-hd .x:hover{color:#fff}
 .modal-body{padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
 .modal-ft{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0}
-/* toast */
-#toasts{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:999}
-.toast{padding:11px 18px;border-radius:8px;color:#fff;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.2);animation:tIn .25s ease}
-.t-g{background:var(--green)}.t-er{background:var(--red)}.t-wn{background:var(--orange)}
-@keyframes tIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-/* check status badges */
-.ck-pending{background:#FFF3CD;color:#856404;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap}
-.ck-cashed{background:#D1FAE5;color:#065F46;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap}
-.ck-cancelled{background:#FEE2E2;color:#991B1B;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap;text-decoration:line-through}
-/* type pill */
-.type-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap}
-.tp-in{background:#D1FAE5;color:#065F46}
-.tp-out{background:#FEE2E2;color:#991B1B}
-/* amount col */
+
+/* ── SEARCH BAR ── */
+.search-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.search-bar input{flex:1;min-width:180px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit}
+.search-bar input:focus{outline:none;border-color:var(--nv)}
+.search-bar select{padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff}
+
+/* ── AMOUNT ── */
 .amt-in{color:var(--green);font-weight:800}
 .amt-out{color:var(--red);font-weight:800}
-/* date row */
-.date-row{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
-.date-row input,.date-row select{padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit}
-/* check fields (shown conditionally) */
+.bal-positive{color:var(--nv);font-weight:800}
+.bal-negative{color:var(--red);font-weight:800}
+
+/* ── CHARTS ── */
+.chart-wrap{position:relative;width:100%;padding:0}
+
+/* ── TOAST ── */
+#toasts{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:8px;z-index:999}
+.toast{padding:10px 16px;border-radius:8px;color:#fff;font-size:12px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,.2);animation:tIn .2s ease}
+.t-g{background:var(--green)}.t-er{background:var(--red)}.t-wn{background:var(--orange)}
+@keyframes tIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ── PRINT ── */
+@media print{
+  #sidebar,#topbar,.btn,.search-bar,#toasts,.overlay{display:none!important}
+  #main{overflow:visible}#content{overflow:visible;padding:0}
+  .page{display:block!important}
+  body{font-size:11px}
+  .t td,.t th{padding:5px 8px}
+}
+/* ── check split ── */
+.ck-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:800px){.ck-cols{grid-template-columns:1fr}.tiles{grid-template-columns:1fr 1fr}}
+/* ── check-only toggle ── */
 #txn-check-fields{display:none}
 #txn-check-fields.show{display:contents}
+/* ── reconcile icon ── */
+.rc-btn{background:none;border:none;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:background .1s}
+.rc-btn:hover{background:#eee}
 </style>
 </head>
 <body>
 
+<!-- SIDEBAR -->
 <div id="sidebar">
-  <div class="sb-brand"><div class="ic">🏦</div><div class="tx">Banque<small>YEX WEB</small></div></div>
+  <div class="sb-brand">
+    <div class="sb-logo">🏦</div>
+    <div class="sb-name" id="sb-acct-name">Banque</div>
+    <div class="sb-sub">YEX WEB · Relevé Bancaire</div>
+  </div>
   <nav>
+    <div class="nav-grp">Vue d'ensemble</div>
     <div class="nav-item active" data-p="dashboard">🏠 Tableau de Bord</div>
+    <div class="nav-grp">Opérations</div>
     <div class="nav-item" data-p="transactions">💳 Transactions</div>
     <div class="nav-item" data-p="cheques">📝 Chèques</div>
+    <div class="nav-grp">Analyses</div>
     <div class="nav-item" data-p="rapport">📊 Rapport Mensuel</div>
+    <div class="nav-grp">Système</div>
     <div class="nav-item" data-p="settings">⚙️ Paramètres</div>
   </nav>
   <div class="sb-foot">
@@ -106,114 +163,156 @@ nav{flex:1;padding:10px 0}
   </div>
 </div>
 
+<!-- MAIN -->
 <div id="main">
   <div id="topbar">
     <div class="tb-title" id="page-title">Tableau de Bord</div>
-    <div class="tb-right">
-      <div class="tb-balance" id="top-balance">Solde : —</div>
-      <button class="btn btn-s btn-sm" onclick="openModal('m-add-txn')">+ Transaction</button>
-    </div>
+    <div class="balance-pill" id="top-balance">Solde : —</div>
+    <div class="forecast-pill" id="top-forecast" title="Solde après encaissement de tous les chèques en attente">⏳ Prévisionnel : —</div>
+    <button class="btn btn-s btn-sm" onclick="openModal('m-add-txn')">＋ Transaction</button>
   </div>
   <div id="content">
 
     <!-- ══ DASHBOARD ══ -->
     <div class="page active" id="p-dashboard">
       <div class="tiles" id="db-tiles"></div>
-      <div class="section">
-        <div class="s-head"><div class="s-title">🕐 Dernières Transactions</div></div>
-        <div style="overflow-x:auto"><table class="t">
-          <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Référence</th><th class="num">Montant</th></tr></thead>
-          <tbody id="db-recent"></tbody>
-        </table></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:18px">
+        <div class="section">
+          <div class="s-head"><div class="s-title">📈 Évolution du Solde (30 derniers jours)</div></div>
+          <div class="s-body" style="height:200px"><canvas id="chart-balance"></canvas></div>
+        </div>
+        <div class="section">
+          <div class="s-head"><div class="s-title">⏳ Chèques en Attente</div></div>
+          <div class="s-body" id="db-pending-list" style="max-height:220px;overflow-y:auto"></div>
+        </div>
       </div>
-      <div class="section" id="db-pending-section">
-        <div class="s-head"><div class="s-title">⏳ Chèques en Attente</div></div>
-        <div style="overflow-x:auto"><table class="t">
-          <thead><tr><th>Date</th><th>Type</th><th>N° Chèque</th><th>Bénéficiaire / Émetteur</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
-          <tbody id="db-pending"></tbody>
+      <div class="section">
+        <div class="s-head">
+          <div class="s-title">🕐 Dernières Transactions</div>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('transactions')">Tout voir →</button>
+        </div>
+        <div style="overflow-x:auto"><table class="t" id="db-recent-table">
+          <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Catégorie</th><th class="num">Montant</th><th class="num">Solde après</th></tr></thead>
+          <tbody id="db-recent"></tbody>
         </table></div>
       </div>
     </div>
 
     <!-- ══ TRANSACTIONS ══ -->
     <div class="page" id="p-transactions">
-      <div class="date-row">
+      <div class="search-bar">
+        <input type="text" id="txn-search" placeholder="🔍 Rechercher description, bénéficiaire, n° chèque…" oninput="debounceSearch()"/>
         <input type="month" id="txn-month"/>
-        <select id="txn-filter" onchange="loadTransactions()">
+        <select id="txn-type-filter" onchange="loadTransactions()">
           <option value="">Tous les types</option>
-          <option value="depot">💰 Dépôt espèces</option>
+          <option value="depot">💰 Dépôt</option>
           <option value="retrait">💸 Retrait</option>
           <option value="virement_in">🏦 Virement reçu</option>
           <option value="virement_out">📤 Virement émis</option>
           <option value="cheque_in">✅ Chèque reçu</option>
           <option value="cheque_out">📝 Chèque émis</option>
         </select>
+        <select id="txn-cat-filter" onchange="loadTransactions()">
+          <option value="">Toutes catégories</option>
+        </select>
         <button class="btn btn-p btn-sm" onclick="loadTransactions()">Actualiser</button>
+        <button class="btn btn-ghost btn-sm" onclick="printStatement()">🖨️ Imprimer</button>
       </div>
       <div class="section">
         <div class="s-head">
-          <div class="s-title">💳 Transactions</div>
-          <div style="display:flex;gap:10px;font-size:13px;font-weight:700">
-            <span>Total IN: <span class="c-g" id="txn-tot-in">—</span></span>
-            <span>Total OUT: <span class="c-r" id="txn-tot-out">—</span></span>
+          <div class="s-title">💳 Relevé de Compte</div>
+          <div style="display:flex;gap:14px;font-size:12px;font-weight:700">
+            <span>Entrées : <span class="c-g" id="txn-tot-in">—</span></span>
+            <span>Sorties : <span class="c-r" id="txn-tot-out">—</span></span>
           </div>
         </div>
-        <div style="overflow-x:auto"><table class="t">
-          <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>N° Chèque</th><th>Bénéficiaire</th><th class="num">Montant</th><th></th></tr></thead>
-          <tbody id="txn-body"></tbody>
-        </table></div>
+        <div style="overflow-x:auto" id="txn-printable">
+          <table class="t">
+            <thead><tr>
+              <th>Date</th><th>Type</th><th>Catégorie</th><th>Description</th>
+              <th>Bénéficiaire</th><th>N° Chèque</th>
+              <th class="num">Débit</th><th class="num">Crédit</th><th class="num">Solde</th>
+              <th>Rapproché</th><th></th>
+            </tr></thead>
+            <tbody id="txn-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
     <!-- ══ CHÈQUES ══ -->
     <div class="page" id="p-cheques">
       <div class="tiles" id="ck-tiles"></div>
-      <div class="section">
-        <div class="s-head"><div class="s-title">📝 Tous les Chèques</div></div>
-        <div style="overflow-x:auto"><table class="t">
-          <thead><tr><th>Date</th><th>Sens</th><th>N° Chèque</th><th>Bénéficiaire / Émetteur</th><th>Description</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
-          <tbody id="ck-body"></tbody>
-        </table></div>
+      <div class="ck-cols">
+        <div class="section">
+          <div class="s-head"><div class="s-title">📤 Chèques Émis (sortants)</div></div>
+          <div style="overflow-x:auto"><table class="t">
+            <thead><tr><th>Date</th><th>N° Chèque</th><th>Bénéficiaire</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
+            <tbody id="ck-out-body"></tbody>
+          </table></div>
+        </div>
+        <div class="section">
+          <div class="s-head"><div class="s-title">📥 Chèques Reçus (entrants)</div></div>
+          <div style="overflow-x:auto"><table class="t">
+            <thead><tr><th>Date</th><th>N° Chèque</th><th>Émetteur</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
+            <tbody id="ck-in-body"></tbody>
+          </table></div>
+        </div>
       </div>
     </div>
 
-    <!-- ══ RAPPORT MENSUEL ══ -->
+    <!-- ══ RAPPORT ══ -->
     <div class="page" id="p-rapport">
-      <div class="date-row">
+      <div class="search-bar">
         <input type="month" id="rpt-month"/>
         <button class="btn btn-p btn-sm" onclick="loadRapport()">Voir</button>
       </div>
       <div class="tiles" id="rpt-tiles"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+        <div class="section">
+          <div class="s-head"><div class="s-title">📊 Flux Journaliers</div></div>
+          <div class="s-body" style="height:200px"><canvas id="chart-daily"></canvas></div>
+        </div>
+        <div class="section">
+          <div class="s-head"><div class="s-title">🍕 Sorties par Catégorie</div></div>
+          <div class="s-body" style="height:200px;display:flex;align-items:center;justify-content:center"><canvas id="chart-cat"></canvas></div>
+        </div>
+      </div>
       <div class="section">
         <div class="s-head"><div class="s-title">📅 Détail par Jour</div></div>
         <div style="overflow-x:auto"><table class="t">
           <thead><tr><th>Date</th><th class="num">Entrées</th><th class="num">Sorties</th><th class="num">Net du Jour</th></tr></thead>
           <tbody id="rpt-body"></tbody>
+          <tfoot id="rpt-foot"></tfoot>
         </table></div>
       </div>
     </div>
 
     <!-- ══ PARAMÈTRES ══ -->
     <div class="page" id="p-settings">
-      <div class="section" style="max-width:400px">
-        <div class="s-head"><div class="s-title">⚙️ Compte Bancaire</div></div>
-        <div class="s-body" style="display:flex;flex-direction:column;gap:14px">
+      <div class="section" style="max-width:440px">
+        <div class="s-head"><div class="s-title">⚙️ Paramètres du Compte</div></div>
+        <div class="s-body" style="display:flex;flex-direction:column;gap:16px">
           <div class="fg"><label>Nom du Compte</label><input id="cfg-name" placeholder="ex: CIH Compte Principal"/></div>
-          <div class="fg"><label>Solde Initial (MAD)</label><input type="number" id="cfg-balance" step="0.01" placeholder="0.00"/></div>
-          <button class="btn btn-s" onclick="saveSettings()">✅ Enregistrer</button>
+          <div class="fg">
+            <label>Solde Initial (MAD)</label>
+            <input type="number" id="cfg-balance" step="0.01" placeholder="0.00"/>
+            <span style="font-size:11px;color:var(--muted);margin-top:2px">Le solde au moment où vous avez commencé à utiliser ce module</span>
+          </div>
+          <button class="btn btn-s" style="align-self:flex-start;padding:10px 24px" onclick="saveSettings()">✅ Enregistrer</button>
         </div>
       </div>
     </div>
 
-  </div>
-</div>
+  </div><!-- /content -->
+</div><!-- /main -->
 
 <div id="toasts"></div>
 
-<!-- Modal: Add Transaction -->
+<!-- ══ MODAL: Add Transaction ══ -->
 <div class="overlay" id="m-add-txn">
   <div class="modal">
-    <div class="modal-hd"><span>💳</span><h3>Nouvelle Transaction</h3><button class="x" onclick="closeModal('m-add-txn')">×</button></div>
+    <div class="modal-hd"><div class="mh-ic">💳</div><h3>Nouvelle Transaction</h3><button class="x" onclick="closeModal('m-add-txn')">×</button></div>
     <div class="modal-body">
       <div class="fgrid">
         <div class="fg" style="grid-column:1/-1">
@@ -228,21 +327,32 @@ nav{flex:1;padding:10px 0}
           </select>
         </div>
         <div class="fg"><label>Date *</label><input type="date" id="at-date"/></div>
-        <div class="fg"><label>Montant (MAD) *</label><input type="number" id="at-amount" placeholder="0.00" step="0.01" min="0"/></div>
-        <div class="fg" style="grid-column:1/-1"><label>Description *</label><input id="at-desc" placeholder="ex: Vente carburant, Paiement fournisseur..."/></div>
-        <!-- Check-only fields -->
-        <div id="txn-check-fields" class="fgrid" style="grid-column:1/-1;display:none">
-          <div class="fg"><label>N° Chèque</label><input id="at-chknum" placeholder="ex: 0012345"/></div>
-          <div class="fg"><label>Bénéficiaire / Émetteur</label><input id="at-benef" placeholder="Nom"/></div>
-          <div class="fg" style="grid-column:1/-1">
-            <label>Statut du Chèque</label>
-            <select id="at-chkstatus">
-              <option value="pending">⏳ En attente (pas encore encaissé)</option>
-              <option value="cashed">✅ Déjà encaissé</option>
-            </select>
+        <div class="fg"><label>Montant (MAD) *</label><input type="number" id="at-amount" placeholder="0.00" step="0.01" min="0" style="font-size:18px;font-weight:800;text-align:right"/></div>
+        <div class="fg" style="grid-column:1/-1"><label>Description *</label><input id="at-desc" placeholder="ex: Paiement fournisseur Afriquia"/></div>
+        <div class="fg">
+          <label>Catégorie</label>
+          <select id="at-cat">
+            <option>Carburant</option><option>Salaires</option><option>Loyer</option>
+            <option>Maintenance</option><option>Fournisseur</option><option>Client</option>
+            <option>Banque</option><option>Impôts</option><option>Autre</option>
+          </select>
+        </div>
+        <div class="fg"><label>Notes</label><input id="at-notes" placeholder="facultatif"/></div>
+        <!-- Check fields -->
+        <div id="txn-check-fields" style="display:none;grid-column:1/-1">
+          <div class="fgrid">
+            <div class="fg"><label>N° Chèque</label><input id="at-chknum" placeholder="ex: 0012345"/></div>
+            <div class="fg"><label>Bénéficiaire / Émetteur</label><input id="at-benef" placeholder="Nom"/></div>
+            <div class="fg"><label>Date d'Échéance</label><input type="date" id="at-duedate"/></div>
+            <div class="fg">
+              <label>Statut</label>
+              <select id="at-chkstatus">
+                <option value="pending">⏳ En attente (pas encore encaissé)</option>
+                <option value="cashed">✅ Déjà encaissé</option>
+              </select>
+            </div>
           </div>
         </div>
-        <div class="fg" style="grid-column:1/-1"><label>Notes</label><input id="at-notes" placeholder="facultatif"/></div>
       </div>
     </div>
     <div class="modal-ft">
@@ -256,10 +366,11 @@ nav{flex:1;padding:10px 0}
 const TOKEN = localStorage.getItem('fm_token');
 if (!TOKEN) window.location.href = '/';
 
+// ── API ────────────────────────────────────────────────────────
 async function api(method, path, body) {
   const r = await fetch('/api/bank' + path, {
     method,
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},
+    headers: { 'Content-Type':'application/json','Authorization':'Bearer '+TOKEN },
     body: body ? JSON.stringify(body) : undefined
   });
   const data = await r.json();
@@ -267,39 +378,52 @@ async function api(method, path, body) {
   return data;
 }
 
-function toast(msg, type='g') {
-  const el = document.createElement('div');
-  el.className = 'toast t-' + type;
-  el.textContent = msg;
-  document.getElementById('toasts').appendChild(el);
-  setTimeout(() => el.remove(), 3200);
+// ── UTILS ──────────────────────────────────────────────────────
+const fmt    = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtAmt = n => fmt(Math.abs(n));
+const today  = () => new Date().toISOString().slice(0,10);
+const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : '—';
+const fmtDateShort = d => d ? new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '—';
+
+const IN_TYPES = ['depot','virement_in','cheque_in'];
+const TYPE_LABELS = {
+  depot:'💰 Dépôt', retrait:'💸 Retrait',
+  virement_in:'🏦 Virement reçu', virement_out:'📤 Virement émis',
+  cheque_in:'✅ Chèque reçu', cheque_out:'📝 Chèque émis'
+};
+const CAT_COLORS = {
+  Carburant:'#E65100',Salaires:'#1A3A5C',Loyer:'#7B3F9E',
+  Maintenance:'#B8860B',Fournisseur:'#0070F2',Client:'#188918',
+  Banque:'#1D7EAA',Impôts:'#BB0000',Autre:'#6A6D70'
+};
+
+function statusBadge(s) {
+  if (s==='pending')   return '<span class="ck-pending">⏳ En attente</span>';
+  if (s==='cashed')    return '<span class="ck-cashed">✅ Encaissé</span>';
+  if (s==='cancelled') return '<span class="ck-cancelled">❌ Annulé</span>';
+  return '—';
 }
 
+function dueBadge(due) {
+  if (!due) return '';
+  const days = Math.ceil((new Date(due) - new Date()) / 86400000);
+  if (days < 0)  return `<span class="due-late">En retard ${Math.abs(days)}j</span>`;
+  if (days <= 7) return `<span class="due-soon">Dans ${days}j</span>`;
+  return `<span class="muted sm">${fmtDate(due)}</span>`;
+}
+
+function toast(msg, type='g') {
+  const el = document.createElement('div');
+  el.className = 'toast t-'+type; el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
 
-const fmt = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : '—';
-const today = () => new Date().toISOString().slice(0,10);
-
-const IN_TYPES = ['depot','virement_in','cheque_in'];
-const TYPE_LABELS = {
-  depot:       '💰 Dépôt',
-  retrait:     '💸 Retrait',
-  virement_in: '🏦 Virement reçu',
-  virement_out:'📤 Virement émis',
-  cheque_in:   '✅ Chèque reçu',
-  cheque_out:  '📝 Chèque émis'
-};
-const STATUS_LABELS = {
-  pending:   '<span class="ck-pending">⏳ En attente</span>',
-  cashed:    '<span class="ck-cashed">✅ Encaissé</span>',
-  cancelled: '<span class="ck-cancelled">❌ Annulé</span>'
-};
-
+// ── NAV ────────────────────────────────────────────────────────
 const pageNames = { dashboard:'Tableau de Bord', transactions:'Transactions', cheques:'Chèques', rapport:'Rapport Mensuel', settings:'Paramètres' };
-
 function navigate(p) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.p===p));
   document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('active', pg.id==='p-'+p));
@@ -312,84 +436,207 @@ function navigate(p) {
 }
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => navigate(n.dataset.p)));
 
-// ── BALANCE BAR ───────────────────────────────────────────────
+// ── BALANCE BAR ────────────────────────────────────────────────
 async function refreshBalance() {
-  const b = await api('GET', '/balance');
-  const col = b.balance >= 0 ? '#188918' : '#BB0000';
-  document.getElementById('top-balance').innerHTML = `Solde : <span style="color:${col}">${fmt(b.balance)} MAD</span>`;
+  const b = await api('GET','/balance');
+  const c = b.balance >= 0 ? 'var(--nv)' : 'var(--red)';
+  const fc = b.forecasted_balance >= 0 ? '#7B6000' : '#991B1B';
+  document.getElementById('top-balance').innerHTML   = `Solde : <strong style="color:${c}">${fmt(b.balance)} MAD</strong>`;
+  document.getElementById('top-forecast').innerHTML  = `⏳ Prévisionnel : <strong style="color:${fc}">${fmt(b.forecasted_balance)} MAD</strong>`;
+  document.getElementById('sb-acct-name').textContent = b.account_name || 'Banque';
   return b;
 }
 
-// ── DASHBOARD ─────────────────────────────────────────────────
+// ── CHARTS ────────────────────────────────────────────────────
+let chartBalance = null, chartDaily = null, chartCat = null;
+
+function destroyChart(c) { if (c) { c.destroy(); } return null; }
+
+async function renderBalanceChart() {
+  const history = await api('GET', '/history?days=30');
+  const labels  = history.map(h => new Date(h.day+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}));
+  const values  = history.map(h => h.balance);
+  const minVal  = Math.min(...values);
+  const positiveColor = 'rgba(24,137,24,.15)';
+  const negativeColor = 'rgba(187,0,0,.12)';
+
+  chartBalance = destroyChart(chartBalance);
+  chartBalance = new Chart(document.getElementById('chart-balance'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        borderColor: '#1A3A5C',
+        backgroundColor: ctx => {
+          const gradient = ctx.chart.ctx.createLinearGradient(0,0,0,200);
+          gradient.addColorStop(0,'rgba(26,58,92,.25)');
+          gradient.addColorStop(1,'rgba(26,58,92,.02)');
+          return gradient;
+        },
+        borderWidth: 2, pointRadius: 2, tension: 0.4, fill: true
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>`${fmt(v.raw)} MAD`}}},
+      scales:{
+        y:{ticks:{callback:v=>`${fmt(v)} MAD`,font:{size:10}},grid:{color:'#F0F0F0'}},
+        x:{ticks:{font:{size:10},maxTicksLimit:8},grid:{display:false}}
+      }
+    }
+  });
+}
+
+async function renderDailyChart(month) {
+  const d = await api('GET', '/report?month='+month);
+  const labels = d.rows.map(r=>fmtDateShort(r.day)).reverse();
+  const ins    = d.rows.map(r=>r.total_in).reverse();
+  const outs   = d.rows.map(r=>r.total_out).reverse();
+  chartDaily = destroyChart(chartDaily);
+  chartDaily = new Chart(document.getElementById('chart-daily'), {
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Entrées',data:ins,backgroundColor:'rgba(24,137,24,.7)',borderRadius:4},
+      {label:'Sorties',data:outs,backgroundColor:'rgba(187,0,0,.65)',borderRadius:4}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}}},
+      scales:{x:{ticks:{font:{size:10},maxTicksLimit:12},grid:{display:false}},
+              y:{ticks:{callback:v=>`${fmt(v)}`,font:{size:10}},grid:{color:'#F0F0F0'}}}
+    }
+  });
+}
+
+async function renderCatChart(month) {
+  const stats = await api('GET', '/stats/categories?month='+month);
+  if (!stats.out.length) return;
+  const labels = stats.out.map(c=>c.category);
+  const values = stats.out.map(c=>c.total);
+  const colors = labels.map(l => CAT_COLORS[l] || '#6A6D70');
+  chartCat = destroyChart(chartCat);
+  chartCat = new Chart(document.getElementById('chart-cat'), {
+    type:'doughnut',
+    data:{labels,datasets:[{data:values,backgroundColor:colors,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:12}},
+               tooltip:{callbacks:{label:v=>`${v.label}: ${fmt(v.raw)} MAD`}}}
+    }
+  });
+}
+
+// ── DASHBOARD ──────────────────────────────────────────────────
 async function loadDashboard() {
-  const [b, recent, checks] = await Promise.all([
-    api('GET', '/balance'),
-    api('GET', '/transactions?month='+today().slice(0,7)),
-    api('GET', '/checks')
+  const [b, txnData, checks] = await Promise.all([
+    api('GET','/balance'),
+    api('GET','/transactions?month='+today().slice(0,7)),
+    api('GET','/checks')
   ]);
+
+  const pending    = checks.filter(c=>c.check_status==='pending');
+  const pendingOut = pending.filter(c=>c.type==='cheque_out');
+  const pendingIn  = pending.filter(c=>c.type==='cheque_in');
+  const pendOutAmt = pendingOut.reduce((s,c)=>s+c.amount,0);
+  const pendInAmt  = pendingIn.reduce((s,c)=>s+c.amount,0);
   const balCol = b.balance >= 0 ? 'var(--green)' : 'var(--red)';
-  const pending = checks.filter(c => c.check_status==='pending');
-  const pendingOut = pending.filter(c=>c.type==='cheque_out').reduce((s,c)=>s+c.amount,0);
-  const pendingIn  = pending.filter(c=>c.type==='cheque_in').reduce((s,c)=>s+c.amount,0);
+  const frcCol = b.forecasted_balance >= 0 ? 'var(--blue)' : 'var(--red)';
 
   document.getElementById('db-tiles').innerHTML = [
-    { ic:'🏦', val: fmt(b.balance)+' MAD',             lbl:'Solde Actuel',           tc: balCol },
-    { ic:'📥', val: fmt(b.total_in)+' MAD',             lbl:'Total Entrées',           tc:'var(--green)' },
-    { ic:'📤', val: fmt(b.total_out)+' MAD',            lbl:'Total Sorties',           tc:'var(--red)' },
-    { ic:'⏳', val: fmt(pendingOut)+' MAD',             lbl:'Chèques émis en attente', tc:'var(--orange)' },
-    { ic:'📨', val: fmt(pendingIn)+' MAD',              lbl:'Chèques reçus en attente',tc:'var(--blue)' },
-  ].map(t=>`<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
+    { ic:'🏦', val:fmt(b.balance)+' MAD',            lbl:'Solde Actuel',             tc:balCol },
+    { ic:'🔮', val:fmt(b.forecasted_balance)+' MAD', lbl:'Solde Prévisionnel',        tc:frcCol },
+    { ic:'📥', val:fmt(b.total_in)+' MAD',           lbl:'Total Entrées (tout)',       tc:'var(--green)' },
+    { ic:'📤', val:fmt(b.total_out)+' MAD',          lbl:'Total Sorties (tout)',       tc:'var(--red)' },
+    { ic:'⏳', val:fmt(pendOutAmt)+' MAD',           lbl:`Chèques émis en attente (${pendingOut.length})`, tc:'var(--orange)' },
+    { ic:'📨', val:fmt(pendInAmt)+' MAD',            lbl:`Chèques reçus en attente (${pendingIn.length})`, tc:'var(--blue)' },
+  ].map(t=>`<div class="tile" style="--tc:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
-  document.getElementById('db-recent').innerHTML = recent.slice(0,10).map(t => txnRow(t, false)).join('')
-    || '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--muted)">Aucune transaction ce mois</td></tr>';
+  // Pending checks list
+  document.getElementById('db-pending-list').innerHTML = pending.length
+    ? pending.map(c => {
+        const isIn = IN_TYPES.includes(c.type);
+        return `<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="fw7" style="font-size:12px">${c.check_number||'#—'} · ${c.beneficiary||c.description}</span>
+            <span class="${isIn?'amt-in':'amt-out'}" style="font-size:12px">${isIn?'+':'−'}${fmt(c.amount)} MAD</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            ${dueBadge(c.due_date)}
+            <div style="display:flex;gap:4px;margin-left:auto">
+              <button class="btn btn-xs" style="background:#D1FAE5;color:#065F46" onclick="quickStatus(${c.id},'cashed')">✅</button>
+              <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B" onclick="quickStatus(${c.id},'cancelled')">❌</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">✅ Aucun chèque en attente</div>';
 
-  document.getElementById('db-pending').innerHTML = pending.map(c => `
-    <tr>
-      <td class="muted sm">${fmtDate(c.txn_date)}</td>
-      <td><span class="type-pill ${IN_TYPES.includes(c.type)?'tp-in':'tp-out'}">${TYPE_LABELS[c.type]||c.type}</span></td>
-      <td class="fw7">${c.check_number||'—'}</td>
-      <td>${c.beneficiary||'—'}</td>
-      <td class="num ${IN_TYPES.includes(c.type)?'amt-in':'amt-out'}">${IN_TYPES.includes(c.type)?'+':'−'} ${fmt(c.amount)} MAD</td>
-      <td>${STATUS_LABELS[c.check_status]||''}</td>
-      <td>${checkActions(c.id)}</td>
-    </tr>`).join('') || '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--muted)">Aucun chèque en attente ✓</td></tr>';
+  // Recent transactions
+  const recent = txnData.rows.slice(0,8);
+  document.getElementById('db-recent').innerHTML = recent.map(t => {
+    const isIn = IN_TYPES.includes(t.type);
+    const bal  = t.running_balance != null ? `<span class="${t.running_balance>=0?'bal-positive':'bal-negative'}">${fmt(t.running_balance)} MAD</span>` : '—';
+    return `<tr class="${isIn?'row-in':'row-out'}${t.is_reconciled?' row-reconciled':''}">
+      <td class="muted sm">${fmtDateShort(t.txn_date)}</td>
+      <td><span class="type-pill ${isIn?'tp-in':'tp-out'}">${TYPE_LABELS[t.type]||t.type}</span></td>
+      <td class="fw7" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.description}</td>
+      <td><span class="cat-pill">${t.category||'Autre'}</span></td>
+      <td class="num ${isIn?'amt-in':'amt-out'}">${isIn?'+':'−'}${fmt(t.amount)} MAD</td>
+      <td class="num">${bal}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--muted)">Aucune transaction ce mois</td></tr>';
 
-  refreshBalance();
+  renderBalanceChart();
 }
 
-function txnRow(t, showDelete=true) {
-  const isIN = IN_TYPES.includes(t.type);
-  return `<tr>
-    <td class="muted sm">${fmtDate(t.txn_date)}</td>
-    <td><span class="type-pill ${isIN?'tp-in':'tp-out'}">${TYPE_LABELS[t.type]||t.type}</span></td>
-    <td>${t.description}</td>
-    <td class="muted sm">${t.check_number||'—'}</td>
-    ${showDelete?`<td>${t.beneficiary||'—'}</td>`:''}
-    <td class="num ${isIN?'amt-in':'amt-out'}" style="font-size:15px">${isIN?'+':'−'} ${fmt(t.amount)} MAD</td>
-    ${showDelete?`<td><button class="btn btn-d btn-xs" onclick="deleteTxn(${t.id})">✕</button></td>`:''}
-  </tr>`;
+// ── TRANSACTIONS ───────────────────────────────────────────────
+let searchTimeout = null;
+function debounceSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(loadTransactions, 350);
 }
 
-// ── TRANSACTIONS ──────────────────────────────────────────────
 async function loadTransactions() {
-  const month  = document.getElementById('txn-month').value || today().slice(0,7);
-  const filter = document.getElementById('txn-filter').value;
-  let all = await api('GET', '/transactions?month='+month);
-  if (filter) all = all.filter(t=>t.type===filter);
-  const totIn  = all.filter(t=>IN_TYPES.includes(t.type)).reduce((s,t)=>s+t.amount,0);
-  const totOut = all.filter(t=>!IN_TYPES.includes(t.type)).reduce((s,t)=>s+t.amount,0);
-  document.getElementById('txn-tot-in').textContent  = fmt(totIn)  + ' MAD';
-  document.getElementById('txn-tot-out').textContent = fmt(totOut) + ' MAD';
-  document.getElementById('txn-body').innerHTML = all.map(t => `
-    <tr>
-      <td class="muted sm">${fmtDate(t.txn_date)}</td>
-      <td><span class="type-pill ${IN_TYPES.includes(t.type)?'tp-in':'tp-out'}">${TYPE_LABELS[t.type]||t.type}</span></td>
-      <td>${t.description}</td>
+  const month    = document.getElementById('txn-month').value || today().slice(0,7);
+  const search   = document.getElementById('txn-search').value;
+  const typef    = document.getElementById('txn-type-filter').value;
+  const catf     = document.getElementById('txn-cat-filter').value;
+  let url = `/transactions?month=${month}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (typef)  url += `&type=${typef}`;
+  if (catf)   url += `&category=${encodeURIComponent(catf)}`;
+
+  const data = await api('GET', url);
+  document.getElementById('txn-tot-in').textContent  = fmt(data.total_in)  + ' MAD';
+  document.getElementById('txn-tot-out').textContent = fmt(data.total_out) + ' MAD';
+
+  document.getElementById('txn-body').innerHTML = data.rows.map(t => {
+    const isIn = IN_TYPES.includes(t.type);
+    const bal  = t.running_balance != null ? `<span class="${t.running_balance>=0?'bal-positive':'bal-negative'}">${fmt(t.running_balance)}</span>` : '—';
+    const ckBadge = t.check_status ? statusBadge(t.check_status) : '';
+    return `<tr class="${isIn?'row-in':'row-out'}${t.is_reconciled?' row-reconciled':''}">
+      <td class="muted sm" style="white-space:nowrap">${fmtDate(t.txn_date)}</td>
+      <td><span class="type-pill ${isIn?'tp-in':'tp-out'}">${TYPE_LABELS[t.type]||t.type}</span>${ckBadge?'<br>'+ckBadge:''}</td>
+      <td><span class="cat-pill">${t.category||'Autre'}</span></td>
+      <td style="max-width:180px">${t.description}${t.notes?`<br><span class="muted sm">${t.notes}</span>`:''}</td>
+      <td class="muted sm">${t.beneficiary||'—'}</td>
       <td class="muted sm">${t.check_number||'—'}</td>
-      <td>${t.beneficiary||'—'}</td>
-      <td class="num ${IN_TYPES.includes(t.type)?'amt-in':'amt-out'}" style="font-size:14px">${IN_TYPES.includes(t.type)?'+':'−'} ${fmt(t.amount)} MAD</td>
+      <td class="num amt-out">${!isIn?fmt(t.amount)+' MAD':'—'}</td>
+      <td class="num amt-in">${isIn?fmt(t.amount)+' MAD':'—'}</td>
+      <td class="num">${bal}</td>
+      <td style="text-align:center">
+        <button class="rc-btn" title="${t.is_reconciled?'Annuler rapprochement':'Marquer rapproché'}" onclick="toggleReconcile(${t.id}, this)">
+          ${t.is_reconciled?'🟢':'⭕'}
+        </button>
+      </td>
       <td><button class="btn btn-d btn-xs" onclick="deleteTxn(${t.id})">✕</button></td>
-    </tr>`).join('') || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucune transaction</td></tr>';
+    </tr>`;
+  }).join('') || '<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--muted)">Aucune transaction trouvée</td></tr>';
+}
+
+async function toggleReconcile(id, btn) {
+  const t = await api('PATCH', '/transactions/'+id+'/reconcile');
+  btn.textContent = t.is_reconciled ? '🟢' : '⭕';
+  btn.closest('tr').classList.toggle('row-reconciled', !!t.is_reconciled);
 }
 
 async function deleteTxn(id) {
@@ -398,95 +645,126 @@ async function deleteTxn(id) {
   toast('Transaction supprimée');
   refreshBalance();
   loadTransactions();
+  if (document.querySelector('#p-dashboard.active')) loadDashboard();
 }
 
-// ── CHÈQUES ───────────────────────────────────────────────────
+function printStatement() {
+  const title = document.getElementById('sb-acct-name').textContent;
+  const month = document.getElementById('txn-month').value;
+  const w = window.open('','_blank');
+  const rows = document.getElementById('txn-body').innerHTML;
+  w.document.write(`<html><head><title>Relevé — ${title}</title>
+  <style>body{font-family:Arial,sans-serif;padding:24px;font-size:11px}h2{margin-bottom:12px}
+  table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:5px 8px;text-align:left}
+  th{background:#f5f5f5;font-weight:700}.amt-in{color:green;font-weight:700}.amt-out{color:red;font-weight:700}
+  .bal-positive{color:#1A3A5C;font-weight:700}.bal-negative{color:red;font-weight:700}
+  .row-in{border-left:3px solid green}.row-out{border-left:3px solid red}
+  .row-reconciled{opacity:.6}.type-pill,.cat-pill{font-size:10px}
+  .btn,.rc-btn{display:none}</style></head><body>
+  <h2>🏦 Relevé Bancaire — ${title} — ${month}</h2>
+  <p>Imprimé le ${new Date().toLocaleDateString('fr-FR')}</p><br>
+  <table><thead><tr><th>Date</th><th>Type</th><th>Catégorie</th><th>Description</th><th>Bénéficiaire</th><th>N° Chèque</th><th>Débit</th><th>Crédit</th><th>Solde</th><th>Rapproché</th></tr></thead><tbody>${rows}</tbody></table>
+  </body></html>`);
+  w.document.close();
+  w.print();
+}
+
+// ── CHÈQUES ────────────────────────────────────────────────────
 async function loadCheques() {
-  const checks = await api('GET', '/checks');
+  const checks = await api('GET','/checks');
+  const out = checks.filter(c=>c.type==='cheque_out');
+  const inp = checks.filter(c=>c.type==='cheque_in');
   const pending   = checks.filter(c=>c.check_status==='pending');
-  const cashed    = checks.filter(c=>c.check_status==='cashed');
-  const cancelled = checks.filter(c=>c.check_status==='cancelled');
-  const pendingOutAmt = pending.filter(c=>c.type==='cheque_out').reduce((s,c)=>s+c.amount,0);
-  const pendingInAmt  = pending.filter(c=>c.type==='cheque_in').reduce((s,c)=>s+c.amount,0);
+  const outPendAmt = out.filter(c=>c.check_status==='pending').reduce((s,c)=>s+c.amount,0);
+  const inPendAmt  = inp.filter(c=>c.check_status==='pending').reduce((s,c)=>s+c.amount,0);
 
   document.getElementById('ck-tiles').innerHTML = [
-    { ic:'⏳', val: pending.length,    lbl:'En attente',  tc:'var(--orange)' },
-    { ic:'✅', val: cashed.length,     lbl:'Encaissés',   tc:'var(--green)' },
-    { ic:'📤', val: fmt(pendingOutAmt)+' MAD', lbl:'Montant sortant en attente', tc:'var(--red)' },
-    { ic:'📥', val: fmt(pendingInAmt)+' MAD',  lbl:'Montant entrant en attente', tc:'var(--blue)' },
-  ].map(t=>`<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
+    { ic:'📝', val:out.length,          lbl:'Chèques Émis Total',        tc:'var(--red)' },
+    { ic:'✅', val:inp.length,          lbl:'Chèques Reçus Total',        tc:'var(--green)' },
+    { ic:'⏳', val:fmt(outPendAmt)+' MAD', lbl:'En attente sortant',     tc:'var(--orange)' },
+    { ic:'📨', val:fmt(inPendAmt)+' MAD',  lbl:'En attente entrant',     tc:'var(--blue)' },
+  ].map(t=>`<div class="tile" style="--tc:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
-  document.getElementById('ck-body').innerHTML = checks.map(c => `
-    <tr>
-      <td class="muted sm">${fmtDate(c.txn_date)}</td>
-      <td><span class="type-pill ${IN_TYPES.includes(c.type)?'tp-in':'tp-out'}">${c.type==='cheque_in'?'📥 Reçu':'📤 Émis'}</span></td>
-      <td class="fw7">${c.check_number||'—'}</td>
-      <td>${c.beneficiary||'—'}</td>
-      <td class="muted sm">${c.description}</td>
-      <td class="num ${IN_TYPES.includes(c.type)?'amt-in':'amt-out'}">${IN_TYPES.includes(c.type)?'+':'−'} ${fmt(c.amount)} MAD</td>
-      <td>${STATUS_LABELS[c.check_status]||'—'}</td>
-      <td>${checkActions(c.id)}</td>
-    </tr>`).join('') || '<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--muted)">Aucun chèque enregistré</td></tr>';
+  const ckRow = (c, dir) => `<tr>
+    <td class="muted sm">${fmtDate(c.txn_date)}</td>
+    <td class="fw7">${c.check_number||'—'}</td>
+    <td>${c.beneficiary||'—'}</td>
+    <td>${dueBadge(c.due_date)||'—'}</td>
+    <td class="num fw8 ${dir==='out'?'amt-out':'amt-in'}">${dir==='out'?'−':'+'}${fmt(c.amount)} MAD</td>
+    <td>${statusBadge(c.check_status)}</td>
+    <td><div style="display:flex;gap:4px">
+      <button class="btn btn-xs" style="background:#D1FAE5;color:#065F46" onclick="quickStatus(${c.id},'cashed')">✅</button>
+      <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B" onclick="quickStatus(${c.id},'cancelled')">❌</button>
+    </div></td>
+  </tr>`;
+
+  document.getElementById('ck-out-body').innerHTML = out.map(c=>ckRow(c,'out')).join('')
+    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun chèque émis</td></tr>';
+  document.getElementById('ck-in-body').innerHTML = inp.map(c=>ckRow(c,'in')).join('')
+    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun chèque reçu</td></tr>';
 }
 
-function checkActions(id) {
-  return `<div style="display:flex;gap:4px;flex-wrap:nowrap">
-    <button class="btn btn-xs" style="background:#D1FAE5;color:#065F46;font-weight:700" onclick="updateCheckStatus(${id},'cashed')">✅</button>
-    <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B;font-weight:700" onclick="updateCheckStatus(${id},'cancelled')">❌</button>
-  </div>`;
-}
-
-async function updateCheckStatus(id, status) {
-  const label = status==='cashed' ? 'encaissé' : 'annulé';
-  if (!confirm('Marquer ce chèque comme ' + label + ' ?')) return;
-  await api('PATCH', '/checks/'+id+'/status', { check_status: status });
-  toast('Chèque marqué ' + label);
+async function quickStatus(id, status) {
+  await api('PATCH','/checks/'+id+'/status',{ check_status: status });
+  toast(status==='cashed' ? '✅ Chèque encaissé' : '❌ Chèque annulé');
   refreshBalance();
   loadCheques();
+  if (document.querySelector('#p-dashboard.active')) loadDashboard();
 }
 
-// ── RAPPORT ───────────────────────────────────────────────────
+// ── RAPPORT ────────────────────────────────────────────────────
 async function loadRapport() {
   const month = document.getElementById('rpt-month').value || today().slice(0,7);
-  const d = await api('GET', '/report?month='+month);
+  const d = await api('GET','/report?month='+month);
   const net = d.total_in - d.total_out;
+  const nc  = net>=0 ? 'var(--green)' : 'var(--red)';
+
   document.getElementById('rpt-tiles').innerHTML = [
-    { ic:'📥', val: fmt(d.total_in)+' MAD',  lbl:'Total Entrées',  tc:'var(--green)' },
-    { ic:'📤', val: fmt(d.total_out)+' MAD', lbl:'Total Sorties',  tc:'var(--red)' },
-    { ic:'📊', val: fmt(net)+' MAD',          lbl:'Flux Net du Mois', tc: net>=0?'var(--green)':'var(--red)' },
-  ].map(t=>`<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
+    { ic:'📥', val:fmt(d.total_in)+' MAD',  lbl:'Total Entrées',     tc:'var(--green)' },
+    { ic:'📤', val:fmt(d.total_out)+' MAD', lbl:'Total Sorties',     tc:'var(--red)' },
+    { ic:'📊', val:fmt(net)+' MAD',         lbl:'Flux Net du Mois',  tc:nc },
+    { ic:'📅', val:d.rows.length,           lbl:'Jours avec mouvements', tc:'var(--nv)' },
+  ].map(t=>`<div class="tile" style="--tc:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
   document.getElementById('rpt-body').innerHTML = d.rows.map(r => {
-    const net = r.total_in - r.total_out;
+    const rnet = r.total_in - r.total_out;
     return `<tr>
       <td class="fw7">${fmtDate(r.day)}</td>
-      <td class="num amt-in">+${fmt(r.total_in)} MAD</td>
-      <td class="num amt-out">−${fmt(r.total_out)} MAD</td>
-      <td class="num fw8 ${net>=0?'c-g':'c-r'}">${net>=0?'+':''}${fmt(net)} MAD</td>
+      <td class="num amt-in">+${fmt(r.total_in)}</td>
+      <td class="num amt-out">−${fmt(r.total_out)}</td>
+      <td class="num fw8 ${rnet>=0?'c-g':'c-r'}">${rnet>=0?'+':''}${fmt(rnet)} MAD</td>
     </tr>`;
   }).join('') || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted)">Aucune donnée</td></tr>';
+
+  document.getElementById('rpt-foot').innerHTML = `<tr style="background:#f9f9f9;font-weight:800">
+    <td>TOTAL</td>
+    <td class="num amt-in">+${fmt(d.total_in)}</td>
+    <td class="num amt-out">−${fmt(d.total_out)}</td>
+    <td class="num fw8 ${net>=0?'c-g':'c-r'}">${net>=0?'+':''}${fmt(net)} MAD</td>
+  </tr>`;
+
+  await Promise.all([renderDailyChart(month), renderCatChart(month)]);
 }
 
-// ── SETTINGS ──────────────────────────────────────────────────
+// ── SETTINGS ───────────────────────────────────────────────────
 async function loadSettings() {
-  const s = await api('GET', '/settings');
-  document.getElementById('cfg-name').value    = s.account_name || '';
-  document.getElementById('cfg-balance').value = s.initial_balance || 0;
+  const s = await api('GET','/settings');
+  document.getElementById('cfg-name').value    = s.account_name||'';
+  document.getElementById('cfg-balance').value = s.initial_balance||0;
 }
-
 async function saveSettings() {
-  const name    = document.getElementById('cfg-name').value.trim();
-  const balance = parseFloat(document.getElementById('cfg-balance').value)||0;
-  await api('PUT', '/settings', { account_name: name||'Compte Bancaire', initial_balance: balance });
+  const name = document.getElementById('cfg-name').value.trim();
+  const bal  = parseFloat(document.getElementById('cfg-balance').value)||0;
+  await api('PUT','/settings',{ account_name:name||'Compte Bancaire', initial_balance:bal });
   toast('Paramètres enregistrés ✓');
   refreshBalance();
 }
 
-// ── ADD TRANSACTION ───────────────────────────────────────────
+// ── ADD TRANSACTION ────────────────────────────────────────────
 function toggleCheckFields() {
   const type = document.getElementById('at-type').value;
-  const isCheck = type === 'cheque_in' || type === 'cheque_out';
-  document.getElementById('txn-check-fields').style.display = isCheck ? 'grid' : 'none';
+  const isCheck = type==='cheque_in'||type==='cheque_out';
+  document.getElementById('txn-check-fields').style.display = isCheck ? 'block' : 'none';
 }
 
 async function submitAddTxn() {
@@ -494,34 +772,32 @@ async function submitAddTxn() {
   const date   = document.getElementById('at-date').value || today();
   const amount = parseFloat(document.getElementById('at-amount').value);
   const desc   = document.getElementById('at-desc').value.trim();
-  if (!desc || !amount || amount <= 0) { toast('Remplissez tous les champs requis','er'); return; }
+  if (!desc || !amount || amount<=0) { toast('Remplissez tous les champs requis','er'); return; }
   const isCheck = type==='cheque_in'||type==='cheque_out';
   try {
-    await api('POST', '/transactions', {
-      type, txn_date: date, amount, description: desc,
-      check_number:  isCheck ? document.getElementById('at-chknum').value   : null,
-      beneficiary:   isCheck ? document.getElementById('at-benef').value     : null,
-      check_status:  isCheck ? document.getElementById('at-chkstatus').value : null,
+    await api('POST','/transactions',{
+      type, txn_date:date, amount, description:desc,
+      category: document.getElementById('at-cat').value,
+      check_number: isCheck ? document.getElementById('at-chknum').value  : null,
+      beneficiary:  isCheck ? document.getElementById('at-benef').value   : null,
+      due_date:     isCheck ? document.getElementById('at-duedate').value : null,
+      check_status: isCheck ? document.getElementById('at-chkstatus').value : null,
       notes: document.getElementById('at-notes').value
     });
     closeModal('m-add-txn');
-    document.getElementById('at-amount').value = '';
-    document.getElementById('at-desc').value   = '';
-    document.getElementById('at-chknum').value = '';
-    document.getElementById('at-benef').value  = '';
-    document.getElementById('at-notes').value  = '';
+    ['at-amount','at-desc','at-chknum','at-benef','at-duedate','at-notes'].forEach(id => document.getElementById(id).value='');
     toast('Transaction enregistrée ✓');
     refreshBalance();
-    if (document.querySelector('#p-dashboard.active')) loadDashboard();
+    if (document.querySelector('#p-dashboard.active'))    loadDashboard();
     if (document.querySelector('#p-transactions.active')) loadTransactions();
-    if (document.querySelector('#p-cheques.active')) loadCheques();
+    if (document.querySelector('#p-cheques.active'))      loadCheques();
   } catch(e) { toast(e.message,'er'); }
 }
 
-// ── INIT ─────────────────────────────────────────────────────
+// ── INIT ───────────────────────────────────────────────────────
 document.getElementById('at-date').value = today();
-loadDashboard();
 refreshBalance();
+loadDashboard();
 </script>
 </body>
 </html>
