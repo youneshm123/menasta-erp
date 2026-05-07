@@ -5,34 +5,198 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>YEX WEB — Connexion</title>
 <style>
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:"Segoe UI",Arial,sans-serif;background:#1D2D3E;min-height:100vh;display:grid;place-items:center;padding:20px}
-  .card{background:#fff;border-radius:10px;width:400px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden}
-  .card-top{background:#1D2D3E;padding:28px 32px;text-align:center}
-  .card-top .logo{font-size:40px;margin-bottom:10px}
-  .card-top h1{color:#fff;font-size:20px;font-weight:800}
-  .card-top p{color:rgba(255,255,255,.6);font-size:13px;margin-top:4px}
-  .card-body{padding:28px 32px}
-  .fg{display:flex;flex-direction:column;gap:5px;margin-bottom:16px}
-  .fg label{font-size:12px;font-weight:700;color:#6A6D70;text-transform:uppercase;letter-spacing:.5px}
-  .fg input{padding:10px 12px;border:1px solid #D9D9D9;border-radius:4px;font-size:14px;font-family:inherit;transition:border-color .15s,box-shadow .15s}
-  .fg input:focus{outline:none;border-color:#0070F2;box-shadow:0 0 0 2px rgba(0,112,242,.15)}
-  .btn{width:100%;padding:11px;background:#0070F2;color:#fff;border:none;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;transition:background .12s;font-family:inherit}
-  .btn:hover{background:#0057C2}
-  .btn:disabled{opacity:.6;cursor:not-allowed}
-  .err{background:#FFEBEE;border-left:4px solid #BB0000;color:#B71C1C;padding:10px 14px;border-radius:4px;font-size:13px;margin-bottom:14px;display:none}
-  .footer{text-align:center;padding:14px 32px;border-top:1px solid #EEEEEF;font-size:11px;color:#ABABAB}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body {
+  font-family:"Segoe UI",system-ui,Arial,sans-serif;
+  min-height:100vh;
+  display:flex;
+  background:#F0F2F5;
+}
+
+/* ── LEFT PANEL ── */
+.left {
+  width:420px;
+  flex-shrink:0;
+  background:#1A2332;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  padding:48px 44px;
+  position:relative;
+  overflow:hidden;
+}
+
+/* Subtle pattern */
+.left::before {
+  content:'';
+  position:absolute;inset:0;
+  background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);
+  background-size:28px 28px;
+  pointer-events:none;
+}
+.left::after {
+  content:'';
+  position:absolute;
+  width:360px;height:360px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,112,242,.18),transparent 70%);
+  bottom:-120px;right:-120px;
+  pointer-events:none;
+}
+
+.left-top { position:relative;z-index:1; }
+.brand-icon {
+  width:52px;height:52px;border-radius:14px;
+  background:linear-gradient(135deg,#0070F2,#00A3FF);
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;margin-bottom:20px;
+  box-shadow:0 8px 24px rgba(0,112,242,.4);
+}
+.brand-name {
+  font-size:26px;font-weight:900;color:#fff;letter-spacing:.5px;
+}
+.brand-sub {
+  font-size:13px;color:rgba(255,255,255,.4);margin-top:6px;line-height:1.5;
+}
+
+.left-features {
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;gap:18px;
+}
+.feat {
+  display:flex;align-items:center;gap:14px;
+}
+.feat-icon {
+  width:38px;height:38px;border-radius:10px;
+  background:rgba(255,255,255,.07);
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;
+}
+.feat-text { font-size:13px;color:rgba(255,255,255,.55);line-height:1.4; }
+.feat-text strong { color:rgba(255,255,255,.9);display:block;font-size:13px; }
+
+.left-foot {
+  font-size:11px;color:rgba(255,255,255,.2);
+  position:relative;z-index:1;
+}
+
+/* ── RIGHT PANEL ── */
+.right {
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:40px 24px;
+}
+
+.login-box {
+  width:100%;max-width:380px;
+}
+
+.login-title {
+  font-size:24px;font-weight:800;color:#1A2332;margin-bottom:6px;
+}
+.login-sub {
+  font-size:13px;color:#6A7080;margin-bottom:32px;
+}
+
+.fg {
+  display:flex;flex-direction:column;gap:6px;
+  margin-bottom:18px;
+}
+.fg label {
+  font-size:11px;font-weight:700;color:#6A7080;
+  text-transform:uppercase;letter-spacing:.6px;
+}
+.fg input {
+  padding:12px 14px;
+  border:1.5px solid #E5E7EB;
+  border-radius:8px;
+  font-size:14px;font-family:inherit;
+  color:#1A2332;
+  background:#fff;
+  transition:border-color .15s,box-shadow .15s;
+}
+.fg input:focus {
+  outline:none;
+  border-color:#0070F2;
+  box-shadow:0 0 0 3px rgba(0,112,242,.1);
+}
+.fg input::placeholder { color:#C0C4CC; }
+
+.err {
+  background:#FEF2F2;border:1px solid #FECACA;
+  color:#DC2626;padding:10px 14px;border-radius:8px;
+  font-size:13px;margin-bottom:16px;display:none;
+  font-weight:500;
+}
+
+.btn-login {
+  width:100%;padding:13px;
+  background:#0070F2;color:#fff;
+  border:none;border-radius:8px;
+  font-size:14px;font-weight:700;
+  cursor:pointer;font-family:inherit;
+  transition:background .15s,transform .1s,box-shadow .15s;
+  box-shadow:0 4px 14px rgba(0,112,242,.3);
+  letter-spacing:.3px;
+}
+.btn-login:hover { background:#005ED4;box-shadow:0 6px 20px rgba(0,112,242,.4); }
+.btn-login:active { transform:scale(.98); }
+.btn-login:disabled { opacity:.6;cursor:not-allowed;transform:none; }
+
+.login-footer {
+  margin-top:28px;text-align:center;
+  font-size:11px;color:#B0B5BF;
+}
+
+@media(max-width:700px){
+  body{flex-direction:column}
+  .left{width:100%;padding:32px 28px;min-height:auto}
+  .left-features{display:none}
+}
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="card-top">
-    <div class="logo">⛽</div>
-    <h1>YEX WEB</h1>
-    <p>Gestion Station Service — Maroc</p>
+
+<!-- LEFT -->
+<div class="left">
+  <div class="left-top">
+    <div class="brand-icon">⛽</div>
+    <div class="brand-name">YEX WEB</div>
+    <div class="brand-sub">Système de gestion intégré<br>pour station-service</div>
   </div>
-  <div class="card-body">
+
+  <div class="left-features">
+    <div class="feat">
+      <div class="feat-icon">⛽</div>
+      <div class="feat-text"><strong>Carburant</strong>Postes, pompes, ventes crédit, stock</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">☕</div>
+      <div class="feat-text"><strong>Café</strong>Ventes journalières, stock, bénéfice net</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🏦</div>
+      <div class="feat-text"><strong>Banque</strong>Transactions, chèques, solde en temps réel</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">📊</div>
+      <div class="feat-text"><strong>Rapports</strong>Export Excel, historique, analyses mensuelles</div>
+    </div>
+  </div>
+
+  <div class="left-foot">v1.0 · Station Hmimidi · Maroc</div>
+</div>
+
+<!-- RIGHT -->
+<div class="right">
+  <div class="login-box">
+    <div class="login-title">Connexion</div>
+    <div class="login-sub">Entrez vos identifiants pour accéder à votre espace</div>
+
     <div class="err" id="err-msg"></div>
+
     <div class="fg">
       <label>Identifiant</label>
       <input id="usr" type="text" placeholder="ex: aida.hmimidi" autocomplete="username"/>
@@ -41,9 +205,11 @@
       <label>Mot de Passe</label>
       <input id="pwd" type="password" placeholder="••••••••" autocomplete="current-password"/>
     </div>
-    <button class="btn" id="btn-login">Se Connecter</button>
+
+    <button class="btn-login" id="btn-login">Se connecter</button>
+
+    <div class="login-footer">Station Hmimidi · Maroc</div>
   </div>
-  <div class="footer">v1.0 · Station Hmimidi · Maroc</div>
 </div>
 
 <script>
@@ -56,26 +222,24 @@ async function login() {
   errMsg.style.display = 'none';
   if (!username || !password) { showErr('Veuillez saisir vos identifiants.'); return; }
   btnLogin.disabled = true;
-  btnLogin.textContent = 'Connexion…';
+  btnLogin.textContent = 'Connexion en cours…';
   try {
     const r = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ username, password })
     });
     const data = await r.json();
-    if (!r.ok) { showErr(data.error || 'Erreur de connexion'); return; }
+    if (!r.ok) { showErr(data.error || 'Identifiants incorrects'); return; }
     localStorage.setItem('fm_token', data.token);
     localStorage.setItem('fm_user', JSON.stringify(data.user));
     window.location.href = '/home';
   } catch { showErr('Impossible de contacter le serveur.'); }
-  finally { btnLogin.disabled = false; btnLogin.textContent = 'Se Connecter'; }
+  finally { btnLogin.disabled = false; btnLogin.textContent = 'Se connecter'; }
 }
 function showErr(msg) { errMsg.textContent = msg; errMsg.style.display = 'block'; }
 btnLogin.addEventListener('click', login);
 document.addEventListener('keydown', e => e.key === 'Enter' && login());
-
-// Redirect if already logged in
 if (localStorage.getItem('fm_token')) window.location.href = '/home';
 </script>
 </body>
