@@ -702,6 +702,7 @@ async function loadShiftPage() {
   for (const r of shift.pump_readings) {
     if (!readMap[r.pump_id]) readMap[r.pump_id] = { name: r.pump_name, fuel: r.fuel_name, price: r.price_per_liter };
     if (r.reading_type === 'start') readMap[r.pump_id].start = r.meter_value;
+    if (r.reading_type === 'end')   readMap[r.pump_id].end   = r.meter_value;
   }
 
   const pumpRows = Object.entries(readMap).map(([pid, r]) => `
@@ -709,7 +710,7 @@ async function loadShiftPage() {
       <td class="fw7">${r.name}</td>
       <td>${r.fuel}</td>
       <td class="num">${r.start?.toLocaleString('fr-FR', { minimumFractionDigits: 1 }) || '—'}</td>
-      <td><input type="number" class="end-reading" data-pump="${pid}" data-start="${r.start||0}" step="0.1" min="${r.start||0}" placeholder="Saisir..." style="width:140px;padding:7px 10px;border:2px solid var(--border);border-radius:4px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;"/></td>
+      <td><input type="number" class="end-reading" data-pump="${pid}" data-start="${r.start||0}" step="0.1" min="${r.start||0}" placeholder="Saisir..." value="${r.end != null ? r.end : ''}" style="width:140px;padding:7px 10px;border:2px solid var(--border);border-radius:4px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;"/></td>
       <td class="num muted">${r.price?.toFixed(3)} MAD/L</td>
     </tr>`).join('');
 
