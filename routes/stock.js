@@ -2,7 +2,7 @@ const router = require('express').Router();
 const db     = require('../db');
 const { requireAuth } = require('../middleware');
 
-const DENSITY = { 'Gazoil': 1176, 'Sans Plomb 91': 1351, 'Sans Plomb 95': 1333 };
+const DENSITY = { 'Gazoil': 1176, 'Essence 91': 1351, 'Essence 95': 1333 };
 
 router.get('/', requireAuth, (_req, res) => {
   const fuels = db.prepare('SELECT * FROM fuel_types WHERE is_active=1').all();
