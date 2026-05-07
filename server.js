@@ -13,6 +13,9 @@ app.use('/api/pumps',     require('./routes/pumps'));
 app.use('/api/credits',   require('./routes/credits'));
 app.use('/api/products',  require('./routes/products'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/reports',   require('./routes/reports'));
+app.use('/api/expenses',  require('./routes/expenses'));
+app.use('/api/stock',     require('./routes/stock'));
 
 app.get('/',    (_req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/app', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));

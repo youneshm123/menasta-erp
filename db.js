@@ -118,6 +118,28 @@ CREATE TABLE IF NOT EXISTS product_sales (
   sale_time    TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
   recorded_by  INTEGER NOT NULL REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS expenses (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  category     TEXT NOT NULL DEFAULT 'Autre',
+  description  TEXT NOT NULL,
+  amount       REAL NOT NULL,
+  expense_date TEXT NOT NULL DEFAULT (date('now','localtime')),
+  notes        TEXT,
+  recorded_by  INTEGER REFERENCES users(id),
+  created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+CREATE TABLE IF NOT EXISTS fuel_deliveries (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  fuel_type_id    INTEGER NOT NULL REFERENCES fuel_types(id),
+  quantity_liters REAL    NOT NULL,
+  delivery_date   TEXT    NOT NULL DEFAULT (date('now','localtime')),
+  supplier        TEXT,
+  notes           TEXT,
+  recorded_by     INTEGER REFERENCES users(id),
+  created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+);
 `);
 
 // ── Helpers ──────────────────────────────────────────────────
