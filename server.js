@@ -32,6 +32,6 @@ app.use((err, _req, res, _next) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('\n⛽ YEX WEB démarré');
-  console.log(`   http://localhost:${PORT}  — YEX WEB\n`);
+  console.log('\n⛽ MENASTA démarré');
+  console.log(`   http://localhost:${PORT}  — MENASTA\n`);
 });

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>YEX WEB</title>
+<title>MENASTA</title>
 <link rel="stylesheet" href="/css/fiori.css"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -11,7 +11,7 @@
 
 <!-- SHELL BAR -->
 <header id="shell">
-  <div class="shell-brand"><span>⛽</span> YEX WEB</div>
+  <div class="shell-brand"><span>⛽</span> MENASTA</div>
   <div class="shell-title"><strong>Gestion Station Service</strong></div>
   <button class="shell-btn" title="Tableau de bord" onclick="goTo('dashboard')">🏠</button>
   <div class="shell-user" onclick="goTo('settings')">
@@ -48,7 +48,7 @@
     <div class="nav-item" data-p="settings"><span class="ni">⚙️</span>Paramètres</div>
 
     <a href="/home" style="display:block;padding:10px 18px;color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;border-top:1px solid rgba(255,255,255,.08)">← Accueil</a>
-    <div class="nav-footer">v1.0 · YEX WEB</div>
+    <div class="nav-footer">v1.0 · MENASTA</div>
   </nav>
 
   <!-- MAIN -->
@@ -260,7 +260,7 @@
             <div class="s-head"><div class="s-title">ℹ️ À Propos</div></div>
             <div class="s-body">
               <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px;">
-                <div class="fxb"><span class="muted">Application</span><span class="fw7">YEX WEB</span></div>
+                <div class="fxb"><span class="muted">Application</span><span class="fw7">MENASTA</span></div>
                 <div class="fxb"><span class="muted">Version</span><span>1.0.0</span></div>
                 <div class="fxb"><span class="muted">Technologie</span><span>Node.js + SQLite</span></div>
                 <div class="fxb"><span class="muted">Interface</span><span>SAP Fiori Horizon</span></div>
@@ -1499,10 +1499,10 @@ function printShift(id) {
       return `<tr><td>${sr.pump_name}</td><td>${sr.fuel_name}</td><td>${sr.meter_value?.toFixed(1)}</td><td>${er.meter_value?.toFixed(1)||'—'}</td><td>${liters.toFixed(1)} L</td><td>${fmt(rev)} MAD</td></tr>`;
     }).join('');
     const w = window.open('','_blank');
-    w.document.write(`<html><head><title>Poste N°${s.id} — YEX WEB</title>
+    w.document.write(`<html><head><title>Poste N°${s.id} — MENASTA</title>
     <style>body{font-family:Arial,sans-serif;padding:30px;font-size:13px}h1{font-size:18px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{border:1px solid #ccc;padding:7px 10px;text-align:left}th{background:#f5f5f5;font-weight:700}.num{text-align:right}.summary{background:#f9f9f9;padding:16px;border-radius:6px;margin-top:16px}.row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eee}.big{font-size:20px;font-weight:800;color:#188918}</style>
     </head><body>
-    <h1>YEX WEB — Récapitulatif Poste N° ${s.id}</h1>
+    <h1>MENASTA — Récapitulatif Poste N° ${s.id}</h1>
     <p>Ouvert par <strong>${s.opened_by_name}</strong> · ${fmtDT(s.opened_at)} → ${s.closed_at?fmtDT(s.closed_at):'En cours'}</p>
     <table><thead><tr><th>Pompe</th><th>Carburant</th><th>Début</th><th>Fin</th><th>Litres</th><th>CA</th></tr></thead><tbody>${pumpRows}</tbody></table>
     <div class="summary">
@@ -1511,7 +1511,7 @@ function printShift(id) {
       <div class="row"><span>(+) Produits</span><span>+${fmt(s.total_product_sales||0)} MAD</span></div>
       <div class="row"><span class="big">CAISSE NETTE</span><span class="big">${fmt(s.net_cash||0)} MAD</span></div>
     </div>
-    <p style="margin-top:20px;color:#999;font-size:11px">Imprimé le ${new Date().toLocaleString('fr-MA')} — YEX WEB</p>
+    <p style="margin-top:20px;color:#999;font-size:11px">Imprimé le ${new Date().toLocaleString('fr-MA')} — MENASTA</p>
     </body></html>`);
     w.document.close(); w.print();
   });

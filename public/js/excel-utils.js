@@ -37,7 +37,7 @@ async function exportTableToExcel(tableId, filename, opts) {
 
   // ── Build workbook ─────────────────────────────────────────
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'YEX WEB';
+  wb.creator = 'MENASTA';
   wb.created = new Date();
 
   const ws = wb.addWorksheet('Données', {
