@@ -67,7 +67,7 @@ async function login() {
     if (!r.ok) { showErr(data.error || 'Erreur de connexion'); return; }
     localStorage.setItem('fm_token', data.token);
     localStorage.setItem('fm_user', JSON.stringify(data.user));
-    window.location.href = '/app';
+    window.location.href = '/home';
   } catch { showErr('Impossible de contacter le serveur.'); }
   finally { btnLogin.disabled = false; btnLogin.textContent = 'Se Connecter'; }
 }
@@ -76,7 +76,7 @@ btnLogin.addEventListener('click', login);
 document.addEventListener('keydown', e => e.key === 'Enter' && login());
 
 // Redirect if already logged in
-if (localStorage.getItem('fm_token')) window.location.href = '/app';
+if (localStorage.getItem('fm_token')) window.location.href = '/home';
 </script>
 </body>
 </html>

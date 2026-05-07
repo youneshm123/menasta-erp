@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>YEX WEB — Accueil</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",Arial,sans-serif;background:#1D2D3E;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:32px}
+  h1{color:#fff;font-size:22px;font-weight:800;text-align:center;letter-spacing:.5px}
+  .sub{color:rgba(255,255,255,.5);font-size:13px;text-align:center;margin-top:4px}
+  .cards{display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+  .card{background:#fff;border-radius:16px;width:260px;padding:40px 32px;text-align:center;cursor:pointer;box-shadow:0 8px 40px rgba(0,0,0,.3);transition:transform .15s,box-shadow .15s;border-top:6px solid transparent;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:16px}
+  .card:hover{transform:translateY(-6px);box-shadow:0 16px 60px rgba(0,0,0,.4)}
+  .card.fuel{border-top-color:#0070F2}
+  .card.cafe{border-top-color:#7B3F00}
+  .icon{font-size:64px;line-height:1}
+  .card-title{font-size:20px;font-weight:900;color:#1D2D3E}
+  .card-desc{font-size:13px;color:#6A6D70;line-height:1.5}
+  .btn-go{margin-top:8px;padding:10px 28px;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit}
+  .fuel .btn-go{background:#0070F2}
+  .cafe .btn-go{background:#7B3F00}
+  .logout{color:rgba(255,255,255,.4);font-size:12px;cursor:pointer;background:none;border:none;font-family:inherit;text-decoration:underline}
+  .logout:hover{color:#fff}
+  .user-bar{color:rgba(255,255,255,.6);font-size:13px;display:flex;align-items:center;gap:12px}
+</style>
+</head>
+<body>
+<div>
+  <h1>⛽ YEX WEB</h1>
+  <div class="sub">Choisissez votre espace de gestion</div>
+</div>
+
+<div class="cards">
+  <a href="/app" class="card fuel">
+    <div class="icon">⛽</div>
+    <div class="card-title">Carburant</div>
+    <div class="card-desc">Postes, pompes, ventes crédit, stock carburant, rapports mensuels</div>
+    <button class="btn-go">Ouvrir →</button>
+  </a>
+  <a href="/cafe" class="card cafe">
+    <div class="icon">☕</div>
+    <div class="card-title">Café</div>
+    <div class="card-desc">Caisse, menu, commandes, stock, rapports journaliers</div>
+    <button class="btn-go">Ouvrir →</button>
+  </a>
+</div>
+
+<div class="user-bar">
+  <span id="user-name"></span>
+  <button class="logout" onclick="logout()">Se déconnecter</button>
+</div>
+
+<script>
+  const token = localStorage.getItem('fm_token');
+  const user  = JSON.parse(localStorage.getItem('fm_user') || 'null');
+  if (!token) { window.location.href = '/'; }
+  else if (user) document.getElementById('user-name').textContent = '👤 ' + user.full_name;
+  function logout() { localStorage.clear(); window.location.href = '/'; }
+</script>
+</body>
+</html>
