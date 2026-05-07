@@ -8,285 +8,332 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 body {
-  font-family:"Segoe UI",Arial,sans-serif;
-  background:#0A0F1E;
+  font-family:"Segoe UI",system-ui,Arial,sans-serif;
+  background:#F0F2F5;
   min-height:100vh;
   display:flex;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width:220px;
+  min-height:100vh;
+  background:#1A2332;
+  display:flex;
   flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  padding:40px 24px;
-  overflow:hidden;
-  position:relative;
-}
-
-/* Animated background orbs */
-body::before, body::after {
-  content:'';
+  flex-shrink:0;
   position:fixed;
-  border-radius:50%;
-  filter:blur(80px);
-  opacity:.25;
-  animation:drift 12s ease-in-out infinite alternate;
-  pointer-events:none;
-}
-body::before {
-  width:600px;height:600px;
-  background:radial-gradient(circle,#0070F2,transparent 70%);
-  top:-100px;left:-100px;
-}
-body::after {
-  width:500px;height:500px;
-  background:radial-gradient(circle,#7B3F00,transparent 70%);
-  bottom:-80px;right:-80px;
-  animation-delay:-6s;
-}
-@keyframes drift {
-  from{transform:translate(0,0) scale(1)}
-  to{transform:translate(40px,30px) scale(1.1)}
+  left:0;top:0;bottom:0;
 }
 
-/* Grid dots pattern */
-.bg-grid {
-  position:fixed;inset:0;
-  background-image:radial-gradient(circle,rgba(255,255,255,.06) 1px,transparent 1px);
-  background-size:32px 32px;
-  pointer-events:none;
+.sb-logo {
+  padding:28px 24px 24px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.sb-logo-icon {
+  width:40px;height:40px;border-radius:10px;
+  background:linear-gradient(135deg,#0070F2,#00A3FF);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;margin-bottom:10px;
+}
+.sb-logo-name {
+  font-size:17px;font-weight:800;color:#fff;letter-spacing:.5px;
+}
+.sb-logo-sub {
+  font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;letter-spacing:.3px;
+  text-transform:uppercase;
 }
 
-/* Header */
-.header {
-  text-align:center;
-  margin-bottom:48px;
-  position:relative;
-  z-index:1;
+.sb-section {
+  font-size:9px;font-weight:700;color:rgba(255,255,255,.25);
+  letter-spacing:1px;text-transform:uppercase;
+  padding:20px 24px 8px;
 }
-.logo-ring {
-  width:72px;height:72px;
-  border-radius:20px;
+
+.sb-item {
+  display:flex;align-items:center;gap:12px;
+  padding:11px 24px;
+  text-decoration:none;
+  color:rgba(255,255,255,.55);
+  font-size:13px;font-weight:500;
+  transition:background .15s,color .15s;
+  border-left:3px solid transparent;
+  cursor:pointer;
+}
+.sb-item:hover { background:rgba(255,255,255,.05); color:#fff; }
+.sb-item.active { background:rgba(0,112,242,.15); color:#fff; border-left-color:#0070F2; }
+
+.sb-item-icon {
+  width:30px;height:30px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;
+}
+.sb-item.fuel  .sb-item-icon { background:rgba(0,112,242,.2); }
+.sb-item.cafe  .sb-item-icon { background:rgba(217,119,6,.2);  }
+.sb-item.bank  .sb-item-icon { background:rgba(20,184,166,.2); }
+
+.sb-foot {
+  margin-top:auto;
+  padding:20px 24px;
+  border-top:1px solid rgba(255,255,255,.07);
+}
+.sb-user {
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+}
+.sb-avatar {
+  width:34px;height:34px;border-radius:50%;
   background:linear-gradient(135deg,#0070F2,#00C6FF);
   display:flex;align-items:center;justify-content:center;
-  font-size:32px;
-  margin:0 auto 16px;
-  box-shadow:0 0 40px rgba(0,112,242,.5);
+  font-size:12px;font-weight:800;color:#fff;flex-shrink:0;
 }
-.app-name {
-  font-size:28px;font-weight:900;
-  background:linear-gradient(90deg,#fff 0%,#a0b4d0 100%);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-  letter-spacing:1px;
+.sb-user-name { font-size:12px;font-weight:600;color:#fff; }
+.sb-user-role { font-size:10px;color:rgba(255,255,255,.3); }
+.sb-logout {
+  width:100%;padding:8px;border-radius:8px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+  color:rgba(255,255,255,.4);font-size:11px;font-family:inherit;
+  cursor:pointer;transition:background .15s,color .15s;
 }
-.app-sub {
-  color:rgba(255,255,255,.35);
-  font-size:13px;margin-top:6px;
-  letter-spacing:.3px;
+.sb-logout:hover { background:rgba(239,68,68,.15);color:#f87171;border-color:rgba(239,68,68,.3); }
+
+/* ── MAIN ── */
+.main {
+  margin-left:220px;
+  flex:1;
+  padding:36px 36px;
+  min-height:100vh;
 }
 
-/* Cards grid */
-.cards {
+.topbar {
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:32px;
+}
+.topbar-greeting {
+  font-size:22px;font-weight:800;color:#1A2332;
+}
+.topbar-sub {
+  font-size:13px;color:#6A7080;margin-top:3px;
+}
+.topbar-clock {
+  font-size:13px;color:#6A7080;font-variant-numeric:tabular-nums;
+  background:#fff;border:1px solid #E5E7EB;border-radius:8px;
+  padding:8px 14px;font-weight:500;
+}
+
+/* ── MODULE CARDS ── */
+.modules {
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:20px;
-  width:100%;max-width:860px;
-  position:relative;z-index:1;
+  margin-bottom:32px;
 }
-@media(max-width:700px){.cards{grid-template-columns:1fr}}
+@media(max-width:800px){.modules{grid-template-columns:1fr}}
 
-.card {
-  position:relative;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:20px;
-  padding:32px 28px;
-  text-decoration:none;
-  display:flex;flex-direction:column;gap:14px;
-  cursor:pointer;
+.mod-card {
+  background:#fff;
+  border-radius:16px;
   overflow:hidden;
-  transition:transform .2s,border-color .2s,box-shadow .2s;
-  backdrop-filter:blur(12px);
+  text-decoration:none;
+  display:flex;flex-direction:column;
+  border:1px solid #E5E7EB;
+  transition:transform .18s,box-shadow .18s;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
 }
-.card:hover {
-  transform:translateY(-6px);
-  box-shadow:0 24px 60px rgba(0,0,0,.5);
+.mod-card:hover {
+  transform:translateY(-4px);
+  box-shadow:0 12px 32px rgba(0,0,0,.1);
 }
-.card.fuel:hover  { border-color:rgba(0,112,242,.5);  box-shadow:0 24px 60px rgba(0,112,242,.2); }
-.card.cafe:hover  { border-color:rgba(123,63,0,.8);   box-shadow:0 24px 60px rgba(202,107,20,.2); }
-.card.bank:hover  { border-color:rgba(99,179,255,.4); box-shadow:0 24px 60px rgba(99,179,255,.15); }
 
-/* Card glow top border */
-.card::before {
-  content:'';
-  position:absolute;top:0;left:0;right:0;
-  height:2px;
-  border-radius:20px 20px 0 0;
+.mod-header {
+  padding:24px 24px 20px;
+  display:flex;align-items:flex-start;justify-content:space-between;
 }
-.card.fuel::before  { background:linear-gradient(90deg,#0070F2,#00C6FF); }
-.card.cafe::before  { background:linear-gradient(90deg,#92400E,#F59E0B); }
-.card.bank::before  { background:linear-gradient(90deg,#1D4ED8,#60A5FA); }
-
-/* Card glow bg */
-.card-glow {
-  position:absolute;
-  width:200px;height:200px;
-  border-radius:50%;
-  filter:blur(60px);
-  opacity:0;
-  transition:opacity .3s;
-  pointer-events:none;
-  top:-60px;right:-60px;
-}
-.card:hover .card-glow { opacity:.12; }
-.card.fuel  .card-glow { background:#0070F2; }
-.card.cafe  .card-glow { background:#F59E0B; }
-.card.bank  .card-glow { background:#60A5FA; }
-
-.card-icon {
-  width:52px;height:52px;border-radius:14px;
+.mod-icon {
+  width:48px;height:48px;border-radius:12px;
   display:flex;align-items:center;justify-content:center;
-  font-size:26px;
-  flex-shrink:0;
+  font-size:24px;
 }
-.card.fuel  .card-icon { background:rgba(0,112,242,.15); }
-.card.cafe  .card-icon { background:rgba(245,158,11,.15); }
-.card.bank  .card-icon { background:rgba(96,165,250,.15); }
+.mod-card.fuel .mod-icon { background:#EFF6FF; }
+.mod-card.cafe .mod-icon { background:#FFFBEB; }
+.mod-card.bank .mod-icon { background:#F0FDFA; }
 
-.card-title {
-  font-size:18px;font-weight:800;
-  color:#fff;
-}
-.card-desc {
-  font-size:12px;
-  color:rgba(255,255,255,.4);
-  line-height:1.6;
-  flex:1;
-}
-
-.card-arrow {
-  display:flex;align-items:center;gap:6px;
-  font-size:12px;font-weight:700;
-  margin-top:4px;
-  opacity:.5;
-  transition:opacity .2s,gap .2s;
-}
-.card:hover .card-arrow { opacity:1; gap:10px; }
-.card.fuel  .card-arrow { color:#60AEFF; }
-.card.cafe  .card-arrow { color:#FBBF24; }
-.card.bank  .card-arrow { color:#93C5FD; }
-
-/* Status badges */
-.status-row {
-  display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;
-}
-.badge {
-  font-size:10px;font-weight:700;
-  padding:2px 8px;border-radius:20px;
-  letter-spacing:.3px;
-}
-.badge-blue  { background:rgba(0,112,242,.2);color:#60AEFF; }
-.badge-amber { background:rgba(245,158,11,.2);color:#FBBF24; }
-.badge-teal  { background:rgba(20,184,166,.2);color:#5EEAD4; }
-
-/* Footer */
-.footer {
-  margin-top:44px;
-  display:flex;align-items:center;gap:16px;
-  position:relative;z-index:1;
-}
-.user-pill {
-  display:flex;align-items:center;gap:8px;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.1);
-  border-radius:30px;
-  padding:6px 14px 6px 10px;
-  font-size:12px;color:rgba(255,255,255,.6);
-}
-.user-avatar {
-  width:24px;height:24px;border-radius:50%;
-  background:linear-gradient(135deg,#0070F2,#00C6FF);
+.mod-arrow {
+  width:28px;height:28px;border-radius:8px;
+  background:#F3F4F6;
   display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:800;color:#fff;
-}
-.logout-btn {
-  background:rgba(255,255,255,.05);
-  border:1px solid rgba(255,255,255,.1);
-  border-radius:20px;
-  padding:6px 16px;
-  font-size:12px;color:rgba(255,255,255,.4);
-  cursor:pointer;font-family:inherit;
+  font-size:13px;color:#9CA3AF;
   transition:background .15s,color .15s;
 }
-.logout-btn:hover { background:rgba(255,80,80,.15);color:#ff8080;border-color:rgba(255,80,80,.3); }
+.mod-card:hover .mod-arrow { background:#0070F2;color:#fff; }
+.mod-card.cafe:hover .mod-arrow { background:#D97706; }
+.mod-card.bank:hover .mod-arrow { background:#0D9488; }
 
-/* Clock */
-.clock {
-  font-size:12px;color:rgba(255,255,255,.25);
-  font-variant-numeric:tabular-nums;
-  letter-spacing:.5px;
+.mod-body { padding:0 24px 24px; }
+.mod-title { font-size:17px;font-weight:800;color:#1A2332;margin-bottom:6px; }
+.mod-desc  { font-size:12px;color:#6A7080;line-height:1.6;margin-bottom:16px; }
+
+.mod-tags { display:flex;gap:6px;flex-wrap:wrap; }
+.tag {
+  font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.2px;
 }
+.tag-blue  { background:#DBEAFE;color:#1D4ED8; }
+.tag-amber { background:#FEF3C7;color:#92400E; }
+.tag-teal  { background:#CCFBF1;color:#0F766E; }
+
+.mod-footer {
+  padding:12px 24px;
+  border-top:1px solid #F3F4F6;
+  font-size:11px;font-weight:700;letter-spacing:.3px;
+  display:flex;align-items:center;gap:6px;
+}
+.mod-card.fuel .mod-footer { color:#1D4ED8; }
+.mod-card.cafe .mod-footer { color:#92400E; }
+.mod-card.bank .mod-footer { color:#0F766E; }
+
+/* ── BOTTOM INFO ── */
+.info-row {
+  display:grid;grid-template-columns:repeat(3,1fr);gap:16px;
+}
+.info-box {
+  background:#fff;border:1px solid #E5E7EB;border-radius:12px;
+  padding:18px 20px;
+  display:flex;align-items:center;gap:14px;
+}
+.info-box-icon {
+  width:38px;height:38px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+}
+.info-box.v1 .info-box-icon { background:#EFF6FF; }
+.info-box.v2 .info-box-icon { background:#FFFBEB; }
+.info-box.v3 .info-box-icon { background:#F0FDFA; }
+.info-box-label { font-size:11px;color:#9CA3AF;font-weight:600; }
+.info-box-val   { font-size:15px;font-weight:800;color:#1A2332;margin-top:2px; }
 </style>
 </head>
 <body>
-<div class="bg-grid"></div>
 
-<div class="header">
-  <div class="logo-ring">⛽</div>
-  <div class="app-name">YEX WEB</div>
-  <div class="app-sub">Système de gestion de station-service</div>
-</div>
-
-<div class="cards">
-
-  <a href="/app" class="card fuel">
-    <div class="card-glow"></div>
-    <div class="card-icon">⛽</div>
-    <div>
-      <div class="card-title">Carburant</div>
-      <div class="status-row">
-        <span class="badge badge-blue">Postes & Pompes</span>
-        <span class="badge badge-teal">Stock</span>
-      </div>
-    </div>
-    <div class="card-desc">Gestion des postes, pompes, ventes crédit, stock carburant et rapports mensuels.</div>
-    <div class="card-arrow">Ouvrir <span>→</span></div>
-  </a>
-
-  <a href="/cafe" class="card cafe">
-    <div class="card-glow"></div>
-    <div class="card-icon">☕</div>
-    <div>
-      <div class="card-title">Café</div>
-      <div class="status-row">
-        <span class="badge badge-amber">Ventes</span>
-        <span class="badge badge-amber">Stock</span>
-      </div>
-    </div>
-    <div class="card-desc">Suivi des ventes, consommation du stock, bénéfice net et rapport journalier.</div>
-    <div class="card-arrow">Ouvrir <span>→</span></div>
-  </a>
-
-  <a href="/bank" class="card bank">
-    <div class="card-glow"></div>
-    <div class="card-icon">🏦</div>
-    <div>
-      <div class="card-title">Banque</div>
-      <div class="status-row">
-        <span class="badge badge-teal">Transactions</span>
-        <span class="badge badge-teal">Chèques</span>
-      </div>
-    </div>
-    <div class="card-desc">Dépôts, retraits, virements, chèques reçus et émis, solde en temps réel.</div>
-    <div class="card-arrow">Ouvrir <span>→</span></div>
-  </a>
-
-</div>
-
-<div class="footer">
-  <div class="user-pill">
-    <div class="user-avatar" id="user-initials">?</div>
-    <span id="user-name">Chargement...</span>
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">⛽</div>
+    <div class="sb-logo-name">YEX WEB</div>
+    <div class="sb-logo-sub">Station Service</div>
   </div>
-  <div class="clock" id="clock"></div>
-  <button class="logout-btn" onclick="logout()">Déconnexion</button>
+
+  <div class="sb-section">Modules</div>
+  <a href="/app"  class="sb-item fuel">
+    <div class="sb-item-icon">⛽</div> Carburant
+  </a>
+  <a href="/cafe" class="sb-item cafe">
+    <div class="sb-item-icon">☕</div> Café
+  </a>
+  <a href="/bank" class="sb-item bank">
+    <div class="sb-item-icon">🏦</div> Banque
+  </a>
+
+  <div class="sb-foot">
+    <div class="sb-user">
+      <div class="sb-avatar" id="sb-initials">?</div>
+      <div>
+        <div class="sb-user-name" id="sb-name">Chargement…</div>
+        <div class="sb-user-role">Administrateur</div>
+      </div>
+    </div>
+    <button class="sb-logout" onclick="logout()">← Déconnexion</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-greeting" id="greeting">Bonjour 👋</div>
+      <div class="topbar-sub">Choisissez un module pour commencer</div>
+    </div>
+    <div class="topbar-clock" id="clock">—</div>
+  </div>
+
+  <!-- Module cards -->
+  <div class="modules">
+
+    <a href="/app" class="mod-card fuel">
+      <div class="mod-header">
+        <div class="mod-icon">⛽</div>
+        <div class="mod-arrow">→</div>
+      </div>
+      <div class="mod-body">
+        <div class="mod-title">Carburant</div>
+        <div class="mod-desc">Gestion complète des postes, pompes, ventes crédit, stock et rapports mensuels.</div>
+        <div class="mod-tags">
+          <span class="tag tag-blue">Postes</span>
+          <span class="tag tag-blue">Pompes</span>
+          <span class="tag tag-blue">Stock</span>
+          <span class="tag tag-blue">Rapports</span>
+        </div>
+      </div>
+      <div class="mod-footer">Ouvrir le module →</div>
+    </a>
+
+    <a href="/cafe" class="mod-card cafe">
+      <div class="mod-header">
+        <div class="mod-icon">☕</div>
+        <div class="mod-arrow">→</div>
+      </div>
+      <div class="mod-body">
+        <div class="mod-title">Café</div>
+        <div class="mod-desc">Suivi des ventes journalières, consommation stock, bénéfice net et rapport.</div>
+        <div class="mod-tags">
+          <span class="tag tag-amber">Ventes</span>
+          <span class="tag tag-amber">Stock</span>
+          <span class="tag tag-amber">Bénéfice</span>
+        </div>
+      </div>
+      <div class="mod-footer">Ouvrir le module →</div>
+    </a>
+
+    <a href="/bank" class="mod-card bank">
+      <div class="mod-header">
+        <div class="mod-icon">🏦</div>
+        <div class="mod-arrow">→</div>
+      </div>
+      <div class="mod-body">
+        <div class="mod-title">Banque</div>
+        <div class="mod-desc">Dépôts, retraits, virements, chèques reçus et émis, solde en temps réel.</div>
+        <div class="mod-tags">
+          <span class="tag tag-teal">Transactions</span>
+          <span class="tag tag-teal">Chèques</span>
+          <span class="tag tag-teal">Solde</span>
+        </div>
+      </div>
+      <div class="mod-footer">Ouvrir le module →</div>
+    </a>
+
+  </div>
+
+  <!-- Info row -->
+  <div class="info-row">
+    <div class="info-box v1">
+      <div class="info-box-icon">⛽</div>
+      <div>
+        <div class="info-box-label">MODULE</div>
+        <div class="info-box-val">Carburant</div>
+      </div>
+    </div>
+    <div class="info-box v2">
+      <div class="info-box-icon">☕</div>
+      <div>
+        <div class="info-box-label">MODULE</div>
+        <div class="info-box-val">Café</div>
+      </div>
+    </div>
+    <div class="info-box v3">
+      <div class="info-box-icon">🏦</div>
+      <div>
+        <div class="info-box-label">MODULE</div>
+        <div class="info-box-val">Banque</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -294,18 +341,23 @@ body::after {
   const user  = JSON.parse(localStorage.getItem('fm_user') || 'null');
   if (!token) { window.location.href = '/'; }
   else if (user) {
-    document.getElementById('user-name').textContent = user.full_name;
-    const initials = user.full_name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    document.getElementById('user-initials').textContent = initials;
+    const name = user.full_name;
+    document.getElementById('sb-name').textContent = name;
+    document.getElementById('greeting').textContent = 'Bonjour, ' + name.split(' ')[0] + ' 👋';
+    const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('sb-initials').textContent = initials;
   }
 
   function logout() { localStorage.clear(); window.location.href = '/'; }
 
   function updateClock() {
     const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+    const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
     document.getElementById('clock').textContent =
-      now.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) + ' · ' +
-      now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      days[now.getDay()] + ' ' + now.getDate() + ' ' + months[now.getMonth()] + ' · ' + h + ':' + m;
   }
   updateClock();
   setInterval(updateClock, 1000);
