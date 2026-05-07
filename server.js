@@ -17,11 +17,13 @@ app.use('/api/reports',   require('./routes/reports'));
 app.use('/api/expenses',  require('./routes/expenses'));
 app.use('/api/stock',     require('./routes/stock'));
 app.use('/api/cafe',      require('./routes/cafe'));
+app.use('/api/bank',      require('./routes/bank'));
 
 app.get('/',      (_req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/home',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
 app.get('/app',   (_req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
 app.get('/cafe',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'cafe.html')));
+app.get('/bank',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'bank.html')));
 
 app.use((err, _req, res, _next) => {
   console.error(err);
