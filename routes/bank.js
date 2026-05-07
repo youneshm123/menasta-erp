@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS bank_transactions (
 try { db.exec('ALTER TABLE bank_transactions ADD COLUMN category TEXT NOT NULL DEFAULT \'Autre\''); } catch(_) {}
 try { db.exec('ALTER TABLE bank_transactions ADD COLUMN due_date TEXT'); } catch(_) {}
 try { db.exec('ALTER TABLE bank_transactions ADD COLUMN is_reconciled INTEGER NOT NULL DEFAULT 0'); } catch(_) {}
+try { db.exec('ALTER TABLE bank_transactions ADD COLUMN reconciled_at TEXT'); } catch(_) {}
 
 const IN_TYPES  = ['depot', 'virement_in', 'cheque_in'];
 const OUT_TYPES = ['retrait', 'virement_out', 'cheque_out'];
@@ -214,6 +215,35 @@ router.get('/report', requireAuth, (req, res) => {
   const totIn  = rows.reduce((s,r)=>s+r.total_in,0);
   const totOut = rows.reduce((s,r)=>s+r.total_out,0);
   res.json({ month, rows, total_in: totIn, total_out: totOut, net: totIn - totOut });
+});
+
+// ── reconciliation session ────────────────────────────────────
+router.get('/reconcile/unreconciled', requireAuth, (_req, res) => {
+  const s   = db.prepare('SELECT initial_balance FROM bank_settings WHERE id=1').get();
+  const all = db.prepare('SELECT id, type, amount FROM bank_transactions ORDER BY txn_date ASC, id ASC').all();
+  let bal = s.initial_balance;
+  const balMap = {};
+  for (const r of all) { bal += sign(r.type) * r.amount; balMap[r.id] = bal; }
+
+  const reconciledBal = Number(db.prepare(`
+    SELECT COALESCE(SUM(CASE WHEN type IN ('depot','virement_in','cheque_in') THEN amount ELSE -amount END),0) as t
+    FROM bank_transactions WHERE is_reconciled=1
+  `).get().t) + s.initial_balance;
+
+  const rows = db.prepare(`
+    SELECT * FROM bank_transactions WHERE is_reconciled=0 ORDER BY txn_date ASC, id ASC
+  `).all();
+
+  res.json({ rows: rows.map(r => ({ ...r, running_balance: balMap[r.id] ?? null })), reconciled_balance: reconciledBal });
+});
+
+router.post('/reconcile/session', requireAuth, (req, res) => {
+  const { ids, statement_date } = req.body || {};
+  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ids requis' });
+  const date = statement_date || new Date().toISOString().slice(0,10);
+  const stmt = db.prepare('UPDATE bank_transactions SET is_reconciled=1, reconciled_at=? WHERE id=?');
+  db.transaction(() => { for (const id of ids) stmt.run(date, id); })();
+  res.json({ ok: true, count: ids.length });
 });
 
 module.exports = router;

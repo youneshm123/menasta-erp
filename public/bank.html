@@ -155,6 +155,7 @@ nav{flex:1;padding:8px 0;overflow-y:auto}
     <div class="nav-item" data-p="cheques">📝 Chèques</div>
     <div class="nav-grp">Analyses</div>
     <div class="nav-item" data-p="rapport">📊 Rapport Mensuel</div>
+    <div class="nav-item" data-p="reconcile">✅ Rapprochement</div>
     <div class="nav-grp">Système</div>
     <div class="nav-item" data-p="settings">⚙️ Paramètres</div>
   </nav>
@@ -287,6 +288,57 @@ nav{flex:1;padding:8px 0;overflow-y:auto}
           <tbody id="rpt-body"></tbody>
           <tfoot id="rpt-foot"></tfoot>
         </table></div>
+      </div>
+    </div>
+
+    <!-- ══ RAPPROCHEMENT ══ -->
+    <div class="page" id="p-reconcile">
+      <!-- Summary bar -->
+      <div class="tiles" id="rc-tiles" style="margin-bottom:16px"></div>
+
+      <!-- Statement balance input -->
+      <div class="section" style="max-width:500px;margin-bottom:20px">
+        <div class="s-head"><div class="s-title">📄 Solde du Relevé Bancaire</div></div>
+        <div class="s-body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div class="fg" style="flex:1;min-width:160px">
+            <label>Date du relevé</label>
+            <input type="date" id="rc-date"/>
+          </div>
+          <div class="fg" style="flex:1;min-width:160px">
+            <label>Solde final du relevé (MAD)</label>
+            <input type="number" id="rc-statement-bal" placeholder="0.00" step="0.01" oninput="rcUpdate()"/>
+          </div>
+          <button class="btn btn-s" onclick="rcValidate()" id="rc-validate-btn" disabled>✅ Valider le rapprochement</button>
+        </div>
+      </div>
+
+      <!-- Écart indicator -->
+      <div id="rc-ecart-bar" style="display:none;padding:14px 20px;border-radius:10px;margin-bottom:16px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:12px"></div>
+
+      <!-- Unreconciled transactions -->
+      <div class="section">
+        <div class="s-head">
+          <div class="s-title">⭕ Transactions à Rapprocher</div>
+          <div style="font-size:12px;color:#6A6D70;margin-left:auto" id="rc-checked-info">0 sélectionnée(s)</div>
+          <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="rcSelectAll()">Tout sélectionner</button>
+          <button class="btn btn-ghost btn-sm" onclick="rcClearAll()">Tout désélectionner</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="t" id="rc-table">
+            <thead><tr>
+              <th style="width:32px"><input type="checkbox" id="rc-check-all" onchange="rcToggleAll(this.checked)"/></th>
+              <th>DATE</th><th>TYPE</th><th>DESCRIPTION</th><th>BÉNÉFICIAIRE</th>
+              <th class="num">DÉBIT</th><th class="num">CRÉDIT</th><th class="num">SOLDE</th>
+            </tr></thead>
+            <tbody id="rc-body"></tbody>
+            <tfoot id="rc-foot"></tfoot>
+          </table>
+        </div>
+        <div id="rc-empty" style="text-align:center;padding:40px;color:#6A6D70;display:none">
+          <div style="font-size:40px">✅</div>
+          <div style="font-weight:700;margin-top:8px">Tout est rapproché !</div>
+          <div style="font-size:13px;margin-top:4px">Aucune transaction en attente</div>
+        </div>
       </div>
     </div>
 
@@ -425,7 +477,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
 
 // ── NAV ────────────────────────────────────────────────────────
-const pageNames = { dashboard:'Tableau de Bord', transactions:'Transactions', cheques:'Chèques', rapport:'Rapport Mensuel', settings:'Paramètres' };
+const pageNames = { dashboard:'Tableau de Bord', transactions:'Transactions', cheques:'Chèques', rapport:'Rapport Mensuel', reconcile:'Rapprochement', settings:'Paramètres' };
 function navigate(p) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.p===p));
   document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('active', pg.id==='p-'+p));
@@ -434,6 +486,7 @@ function navigate(p) {
   if (p==='transactions') { document.getElementById('txn-month').value=today().slice(0,7); loadTransactions(); }
   if (p==='cheques')      loadCheques();
   if (p==='rapport')      { document.getElementById('rpt-month').value=today().slice(0,7); loadRapport(); }
+  if (p==='reconcile')    loadReconcile();
   if (p==='settings')     loadSettings();
 }
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => navigate(n.dataset.p)));
@@ -803,6 +856,102 @@ loadDashboard();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="/js/excel-utils.js"></script>
+<script>
+// ── RAPPROCHEMENT ──────────────────────────────────────────────
+let rcData = { rows: [], reconciled_balance: 0 };
+
+async function loadReconcile() {
+  rcData = await api('GET', '/reconcile/unreconciled');
+  document.getElementById('rc-date').value = today();
+  document.getElementById('rc-statement-bal').value = '';
+  renderRcTiles();
+  renderRcTable();
+  rcUpdate();
+}
+
+function renderRcTiles() {
+  const already = rcData.reconciled_balance;
+  const pending = rcData.rows.reduce((s, r) => s + (IN_TYPES.includes(r.type) ? r.amount : -r.amount), 0);
+  document.getElementById('rc-tiles').innerHTML = `
+    <div class="tile"><div class="tile-label">✅ Solde Rapproché</div><div class="tile-val">${fmt(already)} MAD</div></div>
+    <div class="tile tile-warn"><div class="tile-label">⏳ Transactions en attente</div><div class="tile-val">${rcData.rows.length}</div></div>
+    <div class="tile"><div class="tile-label">💰 Montant en attente</div><div class="tile-val">${fmt(Math.abs(pending))} MAD</div></div>
+  `;
+}
+
+function renderRcTable() {
+  const tbody = document.getElementById('rc-body');
+  const empty = document.getElementById('rc-empty');
+  if (!rcData.rows.length) {
+    tbody.innerHTML = '';
+    document.getElementById('rc-table').style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  document.getElementById('rc-table').style.display = '';
+  empty.style.display = 'none';
+  tbody.innerHTML = rcData.rows.map(r => {
+    const isIn = IN_TYPES.includes(r.type);
+    const bal  = r.running_balance != null ? `<span class="${r.running_balance>=0?'bal-positive':'bal-negative'}">${fmt(r.running_balance)}</span>` : '—';
+    return `<tr class="${isIn?'row-in':'row-out'}" data-id="${r.id}" data-sign="${isIn?1:-1}" data-amount="${r.amount}">
+      <td style="text-align:center"><input type="checkbox" class="rc-chk" onchange="rcUpdate()" data-id="${r.id}"/></td>
+      <td class="muted sm">${fmtDateShort(r.txn_date)}</td>
+      <td><span class="type-pill ${isIn?'tp-in':'tp-out'}">${TYPE_LABELS[r.type]||r.type}</span></td>
+      <td>${r.description||'—'}</td>
+      <td>${r.beneficiary||'—'}</td>
+      <td class="num c-r fw7">${!isIn ? fmt(r.amount)+' MAD' : '—'}</td>
+      <td class="num c-g fw7">${isIn  ? fmt(r.amount)+' MAD' : '—'}</td>
+      <td class="num">${bal}</td>
+    </tr>`;
+  }).join('');
+}
+
+function rcUpdate() {
+  const stmtBal = parseFloat(document.getElementById('rc-statement-bal').value) || 0;
+  const checked = [...document.querySelectorAll('.rc-chk:checked')];
+  const checkedNet = checked.reduce((s, c) => {
+    const tr = c.closest('tr');
+    return s + parseFloat(tr.dataset.sign) * parseFloat(tr.dataset.amount);
+  }, 0);
+  const newBal = rcData.reconciled_balance + checkedNet;
+  const ecart  = stmtBal - newBal;
+
+  const info   = document.getElementById('rc-checked-info');
+  info.textContent = `${checked.length} sélectionnée(s) — Solde calculé : ${fmt(newBal)} MAD`;
+
+  const bar = document.getElementById('rc-ecart-bar');
+  bar.style.display = stmtBal ? 'flex' : 'none';
+  if (stmtBal) {
+    const ok = Math.abs(ecart) < 0.01;
+    bar.style.background = ok ? '#D1FAE5' : '#FEF3C7';
+    bar.style.color = ok ? '#065F46' : '#92400E';
+    bar.style.border = ok ? '2px solid #6EE7B7' : '2px solid #FCD34D';
+    bar.innerHTML = ok
+      ? `<span style="font-size:24px">✅</span> Parfait ! Le solde correspond exactement au relevé.`
+      : `<span style="font-size:24px">⚠️</span> Écart : <span style="font-size:20px">${fmt(Math.abs(ecart))} MAD</span> &nbsp;${ecart > 0 ? '(relevé supérieur — des entrées manquent ?)' : '(solde supérieur — des sorties manquent ?)'}`;
+    document.getElementById('rc-validate-btn').disabled = !ok || !checked.length;
+  } else {
+    document.getElementById('rc-validate-btn').disabled = true;
+  }
+}
+
+function rcToggleAll(checked) {
+  document.querySelectorAll('.rc-chk').forEach(c => c.checked = checked);
+  rcUpdate();
+}
+function rcSelectAll() { document.getElementById('rc-check-all').checked = true; rcToggleAll(true); }
+function rcClearAll()  { document.getElementById('rc-check-all').checked = false; rcToggleAll(false); }
+
+async function rcValidate() {
+  const ids  = [...document.querySelectorAll('.rc-chk:checked')].map(c => parseInt(c.dataset.id));
+  const date = document.getElementById('rc-date').value;
+  if (!ids.length) return;
+  if (!confirm(`Valider le rapprochement de ${ids.length} transaction(s) ?`)) return;
+  await api('POST', '/reconcile/session', { ids, statement_date: date });
+  await loadReconcile();
+  refreshBalance();
+}
+</script>
 <script>
 // ── IMPORT FROM EXCEL ──────────────────────────────────────────
 // Expected columns (order flexible): Date | Type | Description | Montant | Catégorie | Bénéficiaire | N°Chèque
