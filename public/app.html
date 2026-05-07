@@ -902,6 +902,7 @@ async function loadHistory() {
       <td>
         <button class="btn btn-g btn-xs" onclick="viewShift(${s.id})">Détail</button>
         ${s.status==='closed'?`<button class="btn btn-p btn-xs" onclick="printShift(${s.id})">🖨️</button>`:''}
+        ${s.status==='closed'?`<button class="btn btn-xs" style="background:#f59e0b;color:#fff" onclick="reopenShift(${s.id})">Réouvrir</button>`:''}
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="10" class="tc muted" style="padding:20px">Aucun poste enregistré</td></tr>';
@@ -910,6 +911,12 @@ async function loadHistory() {
 async function viewShift(id) {
   const s = await api('GET', '/shifts/' + id);
   showShiftSummary({ ...s, calc: { totalFuel: s.total_fuel_revenue||0, totalCredit: s.total_credit_deducted||0, totalProduct: s.total_product_sales||0, netCash: s.net_cash||0 } });
+}
+
+async function reopenShift(id) {
+  if (!confirm('Réouvrir le poste #' + id + ' ? Il redeviendra le poste actif.')) return;
+  const r = await api('POST', '/shifts/' + id + '/reopen');
+  if (r && r.id) { toast('Poste #' + id + ' réouvert ✓', 'g'); loadHistory(); navigate('shift'); }
 }
 
 // ─── CREDITS ───────────────────────────────────────────────

@@ -138,4 +138,19 @@ router.post('/:id/close', requireAuth, (req, res) => {
   res.json({ ...shiftDetail(db.prepare('SELECT * FROM shifts WHERE id=?').get(shift.id)), calc });
 });
 
+// POST /api/shifts/:id/reopen
+router.post('/:id/reopen', requireAuth, (req, res) => {
+  const shift = db.prepare("SELECT * FROM shifts WHERE id=? AND status='closed'").get(req.params.id);
+  if (!shift) return res.status(404).json({ error: 'Poste fermé introuvable' });
+  const open = db.prepare("SELECT id FROM shifts WHERE status='open'").get();
+  if (open) return res.status(400).json({ error: 'Un poste est déjà ouvert (ID ' + open.id + '). Fermez-le avant de réouvrir.' });
+  db.prepare(`
+    UPDATE shifts SET status='open', closed_at=NULL,
+      total_liters_sold=NULL, total_fuel_revenue=NULL,
+      total_credit_deducted=NULL, total_product_sales=NULL, net_cash=NULL
+    WHERE id=?
+  `).run(shift.id);
+  res.json(shiftDetail(db.prepare('SELECT * FROM shifts WHERE id=?').get(shift.id)));
+});
+
 module.exports = router;
