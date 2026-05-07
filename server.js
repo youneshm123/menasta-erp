@@ -18,6 +18,8 @@ app.use('/api/expenses',  require('./routes/expenses'));
 app.use('/api/stock',     require('./routes/stock'));
 app.use('/api/cafe',      require('./routes/cafe'));
 app.use('/api/bank',      require('./routes/bank'));
+const backup = require('./routes/backup');
+app.use('/api/backup',    backup.router);
 
 app.get('/',      (_req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/home',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
@@ -34,4 +36,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log('\n⛽ MENASTA démarré');
   console.log(`   http://localhost:${PORT}  — MENASTA\n`);
+  backup.initBackupScheduler();
 });

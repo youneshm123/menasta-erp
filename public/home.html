@@ -310,28 +310,40 @@ body {
 
   </div>
 
-  <!-- Info row -->
-  <div class="info-row">
-    <div class="info-box v1">
-      <div class="info-box-icon">⛽</div>
-      <div>
-        <div class="info-box-label">MODULE</div>
-        <div class="info-box-val">Carburant</div>
+  <!-- Backup settings -->
+  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:16px;margin-top:20px;overflow:hidden">
+    <div style="padding:18px 24px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:10px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;font-size:18px">📦</div>
+        <div>
+          <div style="font-size:14px;font-weight:800;color:#1A2332">Automatic Email Backup</div>
+          <div style="font-size:12px;color:#6A7080;margin-top:1px">Database sent to your email every day at midnight</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="bk-status" style="font-size:12px;color:#6A7080"></div>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;color:#1A2332">
+          <input type="checkbox" id="bk-active" onchange="saveBackup()" style="width:16px;height:16px;cursor:pointer"/> Active
+        </label>
+        <button onclick="sendNow()" style="padding:7px 14px;background:#0070F2;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Send Now</button>
       </div>
     </div>
-    <div class="info-box v2">
-      <div class="info-box-icon">☕</div>
+    <div style="padding:20px 24px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px" id="bk-form">
       <div>
-        <div class="info-box-label">MODULE</div>
-        <div class="info-box-val">Café</div>
+        <label style="font-size:11px;font-weight:700;color:#6A7080;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Gmail Sender</label>
+        <input id="bk-gmail" type="email" placeholder="yourname@gmail.com" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;font-family:inherit" onchange="saveBackup()"/>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#6A7080;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Gmail App Password <a href="https://myaccount.google.com/apppasswords" target="_blank" style="font-size:10px;color:#0070F2;text-decoration:none;font-weight:400">Get one →</a></label>
+        <input id="bk-pass" type="password" placeholder="xxxx xxxx xxxx xxxx" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;font-family:inherit" onchange="saveBackup()"/>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#6A7080;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Recipient Email</label>
+        <input id="bk-recipient" type="email" placeholder="darkhm7@gmail.com" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;font-family:inherit" onchange="saveBackup()"/>
       </div>
     </div>
-    <div class="info-box v3">
-      <div class="info-box-icon">🏦</div>
-      <div>
-        <div class="info-box-label">MODULE</div>
-        <div class="info-box-val">Banque</div>
-      </div>
+    <div style="padding:0 24px 16px;font-size:11px;color:#9CA3AF">
+      ⚠️ You need a Gmail <strong>App Password</strong> (not your regular password). Enable 2FA on your Google account, then go to <em>Security → App Passwords</em>.
     </div>
   </div>
 </div>
@@ -361,6 +373,57 @@ body {
   }
   updateClock();
   setInterval(updateClock, 1000);
+
+  // ── Backup settings ────────────────────────────────────────
+  const token = localStorage.getItem('fm_token');
+  const headers = { 'Content-Type':'application/json', 'Authorization':'Bearer '+token };
+
+  async function loadBackupSettings() {
+    try {
+      const r = await fetch('/api/backup/settings', { headers });
+      if (!r.ok) return;
+      const s = await r.json();
+      document.getElementById('bk-gmail').value     = s.gmail_user || '';
+      document.getElementById('bk-pass').value      = s.gmail_pass || '';
+      document.getElementById('bk-recipient').value = s.recipient  || 'darkhm7@gmail.com';
+      document.getElementById('bk-active').checked  = !!s.is_active;
+      if (s.last_sent) {
+        const d = new Date(s.last_sent);
+        const label = s.last_status === 'ok' ? '✅ Last sent: ' : '❌ Last error — ';
+        document.getElementById('bk-status').textContent = label + d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+      }
+    } catch(e) {}
+  }
+
+  async function saveBackup() {
+    const body = {
+      gmail_user: document.getElementById('bk-gmail').value.trim(),
+      gmail_pass: document.getElementById('bk-pass').value,
+      recipient:  document.getElementById('bk-recipient').value.trim() || 'darkhm7@gmail.com',
+      hour:       0,
+      is_active:  document.getElementById('bk-active').checked ? 1 : 0
+    };
+    await fetch('/api/backup/settings', { method:'PUT', headers, body:JSON.stringify(body) });
+  }
+
+  async function sendNow() {
+    const btn = event.target;
+    btn.textContent = 'Sending…'; btn.disabled = true;
+    try {
+      const r = await fetch('/api/backup/send-now', { method:'POST', headers });
+      const d = await r.json();
+      if (r.ok) {
+        btn.textContent = '✅ Sent!'; btn.style.background = '#16A34A';
+        document.getElementById('bk-status').textContent = '✅ Just sent — ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      } else {
+        btn.textContent = '❌ Error'; btn.style.background = '#DC2626';
+        alert('Error: ' + d.error);
+      }
+    } catch(e) { btn.textContent = '❌ Error'; btn.style.background='#DC2626'; }
+    finally { setTimeout(() => { btn.textContent='Send Now'; btn.style.background=''; btn.disabled=false; }, 3000); }
+  }
+
+  loadBackupSettings();
 </script>
 </body>
 </html>
