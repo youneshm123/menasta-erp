@@ -3,68 +3,312 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>YEX WEB — Accueil</title>
+<title>YEX WEB</title>
 <style>
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:"Segoe UI",Arial,sans-serif;background:#1D2D3E;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:32px}
-  h1{color:#fff;font-size:22px;font-weight:800;text-align:center;letter-spacing:.5px}
-  .sub{color:rgba(255,255,255,.5);font-size:13px;text-align:center;margin-top:4px}
-  .cards{display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
-  .card{background:#fff;border-radius:16px;width:260px;padding:40px 32px;text-align:center;cursor:pointer;box-shadow:0 8px 40px rgba(0,0,0,.3);transition:transform .15s,box-shadow .15s;border-top:6px solid transparent;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:16px}
-  .card:hover{transform:translateY(-6px);box-shadow:0 16px 60px rgba(0,0,0,.4)}
-  .card.fuel{border-top-color:#0070F2}
-  .card.cafe{border-top-color:#7B3F00}
-  .card.bank{border-top-color:#1A3A5C}
-  .card.bank .btn-go{background:#1A3A5C}
-  .icon{font-size:64px;line-height:1}
-  .card-title{font-size:20px;font-weight:900;color:#1D2D3E}
-  .card-desc{font-size:13px;color:#6A6D70;line-height:1.5}
-  .btn-go{margin-top:8px;padding:10px 28px;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit}
-  .fuel .btn-go{background:#0070F2}
-  .cafe .btn-go{background:#7B3F00}
-  .logout{color:rgba(255,255,255,.4);font-size:12px;cursor:pointer;background:none;border:none;font-family:inherit;text-decoration:underline}
-  .logout:hover{color:#fff}
-  .user-bar{color:rgba(255,255,255,.6);font-size:13px;display:flex;align-items:center;gap:12px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body {
+  font-family:"Segoe UI",Arial,sans-serif;
+  background:#0A0F1E;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:40px 24px;
+  overflow:hidden;
+  position:relative;
+}
+
+/* Animated background orbs */
+body::before, body::after {
+  content:'';
+  position:fixed;
+  border-radius:50%;
+  filter:blur(80px);
+  opacity:.25;
+  animation:drift 12s ease-in-out infinite alternate;
+  pointer-events:none;
+}
+body::before {
+  width:600px;height:600px;
+  background:radial-gradient(circle,#0070F2,transparent 70%);
+  top:-100px;left:-100px;
+}
+body::after {
+  width:500px;height:500px;
+  background:radial-gradient(circle,#7B3F00,transparent 70%);
+  bottom:-80px;right:-80px;
+  animation-delay:-6s;
+}
+@keyframes drift {
+  from{transform:translate(0,0) scale(1)}
+  to{transform:translate(40px,30px) scale(1.1)}
+}
+
+/* Grid dots pattern */
+.bg-grid {
+  position:fixed;inset:0;
+  background-image:radial-gradient(circle,rgba(255,255,255,.06) 1px,transparent 1px);
+  background-size:32px 32px;
+  pointer-events:none;
+}
+
+/* Header */
+.header {
+  text-align:center;
+  margin-bottom:48px;
+  position:relative;
+  z-index:1;
+}
+.logo-ring {
+  width:72px;height:72px;
+  border-radius:20px;
+  background:linear-gradient(135deg,#0070F2,#00C6FF);
+  display:flex;align-items:center;justify-content:center;
+  font-size:32px;
+  margin:0 auto 16px;
+  box-shadow:0 0 40px rgba(0,112,242,.5);
+}
+.app-name {
+  font-size:28px;font-weight:900;
+  background:linear-gradient(90deg,#fff 0%,#a0b4d0 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  letter-spacing:1px;
+}
+.app-sub {
+  color:rgba(255,255,255,.35);
+  font-size:13px;margin-top:6px;
+  letter-spacing:.3px;
+}
+
+/* Cards grid */
+.cards {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:20px;
+  width:100%;max-width:860px;
+  position:relative;z-index:1;
+}
+@media(max-width:700px){.cards{grid-template-columns:1fr}}
+
+.card {
+  position:relative;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;
+  padding:32px 28px;
+  text-decoration:none;
+  display:flex;flex-direction:column;gap:14px;
+  cursor:pointer;
+  overflow:hidden;
+  transition:transform .2s,border-color .2s,box-shadow .2s;
+  backdrop-filter:blur(12px);
+}
+.card:hover {
+  transform:translateY(-6px);
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+}
+.card.fuel:hover  { border-color:rgba(0,112,242,.5);  box-shadow:0 24px 60px rgba(0,112,242,.2); }
+.card.cafe:hover  { border-color:rgba(123,63,0,.8);   box-shadow:0 24px 60px rgba(202,107,20,.2); }
+.card.bank:hover  { border-color:rgba(99,179,255,.4); box-shadow:0 24px 60px rgba(99,179,255,.15); }
+
+/* Card glow top border */
+.card::before {
+  content:'';
+  position:absolute;top:0;left:0;right:0;
+  height:2px;
+  border-radius:20px 20px 0 0;
+}
+.card.fuel::before  { background:linear-gradient(90deg,#0070F2,#00C6FF); }
+.card.cafe::before  { background:linear-gradient(90deg,#92400E,#F59E0B); }
+.card.bank::before  { background:linear-gradient(90deg,#1D4ED8,#60A5FA); }
+
+/* Card glow bg */
+.card-glow {
+  position:absolute;
+  width:200px;height:200px;
+  border-radius:50%;
+  filter:blur(60px);
+  opacity:0;
+  transition:opacity .3s;
+  pointer-events:none;
+  top:-60px;right:-60px;
+}
+.card:hover .card-glow { opacity:.12; }
+.card.fuel  .card-glow { background:#0070F2; }
+.card.cafe  .card-glow { background:#F59E0B; }
+.card.bank  .card-glow { background:#60A5FA; }
+
+.card-icon {
+  width:52px;height:52px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;
+  flex-shrink:0;
+}
+.card.fuel  .card-icon { background:rgba(0,112,242,.15); }
+.card.cafe  .card-icon { background:rgba(245,158,11,.15); }
+.card.bank  .card-icon { background:rgba(96,165,250,.15); }
+
+.card-title {
+  font-size:18px;font-weight:800;
+  color:#fff;
+}
+.card-desc {
+  font-size:12px;
+  color:rgba(255,255,255,.4);
+  line-height:1.6;
+  flex:1;
+}
+
+.card-arrow {
+  display:flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:700;
+  margin-top:4px;
+  opacity:.5;
+  transition:opacity .2s,gap .2s;
+}
+.card:hover .card-arrow { opacity:1; gap:10px; }
+.card.fuel  .card-arrow { color:#60AEFF; }
+.card.cafe  .card-arrow { color:#FBBF24; }
+.card.bank  .card-arrow { color:#93C5FD; }
+
+/* Status badges */
+.status-row {
+  display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;
+}
+.badge {
+  font-size:10px;font-weight:700;
+  padding:2px 8px;border-radius:20px;
+  letter-spacing:.3px;
+}
+.badge-blue  { background:rgba(0,112,242,.2);color:#60AEFF; }
+.badge-amber { background:rgba(245,158,11,.2);color:#FBBF24; }
+.badge-teal  { background:rgba(20,184,166,.2);color:#5EEAD4; }
+
+/* Footer */
+.footer {
+  margin-top:44px;
+  display:flex;align-items:center;gap:16px;
+  position:relative;z-index:1;
+}
+.user-pill {
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:30px;
+  padding:6px 14px 6px 10px;
+  font-size:12px;color:rgba(255,255,255,.6);
+}
+.user-avatar {
+  width:24px;height:24px;border-radius:50%;
+  background:linear-gradient(135deg,#0070F2,#00C6FF);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;color:#fff;
+}
+.logout-btn {
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;
+  padding:6px 16px;
+  font-size:12px;color:rgba(255,255,255,.4);
+  cursor:pointer;font-family:inherit;
+  transition:background .15s,color .15s;
+}
+.logout-btn:hover { background:rgba(255,80,80,.15);color:#ff8080;border-color:rgba(255,80,80,.3); }
+
+/* Clock */
+.clock {
+  font-size:12px;color:rgba(255,255,255,.25);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.5px;
+}
 </style>
 </head>
 <body>
-<div>
-  <h1>⛽ YEX WEB</h1>
-  <div class="sub">Choisissez votre espace de gestion</div>
+<div class="bg-grid"></div>
+
+<div class="header">
+  <div class="logo-ring">⛽</div>
+  <div class="app-name">YEX WEB</div>
+  <div class="app-sub">Système de gestion de station-service</div>
 </div>
 
 <div class="cards">
+
   <a href="/app" class="card fuel">
-    <div class="icon">⛽</div>
-    <div class="card-title">Carburant</div>
-    <div class="card-desc">Postes, pompes, ventes crédit, stock carburant, rapports mensuels</div>
-    <button class="btn-go">Ouvrir →</button>
+    <div class="card-glow"></div>
+    <div class="card-icon">⛽</div>
+    <div>
+      <div class="card-title">Carburant</div>
+      <div class="status-row">
+        <span class="badge badge-blue">Postes & Pompes</span>
+        <span class="badge badge-teal">Stock</span>
+      </div>
+    </div>
+    <div class="card-desc">Gestion des postes, pompes, ventes crédit, stock carburant et rapports mensuels.</div>
+    <div class="card-arrow">Ouvrir <span>→</span></div>
   </a>
+
   <a href="/cafe" class="card cafe">
-    <div class="icon">☕</div>
-    <div class="card-title">Café</div>
-    <div class="card-desc">Ventes, stock consommé, bénéfice net, rapport mensuel</div>
-    <button class="btn-go">Ouvrir →</button>
+    <div class="card-glow"></div>
+    <div class="card-icon">☕</div>
+    <div>
+      <div class="card-title">Café</div>
+      <div class="status-row">
+        <span class="badge badge-amber">Ventes</span>
+        <span class="badge badge-amber">Stock</span>
+      </div>
+    </div>
+    <div class="card-desc">Suivi des ventes, consommation du stock, bénéfice net et rapport journalier.</div>
+    <div class="card-arrow">Ouvrir <span>→</span></div>
   </a>
+
   <a href="/bank" class="card bank">
-    <div class="icon">🏦</div>
-    <div class="card-title">Banque</div>
-    <div class="card-desc">Dépôts, retraits, virements, chèques reçus et émis, solde</div>
-    <button class="btn-go">Ouvrir →</button>
+    <div class="card-glow"></div>
+    <div class="card-icon">🏦</div>
+    <div>
+      <div class="card-title">Banque</div>
+      <div class="status-row">
+        <span class="badge badge-teal">Transactions</span>
+        <span class="badge badge-teal">Chèques</span>
+      </div>
+    </div>
+    <div class="card-desc">Dépôts, retraits, virements, chèques reçus et émis, solde en temps réel.</div>
+    <div class="card-arrow">Ouvrir <span>→</span></div>
   </a>
+
 </div>
 
-<div class="user-bar">
-  <span id="user-name"></span>
-  <button class="logout" onclick="logout()">Se déconnecter</button>
+<div class="footer">
+  <div class="user-pill">
+    <div class="user-avatar" id="user-initials">?</div>
+    <span id="user-name">Chargement...</span>
+  </div>
+  <div class="clock" id="clock"></div>
+  <button class="logout-btn" onclick="logout()">Déconnexion</button>
 </div>
 
 <script>
   const token = localStorage.getItem('fm_token');
   const user  = JSON.parse(localStorage.getItem('fm_user') || 'null');
   if (!token) { window.location.href = '/'; }
-  else if (user) document.getElementById('user-name').textContent = '👤 ' + user.full_name;
+  else if (user) {
+    document.getElementById('user-name').textContent = user.full_name;
+    const initials = user.full_name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('user-initials').textContent = initials;
+  }
+
   function logout() { localStorage.clear(); window.location.href = '/'; }
+
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) + ' · ' +
+      now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
 </script>
 </body>
 </html>
