@@ -142,6 +142,9 @@ CREATE TABLE IF NOT EXISTS fuel_deliveries (
 );
 `);
 
+// ── Migrations ───────────────────────────────────────────────
+try { db.exec('ALTER TABLE fuel_deliveries ADD COLUMN cost_per_liter REAL'); } catch(_) {}
+
 // ── Helpers ──────────────────────────────────────────────────
 const q  = (sql) => db.prepare(sql);
 const get = (sql, ...p) => db.prepare(sql).get(...p);
