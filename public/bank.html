@@ -216,7 +216,7 @@ nav{flex:1;padding:8px 0;overflow-y:auto}
           <option value="">Toutes catégories</option>
         </select>
         <button class="btn btn-p btn-sm" onclick="loadTransactions()">Actualiser</button>
-        <button class="btn btn-ghost btn-sm" id="btn-copy-txn" onclick="copyTableToExcel(document.querySelector('#txn-body').closest('table'),{skipLastCols:1,btnEl:this})">📋 Copier Excel</button>
+        <button class="btn btn-ghost btn-sm" id="btn-copy-txn" onclick="exportTableToExcel(document.querySelector('#txn-body').closest('table'),'Transactions_Banque',{skipLastCols:1,btnEl:this})">📊 Exporter Excel</button>
         <button class="btn btn-ghost btn-sm" onclick="openModal('m-import-txn')">📥 Importer Excel</button>
         <button class="btn btn-ghost btn-sm" onclick="printStatement()">🖨️ Imprimer</button>
       </div>
@@ -801,6 +801,7 @@ document.getElementById('at-date').value = today();
 refreshBalance();
 loadDashboard();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="/js/excel-utils.js"></script>
 <script>
 // ── IMPORT FROM EXCEL ──────────────────────────────────────────
@@ -825,6 +826,8 @@ function onImportPaste(e) {
 }
 
 async function submitImport() {
+  const rawText = document.getElementById('import-paste').value;
+  if (rawText.trim()) importRows = parseExcelPaste(rawText);
   if (importRows.length < 2) { alert('Pas de données à importer'); return; }
   const header = importRows[0].map(h => h.toLowerCase().trim());
   const rows   = importRows.slice(1).filter(r => r.some(c => c.trim()));

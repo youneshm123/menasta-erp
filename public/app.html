@@ -1562,31 +1562,15 @@ document.getElementById('dl-date').value = today;
 
 boot();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="/js/excel-utils.js"></script>
 <script>
-// After any load function populates a table, call this to ensure copy buttons exist
-function attachCopyBtns() {
-  document.querySelectorAll('.section:not([data-copy-wired])').forEach(sec => {
-    const tbl = sec.querySelector('table');
-    const sh  = sec.querySelector('.s-head');
-    if (!tbl || !sh) return;
-    sec.dataset.copyWired = '1';
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-g btn-xs';
-    btn.style.cssText = 'font-size:11px;margin-left:8px';
-    btn.innerHTML = '📋 Excel';
-    btn.onclick = () => copyTableToExcel(tbl, { skipLastCols: 1, btnEl: btn });
-    sh.appendChild(btn);
-  });
-}
-// Call once DOM is ready
-attachCopyBtns();
-// And after each navigate (tables re-render)
 const _origNav = navigate;
 window.navigate = function(p) {
   _origNav(p);
-  setTimeout(attachCopyBtns, 400);
+  setTimeout(attachExportBtns, 400);
 };
+attachExportBtns();
 </script>
 </body>
 </html>
