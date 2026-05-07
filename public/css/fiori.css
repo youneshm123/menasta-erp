@@ -178,6 +178,7 @@ html, body { height: 100%; font-family: "Segoe UI", Arial, sans-serif; font-size
 /* ─── LOADING ───────────────────────────────── */
 .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes blink-border { 0%,100% { border-color: var(--green); box-shadow: 0 0 0 0 rgba(24,137,24,.4); } 50% { border-color: #0a0; box-shadow: 0 0 0 6px rgba(24,137,24,0); } }
 .loading-center { display: flex; justify-content: center; align-items: center; padding: 40px; }
 
 /* ─── OBJECT HEADER ────────────────────────── */
