@@ -216,6 +216,8 @@ nav{flex:1;padding:8px 0;overflow-y:auto}
           <option value="">Toutes catégories</option>
         </select>
         <button class="btn btn-p btn-sm" onclick="loadTransactions()">Actualiser</button>
+        <button class="btn btn-ghost btn-sm" id="btn-copy-txn" onclick="copyTableToExcel(document.querySelector('#txn-body').closest('table'),{skipLastCols:1,btnEl:this})">📋 Copier Excel</button>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('m-import-txn')">📥 Importer Excel</button>
         <button class="btn btn-ghost btn-sm" onclick="printStatement()">🖨️ Imprimer</button>
       </div>
       <div class="section">
@@ -799,5 +801,115 @@ document.getElementById('at-date').value = today();
 refreshBalance();
 loadDashboard();
 </script>
+<script src="/js/excel-utils.js"></script>
+<script>
+// ── IMPORT FROM EXCEL ──────────────────────────────────────────
+// Expected columns (order flexible): Date | Type | Description | Montant | Catégorie | Bénéficiaire | N°Chèque
+const IMPORT_TYPE_MAP = {
+  'depot':'depot','dépôt':'depot','depôt':'depot',
+  'retrait':'retrait',
+  'virement reçu':'virement_in','virement in':'virement_in','entrant':'virement_in',
+  'virement émis':'virement_out','virement out':'virement_out','sortant':'virement_out',
+  'chèque reçu':'cheque_in','cheque recu':'cheque_in','cheque in':'cheque_in',
+  'chèque émis':'cheque_out','cheque emis':'cheque_out','cheque out':'cheque_out',
+};
+
+let importRows = [];
+
+function onImportPaste(e) {
+  const text = e.target.value;
+  if (!text.trim()) { document.getElementById('import-preview').innerHTML=''; return; }
+  const parsed = parseExcelPaste(text);
+  importRows = parsed;
+  renderPastePreview(parsed, document.getElementById('import-preview'));
+}
+
+async function submitImport() {
+  if (importRows.length < 2) { alert('Pas de données à importer'); return; }
+  const header = importRows[0].map(h => h.toLowerCase().trim());
+  const rows   = importRows.slice(1).filter(r => r.some(c => c.trim()));
+
+  // Detect column positions
+  const colIdx = {
+    date:        header.findIndex(h => h.includes('date')),
+    type:        header.findIndex(h => h.includes('type')),
+    description: header.findIndex(h => h.includes('desc') || h.includes('libel') || h.includes('objet') || h.includes('motif')),
+    amount:      header.findIndex(h => h.includes('mont') || h.includes('amount') || h.includes('somme')),
+    category:    header.findIndex(h => h.includes('cat')),
+    beneficiary: header.findIndex(h => h.includes('bénéf') || h.includes('benef') || h.includes('tiers') || h.includes('nom')),
+    check_number:header.findIndex(h => h.includes('chèque') || h.includes('cheque') || h.includes('n°')),
+  };
+
+  let imported = 0, errors = 0;
+  for (const row of rows) {
+    const get = (i) => (i >= 0 && row[i]) ? row[i].trim() : '';
+    const rawType   = get(colIdx.type).toLowerCase();
+    const type      = IMPORT_TYPE_MAP[rawType] || 'depot';
+    const rawAmount = get(colIdx.amount).replace(/[^\d.,\-]/g,'').replace(',','.');
+    const amount    = Math.abs(parseFloat(rawAmount));
+    const desc      = get(colIdx.description) || get(colIdx.beneficiary) || 'Import Excel';
+    const date      = parseExcelDate(get(colIdx.date));
+    if (!amount || !date) { errors++; continue; }
+    try {
+      await api('POST', '/transactions', {
+        txn_date:     date,
+        type,
+        description:  desc,
+        amount,
+        category:     get(colIdx.category) || 'Autre',
+        beneficiary:  get(colIdx.beneficiary),
+        check_number: get(colIdx.check_number),
+      });
+      imported++;
+    } catch { errors++; }
+  }
+
+  closeModal('m-import-txn');
+  document.getElementById('import-paste').value = '';
+  document.getElementById('import-preview').innerHTML = '';
+  importRows = [];
+  toast(`✅ ${imported} transactions importées${errors ? ` · ⚠️ ${errors} ignorées` : ''}`, imported>0?'g':'wn');
+  refreshBalance();
+  loadTransactions();
+}
+
+function parseExcelDate(str) {
+  if (!str) return null;
+  // Try DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD
+  const clean = str.trim();
+  const m1 = clean.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+  const m2 = clean.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+  if (m2) return `${m2[1]}-${m2[2].padStart(2,'0')}-${m2[3].padStart(2,'0')}`;
+  return null;
+}
+</script>
+
+<!-- MODAL: Import from Excel -->
+<div class="overlay" id="m-import-txn">
+  <div class="modal" style="width:620px">
+    <div class="modal-hd"><div class="mh-ic">📥</div><h3>Importer depuis Excel</h3><button class="x" onclick="closeModal('m-import-txn')">×</button></div>
+    <div class="modal-body">
+      <div style="background:#EBF2FA;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.6;color:#1A3A5C">
+        <strong>Comment faire :</strong><br>
+        1. Dans Excel, sélectionnez vos colonnes et copiez (Ctrl+C)<br>
+        2. Collez ici (Ctrl+V)<br>
+        3. La 1ère ligne doit être les en-têtes : <code>Date | Type | Description | Montant | Catégorie | Bénéficiaire | N°Chèque</code><br>
+        <strong>Types acceptés :</strong> Dépôt, Retrait, Virement reçu, Virement émis, Chèque reçu, Chèque émis
+      </div>
+      <div class="fg">
+        <label>Coller les données Excel ici</label>
+        <textarea id="import-paste" rows="6" style="font-size:12px;font-family:monospace;resize:vertical"
+          placeholder="Date&#9;Type&#9;Description&#9;Montant&#9;Catégorie&#10;15/05/2026&#9;Dépôt&#9;Vente carburant&#9;12500&#9;Carburant&#10;16/05/2026&#9;Retrait&#9;Paiement Afriquia&#9;8000&#9;Fournisseur"
+          oninput="onImportPaste(event)"></textarea>
+      </div>
+      <div id="import-preview"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-import-txn')">Annuler</button>
+      <button class="btn btn-s" onclick="submitImport()">✅ Importer</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
