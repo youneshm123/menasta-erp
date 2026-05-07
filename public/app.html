@@ -236,12 +236,11 @@
 
 <!-- CLOSE SHIFT -->
 <div class="overlay" id="m-close-shift">
-  <div class="modal modal-lg">
+  <div class="modal">
     <div class="modal-hd"><span>🔒</span><h3>Fermer le Poste</h3><button class="x" onclick="closeModal('m-close-shift')">×</button></div>
     <div class="modal-body">
-      <div class="msg msg-w mb3">Saisissez les relevés des compteurs à la FIN du poste. Le système calculera automatiquement le chiffre d'affaires.</div>
-      <div id="close-shift-form"></div>
-      <div class="fg mt3"><label>Notes de fermeture (facultatif)</label><textarea id="cs-notes" style="height:60px;resize:vertical;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;"></textarea></div>
+      <div class="msg msg-w mb3">⚠️ Assurez-vous d'avoir saisi les compteurs de fin dans la page avant de fermer.</div>
+      <div class="fg"><label>Notes de fermeture (facultatif)</label><textarea id="cs-notes" style="height:60px;resize:vertical;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;"></textarea></div>
     </div>
     <div class="modal-ft">
       <button class="btn btn-g" onclick="closeModal('m-close-shift')">Annuler</button>
@@ -599,8 +598,7 @@ async function loadShiftPage() {
       <td class="fw7">${r.name}</td>
       <td>${r.fuel}</td>
       <td class="num">${r.start?.toLocaleString('fr-FR', { minimumFractionDigits: 1 }) || '—'}</td>
-      <td class="num muted">—</td>
-      <td class="num muted">—</td>
+      <td><input type="number" class="end-reading" data-pump="${pid}" data-start="${r.start||0}" step="0.1" min="${r.start||0}" placeholder="Saisir..." style="width:140px;padding:7px 10px;border:2px solid var(--border);border-radius:4px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;"/></td>
       <td class="num muted">${r.price?.toFixed(3)} MAD/L</td>
     </tr>`).join('');
 
@@ -621,9 +619,9 @@ async function loadShiftPage() {
     </div>
 
     <div class="section mb4">
-      <div class="s-head"><div class="s-title">⛽ Relevés Pompes (Début de Poste)</div></div>
+      <div class="s-head"><div class="s-title">⛽ Relevés Pompes</div></div>
       <div class="s-body-flush" style="overflow-x:auto">
-        <table class="t"><thead><tr><th>Pompe</th><th>Carburant</th><th class="num">Compteur Début</th><th class="num">Compteur Fin</th><th class="num">Litres Vendus</th><th class="num">Prix/L</th></tr></thead>
+        <table class="t"><thead><tr><th>Pompe</th><th>Carburant</th><th class="num">Compteur Début</th><th class="num">Compteur Fin ✏️</th><th class="num">Prix/L</th></tr></thead>
         <tbody>${pumpRows}</tbody></table>
       </div>
     </div>
@@ -709,36 +707,20 @@ async function submitOpenShift() {
 // ─── CLOSE SHIFT ────────────────────────────────────────────
 function prepareCloseShift() {
   if (!S.activeShift) return;
-  const startMap = {};
-  for (const r of S.activeShift.pump_readings)
-    if (r.reading_type === 'start') startMap[r.pump_id] = { name: r.pump_name, fuel: r.fuel_name, price: r.price_per_liter, start: r.meter_value };
-
-  document.getElementById('close-shift-form').innerHTML = `
-    <table class="t" style="margin-bottom:4px">
-      <thead><tr><th>Pompe</th><th>Carburant</th><th class="num">Compteur Début</th><th class="num">Compteur Fin *</th></tr></thead>
-      <tbody>${Object.entries(startMap).map(([pid, r]) => `
-        <tr>
-          <td class="fw7">${r.name}</td>
-          <td>${r.fuel}</td>
-          <td class="num">${r.start?.toLocaleString('fr-FR', { minimumFractionDigits: 1 }) || '—'}</td>
-          <td><input type="number" class="cs-reading" data-pump="${pid}" step="0.1" min="${r.start||0}" value="${r.start||0}" style="width:130px;padding:7px 10px;border:1px solid var(--border);border-radius:4px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;"/></td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
   openModal('m-close-shift');
 }
 
 async function submitCloseShift() {
   if (!S.activeShift) return;
-  const inputs = document.querySelectorAll('.cs-reading');
+  const inputs = document.querySelectorAll('.end-reading');
   const readings = [];
   let valid = true;
   inputs.forEach(inp => {
     const v = parseFloat(inp.value);
-    if (isNaN(v) || v < 0) { inp.style.borderColor = 'var(--red)'; valid = false; }
+    if (isNaN(v) || v < 0) { inp.style.borderColor = 'var(--red)'; valid = false; toast('Saisissez le compteur de fin pour chaque pompe', 'er'); }
     else { inp.style.borderColor = ''; readings.push({ pump_id: parseInt(inp.dataset.pump), meter_value: v }); }
   });
-  if (!valid) { toast('Veuillez saisir tous les compteurs de fin', 'er'); return; }
+  if (!valid) return;
   try {
     const result = await api('POST', '/shifts/' + S.activeShift.id + '/close', { readings, notes: document.getElementById('cs-notes').value });
     closeModal('m-close-shift');
