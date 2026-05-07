@@ -161,15 +161,14 @@ if (get('SELECT COUNT(*) as c FROM users').c === 0) {
 
 if (get('SELECT COUNT(*) as c FROM fuel_types').c === 0) {
   run('INSERT INTO fuel_types (name, price_per_liter, color_hex) VALUES (?,?,?)', 'Gazoil',        9.40,  '#DF6E0C');
-  run('INSERT INTO fuel_types (name, price_per_liter, color_hex) VALUES (?,?,?)', 'Essence 91', 11.20, '#0070F2');
-  run('INSERT INTO fuel_types (name, price_per_liter, color_hex) VALUES (?,?,?)', 'Essence 95', 12.10, '#6E2092');
+  run('INSERT INTO fuel_types (name, price_per_liter, color_hex) VALUES (?,?,?)', 'Essence', 11.20, '#0070F2');
 
-  const gazoil = get("SELECT id FROM fuel_types WHERE name='Gazoil'");
-  const sp91   = get("SELECT id FROM fuel_types WHERE name='Essence 91'");
+  const gazoil  = get("SELECT id FROM fuel_types WHERE name='Gazoil'");
+  const essence = get("SELECT id FROM fuel_types WHERE name='Essence'");
   run('INSERT INTO pumps (name, fuel_type_id) VALUES (?,?)', 'Pompe 1', gazoil.id);
   run('INSERT INTO pumps (name, fuel_type_id) VALUES (?,?)', 'Pompe 2', gazoil.id);
-  run('INSERT INTO pumps (name, fuel_type_id) VALUES (?,?)', 'Pompe 3', sp91.id);
-  run('INSERT INTO pumps (name, fuel_type_id) VALUES (?,?)', 'Pompe 4', sp91.id);
+  run('INSERT INTO pumps (name, fuel_type_id) VALUES (?,?)', 'Pompe 3', essence.id);
+  run('INSERT INTO pumps (name, fuel_type_id) VALUES (?,?)', 'Pompe 4', essence.id);
   console.log('✅ Pompes & types carburant créés');
 }
 
