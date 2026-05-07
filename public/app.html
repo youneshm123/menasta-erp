@@ -229,7 +229,7 @@
           </div>
           <div class="s-body-flush" style="overflow-x:auto">
             <table class="t">
-              <thead><tr><th>Date</th><th>Carburant</th><th class="num">Quantité (L)</th><th>Fournisseur</th><th>Notes</th></tr></thead>
+              <thead><tr><th>Date</th><th>Carburant</th><th class="num">Quantité (Litres)</th><th>Fournisseur</th><th>Notes</th></tr></thead>
               <tbody id="stock-body"></tbody>
             </table>
           </div>
@@ -495,7 +495,14 @@
       <div class="fgrid">
         <div class="fg"><label>Type Carburant *</label><select id="dl-fuel"></select></div>
         <div class="fg"><label>Date</label><input type="date" id="dl-date"/></div>
-        <div class="fg"><label>Quantité (Litres) *</label><input type="number" id="dl-qty" placeholder="0.0" step="0.1"/></div>
+        <div class="fg"><label>Unité</label>
+          <select id="dl-unit" onchange="updateDlPreview()">
+            <option value="litres">Litres</option>
+            <option value="tonnes">Tonnes</option>
+          </select>
+        </div>
+        <div class="fg"><label>Quantité *</label><input type="number" id="dl-qty" placeholder="0.0" step="0.01" oninput="updateDlPreview()"/></div>
+        <div class="fg" style="grid-column:1/-1" id="dl-preview" style="display:none"></div>
         <div class="fg"><label>Fournisseur</label><input id="dl-supplier" placeholder="Nom du fournisseur"/></div>
         <div class="fg" style="grid-column:1/-1"><label>Notes</label><input id="dl-notes" placeholder="facultatif"/></div>
       </div>
@@ -1344,18 +1351,34 @@ async function loadStock() {
   document.getElementById('dl-fuel').innerHTML = data.map(ft=>`<option value="${ft.id}">${ft.name}</option>`).join('');
 }
 
+const DENSITY = { 'Gazoil': 1176, 'Sans Plomb 91': 1351, 'Sans Plomb 95': 1333 };
+function updateDlPreview() {
+  const unit = document.getElementById('dl-unit').value;
+  const qty  = parseFloat(document.getElementById('dl-qty').value) || 0;
+  const sel  = document.getElementById('dl-fuel');
+  const fuelName = sel.selectedOptions[0]?.text || '';
+  const prev = document.getElementById('dl-preview');
+  if (unit === 'tonnes' && qty > 0) {
+    const litres = qty * (DENSITY[fuelName] || 1176);
+    prev.innerHTML = `<div class="msg msg-i">≈ <strong>${litres.toLocaleString('fr-FR', {maximumFractionDigits:0})} L</strong> (densité ${DENSITY[fuelName]||1176} L/tonne pour ${fuelName})</div>`;
+  } else { prev.innerHTML = ''; }
+}
+
 async function submitAddDelivery() {
   const fuel_type_id = document.getElementById('dl-fuel').value;
-  const qty = parseFloat(document.getElementById('dl-qty').value);
+  const qty  = parseFloat(document.getElementById('dl-qty').value);
+  const unit = document.getElementById('dl-unit').value;
   if (!fuel_type_id || !qty) { toast('Carburant et quantité requis', 'er'); return; }
   try {
     await api('POST', '/stock/delivery', {
-      fuel_type_id, quantity_liters: qty,
+      fuel_type_id, quantity: qty, unit,
       delivery_date: document.getElementById('dl-date').value || new Date().toISOString().slice(0,10),
       supplier: document.getElementById('dl-supplier').value,
       notes: document.getElementById('dl-notes').value
     });
     closeModal('m-add-delivery');
+    document.getElementById('dl-qty').value = '';
+    document.getElementById('dl-preview').innerHTML = '';
     toast('Livraison enregistrée');
     loadStock();
   } catch(e) { toast(e.message,'er'); }
