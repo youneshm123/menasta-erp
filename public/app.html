@@ -1274,6 +1274,8 @@ async function loadReports() {
   const stockSummaryEl = document.getElementById('rpt-stock-summary');
   if (stockSummaryEl) {
     const pc = stockCA > 0 ? ((stockProfit/stockCA)*100).toFixed(1) : '0.0';
+    const netReel = totProf - stockCost;
+    const netReelColor = netReel >= 0 ? '#188918' : '#BB0000';
     stockSummaryEl.innerHTML = `
       <div class="s-head" style="margin-top:24px"><div class="s-title">🛢️ Rentabilité Carburant (Tout Stock)</div></div>
       <div style="display:flex;gap:14px;flex-wrap:wrap;padding:16px 0">
@@ -1288,6 +1290,12 @@ async function loadReports() {
         <div style="flex:1;min-width:140px;background:#fff;border-radius:10px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.07);border-left:4px solid ${stockProfit>=0?'#188918':'#BB0000'}">
           <div style="font-size:11px;font-weight:700;color:#6A6D70;text-transform:uppercase;margin-bottom:4px">Bénéfice Brut Carburant</div>
           <div style="font-size:20px;font-weight:900;color:${stockProfit>=0?'#188918':'#BB0000'}">${fmt(stockProfit)} MAD <span style="font-size:13px;font-weight:400">(${pc}%)</span></div>
+        </div>
+        <div style="flex:1;min-width:140px;background:#fff;border-radius:10px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.07);border:2px solid ${netReelColor};position:relative">
+          <div style="position:absolute;top:-1px;right:10px;background:${netReelColor};color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:0 0 6px 6px;letter-spacing:.5px">RÉSULTAT FINAL</div>
+          <div style="font-size:11px;font-weight:700;color:#6A6D70;text-transform:uppercase;margin-bottom:4px">Bénéfice Net après Stock</div>
+          <div style="font-size:22px;font-weight:900;color:${netReelColor}">${fmt(netReel)} MAD</div>
+          <div style="font-size:11px;color:#6A6D70;margin-top:4px">Caisse Nette − Coût Achats</div>
         </div>
       </div>`;
   }
