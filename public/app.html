@@ -1167,7 +1167,7 @@ async function boot() {
 // Intercept credit sale modal open to refresh selects
 document.getElementById('m-credit-sale').addEventListener('transitionend', () => populateCreditSaleModal());
 // Button wiring for close shift
-document.querySelector('#m-close-shift .modal-ft .btn-d').addEventListener('click', submitCloseShift);
+// submitCloseShift wired via onclick on the button directly
 // Close shift button in page actions (dynamic)
 document.getElementById('content').addEventListener('click', e => {
   if (e.target.closest('.btn-d') && e.target.textContent.includes('Fermer Poste')) prepareCloseShift();
