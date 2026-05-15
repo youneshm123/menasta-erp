@@ -219,6 +219,7 @@
           <div class="sug-chip" onclick="ask('Quel jour a eu le meilleur CA cette semaine ?')">🏆 Meilleur jour</div>
           <div class="sug-chip" onclick="ask('Donne-moi un résumé complet de la station aujourd\'hui')">📋 Résumé complet</div>
           <div class="sug-chip" onclick="ask('Bénéfice total café et tabac aujourd\'hui ?')">☕ Café & Tabac</div>
+          <div class="sug-chip" onclick="downloadPDF()">📄 Rapport PDF du jour</div>
         </div>
       </div>
 
@@ -355,10 +356,29 @@ async function sendMessage() {
       const err = await res.json().catch(() => ({}));
       appendMsg('ai', '⚠️ Erreur : ' + (err.error || 'Impossible de contacter l\'assistant. Vérifiez votre connexion.'));
     } else {
-      const { reply } = await res.json();
-      appendMsg('ai', reply);
-      history.push({ role: 'user', content: text });
-      history.push({ role: 'assistant', content: reply });
+      const data = await res.json();
+
+      if (data.pdf_action) {
+        // AI wants to generate a PDF
+        const today = new Date().toISOString().slice(0, 10);
+        const pdfHtml = `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>📄 Voici votre rapport journalier du <strong>${today}</strong> — prêt à télécharger !</div>
+            <button onclick="triggerPDFDownload()" style="display:inline-flex;align-items:center;gap:8px;background:#2563EB;color:#fff;padding:10px 18px;border-radius:10px;border:none;font-weight:700;font-size:13px;width:fit-content;cursor:pointer;box-shadow:0 2px 8px rgba(37,99,235,.3);">
+              ⬇️ Télécharger le PDF
+            </button>
+          </div>`;
+        appendMsg('ai', pdfHtml, true);
+        const aiReply = `Je génère le rapport PDF du ${today}.`;
+        history.push({ role: 'user', content: text });
+        history.push({ role: 'assistant', content: aiReply });
+      } else {
+        const { reply } = data;
+        appendMsg('ai', reply);
+        history.push({ role: 'user', content: text });
+        history.push({ role: 'assistant', content: reply });
+      }
+
       if (history.length > 20) history = history.slice(-20);
     }
   } catch (e) {
@@ -393,9 +413,43 @@ function clearChat() {
         <div class="sug-chip" onclick="ask('Quel jour a eu le meilleur CA cette semaine ?')">🏆 Meilleur jour</div>
         <div class="sug-chip" onclick="ask('Donne-moi un résumé complet de la station aujourd\\'hui')">📋 Résumé complet</div>
         <div class="sug-chip" onclick="ask('Bénéfice total café et tabac aujourd\\'hui ?')">☕ Café & Tabac</div>
+        <div class="sug-chip" onclick="downloadPDF()">📄 Rapport PDF du jour</div>
       </div>
     </div>
   `;
+}
+
+async function downloadPDF() {
+  const welcome = document.getElementById('welcome-screen');
+  if (welcome) welcome.remove();
+
+  const today = new Date().toISOString().slice(0, 10);
+  const pdfHtml = `
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div>📄 Rapport journalier du <strong>${today}</strong> — prêt !</div>
+      <button onclick="triggerPDFDownload()" style="display:inline-flex;align-items:center;gap:8px;background:#2563EB;color:#fff;padding:10px 18px;border-radius:10px;border:none;font-weight:700;font-size:13px;width:fit-content;cursor:pointer;box-shadow:0 2px 8px rgba(37,99,235,.3);">
+        ⬇️ Télécharger le PDF
+      </button>
+    </div>`;
+  appendMsg('ai', pdfHtml, true);
+}
+
+async function triggerPDFDownload() {
+  try {
+    const res = await fetch('/api/ai/pdf/daily', {
+      headers: { Authorization: 'Bearer ' + TOKEN }
+    });
+    if (!res.ok) throw new Error('Erreur');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `MENASTA_Rapport_${new Date().toISOString().slice(0,10)}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    appendMsg('ai', '⚠️ Erreur lors de la génération du PDF.');
+  }
 }
 
 document.getElementById('chat-input').focus();
