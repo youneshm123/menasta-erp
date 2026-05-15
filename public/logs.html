@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MENASTA — Journal d'Activité</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="/css/fiori.css"/>
+<style>
+.app-main { overflow-y: auto; }
+.filter-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 14px 24px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  box-shadow: var(--sh-xs);
+}
+.filter-bar input, .filter-bar select {
+  padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--r);
+  font-size: 13px; font-family: var(--font); background: var(--surface);
+  color: var(--text);
+}
+.filter-bar input:focus, .filter-bar select:focus { outline: none; border-color: var(--blue); }
+.filter-bar input[type="text"] { width: 200px; }
+.filter-lbl { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+.log-content { padding: 20px 24px; }
+
+.log-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.log-table thead th {
+  text-align: left; padding: 9px 14px;
+  font-size: 10.5px; font-weight: 700; color: var(--muted);
+  background: var(--bg); border-bottom: 1px solid var(--border);
+  text-transform: uppercase; letter-spacing: .5px; white-space: nowrap;
+}
+.log-table tbody tr { border-bottom: 1px solid var(--border-lt); transition: background .1s; }
+.log-table tbody tr:hover { background: var(--bg); }
+.log-table td { padding: 10px 14px; vertical-align: middle; }
+
+.log-time { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.log-time .date { display: block; font-weight: 600; color: var(--text-2); }
+.log-time .time { display: block; font-size: 11px; }
+
+.user-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg2); border-radius: 20px; padding: 3px 10px 3px 4px;
+}
+.user-av {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg,#2563EB,#7C3AED);
+  color: #fff; font-size: 9px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.user-name { font-size: 12px; font-weight: 600; color: var(--text); }
+
+.mod-badge {
+  display: inline-block; padding: 2px 9px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.mod-Carburant  { background:#EFF6FF; color:#1D4ED8; }
+.mod-Café       { background:#FFFBEB; color:#92400E; }
+.mod-Banque     { background:#F0FDFA; color:#0F766E; }
+.mod-Tabac      { background:#FDF4EC; color:#78350F; }
+.mod-Factures   { background:#EEF2FF; color:#3730A3; }
+.mod-Cuves      { background:#EFF6FF; color:#1D4ED8; }
+.mod-Créances   { background:#FEF3C7; color:#92400E; }
+.mod-Dépenses   { background:#FEE2E2; color:#B91C1C; }
+.mod-Produits   { background:#F5F3FF; color:#6D28D9; }
+.mod-Stock      { background:#ECFDF5; color:#065F46; }
+.mod-Pompes     { background:#ECFDF5; color:#065F46; }
+.mod-Système    { background:#F3F4F6; color:#374151; }
+.mod-default    { background:#F3F4F6; color:#374151; }
+
+.log-action { font-size: 13px; font-weight: 600; color: var(--text); }
+.log-details { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.log-ip { font-size: 11px; color: var(--subtle); font-family: monospace; }
+
+.empty-state {
+  text-align: center; padding: 60px 20px;
+  color: var(--muted); font-size: 14px;
+}
+.empty-state .ic { font-size: 48px; margin-bottom: 12px; }
+
+.stats-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.stat-pill {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 10px 18px;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: var(--sh-xs);
+}
+.stat-pill .val { font-size: 18px; font-weight: 900; color: var(--text); }
+.stat-pill .lbl { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+</style>
+</head>
+<body class="app-layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo-row">
+      <div class="sb-mark">⛽</div>
+      <div>
+        <div class="sb-name">MENASTA</div>
+        <div class="sb-sub">Station Service</div>
+      </div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-section-label">Modules</div>
+    <a href="/app"      class="nav-item"><span class="ni">⛽</span> Carburant</a>
+    <a href="/cafe"     class="nav-item"><span class="ni">☕</span> Café</a>
+    <a href="/bank"     class="nav-item"><span class="ni">🏦</span> Banque</a>
+    <a href="/tabac"    class="nav-item"><span class="ni">🚬</span> Tabac</a>
+    <a href="/factures" class="nav-item"><span class="ni">🧾</span> Factures</a>
+    <a href="/cuves"    class="nav-item"><span class="ni">🛢️</span> Cuves</a>
+    <div class="sb-section-label">Direction</div>
+    <a href="/patron"   class="nav-item"><span class="ni">👑</span> Tableau Patron</a>
+    <a href="/ai"       class="nav-item"><span class="ni">🤖</span> Assistant IA</a>
+    <a href="/logs"     class="nav-item active"><span class="ni">📋</span> Journal</a>
+    <a href="/home"     class="nav-item"><span class="ni">🏠</span> Accueil</a>
+  </div>
+  <div class="sb-foot">
+    <div class="sb-user">
+      <div class="sb-avatar" id="sb-av">?</div>
+      <div>
+        <div class="sb-uname" id="sb-name">—</div>
+        <div class="sb-urole">Administrateur</div>
+      </div>
+    </div>
+    <button class="sb-logout" onclick="logout()">↪ Déconnexion</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="app-main">
+
+  <!-- TOPBAR -->
+  <div class="app-topbar">
+    <div class="topbar-title">📋 Journal d'Activité</div>
+    <div class="topbar-meta" id="top-count">—</div>
+    <button class="btn btn-g btn-sm" onclick="loadLogs()">🔄 Actualiser</button>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <span class="filter-lbl">Filtres :</span>
+    <select id="f-module">
+      <option value="">Tous les modules</option>
+    </select>
+    <input type="date" id="f-from" title="Du"/>
+    <input type="date" id="f-to" title="Au"/>
+    <input type="text" id="f-search" placeholder="Rechercher…" oninput="filterTable()"/>
+    <button class="btn btn-p btn-sm" onclick="loadLogs()">Appliquer</button>
+    <button class="btn btn-g btn-sm" onclick="clearFilters()">Effacer</button>
+    <div style="margin-left:auto;font-size:12px;color:var(--muted)" id="result-count"></div>
+  </div>
+
+  <div class="log-content">
+
+    <!-- STATS -->
+    <div class="stats-row" id="stats-row"></div>
+
+    <!-- TABLE -->
+    <div class="section">
+      <div class="s-head">
+        <div class="s-title">Activité récente</div>
+        <span class="badge badge-b" id="badge-count">0</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Date / Heure</th>
+              <th>Utilisateur</th>
+              <th>Module</th>
+              <th>Action</th>
+              <th>Détails</th>
+              <th>IP</th>
+            </tr>
+          </thead>
+          <tbody id="log-body"></tbody>
+        </table>
+        <div id="empty-state" class="empty-state" style="display:none">
+          <div class="ic">📋</div>
+          <div>Aucune activité enregistrée pour ces filtres.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const TOKEN = localStorage.getItem('fm_token');
+const USER  = JSON.parse(localStorage.getItem('fm_user') || 'null');
+if (!TOKEN) window.location.href = '/';
+
+if (USER) {
+  const n = USER.full_name || '';
+  document.getElementById('sb-name').textContent = n;
+  document.getElementById('sb-av').textContent = n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+function logout() { localStorage.clear(); window.location.href = '/'; }
+
+const MODULE_ICONS = {
+  'Carburant':'⛽','Café':'☕','Banque':'🏦','Tabac':'🚬','Factures':'🧾',
+  'Cuves':'🛢️','Créances':'🤝','Dépenses':'💸','Produits':'📦','Stock':'🚛',
+  'Pompes':'⛽','Système':'⚙️'
+};
+
+function fmtDT(ts) {
+  const d = new Date(ts);
+  const date = d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const time = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  return { date, time };
+}
+
+function initials(name) {
+  return (name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+
+function modClass(module) {
+  const m = module || '';
+  const classes = ['Carburant','Café','Banque','Tabac','Factures','Cuves','Créances','Dépenses','Produits','Stock','Pompes','Système'];
+  return classes.includes(m) ? 'mod-' + m : 'mod-default';
+}
+
+let allLogs = [];
+
+async function loadLogs() {
+  const mod  = document.getElementById('f-module').value;
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+  const params = new URLSearchParams({ limit: 500 });
+  if (mod)  params.set('module', mod);
+  if (from) params.set('from', from + 'T00:00:00');
+  if (to)   params.set('to',   to   + 'T23:59:59');
+
+  try {
+    const r = await fetch('/api/logs?' + params, { headers: { Authorization: 'Bearer ' + TOKEN } });
+    allLogs = await r.json();
+    renderLogs(allLogs);
+    updateStats(allLogs);
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function loadModules() {
+  try {
+    const r = await fetch('/api/logs/modules', { headers: { Authorization: 'Bearer ' + TOKEN } });
+    const mods = await r.json();
+    const sel = document.getElementById('f-module');
+    mods.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m; opt.textContent = (MODULE_ICONS[m]||'') + ' ' + m;
+      sel.appendChild(opt);
+    });
+  } catch {}
+}
+
+function renderLogs(logs) {
+  const tbody = document.getElementById('log-body');
+  const empty = document.getElementById('empty-state');
+  const search = document.getElementById('f-search').value.toLowerCase();
+  const filtered = search ? logs.filter(l =>
+    (l.action||'').toLowerCase().includes(search) ||
+    (l.username||'').toLowerCase().includes(search) ||
+    (l.module||'').toLowerCase().includes(search) ||
+    (l.details||'').toLowerCase().includes(search)
+  ) : logs;
+
+  document.getElementById('badge-count').textContent = filtered.length;
+  document.getElementById('result-count').textContent = filtered.length + ' entrée(s)';
+  document.getElementById('top-count').textContent = filtered.length + ' entrées';
+
+  if (!filtered.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(l => {
+    const { date, time } = fmtDT(l.created_at);
+    const av = initials(l.username);
+    const ic = MODULE_ICONS[l.module] || '📌';
+    return `<tr>
+      <td>
+        <div class="log-time">
+          <span class="date">${date}</span>
+          <span class="time">${time}</span>
+        </div>
+      </td>
+      <td>
+        <div class="user-chip">
+          <div class="user-av">${av}</div>
+          <span class="user-name">${l.username}</span>
+        </div>
+      </td>
+      <td><span class="mod-badge ${modClass(l.module)}">${ic} ${l.module}</span></td>
+      <td>
+        <div class="log-action">${l.action}</div>
+      </td>
+      <td>
+        <div class="log-details">${l.details || '<span style="color:var(--disabled)">—</span>'}</div>
+      </td>
+      <td><span class="log-ip">${l.ip_addr || '—'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateStats(logs) {
+  const counts = {};
+  logs.forEach(l => { counts[l.module] = (counts[l.module]||0)+1; });
+  const top = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const statsEl = document.getElementById('stats-row');
+
+  const today = new Date().toDateString();
+  const todayCount = logs.filter(l => new Date(l.created_at).toDateString() === today).length;
+  const users = new Set(logs.map(l=>l.username)).size;
+
+  statsEl.innerHTML = `
+    <div class="stat-pill"><div><div class="val">${logs.length}</div><div class="lbl">Actions totales</div></div></div>
+    <div class="stat-pill"><div><div class="val">${todayCount}</div><div class="lbl">Aujourd'hui</div></div></div>
+    <div class="stat-pill"><div><div class="val">${users}</div><div class="lbl">Utilisateur(s)</div></div></div>
+    ${top.map(([m,c])=>`<div class="stat-pill"><div><div class="val">${c}</div><div class="lbl">${MODULE_ICONS[m]||''} ${m}</div></div></div>`).join('')}
+  `;
+}
+
+function filterTable() {
+  renderLogs(allLogs);
+}
+
+function clearFilters() {
+  document.getElementById('f-module').value = '';
+  document.getElementById('f-from').value = '';
+  document.getElementById('f-to').value = '';
+  document.getElementById('f-search').value = '';
+  loadLogs();
+}
+
+// Set default date range to last 7 days
+const now = new Date();
+const week = new Date(now); week.setDate(week.getDate()-7);
+document.getElementById('f-from').value = week.toISOString().slice(0,10);
+document.getElementById('f-to').value = now.toISOString().slice(0,10);
+
+loadModules();
+loadLogs();
+</script>
+</body>
+</html>
