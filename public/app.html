@@ -4,8 +4,34 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/fiori.css"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.chart-box{position:relative;height:220px;width:100%}
+.mb2{margin-bottom:8px}.mb3{margin-bottom:12px}.mb4{margin-bottom:20px}
+.mt3{margin-top:12px}.mt4{margin-top:20px}
+.fxg{display:flex;gap:8px}.fxb{display:flex;justify-content:space-between;align-items:center}
+.tc{text-align:center}.div{border:none;border-top:1px solid var(--border);margin:14px 0}
+.sel{padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13.5px;font-family:var(--font);background:var(--surface);box-shadow:var(--sh-xs)}
+/* Autocomplete */
+.ac-wrap{position:relative;}
+.ac-input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:var(--font);background:var(--surface);outline:none;box-sizing:border-box;}
+.ac-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1);}
+.ac-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1.5px solid var(--blue);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:9999;max-height:220px;overflow-y:auto;display:none;}
+.ac-dropdown.open{display:block;}
+.ac-item{padding:10px 14px;cursor:pointer;font-size:13.5px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid var(--border-lt);}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.active{background:var(--bg2);}
+.ac-item-name{font-weight:700;color:var(--text);}
+.ac-item-sub{font-size:11.5px;color:var(--muted);}
+/* Fuel toggle */
+.fuel-toggle{display:flex;gap:8px;}
+.fuel-btn{flex:1;padding:10px;border:2px solid var(--border);border-radius:var(--r);background:var(--surface);font-size:13px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;}
+.fuel-btn.selected-gazoil{border-color:#1D4ED8;background:#EFF6FF;color:#1D4ED8;}
+.fuel-btn.selected-essence{border-color:#059669;background:#ECFDF5;color:#059669;}
+</style>
 </head>
 <body>
 
@@ -285,7 +311,10 @@
     <div class="modal-body">
       <div class="msg msg-i mb3">Saisissez les relevés des compteurs au début du poste pour chaque pompe active.</div>
       <div id="open-shift-form"></div>
-      <div class="fg mt3"><label>Notes (facultatif)</label><textarea id="os-notes" style="height:60px;resize:vertical;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;"></textarea></div>
+      <div class="fgrid mt3">
+        <div class="fg"><label>Avance Pompiste (MAD)</label><input type="number" id="os-avance" value="0" min="0" step="0.01" placeholder="0.00" style="font-size:18px;font-weight:800;color:var(--orange);padding:10px;border:2px solid var(--orange);border-radius:6px;"/></div>
+        <div class="fg"><label>Notes (facultatif)</label><textarea id="os-notes" style="height:60px;resize:vertical;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;"></textarea></div>
+      </div>
     </div>
     <div class="modal-ft">
       <button class="btn btn-g" onclick="closeModal('m-open-shift')">Annuler</button>
@@ -312,14 +341,29 @@
 <!-- CREDIT SALE -->
 <div class="overlay" id="m-credit-sale">
   <div class="modal">
-    <div class="modal-hd"><span>🤝</span><h3>Enregistrer une Vente Crédit</h3><button class="x" onclick="closeModal('m-credit-sale')">×</button></div>
+    <div class="modal-hd"><span>🤝</span><h3>Vente Crédit</h3><button class="x" onclick="closeModal('m-credit-sale')">×</button></div>
     <div class="modal-body">
-      <div class="fgrid mb3">
-        <div class="fg"><label>Client</label><select id="cs-client"></select></div>
-        <div class="fg"><label>Pompe</label><select id="cs-pump"></select></div>
+      <div class="fg mb3">
+        <label>Client</label>
+        <div class="ac-wrap">
+          <input class="ac-input" id="cs-client-input" placeholder="Tapez le nom du client…" autocomplete="off" oninput="acFilter('cs',this.value)" onfocus="acOpen('cs')" onblur="setTimeout(()=>acClose('cs'),180)"/>
+          <div class="ac-dropdown" id="cs-client-dropdown"></div>
+          <input type="hidden" id="cs-client-id"/>
+        </div>
       </div>
-      <div class="fg mb3"><label>Montant (MAD)</label><input type="number" id="cs-amount" placeholder="0.00" step="0.01" min="0.01" style="font-size:18px;font-weight:800;color:var(--orange);padding:10px;"/></div>
-      <div class="fg"><label>Notes</label><input type="text" id="cs-notes-f" placeholder="facultatif"/></div>
+      <div class="fg mb3">
+        <label>Carburant</label>
+        <div class="fuel-toggle">
+          <button type="button" class="fuel-btn" id="cs-btn-gazoil" onclick="csSelectFuel('gazoil')">⛽ Gazoil</button>
+          <button type="button" class="fuel-btn" id="cs-btn-essence" onclick="csSelectFuel('essence')">🟢 Essence</button>
+        </div>
+        <input type="hidden" id="cs-pump-id"/>
+      </div>
+      <div class="fg mb3">
+        <label>Montant (MAD)</label>
+        <input type="number" id="cs-amount" placeholder="0.00" step="0.01" min="0.01" style="font-size:22px;font-weight:800;color:var(--orange);padding:10px;border:2px solid var(--orange);border-radius:6px;"/>
+      </div>
+      <div class="fg"><label>Notes (facultatif)</label><input type="text" id="cs-notes-f" placeholder="facultatif"/></div>
     </div>
     <div class="modal-ft">
       <button class="btn btn-g" onclick="closeModal('m-credit-sale')">Annuler</button>
@@ -357,6 +401,7 @@
         <div class="fg"><label>Nom Complet *</label><input id="ac-name" placeholder="Nom du client"/></div>
         <div class="fg"><label>Téléphone</label><input id="ac-phone" placeholder="+212 6XX XXX XXX"/></div>
         <div class="fg"><label>Société</label><input id="ac-company" placeholder="Nom de la société"/></div>
+        <div class="fg"><label>Limite Crédit (MAD)</label><input type="number" id="ac-limit" placeholder="Ex: 5000 (laisser vide = sans limite)" min="0"/></div>
         <div class="fg"><label>Notes</label><input id="ac-notes" placeholder="facultatif"/></div>
       </div>
     </div>
@@ -370,13 +415,21 @@
 <!-- SELL PRODUCT -->
 <div class="overlay" id="m-sell-product">
   <div class="modal">
-    <div class="modal-hd"><span>🛒</span><h3>Vente Produit</h3><button class="x" onclick="closeModal('m-sell-product')">×</button></div>
+    <div class="modal-hd"><span>🛢️</span><h3>Vente Huile / Produit</h3><button class="x" onclick="closeModal('m-sell-product')">×</button></div>
     <div class="modal-body">
-      <div class="fgrid">
-        <div class="fg"><label>Produit *</label><select id="sp-product" onchange="updateSellTotal()"></select></div>
-        <div class="fg"><label>Quantité *</label><input type="number" id="sp-qty" value="1" min="1" oninput="updateSellTotal()"/></div>
+      <div class="fg mb3">
+        <label>Produit</label>
+        <div class="ac-wrap">
+          <input class="ac-input" id="sp-product-input" placeholder="Tapez le nom du produit…" autocomplete="off" oninput="spFilter(this.value)" onfocus="spOpen()" onblur="setTimeout(()=>spClose(),180)"/>
+          <div class="ac-dropdown" id="sp-product-dropdown"></div>
+          <input type="hidden" id="sp-product-id"/>
+          <input type="hidden" id="sp-product-price"/>
+        </div>
       </div>
-      <div class="fg mt3"><label>Total (MAD)</label><input type="text" id="sp-total" readonly style="background:#F5F6F7;font-size:18px;font-weight:800;color:var(--green);"/></div>
+      <div class="fgrid">
+        <div class="fg"><label>Quantité</label><input type="number" id="sp-qty" value="1" min="1" oninput="updateSellTotal()"/></div>
+        <div class="fg"><label>Total à payer (MAD)</label><input type="text" id="sp-total" readonly style="background:#F0FDF4;font-size:20px;font-weight:800;color:var(--green);border:2px solid var(--green);border-radius:6px;padding:10px;"/></div>
+      </div>
     </div>
     <div class="modal-ft">
       <button class="btn btn-g" onclick="closeModal('m-sell-product')">Annuler</button>
@@ -520,6 +573,27 @@
   </div>
 </div>
 
+<!-- MONTHLY CREDITS PDF -->
+<div class="overlay" id="m-credits-pdf">
+  <div class="modal modal-lg">
+    <div class="modal-hd"><span>📄</span><h3>PDF Créances — Sélection Clients</h3><button class="x" onclick="closeModal('m-credits-pdf')">×</button></div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:13px;color:var(--muted);">Cochez les clients à inclure dans le PDF</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-g btn-xs" onclick="cpdfSelectAll(true)">Tout sélectionner</button>
+          <button class="btn btn-g btn-xs" onclick="cpdfSelectAll(false)">Tout déselectionner</button>
+        </div>
+      </div>
+      <div id="cpdf-clients" style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-credits-pdf')">Annuler</button>
+      <button class="btn btn-p" onclick="generateCreditsPDF()">📄 Générer PDF</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST AREA -->
 <div id="toasts"></div>
 
@@ -592,7 +666,9 @@ const pageActions = {
     }
   },
   credits: () => {
-    document.getElementById('page-actions').innerHTML = `<button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">🤝 Vente Crédit</button>`;
+    document.getElementById('page-actions').innerHTML = `
+      <button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">🤝 Vente Crédit</button>
+      <button class="btn btn-g btn-sm" onclick="openCreditsPDF()">📄 PDF Créances</button>`;
   }
 };
 
@@ -711,41 +787,58 @@ async function loadShiftPage() {
     if (r.reading_type === 'end')   readMap[r.pump_id].end   = r.meter_value;
   }
 
-  const pumpRows = Object.entries(readMap).map(([pid, r]) => `
-    <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
-      <div style="font-weight:800;font-size:14px;min-width:80px;">⛽ ${r.name}</div>
-      <div style="font-size:13px;color:var(--muted);min-width:70px;">${r.fuel}</div>
-      <div style="font-size:13px;color:var(--muted);">Début : <strong style="color:var(--text);font-variant-numeric:tabular-nums;">${r.start?.toLocaleString('fr-FR',{minimumFractionDigits:1}) || '—'}</strong></div>
-      <div style="font-size:13px;font-weight:700;white-space:nowrap;">Fin ✏️ :
-        <input type="number" class="end-reading" data-pump="${pid}" data-start="${r.start||0}" step="0.1" min="${r.start||0}" placeholder="Saisir..." value="${r.end != null ? r.end : ''}" style="width:130px;padding:7px 10px;border:2px solid var(--blue);border-radius:6px;font-size:14px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;margin-left:6px;"/>
-      </div>
-      <div style="font-size:12px;color:var(--muted);margin-left:auto;">${r.price?.toFixed(3)} MAD/L</div>
-    </div>`).join('');
+  const pumpRows = Object.entries(readMap).map(([pid, r]) => {
+    const fuelLow   = (r.fuel||'').toLowerCase();
+    const fuelColor = fuelLow.includes('gazoil') ? '#1D4ED8' : fuelLow.includes('essence') ? '#059669' : '#7C3AED';
+    const fuelBg    = fuelLow.includes('gazoil') ? '#EFF6FF' : fuelLow.includes('essence') ? '#ECFDF5' : '#F5F3FF';
+    const startFmt  = r.start != null ? r.start.toLocaleString('fr-FR',{minimumFractionDigits:1}) : '—';
+    return `
+    <div style="display:flex;align-items:center;gap:16px;padding:11px 18px;border-bottom:1px solid var(--border-lt);">
+      <div style="font-size:13.5px;font-weight:800;color:var(--text);min-width:70px;">${r.name}</div>
+      <span style="background:${fuelBg};color:${fuelColor};font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;">${r.fuel}</span>
+      <span style="font-size:12px;color:var(--muted);flex:1;">Début : <strong style="color:var(--text);font-variant-numeric:tabular-nums;">${startFmt}</strong></span>
+      <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${r.price?.toFixed(3)} MAD/L</span>
+      <input type="number" class="end-reading" data-pump="${pid}" data-start="${r.start||0}" step="0.1" placeholder="Fin…" value="${r.end != null ? r.end : ''}" style="width:130px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font);outline:none;" onfocus="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,.1)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'"/>
+    </div>`;
+  }).join('');
 
   const totalCredit  = shift.credit_sales.reduce((s, r) => s + r.amount, 0);
   const totalProduct = shift.product_sales.reduce((s, r) => s + r.total_amount, 0);
 
   el.innerHTML = `
-    <div class="obj-hd mb4">
-      <div class="obj-icon" style="background:var(--green-lt)">🕐</div>
-      <div>
-        <div class="obj-ttl">Poste N° ${shift.id} — En Cours</div>
-        <div class="obj-sub">Ouvert par <strong>${shift.opened_by_name}</strong> · ${fmtDT(shift.opened_at)}</div>
+    <div style="background:var(--sb-bg);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div style="font-size:20px;">🕐</div>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:800;color:#fff;">Poste N° ${shift.id} <span style="font-weight:400;opacity:.5;font-size:13px;">— En Cours</span></div>
+        <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:2px;">Ouvert par <strong style="color:rgba(255,255,255,.8);">${shift.opened_by_name}</strong> · ${fmtDT(shift.opened_at)}</div>
       </div>
-      <div class="obj-kpis">
-        <div class="obj-kpi"><div class="kv c-o">${fmt(totalCredit)} MAD</div><div class="kl">Crédits accordés</div></div>
-        <div class="obj-kpi"><div class="kv c-g">${fmt(totalProduct)} MAD</div><div class="kl">Ventes produits</div></div>
-      </div>
+      <span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);color:#4ADE80;padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:700;">● En Cours</span>
     </div>
 
-    <div class="section mb4">
-      <div class="s-head"><div class="s-title">⛽ Relevés Pompes</div></div>
+    <div class="tiles" style="margin-bottom:18px;">
+      <div class="tile" style="--tile-color:var(--orange);">
+        <div class="tile-accent"></div>
+        <div class="tile-ic-wrap" style="background:#FFFBEB;">🤝</div>
+        <div class="tile-val" style="color:var(--orange);">${fmt(totalCredit)} MAD</div>
+        <div class="tile-lbl">Crédits Accordés</div>
+      </div>
+      <div class="tile" style="--tile-color:var(--green);">
+        <div class="tile-accent"></div>
+        <div class="tile-ic-wrap" style="background:#ECFDF5;">🛢️</div>
+        <div class="tile-val" style="color:var(--green);">${fmt(totalProduct)} MAD</div>
+        <div class="tile-lbl">Ventes Produits</div>
+      </div>
+      ${shift.avance > 0 ? `<div class="tile" style="--tile-color:var(--blue);"><div class="tile-accent"></div><div class="tile-ic-wrap" style="background:#EFF6FF;">💵</div><div class="tile-val" style="color:var(--blue);">${fmt(shift.avance)} MAD</div><div class="tile-lbl">Avance Pompiste</div></div>` : ''}
+    </div>
+
+    <div class="section" style="margin-bottom:20px;">
+      <div class="s-head"><div class="s-title">⛽ Relevés Pompes</div><span style="font-size:12px;color:var(--muted);">${Object.keys(readMap).length} pompe(s) active(s)</span></div>
       <div>${pumpRows}</div>
     </div>
 
     ${shift.credit_sales.length ? `
-    <div class="section mb4">
-      <div class="s-head"><div class="s-title">🤝 Ventes Crédit ce Poste</div></div>
+    <div class="section" style="margin-bottom:20px;">
+      <div class="s-head"><div class="s-title">🤝 Ventes Crédit ce Poste</div><span class="badge badge-o">${shift.credit_sales.length}</span></div>
       <div class="s-body-flush" style="overflow-x:auto">
         <table class="t"><thead><tr><th>Client</th><th>Pompe</th><th class="num">Litres</th><th class="num">Montant</th><th>Heure</th><th></th></tr></thead>
         <tbody>${shift.credit_sales.map(s => `
@@ -763,7 +856,7 @@ async function loadShiftPage() {
 
     ${shift.product_sales.length ? `
     <div class="section">
-      <div class="s-head"><div class="s-title">🛢️ Ventes Produits ce Poste</div></div>
+      <div class="s-head"><div class="s-title">🛢️ Ventes Produits ce Poste</div><span class="badge badge-g">${shift.product_sales.length}</span></div>
       <div class="s-body-flush" style="overflow-x:auto">
         <table class="t"><thead><tr><th>Produit</th><th>Réf.</th><th class="num">Qté</th><th class="num">Prix U.</th><th class="num">Total</th><th>Heure</th><th></th></tr></thead>
         <tbody>${shift.product_sales.map(s => `
@@ -783,18 +876,25 @@ async function loadShiftPage() {
 
 // ─── OPEN SHIFT ─────────────────────────────────────────────
 async function prepareOpenShift() {
-  const pumps = await api('GET', '/pumps');
+  const [pumps, lastReadings] = await Promise.all([
+    api('GET', '/pumps'),
+    api('GET', '/shifts/last-readings').catch(() => ({})),
+  ]);
   const active = pumps.filter(p => p.status === 'active');
+  const hasLast = Object.keys(lastReadings).length > 0;
   document.getElementById('open-shift-form').innerHTML = `
     <div class="fgrid3" style="margin-bottom:4px">
       <div style="grid-column:1/-1" class="mb2">
+        ${hasLast ? '<div class="msg msg-i mb3" style="font-size:12.5px;">✨ Les compteurs de fin du dernier poste ont été pré-remplis.</div>' : ''}
         <table class="t"><thead><tr><th>Pompe</th><th>Carburant</th><th class="num">Prix/L</th><th class="num">Compteur Début *</th></tr></thead>
         <tbody>${active.map(p => `
           <tr>
             <td class="fw7">${p.name}</td>
             <td>${p.fuel_name}</td>
             <td class="num">${p.price_per_liter?.toFixed(3)} MAD</td>
-            <td><input type="number" class="os-reading" data-pump="${p.id}" step="0.1" min="0" placeholder="0.0" style="width:130px;padding:7px 10px;border:1px solid var(--border);border-radius:4px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;"/></td>
+            <td><input type="number" class="os-reading" data-pump="${p.id}" step="0.1" min="0"
+              placeholder="0.0" value="${lastReadings[p.id] != null ? lastReadings[p.id] : ''}"
+              style="width:140px;padding:7px 10px;border:1.5px solid ${lastReadings[p.id] != null ? 'var(--blue)' : 'var(--border)'};border-radius:4px;font-size:14px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;background:${lastReadings[p.id] != null ? '#EFF6FF' : 'var(--surface)'};"/></td>
           </tr>`).join('')}
         </tbody></table>
       </div>
@@ -813,7 +913,8 @@ async function submitOpenShift() {
   });
   if (!valid || !readings.length) { toast('Veuillez saisir tous les compteurs', 'er'); return; }
   try {
-    const shift = await api('POST', '/shifts', { readings, notes: document.getElementById('os-notes').value });
+    const avance = parseFloat(document.getElementById('os-avance').value) || 0;
+    const shift = await api('POST', '/shifts', { readings, notes: document.getElementById('os-notes').value, avance });
     S.activeShift = shift;
     closeModal('m-open-shift');
     toast('Poste N° ' + shift.id + ' ouvert avec succès');
@@ -882,6 +983,7 @@ function showShiftSummary(result) {
       <div class="fxb"><span class="fw7">Total CA Carburant</span><span class="fw8 c-b">${fmt(c.totalFuel)} MAD</span></div>
       <div class="fxb"><span class="fw7">(-) Ventes Crédit</span><span class="fw7 c-r">- ${fmt(c.totalCredit)} MAD</span></div>
       <div class="fxb"><span class="fw7">(+) Ventes Produits</span><span class="fw7 c-g">+ ${fmt(c.totalProduct)} MAD</span></div>
+      ${(c.totalAvance||0) > 0 ? `<div class="fxb"><span class="fw7">(-) Avance Pompiste</span><span class="fw7" style="color:var(--orange)">- ${fmt(c.totalAvance)} MAD</span></div>` : ''}
       <hr class="div"/>
       <div class="fxb"><span style="font-size:16px;font-weight:800">💵 CAISSE NETTE</span><span style="font-size:22px;font-weight:800;color:var(--green)">${fmt(c.netCash)} MAD</span></div>
     </div>`;
@@ -916,7 +1018,7 @@ async function loadHistory() {
 
 async function viewShift(id) {
   const s = await api('GET', '/shifts/' + id);
-  showShiftSummary({ ...s, calc: { totalFuel: s.total_fuel_revenue||0, totalCredit: s.total_credit_deducted||0, totalProduct: s.total_product_sales||0, netCash: s.net_cash||0 } });
+  showShiftSummary({ ...s, calc: { totalFuel: s.total_fuel_revenue||0, totalCredit: s.total_credit_deducted||0, totalProduct: s.total_product_sales||0, totalAvance: s.avance||0, netCash: s.net_cash||0 } });
 }
 
 async function reopenShift(id) {
@@ -995,10 +1097,12 @@ async function submitPayment() {
 
 async function submitCreditSale() {
   if (!S.activeShift) { toast('Aucun poste ouvert — ouvrez un poste d\'abord', 'wn'); return; }
-  const clientId = parseInt(document.getElementById('cs-client').value);
-  const pumpId   = parseInt(document.getElementById('cs-pump').value);
+  const clientId = parseInt(document.getElementById('cs-client-id').value);
+  const pumpId   = parseInt(document.getElementById('cs-pump-id').value);
   const amount   = parseFloat(document.getElementById('cs-amount').value);
-  if (!clientId || !pumpId || !amount || amount <= 0) { toast('Veuillez remplir tous les champs', 'er'); return; }
+  if (!clientId) { toast('Veuillez sélectionner un client', 'er'); return; }
+  if (!pumpId)   { toast('Veuillez choisir Gazoil ou Essence', 'er'); return; }
+  if (!amount || amount <= 0) { toast('Montant invalide', 'er'); return; }
   try {
     await api('POST', '/credits/sales', {
       shift_id: S.activeShift.id, credit_client_id: clientId, pump_id: pumpId, amount,
@@ -1006,6 +1110,10 @@ async function submitCreditSale() {
     });
     closeModal('m-credit-sale');
     document.getElementById('cs-amount').value = '';
+    document.getElementById('cs-client-input').value = '';
+    document.getElementById('cs-client-id').value = '';
+    document.getElementById('cs-pump-id').value = '';
+    document.querySelectorAll('.fuel-btn').forEach(b => b.className = 'fuel-btn');
     toast('Vente crédit enregistrée — ' + fmt(amount) + ' MAD');
     if (document.querySelector('#p-credits.active')) loadCredits();
     if (document.querySelector('#p-shift.active')) loadShiftPage();
@@ -1019,9 +1127,79 @@ async function deleteCreditSale(id) {
 }
 
 function populateCreditSaleModal() {
-  document.getElementById('cs-client').innerHTML = S.clients.map(c => `<option value="${c.id}">${c.name}${c.company ? ' ('+c.company+')' : ''}</option>`).join('');
-  document.getElementById('cs-pump').innerHTML = S.pumps.filter(p=>p.status==='active').map(p => `<option value="${p.id}">${p.name} — ${p.fuel_name}</option>`).join('');
+  // Reset autocomplete
+  document.getElementById('cs-client-input').value = '';
+  document.getElementById('cs-client-id').value = '';
+  document.getElementById('cs-pump-id').value = '';
+  document.getElementById('cs-amount').value = '';
+  document.querySelectorAll('.fuel-btn').forEach(b => b.className = 'fuel-btn');
+  acRender('cs', S.clients);
 }
+
+// ─── AUTOCOMPLETE: CLIENTS ──────────────────────────────────
+function acRender(ns, items) {
+  const dd = document.getElementById(ns + '-client-dropdown');
+  if (!dd) return;
+  dd.innerHTML = items.map(c => `
+    <div class="ac-item" onmousedown="acSelect('${ns}',${c.id},${JSON.stringify(c.name)})">
+      <span class="ac-item-name">${c.name}</span>
+      <span class="ac-item-sub">${c.company||''}${c.balance_due>0?' · Solde: '+fmt(c.balance_due)+' MAD':''}</span>
+    </div>`).join('') || '<div class="ac-item" style="color:var(--muted)">Aucun client trouvé</div>';
+}
+function acFilter(ns, val) {
+  const q = val.toLowerCase();
+  const filtered = S.clients.filter(c => c.name.toLowerCase().includes(q) || (c.company||'').toLowerCase().includes(q));
+  acRender(ns, filtered);
+  acOpen(ns);
+  if (!val) document.getElementById(ns + '-client-id').value = '';
+}
+function acSelect(ns, id, name) {
+  document.getElementById(ns + '-client-input').value = name;
+  document.getElementById(ns + '-client-id').value = id;
+  acClose(ns);
+}
+function acOpen(ns) {
+  const dd = document.getElementById(ns + '-client-dropdown');
+  if (dd) { acRender(ns, S.clients.filter(c => (c.name+c.company||'').toLowerCase().includes((document.getElementById(ns+'-client-input').value||'').toLowerCase()))); dd.classList.add('open'); }
+}
+function acClose(ns) { const dd = document.getElementById(ns + '-client-dropdown'); if (dd) dd.classList.remove('open'); }
+
+// ─── FUEL TOGGLE ────────────────────────────────────────────
+function csSelectFuel(type) {
+  const pump = S.pumps.find(p => p.status === 'active' && (p.fuel_name||'').toLowerCase().includes(type));
+  if (!pump) { toast('Aucune pompe ' + type + ' active', 'wn'); return; }
+  document.getElementById('cs-pump-id').value = pump.id;
+  document.getElementById('cs-btn-gazoil').className = 'fuel-btn' + (type==='gazoil' ? ' selected-gazoil' : '');
+  document.getElementById('cs-btn-essence').className = 'fuel-btn' + (type==='essence' ? ' selected-essence' : '');
+}
+
+// ─── AUTOCOMPLETE: PRODUCTS ─────────────────────────────────
+function spFilter(val) {
+  const q = val.toLowerCase();
+  const filtered = S.products.filter(p => p.stock_qty > 0 && p.name.toLowerCase().includes(q));
+  spRenderDD(filtered);
+  document.getElementById('sp-product-dropdown').classList.add('open');
+  if (!val) { document.getElementById('sp-product-id').value = ''; document.getElementById('sp-product-price').value = ''; updateSellTotal(); }
+}
+function spRenderDD(items) {
+  document.getElementById('sp-product-dropdown').innerHTML = items.map(p => `
+    <div class="ac-item" onmousedown="spSelect(${p.id},${JSON.stringify(p.name)},${p.price})">
+      <span class="ac-item-name">${p.name}</span>
+      <span class="ac-item-sub">Stock: ${p.stock_qty} · Prix: ${p.price?.toFixed(2)} MAD</span>
+    </div>`).join('') || '<div class="ac-item" style="color:var(--muted)">Aucun produit en stock</div>';
+}
+function spSelect(id, name, price) {
+  document.getElementById('sp-product-input').value = name;
+  document.getElementById('sp-product-id').value = id;
+  document.getElementById('sp-product-price').value = price;
+  document.getElementById('sp-product-dropdown').classList.remove('open');
+  updateSellTotal();
+}
+function spOpen() {
+  spRenderDD(S.products.filter(p => p.stock_qty > 0));
+  document.getElementById('sp-product-dropdown').classList.add('open');
+}
+function spClose() { document.getElementById('sp-product-dropdown').classList.remove('open'); }
 
 // ─── PRODUCTS ──────────────────────────────────────────────
 async function loadProducts() {
@@ -1064,27 +1242,29 @@ async function loadProducts() {
 }
 
 function populateSellModal() {
-  document.getElementById('sp-product').innerHTML = S.products.filter(p=>p.stock_qty>0)
-    .map(p => `<option value="${p.id}" data-price="${p.price}">${p.name} (Stock: ${p.stock_qty})</option>`).join('');
-  updateSellTotal();
+  document.getElementById('sp-product-input').value = '';
+  document.getElementById('sp-product-id').value = '';
+  document.getElementById('sp-product-price').value = '';
+  document.getElementById('sp-qty').value = '1';
+  document.getElementById('sp-total').value = '';
 }
 
 function updateSellTotal() {
-  const opt = document.getElementById('sp-product').selectedOptions[0];
-  const qty = parseInt(document.getElementById('sp-qty').value) || 0;
-  const price = opt ? parseFloat(opt.dataset.price) : 0;
-  document.getElementById('sp-total').value = (qty * price).toFixed(2) + ' MAD';
+  const price = parseFloat(document.getElementById('sp-product-price').value) || 0;
+  const qty   = parseInt(document.getElementById('sp-qty').value) || 0;
+  document.getElementById('sp-total').value = price > 0 ? (qty * price).toFixed(2) + ' MAD' : '';
 }
 
 async function submitSellProduct() {
   if (!S.activeShift) { toast('Aucun poste ouvert', 'wn'); return; }
-  const product_id = parseInt(document.getElementById('sp-product').value);
+  const product_id = parseInt(document.getElementById('sp-product-id').value);
   const quantity   = parseInt(document.getElementById('sp-qty').value);
-  if (!product_id || !quantity || quantity < 1) { toast('Champs invalides', 'er'); return; }
+  if (!product_id) { toast('Veuillez sélectionner un produit', 'er'); return; }
+  if (!quantity || quantity < 1) { toast('Quantité invalide', 'er'); return; }
   try {
     await api('POST', '/products/sales', { shift_id: S.activeShift.id, product_id, quantity });
     closeModal('m-sell-product');
-    toast('Vente enregistrée');
+    toast('Vente enregistrée — ' + document.getElementById('sp-total').value);
     loadProducts();
     if (document.querySelector('#p-shift.active')) loadShiftPage();
   } catch (e) { toast(e.message, 'er'); }
@@ -1202,12 +1382,50 @@ async function submitEditFuelPrice(id) {
 async function submitAddClient() {
   const name = document.getElementById('ac-name').value.trim();
   if (!name) { toast('Nom requis', 'er'); return; }
+  const limitVal = document.getElementById('ac-limit').value;
+  const credit_limit = limitVal ? parseFloat(limitVal) : null;
   try {
-    await api('POST', '/credits/clients', { name, phone: document.getElementById('ac-phone').value, company: document.getElementById('ac-company').value, notes: document.getElementById('ac-notes').value });
+    await api('POST', '/credits/clients', { name, phone: document.getElementById('ac-phone').value, company: document.getElementById('ac-company').value, notes: document.getElementById('ac-notes').value, credit_limit });
     closeModal('m-add-client');
     toast('Client créé');
     loadCredits();
   } catch (e) { toast(e.message, 'er'); }
+}
+
+// ─── CREDITS PDF ────────────────────────────────────────────
+function openCreditsPDF() {
+  const debtors = S.clients.filter(c => c.balance_due > 0);
+  if (!debtors.length) { toast('Aucune créance en cours', 'wn'); return; }
+  document.getElementById('cpdf-clients').innerHTML = debtors.map(c => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;background:var(--surface);">
+      <input type="checkbox" value="${c.id}" checked style="width:16px;height:16px;cursor:pointer;"/>
+      <div style="flex:1;">
+        <div style="font-size:13.5px;font-weight:700;color:var(--text);">${c.name}${c.company?' <span style="font-weight:400;color:var(--muted);">('+c.company+')</span>':''}</div>
+        ${c.phone ? `<div style="font-size:11.5px;color:var(--muted);">${c.phone}</div>` : ''}
+      </div>
+      <div style="font-size:14px;font-weight:800;color:var(--red);">${fmt(c.balance_due)} MAD</div>
+    </label>`).join('');
+  openModal('m-credits-pdf');
+}
+
+function cpdfSelectAll(val) {
+  document.querySelectorAll('#cpdf-clients input[type=checkbox]').forEach(cb => cb.checked = val);
+}
+
+async function generateCreditsPDF() {
+  const ids = [...document.querySelectorAll('#cpdf-clients input[type=checkbox]:checked')].map(cb => cb.value);
+  if (!ids.length) { toast('Sélectionnez au moins un client', 'wn'); return; }
+  try {
+    const r = await fetch('/api/ai/pdf/credits?ids=' + ids.join(','), { headers: { Authorization: 'Bearer ' + token() } });
+    if (!r.ok) throw new Error();
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'MENASTA_Creances_' + new Date().toISOString().slice(0,10) + '.pdf'; a.click();
+    URL.revokeObjectURL(url);
+    closeModal('m-credits-pdf');
+    toast('PDF généré avec succès');
+  } catch { toast('Erreur génération PDF', 'er'); }
 }
 
 // ─── SETTINGS ───────────────────────────────────────────────

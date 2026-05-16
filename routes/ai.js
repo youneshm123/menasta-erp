@@ -554,7 +554,14 @@ router.post('/chat', requireAuth, async (req, res, next) => {
 // PDF endpoints
 router.get('/pdf/daily',   requireAuth, wrap(async (req, res) => { pdfDaily(res,   await getBusinessData()); }));
 router.get('/pdf/weekly',  requireAuth, wrap(async (req, res) => { pdfWeekly(res,  await getBusinessData()); }));
-router.get('/pdf/credits', requireAuth, wrap(async (req, res) => { pdfCredits(res, await getBusinessData()); }));
+router.get('/pdf/credits', requireAuth, wrap(async (req, res) => {
+  let data = await getBusinessData();
+  if (req.query.ids) {
+    const ids = req.query.ids.split(',').map(Number).filter(Boolean);
+    data = { ...data, creditClients: data.creditClients.filter(c => ids.includes(parseInt(c.id))) };
+  }
+  pdfCredits(res, data);
+}));
 router.get('/pdf/monthly', requireAuth, wrap(async (req, res) => { pdfMonthly(res, await getBusinessData()); }));
 
 module.exports = router;

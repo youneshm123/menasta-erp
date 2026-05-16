@@ -22,9 +22,11 @@ async function calcShift(shiftId) {
   }
   const { rows: [{ t: tc }] } = await pool.query('SELECT COALESCE(SUM(amount),0) as t FROM credit_sales WHERE shift_id=$1', [shiftId]);
   const { rows: [{ t: tp }] } = await pool.query('SELECT COALESCE(SUM(total_amount),0) as t FROM product_sales WHERE shift_id=$1', [shiftId]);
+  const { rows: [{ avance }] } = await pool.query('SELECT avance FROM shifts WHERE id=$1', [shiftId]);
   const totalCredit  = parseFloat(tc);
   const totalProduct = parseFloat(tp);
-  return { totalLiters, totalFuel, totalCredit, totalProduct, netCash: totalFuel - totalCredit + totalProduct };
+  const totalAvance  = parseFloat(avance) || 0;
+  return { totalLiters, totalFuel, totalCredit, totalProduct, totalAvance, netCash: totalFuel - totalCredit + totalProduct - totalAvance };
 }
 
 async function shiftDetail(shift) {
@@ -66,6 +68,19 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
   res.json(rows);
 }));
 
+router.get('/last-readings', requireAuth, wrap(async (_req, res) => {
+  const { rows } = await pool.query(`
+    SELECT pr.pump_id, pr.meter_value
+    FROM pump_readings pr
+    JOIN shifts s ON s.id=pr.shift_id
+    WHERE s.status='closed' AND pr.reading_type='end'
+    AND s.id=(SELECT id FROM shifts WHERE status='closed' ORDER BY closed_at DESC LIMIT 1)
+  `);
+  const map = {};
+  rows.forEach(r => { map[r.pump_id] = parseFloat(r.meter_value); });
+  res.json(map);
+}));
+
 router.get('/current', requireAuth, wrap(async (_req, res) => {
   const { rows } = await pool.query(`
     SELECT s.*, u.full_name as opened_by_name
@@ -87,7 +102,7 @@ router.get('/:id', requireAuth, wrap(async (req, res) => {
 }));
 
 router.post('/', requireAuth, wrap(async (req, res) => {
-  const { readings, notes } = req.body || {};
+  const { readings, notes, avance } = req.body || {};
   if (!readings || !readings.length)
     return res.status(400).json({ error: 'Relevés de début requis' });
 
@@ -95,8 +110,8 @@ router.post('/', requireAuth, wrap(async (req, res) => {
   if (open.length) return res.status(400).json({ error: 'Un poste est déjà ouvert (ID ' + open[0].id + ')' });
 
   const { rows: [{ id: shiftId }] } = await pool.query(
-    'INSERT INTO shifts (opened_by,notes) VALUES ($1,$2) RETURNING id',
-    [req.user.id, notes || '']
+    'INSERT INTO shifts (opened_by,notes,avance) VALUES ($1,$2,$3) RETURNING id',
+    [req.user.id, notes || '', parseFloat(avance) || 0]
   );
   for (const r of readings)
     await pool.query(
@@ -126,7 +141,7 @@ router.post('/:id/close', requireAuth, wrap(async (req, res) => {
   const calc = await calcShift(shift.id);
   await pool.query(`
     UPDATE shifts SET
-      status='closed', closed_at=NOW(),
+      status='closed', closed_at=datetime('now'),
       total_liters_sold=$1, total_fuel_revenue=$2, total_credit_deducted=$3,
       total_product_sales=$4, net_cash=$5, notes=COALESCE($6,notes)
     WHERE id=$7
