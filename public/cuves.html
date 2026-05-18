@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MENASTA — Cuves</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/fiori.css?v=18"/>
+<style>
+body.app-layout{overflow:auto}
+.sidebar{position:fixed;left:0;top:0;bottom:0;overflow-y:auto}
+.main{margin-left:var(--sb-w);padding:28px 32px;min-height:100vh}
+.cuves-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px;margin-bottom:24px}
+.cuve-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;box-shadow:var(--shadow-sm)}
+.cuve-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.cuve-name{font-size:15px;font-weight:800;color:var(--text)}
+.cuve-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-ok{background:#DCFCE7;color:#166534}.badge-warn{background:#FEF3C7;color:#92400E}.badge-danger{background:#FEE2E2;color:#DC2626}
+.tank-wrap{display:flex;align-items:flex-end;gap:20px;margin-bottom:18px}
+.tank-visual{width:70px;height:160px;border:3px solid var(--sb-bg);border-radius:8px;position:relative;overflow:hidden;flex-shrink:0;background:#F8FAFF}
+.tstat{margin-bottom:10px}
+.tstat-lbl{font-size:10px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.tstat-val{font-size:15px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+.tstat-val.green{color:var(--green)}.tstat-val.red{color:var(--red)}.tstat-val.orange{color:var(--orange)}
+.topbar-title{font-size:20px;font-weight:900;color:var(--text)}
+.topbar-sub{font-size:13px;color:var(--muted);margin-top:3px}
+.tabs-pill{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:22px;width:fit-content}
+.tab-pill{padding:8px 18px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);transition:background .15s,color .15s;border:none;background:none;font-family:var(--font)}
+.tab-pill.active{background:var(--sb-bg);color:#fff}
+.sb-logout{width:100%;padding:8px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:11px;font-family:var(--font);cursor:pointer;transition:background .15s;margin-top:6px}
+.sb-logout:hover{background:rgba(239,68,68,.15);color:#f87171;border-color:rgba(239,68,68,.3)}
+</style>
+</head>
+<body class="app-layout">
+
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo-row">
+      <div class="sb-mark">🛢️</div>
+      <div>
+        <div class="sb-name">Cuves</div>
+        <div class="sb-sub">Suivi MENASTA</div>
+      </div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <a href="/cuves" class="sb-item active"><span class="ni">🛢️</span> Cuves</a>
+    <a href="/app" class="sb-item"><span class="ni">⛽</span> Carburant</a>
+    <a href="/patron" class="sb-item"><span class="ni">👑</span> Tableau Patron</a>
+  </div>
+  <div class="sb-foot">
+    <div class="sb-user">
+      <div class="sb-avatar" id="sb-initials">?</div>
+      <div>
+        <div class="sb-uname" id="sb-name">Chargement…</div>
+        <div class="sb-urole" id="sb-role">—</div>
+      </div>
+    </div>
+    <button class="sb-logout" onclick="logout()">← Déconnexion</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px">
+    <div>
+      <div class="topbar-title">🛢️ Suivi des Cuves</div>
+      <div class="topbar-sub">Niveaux, livraisons et écarts — détection des pertes</div>
+    </div>
+    <button class="btn btn-p" onclick="showTab('lecture')">+ Saisir Lecture</button>
+  </div>
+
+  <div class="tabs-pill">
+    <button class="tab-pill active" onclick="showTab('tableau')">📊 Tableau de bord</button>
+    <button class="tab-pill" onclick="showTab('lecture')">📏 Saisir Lecture</button>
+    <button class="tab-pill" onclick="showTab('livraison')">🚛 Livraisons</button>
+    <button class="tab-pill" onclick="showTab('historique')">📋 Historique & Écarts</button>
+  </div>
+
+  <!-- TAB: TABLEAU DE BORD -->
+  <div id="tab-tableau" class="tab-pane active">
+    <div class="cuves-grid" id="cuves-grid"></div>
+  </div>
+
+  <!-- TAB: SAISIR LECTURE -->
+  <div id="tab-lecture" class="tab-pane">
+    <div class="section">
+      <div class="s-head">📏 Saisie de la Lecture du Jour</div>
+      <div class="s-body">
+        <p style="font-size:13px;color:#6B7280;margin-bottom:20px;line-height:1.6">
+          Chaque matin, mesurez le niveau de chaque cuve avec la jauge (règle graduée) et entrez le résultat ici.<br/>
+          Le système compare automatiquement avec le niveau théorique pour détecter les pertes.
+        </p>
+        <div class="fgrid" style="margin-bottom:16px">
+          <div class="fg"><label>Date</label><input type="date" id="lec-date"/></div>
+        </div>
+        <div id="lecture-cuves"></div>
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button class="btn btn-p" onclick="saveLectures()">💾 Enregistrer les Lectures</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: LIVRAISONS -->
+  <div id="tab-livraison" class="tab-pane">
+    <div class="section" style="margin-bottom:20px">
+      <div class="s-head">🚛 Nouvelle Livraison</div>
+      <div class="s-body">
+        <div class="fgrid3" style="margin-bottom:12px">
+          <div class="fg"><label>Cuve</label>
+            <select id="liv-cuve"></select>
+          </div>
+          <div class="fg"><label>Date Livraison</label><input type="date" id="liv-date"/></div>
+          <div class="fg"><label>Litres Reçus</label><input type="number" id="liv-litres" placeholder="15000" min="0" step="1"/></div>
+        </div>
+        <div class="fgrid3" style="margin-bottom:12px">
+          <div class="fg"><label>Fournisseur</label><input type="text" id="liv-fournisseur" placeholder="SOMAS, WINXO…"/></div>
+          <div class="fg"><label>Prix Unitaire (MAD/L)</label><input type="number" id="liv-prix" placeholder="9.20" step="0.01"/></div>
+          <div class="fg"><label>N° Bon de Livraison</label><input type="text" id="liv-bon" placeholder="BL-2026-001"/></div>
+        </div>
+        <button class="btn btn-p" onclick="saveLivraison()">✅ Enregistrer la Livraison</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="s-head">📋 Historique des Livraisons</div>
+      <div style="overflow-x:auto">
+        <table class="t">
+          <thead><tr>
+            <th>Date</th><th>Cuve</th><th>Litres Reçus</th>
+            <th>Fournisseur</th><th>Prix/L</th><th>Coût Total</th><th>Bon</th><th></th>
+          </tr></thead>
+          <tbody id="liv-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: HISTORIQUE & ÉCARTS -->
+  <div id="tab-historique" class="tab-pane">
+    <div id="ecarts-container"></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+const token = localStorage.getItem('fm_token');
+const user  = JSON.parse(localStorage.getItem('fm_user') || 'null');
+if (!token) location.href = '/';
+if (user) {
+  const n = user.full_name;
+  document.getElementById('sb-name').textContent = n;
+  document.getElementById('sb-initials').textContent = n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('sb-role').textContent = user.role || 'Admin';
+}
+function logout() { localStorage.clear(); location.href = '/'; }
+
+const A = (url, opt={}) => fetch(url, {
+  headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, ...opt
+}).then(r => r.json());
+
+const fmt = (n, d=0) => (parseFloat(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+function toast(msg, t='g') {
+  const d = document.createElement('div'); d.className = 'toast t-'+t; d.textContent = msg;
+  document.getElementById('toasts').appendChild(d); setTimeout(()=>d.remove(),3500);
+}
+
+// init dates
+document.getElementById('lec-date').value = new Date().toISOString().slice(0,10);
+document.getElementById('liv-date').value = new Date().toISOString().slice(0,10);
+
+let allCuves = [];
+
+function showTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-pill').forEach((t,i) => {
+    t.classList.toggle('active', ['tableau','lecture','livraison','historique'][i] === name);
+  });
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'tableau')    loadTableau();
+  if (name === 'lecture')    loadLectureForm();
+  if (name === 'livraison')  loadLivraisons();
+  if (name === 'historique') loadHistorique();
+}
+
+// ── TABLEAU DE BORD ───────────────────────────────────────────
+async function loadTableau() {
+  const cuves = await A('/api/cuves');
+  allCuves = cuves;
+  const grid = document.getElementById('cuves-grid');
+  grid.innerHTML = '';
+  cuves.forEach(c => grid.appendChild(buildCuveCard(c)));
+}
+
+function buildCuveCard(c) {
+  const pct     = c.niveau_actuel != null ? Math.min(100, Math.round(c.niveau_actuel / c.capacite_max * 100)) : 0;
+  const alertPct= Math.round(c.niveau_alerte / c.capacite_max * 100);
+  const color   = c.fuel_name === 'Gazoil' ? '#DF6E0C' : '#0070F2';
+  const isLow   = c.niveau_actuel != null && c.niveau_actuel <= c.niveau_alerte;
+  const isAlert = c.niveau_actuel != null && c.niveau_actuel <= c.niveau_alerte * 1.3;
+
+  let badgeClass = 'badge-ok', badgeText = '✓ Niveau OK';
+  if (isLow)   { badgeClass = 'badge-danger'; badgeText = '🚨 Niveau Critique'; }
+  else if (isAlert) { badgeClass = 'badge-warn'; badgeText = '⚠️ Niveau Bas'; }
+  if (c.niveau_actuel == null) { badgeClass = 'badge-danger'; badgeText = '❓ Pas de lecture'; }
+
+  let ecartHtml = `<div class="ecart-box ecart-none">Aucune lecture aujourd'hui pour calculer l'écart</div>`;
+  if (c.ecart !== null) {
+    const cls = c.ecart >= 0 ? 'ecart-ok' : (c.ecart >= -100 ? 'ecart-warn' : 'ecart-danger');
+    const sign = c.ecart >= 0 ? '+' : '';
+    ecartHtml = `<div class="ecart-box ${cls}">
+      <span>Écart du jour</span>
+      <span>${sign}${fmt(c.ecart)} L</span>
+    </div>`;
+  }
+
+  const div = document.createElement('div');
+  div.className = 'cuve-card';
+  div.innerHTML = `
+    <div class="cuve-header">
+      <div class="cuve-name">${c.name}</div>
+      <span class="cuve-badge ${badgeClass}">${badgeText}</span>
+    </div>
+    <div class="tank-wrap">
+      <div class="tank-visual">
+        <div class="tank-fill" style="height:${pct}%;background:${color};opacity:.85"></div>
+        <div class="tank-alert-line" style="bottom:${alertPct}%"></div>
+        <div class="tank-pct">${pct}%</div>
+      </div>
+      <div class="tank-stats">
+        <div class="tstat">
+          <div class="tstat-lbl">Niveau Actuel</div>
+          <div class="tstat-val ${isLow?'red':''}">${c.niveau_actuel != null ? fmt(c.niveau_actuel)+' L' : '—'}</div>
+        </div>
+        <div class="tstat">
+          <div class="tstat-lbl">Capacité Totale</div>
+          <div class="tstat-val">${fmt(c.capacite_max)} L</div>
+        </div>
+        <div class="tstat">
+          <div class="tstat-lbl">Niveau Alerte</div>
+          <div class="tstat-val orange">${fmt(c.niveau_alerte)} L</div>
+        </div>
+        ${c.theorique != null ? `<div class="tstat">
+          <div class="tstat-lbl">Niveau Théorique</div>
+          <div class="tstat-val">${fmt(c.theorique)} L</div>
+        </div>` : ''}
+      </div>
+    </div>
+    ${ecartHtml}
+    ${c.last_lecture ? `<div style="margin-top:10px;font-size:11px;color:#9CA3AF">Dernière lecture : ${c.last_lecture.lecture_date}</div>` : ''}
+  `;
+  return div;
+}
+
+// ── LECTURE FORM ──────────────────────────────────────────────
+async function loadLectureForm() {
+  const cuves = await A('/api/cuves');
+  allCuves = cuves;
+  const container = document.getElementById('lecture-cuves');
+  container.innerHTML = cuves.map(c => `
+    <div style="background:#F8FAFF;border:1px solid #DBEAFE;border-radius:10px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:800;color:#1A2332">${c.name}</div>
+        <div style="font-size:11px;color:#6B7280">
+          Théorique : <strong>${c.theorique != null ? fmt(c.theorique)+' L' : 'Pas de données'}</strong>
+        </div>
+      </div>
+      <div class="fgrid">
+        <div class="fg">
+          <label>Niveau Lu (litres)</label>
+          <input type="number" id="lec-${c.id}" placeholder="${c.niveau_actuel != null ? fmt(c.niveau_actuel) : '0'}" min="0" step="1"
+            value="${c.today_lecture ? c.today_lecture.niveau_litres : ''}"
+            oninput="calcEcart(${c.id}, ${c.theorique})"
+            style="font-size:16px;font-weight:700"/>
+        </div>
+        <div class="fg">
+          <label>Écart Calculé</label>
+          <div id="ecart-live-${c.id}" style="padding:9px 11px;border:1px solid #E5E7EB;border-radius:7px;font-size:14px;font-weight:700;background:#fff;color:#9CA3AF">—</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function calcEcart(cuveId, theorique) {
+  const val = parseFloat(document.getElementById('lec-'+cuveId).value);
+  const el  = document.getElementById('ecart-live-'+cuveId);
+  if (!val || theorique == null) { el.textContent = '—'; el.style.color = '#9CA3AF'; return; }
+  const ecart = val - theorique;
+  const sign  = ecart >= 0 ? '+' : '';
+  el.textContent = sign + fmt(ecart) + ' L';
+  el.style.color = ecart >= 0 ? '#059669' : (ecart >= -100 ? '#D97706' : '#DC2626');
+}
+
+async function saveLectures() {
+  const date = document.getElementById('lec-date').value;
+  let saved = 0;
+  for (const c of allCuves) {
+    const val = document.getElementById('lec-'+c.id)?.value;
+    if (!val) continue;
+    await A('/api/cuves/lectures', { method:'POST', body: JSON.stringify({ cuve_id: c.id, lecture_date: date, niveau_litres: parseFloat(val) }) });
+    saved++;
+  }
+  if (saved) { toast(saved + ' lecture(s) enregistrée(s) ✓'); showTab('tableau'); }
+  else toast('Aucune valeur saisie', 'er');
+}
+
+// ── LIVRAISONS ────────────────────────────────────────────────
+async function loadLivraisons() {
+  const cuves = await A('/api/cuves');
+  allCuves = cuves;
+  const sel = document.getElementById('liv-cuve');
+  sel.innerHTML = cuves.map(c => `<option value="${c.id}">${c.name} (${c.fuel_name})</option>`).join('');
+
+  const livs = await A('/api/cuves/livraisons');
+  const tbody = document.getElementById('liv-body');
+  if (!livs.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#9CA3AF">Aucune livraison</td></tr>';
+    return;
+  }
+  tbody.innerHTML = livs.map(l => `<tr>
+    <td>${l.livraison_date}</td>
+    <td style="font-weight:700">${l.cuve_name}</td>
+    <td class="num" style="color:#059669;font-weight:700">${fmt(l.litres_recus)} L</td>
+    <td>${l.fournisseur||'—'}</td>
+    <td class="num">${l.prix_unitaire ? fmt(l.prix_unitaire,2)+' MAD' : '—'}</td>
+    <td class="num" style="font-weight:700">${l.prix_unitaire ? fmt(l.litres_recus*l.prix_unitaire,2)+' MAD' : '—'}</td>
+    <td style="font-size:11px;color:#6B7280">${l.bon_livraison||'—'}</td>
+    <td><button class="btn btn-d btn-xs" onclick="deleteLiv(${l.id})">🗑️</button></td>
+  </tr>`).join('');
+}
+
+async function saveLivraison() {
+  const body = {
+    cuve_id:       document.getElementById('liv-cuve').value,
+    livraison_date:document.getElementById('liv-date').value,
+    litres_recus:  parseFloat(document.getElementById('liv-litres').value),
+    fournisseur:   document.getElementById('liv-fournisseur').value.trim(),
+    prix_unitaire: parseFloat(document.getElementById('liv-prix').value) || null,
+    bon_livraison: document.getElementById('liv-bon').value.trim(),
+  };
+  if (!body.litres_recus) { toast('Entrez les litres reçus', 'er'); return; }
+  const r = await A('/api/cuves/livraisons', { method:'POST', body: JSON.stringify(body) });
+  if (r.error) { toast(r.error, 'er'); return; }
+  toast('Livraison enregistrée ✓');
+  document.getElementById('liv-litres').value = '';
+  document.getElementById('liv-fournisseur').value = '';
+  document.getElementById('liv-prix').value = '';
+  document.getElementById('liv-bon').value = '';
+  loadLivraisons();
+}
+
+async function deleteLiv(id) {
+  if (!confirm('Supprimer cette livraison ?')) return;
+  await A('/api/cuves/livraisons/'+id, { method:'DELETE' });
+  toast('Supprimée');
+  loadLivraisons();
+}
+
+// ── HISTORIQUE & ÉCARTS ───────────────────────────────────────
+async function loadHistorique() {
+  const cuves = await A('/api/cuves');
+  allCuves = cuves;
+  const container = document.getElementById('ecarts-container');
+  container.innerHTML = '';
+
+  for (const c of cuves) {
+    const ecarts = await A('/api/cuves/'+c.id+'/ecarts');
+    const hist   = await A('/api/cuves/'+c.id+'/historique');
+
+    const maxAbs = Math.max(...ecarts.map(e => Math.abs(e.ecart)), 1);
+
+    const div = document.createElement('div');
+    div.className = 'section';
+    div.style.marginBottom = '20px';
+
+    const ecartRows = ecarts.length ? ecarts.map(e => {
+      const pct  = Math.min(100, Math.abs(e.ecart) / maxAbs * 100);
+      const isNeg = e.ecart < 0;
+      const cls  = e.ecart >= 0 ? '#059669' : (e.ecart >= -100 ? '#D97706' : '#DC2626');
+      return `<div class="ecart-bar-row">
+        <div class="ecart-date">${e.date}</div>
+        <div style="flex:1">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+            <span style="font-size:11px;color:#6B7280">Réel: <strong>${fmt(e.reel)} L</strong></span>
+            <span style="font-size:11px;color:#9CA3AF">Théo: ${fmt(e.theorique)} L</span>
+            <span style="font-size:11px;color:#059669">+${fmt(e.livraisons)} L livraison</span>
+            <span style="font-size:11px;color:#2563EB">-${fmt(e.vendu)} L vendus</span>
+          </div>
+          <div class="ecart-bar-wrap">
+            <div class="ecart-bar-fill" style="width:${pct}%;background:${cls};${isNeg?'right:0':'left:0'}"></div>
+          </div>
+        </div>
+        <div class="ecart-val" style="color:${cls}">${e.ecart>=0?'+':''}${fmt(e.ecart)} L</div>
+      </div>`;
+    }).join('') : '<div style="padding:16px;color:#9CA3AF;font-size:12px;text-align:center">Pas assez de lectures pour calculer les écarts (minimum 2 lectures requises)</div>';
+
+    div.innerHTML = `
+      <div class="s-head">🛢️ ${c.name} — Écarts & Lectures (30 derniers jours)</div>
+      <div style="padding:16px 18px">
+        <div style="margin-bottom:12px;padding:10px 14px;background:#F8FAFF;border-radius:8px;font-size:12px;color:#1A2332;line-height:1.8">
+          <strong>Comment lire l'écart :</strong><br/>
+          <span style="color:#059669">+X L = surplus</span> (rare, mesure imprécise) &nbsp;|&nbsp;
+          <span style="color:#D97706">-50L à 0 = normal</span> (évaporation) &nbsp;|&nbsp;
+          <span style="color:#DC2626">-100L et plus = à investiguer</span> (fuite, vol possible)
+        </div>
+        ${ecartRows}
+      </div>
+    `;
+    container.appendChild(div);
+  }
+}
+
+loadTableau();
+</script>
+<script src="/js/ai-widget.js"></script>
+</body>
+</html>

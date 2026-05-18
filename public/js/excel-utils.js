@@ -129,14 +129,18 @@ function attachExportBtns() {
     const tbl = sec.querySelector('table');
     const sh  = sec.querySelector('.s-head');
     if (!tbl || !sh) return;
+    if (sh.querySelector('.exp-btns')) { sec.setAttribute('data-excel-wired', '1'); return; }
     sec.setAttribute('data-excel-wired', '1');
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-ghost btn-sm';
-    btn.style.cssText = 'font-size:11px;margin-left:8px';
-    btn.innerHTML = '📊 Excel';
-    const title = (sh.querySelector('h2,h3') || sh).innerText.trim().slice(0, 30) || 'export';
-    btn.onclick = () => exportTableToExcel(tbl, title, { skipLastCols: 1, btnEl: btn });
-    sh.appendChild(btn);
+    const title = sh.querySelector('.s-title') ? sh.querySelector('.s-title').innerText.trim().slice(0,30) : 'export';
+    const wrap = document.createElement('div');
+    wrap.className = 'exp-btns';
+    wrap.style.cssText = 'display:flex;gap:5px;align-items:center;flex-shrink:0';
+    wrap.innerHTML = `
+      <button class="exp-btn exp-pdf" onclick="expPDF('${tbl.id||''}','${title}',this.closest('.section').querySelector('table'))">📄 PDF</button>
+      <button class="exp-btn exp-xl"  onclick="expXLtbl(this.closest('.section').querySelector('table'),'${title}')">📊 Excel</button>
+      <button class="exp-btn exp-word" onclick="expWord('${tbl.id||''}','${title}',this.closest('.section').querySelector('table'))">📝 Word</button>
+    `;
+    sh.appendChild(wrap);
   });
 }
 

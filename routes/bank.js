@@ -48,10 +48,10 @@ router.get('/balance', requireAuth, wrap(async (_req, res) => {
 router.get('/transactions', requireAuth, wrap(async (req, res) => {
   const { month, search, type, category } = req.query;
   let where = []; const params = []; let i = 1;
-  if (month)    { where.push(`TO_CHAR(t.txn_date,'YYYY-MM')=$${i++}`); params.push(month); }
+  if (month)    { where.push(`strftime('%Y-%m', t.txn_date)=$${i++}`); params.push(month); }
   if (type)     { where.push(`t.type=$${i++}`);                        params.push(type); }
   if (category) { where.push(`t.category=$${i++}`);                    params.push(category); }
-  if (search)   { where.push(`(t.description ILIKE $${i} OR t.beneficiary ILIKE $${i} OR t.check_number ILIKE $${i})`); params.push('%'+search+'%'); i++; }
+  if (search)   { where.push(`(t.description ILIKE $${i} OR t.beneficiary ILIKE $${i+1} OR t.check_number ILIKE $${i+2})`); params.push('%'+search+'%', '%'+search+'%', '%'+search+'%'); i += 3; }
   const wc = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
   const { rows } = await pool.query(`
@@ -142,7 +142,7 @@ router.get('/history', requireAuth, wrap(async (req, res) => {
   let runBal = parseFloat(s.initial_balance) + parseFloat(before);
 
   const { rows: daily } = await pool.query(`
-    SELECT txn_date::text as day,
+    SELECT txn_date as day,
       SUM(CASE WHEN type IN ('depot','virement_in','cheque_in') THEN amount ELSE -amount END) as net
     FROM bank_transactions WHERE txn_date >= $1
     GROUP BY txn_date ORDER BY txn_date ASC
@@ -164,12 +164,12 @@ router.get('/stats/categories', requireAuth, wrap(async (req, res) => {
   const month = req.query.month || new Date().toISOString().slice(0,7);
   const { rows: out } = await pool.query(`
     SELECT category, SUM(amount) as total FROM bank_transactions
-    WHERE TO_CHAR(txn_date,'YYYY-MM')=$1 AND type IN ('retrait','virement_out','cheque_out')
+    WHERE strftime('%Y-%m', txn_date)=$1 AND type IN ('retrait','virement_out','cheque_out')
     GROUP BY category ORDER BY total DESC
   `, [month]);
   const { rows: inp } = await pool.query(`
     SELECT category, SUM(amount) as total FROM bank_transactions
-    WHERE TO_CHAR(txn_date,'YYYY-MM')=$1 AND type IN ('depot','virement_in','cheque_in')
+    WHERE strftime('%Y-%m', txn_date)=$1 AND type IN ('depot','virement_in','cheque_in')
     GROUP BY category ORDER BY total DESC
   `, [month]);
   res.json({ out, in: inp });
@@ -179,10 +179,10 @@ router.get('/stats/categories', requireAuth, wrap(async (req, res) => {
 router.get('/report', requireAuth, wrap(async (req, res) => {
   const month = req.query.month || new Date().toISOString().slice(0,7);
   const { rows } = await pool.query(`
-    SELECT txn_date::text as day,
+    SELECT txn_date as day,
       SUM(CASE WHEN type IN ('depot','virement_in','cheque_in')    THEN amount ELSE 0 END) as total_in,
       SUM(CASE WHEN type IN ('retrait','virement_out','cheque_out') THEN amount ELSE 0 END) as total_out
-    FROM bank_transactions WHERE TO_CHAR(txn_date,'YYYY-MM')=$1
+    FROM bank_transactions WHERE strftime('%Y-%m', txn_date)=$1
     GROUP BY txn_date ORDER BY txn_date DESC
   `, [month]);
   const totIn  = rows.reduce((s,r) => s + parseFloat(r.total_in), 0);

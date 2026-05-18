@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MENASTA — Tableau Patron</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/fiori.css?v=18"/>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<style>
+body.app-layout{overflow:auto}
+.sidebar{position:fixed;left:0;top:0;bottom:0;overflow-y:auto}
+.main{margin-left:var(--sb-w);padding:28px 32px;min-height:100vh}
+.topbar-title{font-size:20px;font-weight:900;color:var(--text)}
+.topbar-sub{font-size:13px;color:var(--muted);margin-top:3px}
+.topbar-clock{font-size:13px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-weight:500;font-variant-numeric:tabular-nums}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.panels{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.prow-val.green{color:var(--green)}.prow-val.red{color:var(--red)}.prow-val.blue{color:var(--blue)}.prow-val.orange{color:var(--orange)}.prow-val.amber{color:#92400E}.prow-val.big{font-size:18px;font-weight:900}
+.shift-badge.closed{background:#F3F4F6;color:var(--muted)}
+.sb-logout{width:100%;padding:8px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:11px;font-family:var(--font);cursor:pointer;transition:background .15s,color .15s;margin-top:6px}
+.sb-logout:hover{background:rgba(239,68,68,.15);color:#f87171;border-color:rgba(239,68,68,.3)}
+@media(max-width:900px){.panels{grid-template-columns:1fr 1fr}.kpi-row{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body class="app-layout">
+
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo-row">
+      <div class="sb-mark">👑</div>
+      <div>
+        <div class="sb-name">Patron</div>
+        <div class="sb-sub">Tableau de Bord</div>
+      </div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-section-label">Navigation</div>
+    <a href="/patron" class="sb-item active"><span class="ni">📊</span> Vue d'ensemble</a>
+    <a href="/app" class="sb-item"><span class="ni">⛽</span> Carburant</a>
+    <a href="/cafe" class="sb-item"><span class="ni">☕</span> Café</a>
+    <a href="/tabac" class="sb-item"><span class="ni">🚬</span> Tabac</a>
+    <a href="/bank" class="sb-item"><span class="ni">🏦</span> Banque</a>
+    <a href="/factures" class="sb-item"><span class="ni">🧾</span> Factures</a>
+  </div>
+  <div class="sb-foot">
+    <div class="sb-user">
+      <div class="sb-avatar" id="sb-initials">?</div>
+      <div>
+        <div class="sb-uname" id="sb-name">Chargement…</div>
+        <div class="sb-urole">Patron</div>
+      </div>
+    </div>
+    <button class="sb-logout" onclick="logout()">← Déconnexion</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px">
+    <div>
+      <div class="topbar-title" id="greeting">Bonjour 👑</div>
+      <div class="topbar-sub" id="date-lbl">Chargement…</div>
+    </div>
+    <div class="topbar-clock" id="clock">—</div>
+  </div>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row" id="kpi-row">
+    <div class="kpi-card"><div class="kpi-icon" style="background:#FEF3C7">💰</div><div class="kpi-val" id="kpi-total">—</div><div class="kpi-lbl">CA Total Aujourd'hui</div><div class="kpi-sub" id="kpi-total-sub">Tous modules</div></div>
+    <div class="kpi-card"><div class="kpi-icon" style="background:#F0FDF4">🏦</div><div class="kpi-val" id="kpi-bank">—</div><div class="kpi-lbl">Solde Banque</div><div class="kpi-sub">Compte courant</div></div>
+    <div class="kpi-card"><div class="kpi-icon" style="background:#FFF7ED">🤝</div><div class="kpi-val red" id="kpi-credits">—</div><div class="kpi-lbl">Total Créances</div><div class="kpi-sub" id="kpi-credits-sub">—</div></div>
+    <div class="kpi-card"><div class="kpi-icon" style="background:#EFF6FF">⛽</div><div class="kpi-val blue" id="kpi-liters">—</div><div class="kpi-lbl">Litres Vendus Auj.</div><div class="kpi-sub" id="kpi-shift-status">—</div></div>
+  </div>
+
+  <!-- MODULE PANELS -->
+  <div class="panels" id="panels">
+
+    <!-- Carburant -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon" style="background:#EFF6FF">⛽</div>
+        <div>
+          <div class="panel-title">Carburant</div>
+          <div class="panel-sub" id="car-shift-badge"></div>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="prow"><span class="prow-lbl">CA Carburant</span><span class="prow-val blue" id="car-ca">—</span></div>
+        <div class="prow"><span class="prow-lbl">Litres vendus</span><span class="prow-val" id="car-liters">—</span></div>
+        <div class="prow"><span class="prow-lbl">Ventes produits</span><span class="prow-val green" id="car-prod">—</span></div>
+        <div class="prow"><span class="prow-lbl">(-) Crédits accordés</span><span class="prow-val red" id="car-credits">—</span></div>
+        <div class="prow"><span class="prow-lbl">(-) Avance pompiste</span><span class="prow-val orange" id="car-avance">—</span></div>
+        <div class="prow"><span class="prow-lbl">Caisse Nette</span><span class="prow-val green big" id="car-net">—</span></div>
+      </div>
+    </div>
+
+    <!-- Café -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon" style="background:#FFFBEB">☕</div>
+        <div>
+          <div class="panel-title">Café</div>
+          <div class="panel-sub">Ventes aujourd'hui</div>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="prow"><span class="prow-lbl">Total ventes</span><span class="prow-val blue" id="cafe-rev">—</span></div>
+        <div class="prow"><span class="prow-lbl">Bénéfice net</span><span class="prow-val green big" id="cafe-ben">—</span></div>
+      </div>
+    </div>
+
+    <!-- Tabac -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon" style="background:#FDF4EC">🚬</div>
+        <div>
+          <div class="panel-title">Tabac</div>
+          <div class="panel-sub">Ventes aujourd'hui</div>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="prow"><span class="prow-lbl">Montant vendu</span><span class="prow-val blue" id="tab-mont">—</span></div>
+        <div class="prow"><span class="prow-lbl">Bénéfice</span><span class="prow-val green" id="tab-ben">—</span></div>
+        <div class="prow"><span class="prow-lbl">Remise au patron</span><span class="prow-val amber big" id="tab-remise">—</span></div>
+      </div>
+    </div>
+
+    <!-- Banque -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon" style="background:#F0FDFA">🏦</div>
+        <div>
+          <div class="panel-title">Banque</div>
+          <div class="panel-sub">Dernières opérations</div>
+        </div>
+      </div>
+      <div class="panel-body" id="bank-body">—</div>
+    </div>
+
+    <!-- Factures -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon" style="background:#EEF2FF">🧾</div>
+        <div>
+          <div class="panel-title">Factures</div>
+          <div class="panel-sub" id="fac-sub">Ce mois</div>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="prow"><span class="prow-lbl">Nombre factures</span><span class="prow-val" id="fac-count">—</span></div>
+        <div class="prow"><span class="prow-lbl">Total TTC</span><span class="prow-val blue big" id="fac-total">—</span></div>
+      </div>
+    </div>
+
+    <!-- Créances -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon" style="background:#FFF7ED">🤝</div>
+        <div>
+          <div class="panel-title">Créances Clients</div>
+          <div class="panel-sub">Soldes impayés</div>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="prow"><span class="prow-lbl">Clients débiteurs</span><span class="prow-val" id="cred-count">—</span></div>
+        <div class="prow"><span class="prow-lbl">Total dû</span><span class="prow-val red big" id="cred-total">—</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- STOCK PRODUITS -->
+  <div class="section" style="margin-bottom:20px">
+    <div class="s-head">🛢️ Stock Produits — Acheté vs Vendu</div>
+    <div style="overflow-x:auto">
+      <table class="t" id="stock-table">
+        <thead>
+          <tr>
+            <th>Produit</th><th>Catégorie</th>
+            <th class="num">Acheté (total)</th>
+            <th class="num">Vendu (total)</th>
+            <th class="num">Stock Restant</th>
+            <th class="num">CA Généré</th>
+            <th class="num">Prix Unitaire</th>
+            <th>État</th>
+          </tr>
+        </thead>
+        <tbody id="stock-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- COMPARAISON JOURNALIÈRE -->
+  <div class="section" style="margin-bottom:20px">
+    <div class="s-head">📅 Comparaison Journalière — 30 Derniers Jours</div>
+    <div style="overflow-x:auto">
+      <table class="t" id="daily-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th class="num">Carburant</th>
+            <th class="num">Produits</th>
+            <th class="num">Café</th>
+            <th class="num">Tabac</th>
+            <th class="num">(-) Crédits</th>
+            <th class="num">(-) Avance</th>
+            <th class="num">CA Total</th>
+            <th class="num">Caisse Nette</th>
+          </tr>
+        </thead>
+        <tbody id="daily-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RECENT SHIFTS -->
+  <div class="section">
+    <div class="s-head">📋 Postes des 7 Derniers Jours</div>
+    <div style="overflow-x:auto">
+      <table class="t">
+        <thead>
+          <tr>
+            <th>N°</th><th>Pompiste</th><th>Date</th>
+            <th class="num">CA Carb.</th><th class="num">Produits</th>
+            <th class="num">Crédits</th><th class="num">Avance</th>
+            <th class="num">Caisse Nette</th><th>Statut</th>
+          </tr>
+        </thead>
+        <tbody id="shifts-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const token = localStorage.getItem('fm_token');
+const user  = JSON.parse(localStorage.getItem('fm_user') || 'null');
+if (!token) location.href = '/';
+if (user) {
+  const name = user.full_name;
+  document.getElementById('sb-name').textContent = name;
+  document.getElementById('greeting').textContent = 'Bonjour, ' + name.split(' ')[0] + ' 👑';
+  const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('sb-initials').textContent = initials;
+}
+
+function logout() { localStorage.clear(); location.href = '/'; }
+
+const fmt = (n, d=2) => (parseFloat(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  document.getElementById('clock').textContent = days[now.getDay()] + ' ' + now.getDate() + ' ' + months[now.getMonth()] + ' · ' + h + ':' + m;
+  document.getElementById('date-lbl').textContent = 'Vue d\'ensemble du ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+async function load() {
+  const d = await fetch('/api/patron/summary', { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json());
+
+  const totalCA = d.carburant.ca + d.cafe.revenue + d.tabac.montant;
+
+  // KPIs
+  document.getElementById('kpi-total').textContent = fmt(totalCA) + ' MAD';
+  document.getElementById('kpi-total-sub').textContent = 'Carb. + Café + Tabac';
+  document.getElementById('kpi-bank').textContent = fmt(d.banque.balance) + ' MAD';
+  document.getElementById('kpi-credits').textContent = fmt(d.credits.total_due) + ' MAD';
+  document.getElementById('kpi-credits-sub').textContent = d.credits.nb_clients + ' client(s) débiteur(s)';
+  document.getElementById('kpi-liters').textContent = fmt(d.carburant.liters, 1) + ' L';
+
+  // Shift status
+  if (d.carburant.open_shift) {
+    document.getElementById('kpi-shift-status').textContent = 'Poste ouvert — ' + (d.carburant.open_shift.opened_by_name || '');
+    document.getElementById('car-shift-badge').innerHTML = '<span class="shift-badge">🟢 Poste en cours</span>';
+  } else {
+    document.getElementById('kpi-shift-status').textContent = d.carburant.postes + ' poste(s) fermé(s) auj.';
+    document.getElementById('car-shift-badge').innerHTML = '<span class="shift-badge closed">⚪ Aucun poste ouvert</span>';
+  }
+
+  // Carburant panel
+  document.getElementById('car-ca').textContent = fmt(d.carburant.ca) + ' MAD';
+  document.getElementById('car-liters').textContent = fmt(d.carburant.liters, 1) + ' L';
+  document.getElementById('car-prod').textContent = fmt(d.carburant.products) + ' MAD';
+  document.getElementById('car-credits').textContent = fmt(d.carburant.credits) + ' MAD';
+  document.getElementById('car-avance').textContent = fmt(d.carburant.avance) + ' MAD';
+  document.getElementById('car-net').textContent = fmt(d.carburant.net) + ' MAD';
+
+  // Café panel
+  document.getElementById('cafe-rev').textContent = fmt(d.cafe.revenue) + ' MAD';
+  document.getElementById('cafe-ben').textContent = fmt(d.cafe.benefice) + ' MAD';
+
+  // Tabac panel
+  const remise = d.tabac.montant - d.tabac.benefice;
+  document.getElementById('tab-mont').textContent = fmt(d.tabac.montant) + ' MAD';
+  document.getElementById('tab-ben').textContent = fmt(d.tabac.benefice) + ' MAD';
+  document.getElementById('tab-remise').textContent = fmt(remise) + ' MAD';
+
+  // Banque panel
+  const txnHtml = d.banque.recent.length ? d.banque.recent.map(t => {
+    const isIn = ['depot','virement_recu','cheque_recu'].includes(t.type);
+    return `<div class="txn-row">
+      <div><div class="txn-desc">${t.description}</div><div class="txn-date">${t.txn_date}</div></div>
+      <div class="txn-amt" style="color:${isIn?'#059669':'#DC2626'}">${isIn?'+':'-'}${fmt(t.amount)} MAD</div>
+    </div>`;
+  }).join('') : '<div style="color:#9CA3AF;font-size:12px;text-align:center;padding:12px">Aucune transaction</div>';
+  document.getElementById('bank-body').innerHTML = txnHtml;
+
+  // Factures panel
+  document.getElementById('fac-count').textContent = d.factures.count + ' facture(s)';
+  document.getElementById('fac-total').textContent = fmt(d.factures.total) + ' MAD';
+
+  // Créances
+  document.getElementById('cred-count').textContent = d.credits.nb_clients + ' client(s)';
+  document.getElementById('cred-total').textContent = fmt(d.credits.total_due) + ' MAD';
+
+  // Stock table
+  const stockBody = document.getElementById('stock-body');
+  if (!d.stock.length) {
+    stockBody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:#9CA3AF">Aucun produit</td></tr>';
+  } else {
+    stockBody.innerHTML = d.stock.map(p => `
+      <tr>
+        <td style="font-weight:700">${p.name}<br/><span style="font-size:10px;color:#9CA3AF">${p.reference}</span></td>
+        <td style="color:#6B7280;font-size:12px">${p.category}</td>
+        <td class="num" style="font-weight:700">${p.total_bought} unités</td>
+        <td class="num" style="color:#059669;font-weight:700">${p.total_sold} unités</td>
+        <td class="num" style="font-weight:700;color:${p.low?'#DC2626':'#1A2332'}">${p.stock_qty} unités</td>
+        <td class="num" style="color:#2563EB;font-weight:700">${fmt(p.revenue_sold)} MAD</td>
+        <td class="num" style="color:#6B7280">${fmt(p.price)} MAD</td>
+        <td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:${p.low?'#FEE2E2':'#DCFCE7'};color:${p.low?'#DC2626':'#166534'}">${p.low?'⚠️ Stock Bas':'✓ OK'}</span></td>
+      </tr>`).join('');
+  }
+
+  // Daily comparison
+  const dailyBody = document.getElementById('daily-body');
+  if (!d.daily.length) {
+    dailyBody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:#9CA3AF">Aucune donnée</td></tr>';
+  } else {
+    const maxTotal = Math.max(...d.daily.map(r => r.total), 1);
+    dailyBody.innerHTML = d.daily.map((r, i) => {
+      const pct = Math.round((r.total / maxTotal) * 100);
+      const isToday = r.day === d.today;
+      return `<tr style="${isToday?'background:#FFFBEB;font-weight:700':''}">
+        <td style="white-space:nowrap">
+          ${isToday ? '📌 ' : ''}<strong>${r.day}</strong>
+          <div style="margin-top:4px;height:4px;background:#F3F4F6;border-radius:2px;width:80px">
+            <div style="height:4px;background:#f59e0b;border-radius:2px;width:${pct}%"></div>
+          </div>
+        </td>
+        <td class="num" style="color:#2563EB">${fmt(r.carburant)} MAD</td>
+        <td class="num" style="color:#059669">${r.produits>0?fmt(r.produits)+' MAD':'—'}</td>
+        <td class="num" style="color:#D97706">${r.cafe>0?fmt(r.cafe)+' MAD':'—'}</td>
+        <td class="num" style="color:#92400E">${r.tabac>0?fmt(r.tabac)+' MAD':'—'}</td>
+        <td class="num" style="color:#DC2626">${r.credits>0?'-'+fmt(r.credits)+' MAD':'—'}</td>
+        <td class="num" style="color:#D97706">${r.avance>0?'-'+fmt(r.avance)+' MAD':'—'}</td>
+        <td class="num" style="font-weight:900;font-size:14px;color:#1A2332">${fmt(r.total)} MAD</td>
+        <td class="num" style="font-weight:900;color:#059669">${fmt(r.net)} MAD</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Recent shifts
+  const tbody = document.getElementById('shifts-body');
+  if (!d.recent_shifts.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:#9CA3AF">Aucun poste cette semaine</td></tr>';
+  } else {
+    tbody.innerHTML = d.recent_shifts.map(s => `
+      <tr>
+        <td style="font-weight:700">#${s.id}</td>
+        <td>${s.opened_by_name||'?'}</td>
+        <td style="color:#6B7280;font-size:12px">${(s.opened_at||'').slice(0,16).replace('T',' ')}</td>
+        <td class="num" style="color:#2563EB;font-weight:700">${s.total_fuel_revenue!=null?fmt(s.total_fuel_revenue)+' MAD':'—'}</td>
+        <td class="num" style="color:#059669">${s.total_product_sales!=null?fmt(s.total_product_sales)+' MAD':'—'}</td>
+        <td class="num" style="color:#DC2626">${s.total_credit_deducted!=null?fmt(s.total_credit_deducted)+' MAD':'—'}</td>
+        <td class="num" style="color:#D97706">${(s.avance||0)>0?fmt(s.avance)+' MAD':'—'}</td>
+        <td class="num" style="font-weight:900;font-size:14px;color:${s.status==='closed'?'#059669':'#6B7280'}">${s.net_cash!=null?fmt(s.net_cash)+' MAD':'En cours'}</td>
+        <td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:${s.status==='open'?'#DCFCE7':'#F3F4F6'};color:${s.status==='open'?'#166534':'#6B7280'}">${s.status==='open'?'Ouvert':'Fermé'}</span></td>
+      </tr>`).join('');
+  }
+}
+
+load();
+setInterval(load, 60000);
+
+// ── EXPORT ────────────────────────────────────────────────────
+function _expData(tbl) {
+  const headers = [...tbl.querySelectorAll('thead th')].map(th => th.textContent.trim()).filter(h => h);
+  const rows = [...tbl.querySelectorAll('tbody tr')].map(tr =>
+    [...tr.querySelectorAll('td')].slice(0, headers.length).map(td => td.textContent.trim())
+  );
+  return { headers, rows };
+}
+function expPDF(tbl, title) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(13); doc.text((title||'Export') + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
+  const { headers, rows } = _expData(tbl);
+  doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [29, 45, 62] } });
+  doc.save((title||'export').replace(/\s+/g,'_') + '.pdf');
+}
+function expXL(tbl, title) {
+  const { headers, rows } = _expData(tbl);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, (title||'export').slice(0,31));
+  XLSX.writeFile(wb, (title||'export').replace(/\s+/g,'_') + '.xlsx');
+}
+function expWord(tbl, title) {
+  const clone = tbl.cloneNode(true); clone.querySelectorAll('input,button').forEach(el => el.remove());
+  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2>${clone.outerHTML}<script src="/js/ai-widget.js"></script>
+</body></html>`;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html],{type:'application/msword'})); a.download = (title||'export').replace(/\s+/g,'_')+'.doc'; a.click();
+}
+(function wireExport() {
+  const style = `.exp-btns{display:inline-flex;gap:5px;align-items:center;flex-shrink:0;margin-left:10px}.exp-btn{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:none;transition:background .15s}.exp-pdf{background:#fee2e2;color:#b91c1c}.exp-pdf:hover{background:#fca5a5}.exp-xl{background:#dcfce7;color:#15803d}.exp-xl:hover{background:#86efac}.exp-word{background:#dbeafe;color:#1d4ed8}.exp-word:hover{background:#93c5fd}`;
+  const s = document.createElement('style'); s.textContent = style; document.head.appendChild(s);
+  setTimeout(() => {
+    document.querySelectorAll('table[id]').forEach(tbl => {
+      const sh = tbl.closest('div')?.previousElementSibling;
+      if (!sh || sh.querySelector('.exp-btns')) return;
+      const t = sh.textContent.trim().replace(/[🛢️📅📋]/g,'').trim().slice(0,30) || 'Export';
+      const w = document.createElement('span'); w.className = 'exp-btns';
+      w.innerHTML = `<button class="exp-btn exp-pdf" onclick="expPDF(document.getElementById('${tbl.id}'),'${t.replace(/'/g,"\\'")}')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL(document.getElementById('${tbl.id}'),'${t.replace(/'/g,"\\'")}')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord(document.getElementById('${tbl.id}'),'${t.replace(/'/g,"\\'")}')">📝 Word</button>`;
+      sh.appendChild(w);
+    });
+  }, 600);
+})();
+</script>
+<script src="/js/ai-widget.js"></script>
+</body>
+</html>

@@ -155,12 +155,12 @@ router.get('/report/month', requireAuth, wrap(async (req, res) => {
       COALESCE(s.stock_cost,0) as stock_cost,
       COALESCE(r.revenue,0)-COALESCE(s.stock_cost,0) as net_profit
     FROM (
-      SELECT DISTINCT sale_date::date as day FROM cafe_sales WHERE TO_CHAR(sale_date,'YYYY-MM')=$1
+      SELECT DISTINCT date(sale_date) as day FROM cafe_sales WHERE strftime('%Y-%m', sale_date)=$1
       UNION
-      SELECT DISTINCT usage_date::date FROM cafe_stock_usage WHERE TO_CHAR(usage_date,'YYYY-MM')=$2
+      SELECT DISTINCT date(usage_date) FROM cafe_stock_usage WHERE strftime('%Y-%m', usage_date)=$2
     ) d
-    LEFT JOIN (SELECT sale_date, SUM(total) as revenue FROM cafe_sales WHERE TO_CHAR(sale_date,'YYYY-MM')=$3 GROUP BY sale_date) r ON r.sale_date=d.day
-    LEFT JOIN (SELECT usage_date, SUM(total_cost) as stock_cost FROM cafe_stock_usage WHERE TO_CHAR(usage_date,'YYYY-MM')=$4 GROUP BY usage_date) s ON s.usage_date=d.day
+    LEFT JOIN (SELECT sale_date, SUM(total) as revenue FROM cafe_sales WHERE strftime('%Y-%m', sale_date)=$3 GROUP BY sale_date) r ON r.sale_date=d.day
+    LEFT JOIN (SELECT usage_date, SUM(total_cost) as stock_cost FROM cafe_stock_usage WHERE strftime('%Y-%m', usage_date)=$4 GROUP BY usage_date) s ON s.usage_date=d.day
     ORDER BY d.day DESC
   `, [month, month, month, month]);
   const totRevenue   = days.reduce((s,d) => s + parseFloat(d.revenue), 0);

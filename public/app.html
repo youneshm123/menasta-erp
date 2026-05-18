@@ -6,9 +6,17 @@
 <title>MENASTA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css"/>
+<link rel="stylesheet" href="/css/fiori.css?v=18"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
+.exp-btns{display:flex;gap:5px;align-items:center;flex-shrink:0}
+.exp-btn{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:none;transition:background .15s}
+.exp-pdf{background:#fee2e2;color:#b91c1c}.exp-pdf:hover{background:#fca5a5}
+.exp-xl{background:#dcfce7;color:#15803d}.exp-xl:hover{background:#86efac}
+.exp-word{background:#dbeafe;color:#1d4ed8}.exp-word:hover{background:#93c5fd}
 .chart-box{position:relative;height:220px;width:100%}
 .mb2{margin-bottom:8px}.mb3{margin-bottom:12px}.mb4{margin-bottom:20px}
 .mt3{margin-top:12px}.mt4{margin-top:20px}
@@ -27,10 +35,22 @@
 .ac-item-name{font-weight:700;color:var(--text);}
 .ac-item-sub{font-size:11.5px;color:var(--muted);}
 /* Fuel toggle */
-.fuel-toggle{display:flex;gap:8px;}
-.fuel-btn{flex:1;padding:10px;border:2px solid var(--border);border-radius:var(--r);background:var(--surface);font-size:13px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;}
+.fuel-toggle{display:flex;gap:6px;}
+.fuel-btn{flex:1;padding:7px 6px;border:2px solid var(--border);border-radius:var(--r);background:var(--surface);font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;white-space:nowrap;}
 .fuel-btn.selected-gazoil{border-color:#1D4ED8;background:#EFF6FF;color:#1D4ED8;}
 .fuel-btn.selected-essence{border-color:#059669;background:#ECFDF5;color:#059669;}
+/* ── Modal top-slide override ── */
+.overlay{align-items:flex-start!important;justify-content:center!important;padding:0!important;background:rgba(15,23,42,.45)!important;backdrop-filter:blur(3px)!important;}
+.overlay.open{display:flex!important;}
+.modal{border-radius:0 0 20px 20px!important;border-top:3px solid #2563EB!important;border-left:none!important;border-right:none!important;border-bottom:none!important;animation:msd .25s cubic-bezier(.22,1,.36,1) forwards!important;width:600px!important;max-width:100%!important;}
+.modal-lg{width:800px!important;}.modal-xl{width:1000px!important;}
+@keyframes msd{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-hd{background:#0F172A!important;color:#fff!important;padding:13px 20px!important;border-bottom:none!important;}
+.modal-hd h3{font-size:14px!important;color:#fff!important;font-weight:800!important;}
+.modal-hd .modal-close{color:rgba(255,255,255,.5)!important;font-size:20px!important;}
+.modal-hd .modal-close:hover{color:#fff!important;background:rgba(255,255,255,.1)!important;}
+.modal-body{padding:18px 20px!important;gap:12px!important;}
+.modal-ft{padding:12px 20px!important;background:#F8FAFC!important;border-top:1px solid #E2E8F0!important;}
 </style>
 </head>
 <body>
@@ -121,9 +141,9 @@
       <!-- ══ PAGE: HISTORIQUE POSTES ══ -->
       <div class="page" id="p-shifts-history">
         <div class="section">
-          <div class="s-head"><div class="s-title">📋 Liste des Postes</div></div>
+          <div class="s-head"><div class="s-title">📋 Liste des Postes</div><div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('hist-tbl','Historique Postes')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('hist-tbl','Historique Postes')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('hist-tbl','Historique Postes')">📝 Word</button></div></div>
           <div class="s-body-flush" style="overflow-x:auto">
-            <table class="t">
+            <table class="t" id="hist-tbl">
               <thead><tr><th>N°</th><th>Ouvert par</th><th>Ouverture</th><th>Fermeture</th><th>CA Carb.</th><th>Crédits</th><th>Produits</th><th class="num">Caisse Nette</th><th>Statut</th><th></th></tr></thead>
               <tbody id="hist-body"></tbody>
             </table>
@@ -139,21 +159,25 @@
             <div class="s-head">
               <div class="s-title">👥 Clients Crédit</div>
               <div class="fxg">
+                <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('clients-tbl','Clients Crédit')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('clients-tbl','Clients Crédit')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('clients-tbl','Clients Crédit')">📝 Word</button></div>
                 <button class="btn btn-p btn-sm" onclick="openModal('m-add-client')">+ Nouveau Client</button>
               </div>
             </div>
             <div class="s-body-flush" style="overflow-x:auto">
-              <table class="t"><thead><tr><th>Nom</th><th>Société</th><th>Téléphone</th><th class="num">Solde Dû</th><th></th></tr></thead>
+              <table class="t" id="clients-tbl"><thead><tr><th>Nom</th><th>Société</th><th>Téléphone</th><th class="num">Solde Dû</th><th></th></tr></thead>
               <tbody id="clients-body"></tbody></table>
             </div>
           </div>
           <div class="section">
             <div class="s-head">
               <div class="s-title">📝 Dernières Ventes Crédit</div>
-              <button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">+ Vente Crédit</button>
+              <div class="fxg">
+                <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('csales-tbl','Ventes Crédit')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('csales-tbl','Ventes Crédit')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('csales-tbl','Ventes Crédit')">📝 Word</button></div>
+                <button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">+ Vente Crédit</button>
+              </div>
             </div>
             <div class="s-body-flush" style="overflow-x:auto">
-              <table class="t"><thead><tr><th>Client</th><th>Pompe</th><th>Litres</th><th class="num">Montant</th><th>Date</th></tr></thead>
+              <table class="t" id="csales-tbl"><thead><tr><th>Client</th><th>Pompe</th><th>Litres</th><th class="num">Montant</th><th>Date</th></tr></thead>
               <tbody id="csales-body"></tbody></table>
             </div>
           </div>
@@ -166,21 +190,22 @@
           <div class="s-head">
             <div class="s-title">🛢️ Catalogue Produits</div>
             <div class="fxg">
+              <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('products-tbl','Catalogue Produits')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('products-tbl','Catalogue Produits')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('products-tbl','Catalogue Produits')">📝 Word</button></div>
               <button class="btn btn-g btn-sm" onclick="openModal('m-sell-product')">🛒 Vendre</button>
               <button class="btn btn-p btn-sm" onclick="openModal('m-add-product')">+ Ajouter</button>
             </div>
           </div>
           <div class="s-body-flush" style="overflow-x:auto">
-            <table class="t">
+            <table class="t" id="products-tbl">
               <thead><tr><th>Réf.</th><th>Produit</th><th>Catégorie</th><th>Unité</th><th class="num">Prix (MAD)</th><th class="num">Stock</th><th>Statut Stock</th><th></th></tr></thead>
               <tbody id="products-body"></tbody>
             </table>
           </div>
         </div>
         <div class="section">
-          <div class="s-head"><div class="s-title">📋 Dernières Ventes Produits</div></div>
+          <div class="s-head"><div class="s-title">📋 Dernières Ventes Produits</div><div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('psales-tbl','Ventes Produits')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('psales-tbl','Ventes Produits')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('psales-tbl','Ventes Produits')">📝 Word</button></div></div>
           <div class="s-body-flush" style="overflow-x:auto">
-            <table class="t"><thead><tr><th>Produit</th><th>Qté</th><th class="num">Prix U.</th><th class="num">Total</th><th>Date</th></tr></thead>
+            <table class="t" id="psales-tbl"><thead><tr><th>Produit</th><th>Qté</th><th class="num">Prix U.</th><th class="num">Total</th><th>Date</th></tr></thead>
             <tbody id="psales-body"></tbody></table>
           </div>
         </div>
@@ -220,9 +245,9 @@
         <div class="tiles" id="rpt-tiles"></div>
         <div id="rpt-stock-summary"></div>
         <div class="section mt4">
-          <div class="s-head"><div class="s-title">📅 Détail par Mois</div></div>
+          <div class="s-head"><div class="s-title">📅 Détail par Mois</div><div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('rpt-tbl','Rapports Mensuels')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('rpt-tbl','Rapports Mensuels')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('rpt-tbl','Rapports Mensuels')">📝 Word</button></div></div>
           <div class="s-body-flush" style="overflow-x:auto">
-            <table class="t">
+            <table class="t" id="rpt-tbl">
               <thead><tr><th>Mois</th><th class="num">Postes</th><th class="num">CA Carburant</th><th class="num">Crédits</th><th class="num">Produits</th><th class="num">Dépenses</th><th class="num">Caisse Nette</th><th class="num">Bénéfice</th></tr></thead>
               <tbody id="rpt-body"></tbody>
             </table>
@@ -236,10 +261,13 @@
         <div class="section mt4">
           <div class="s-head">
             <div class="s-title">💸 Liste des Dépenses</div>
-            <button class="btn btn-p btn-sm" onclick="openModal('m-add-expense')">+ Ajouter</button>
+            <div class="fxg">
+              <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('exp-tbl','Dépenses')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('exp-tbl','Dépenses')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('exp-tbl','Dépenses')">📝 Word</button></div>
+              <button class="btn btn-p btn-sm" onclick="openModal('m-add-expense')">+ Ajouter</button>
+            </div>
           </div>
           <div class="s-body-flush" style="overflow-x:auto">
-            <table class="t">
+            <table class="t" id="exp-tbl">
               <thead><tr><th>Date</th><th>Catégorie</th><th>Description</th><th class="num">Montant</th><th></th></tr></thead>
               <tbody id="exp-body"></tbody>
             </table>
@@ -254,11 +282,14 @@
         <div class="section">
           <div class="s-head">
             <div class="s-title">🚛 Historique Livraisons</div>
-            <button class="btn btn-p btn-sm" onclick="openModal('m-add-delivery')">+ Livraison</button>
+            <div class="fxg">
+              <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('stock-tbl','Livraisons Carburant')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('stock-tbl','Livraisons Carburant')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('stock-tbl','Livraisons Carburant')">📝 Word</button></div>
+              <button class="btn btn-p btn-sm" onclick="openModal('m-add-delivery')">+ Livraison</button>
+            </div>
           </div>
           <div class="s-body-flush" style="overflow-x:auto">
-            <table class="t">
-              <thead><tr><th>Date</th><th>Carburant</th><th class="num">Quantité</th><th class="num">Prix Achat</th><th class="num">Coût Total</th><th>Fournisseur</th><th>Notes</th><th></th></tr></thead>
+            <table class="t" id="stock-tbl">
+              <thead><tr><th>Date</th><th>Carburant</th><th class="num">Quantité</th><th class="num">Prix Achat</th><th class="num">Coût Total</th><th>Fournisseur</th><th>N° Chèque</th><th>Notes</th><th></th></tr></thead>
               <tbody id="stock-body"></tbody>
             </table>
           </div>
@@ -312,6 +343,9 @@
       <div class="msg msg-i mb3">Saisissez les relevés des compteurs au début du poste pour chaque pompe active.</div>
       <div id="open-shift-form"></div>
       <div class="fgrid mt3">
+        <div class="fg" style="grid-column:1/-1"><label>Nom du Pompiste *</label><input id="os-pompiste" placeholder="Nom du pompiste de service" style="font-size:15px;font-weight:700;padding:10px;border:2px solid var(--blue);border-radius:6px;"/></div>
+        <div class="fg"><label>Heure Début</label><input type="time" id="os-heure-debut" style="font-size:15px;padding:9px;border:1.5px solid var(--border);border-radius:6px;"/></div>
+        <div class="fg"><label>Heure Fin</label><input type="time" id="os-heure-fin" style="font-size:15px;padding:9px;border:1.5px solid var(--border);border-radius:6px;"/></div>
         <div class="fg"><label>Avance Pompiste (MAD)</label><input type="number" id="os-avance" value="0" min="0" step="0.01" placeholder="0.00" style="font-size:18px;font-weight:800;color:var(--orange);padding:10px;border:2px solid var(--orange);border-radius:6px;"/></div>
         <div class="fg"><label>Notes (facultatif)</label><textarea id="os-notes" style="height:60px;resize:vertical;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;"></textarea></div>
       </div>
@@ -338,36 +372,47 @@
   </div>
 </div>
 
-<!-- CREDIT SALE -->
+<!-- CREDIT SALE BATCH -->
 <div class="overlay" id="m-credit-sale">
-  <div class="modal">
-    <div class="modal-hd"><span>🤝</span><h3>Vente Crédit</h3><button class="x" onclick="closeModal('m-credit-sale')">×</button></div>
+  <div class="modal modal-lg">
+    <div class="modal-hd"><span>🤝</span><h3>Ventes Crédit</h3><button class="x" onclick="csCancel()">×</button></div>
     <div class="modal-body">
-      <div class="fg mb3">
-        <label>Client</label>
-        <div class="ac-wrap">
-          <input class="ac-input" id="cs-client-input" placeholder="Tapez le nom du client…" autocomplete="off" oninput="acFilter('cs',this.value)" onfocus="acOpen('cs')" onblur="setTimeout(()=>acClose('cs'),180)"/>
-          <div class="ac-dropdown" id="cs-client-dropdown"></div>
-          <input type="hidden" id="cs-client-id"/>
+      <div class="fgrid mb2">
+        <div class="fg" style="grid-column:1/-1">
+          <label>Client</label>
+          <div class="ac-wrap">
+            <input class="ac-input" id="cs-client-input" placeholder="Tapez le nom du client…" autocomplete="off" oninput="acFilter('cs',this.value)" onfocus="acOpen('cs')" onblur="setTimeout(()=>acClose('cs'),180)"/>
+            <div class="ac-dropdown" id="cs-client-dropdown"></div>
+            <input type="hidden" id="cs-client-id"/>
+          </div>
+        </div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>Type</label>
+          <div class="fuel-toggle">
+            <button type="button" class="fuel-btn" id="cs-btn-gazoil" onclick="csSelectFuel('gazoil')">⛽ Gazoil</button>
+            <button type="button" class="fuel-btn" id="cs-btn-essence" onclick="csSelectFuel('essence')">🟢 Essence</button>
+            <button type="button" class="fuel-btn" id="cs-btn-lubrifiant" onclick="csSelectFuel('lubrifiant')">🛢️ Lubrifiant</button>
+          </div>
+          <input type="hidden" id="cs-pump-id"/>
+        </div>
+        <div class="fg">
+          <label>Montant (MAD)</label>
+          <input type="number" id="cs-amount" placeholder="0.00" step="0.01" min="0.01" style="font-size:22px;font-weight:800;color:var(--orange);padding:10px;border:2px solid var(--orange);border-radius:6px;"/>
+        </div>
+        <div class="fg">
+          <label>Notes (facultatif)</label>
+          <input type="text" id="cs-notes-f" placeholder="facultatif"/>
         </div>
       </div>
-      <div class="fg mb3">
-        <label>Carburant</label>
-        <div class="fuel-toggle">
-          <button type="button" class="fuel-btn" id="cs-btn-gazoil" onclick="csSelectFuel('gazoil')">⛽ Gazoil</button>
-          <button type="button" class="fuel-btn" id="cs-btn-essence" onclick="csSelectFuel('essence')">🟢 Essence</button>
-        </div>
-        <input type="hidden" id="cs-pump-id"/>
+      <button class="btn btn-s" style="width:100%;margin-bottom:14px;font-size:15px;" onclick="csAddToList()">+ Ajouter à la liste</button>
+      <div id="cs-pending-wrap" style="display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">En attente :</div>
+        <div id="cs-pending-items"></div>
       </div>
-      <div class="fg mb3">
-        <label>Montant (MAD)</label>
-        <input type="number" id="cs-amount" placeholder="0.00" step="0.01" min="0.01" style="font-size:22px;font-weight:800;color:var(--orange);padding:10px;border:2px solid var(--orange);border-radius:6px;"/>
-      </div>
-      <div class="fg"><label>Notes (facultatif)</label><input type="text" id="cs-notes-f" placeholder="facultatif"/></div>
     </div>
     <div class="modal-ft">
-      <button class="btn btn-g" onclick="closeModal('m-credit-sale')">Annuler</button>
-      <button class="btn btn-w" onclick="submitCreditSale()">✅ Enregistrer</button>
+      <button class="btn btn-g" onclick="csCancel()">Annuler</button>
+      <button class="btn btn-w" id="cs-submit-btn" onclick="csSubmitAll()" disabled>✅ Enregistrer tout (0)</button>
     </div>
   </div>
 </div>
@@ -401,7 +446,7 @@
         <div class="fg"><label>Nom Complet *</label><input id="ac-name" placeholder="Nom du client"/></div>
         <div class="fg"><label>Téléphone</label><input id="ac-phone" placeholder="+212 6XX XXX XXX"/></div>
         <div class="fg"><label>Société</label><input id="ac-company" placeholder="Nom de la société"/></div>
-        <div class="fg"><label>Limite Crédit (MAD)</label><input type="number" id="ac-limit" placeholder="Ex: 5000 (laisser vide = sans limite)" min="0"/></div>
+        <div class="fg"><label>Limite Crédit (MAD)</label><input type="number" id="ac-limit" placeholder="Ex: 50000 (laisser vide = sans limite)" min="0" step="1000"/></div>
         <div class="fg"><label>Notes</label><input id="ac-notes" placeholder="facultatif"/></div>
       </div>
     </div>
@@ -563,6 +608,7 @@
         <div class="fg"><label>Prix d'achat (MAD/L)</label><input type="number" id="dl-cost" placeholder="ex: 8.50" step="0.001" min="0"/></div>
         <div class="fg" style="grid-column:1/-1" id="dl-preview" style="display:none"></div>
         <div class="fg"><label>Fournisseur</label><input id="dl-supplier" placeholder="Nom du fournisseur"/></div>
+        <div class="fg"><label>N° Chèque (si paiement par chèque)</label><input id="dl-cheque" placeholder="Ex: 0012345"/></div>
         <div class="fg" style="grid-column:1/-1"><label>Notes</label><input id="dl-notes" placeholder="facultatif"/></div>
       </div>
     </div>
@@ -810,7 +856,7 @@ async function loadShiftPage() {
       <div style="font-size:20px;">🕐</div>
       <div style="flex:1;">
         <div style="font-size:15px;font-weight:800;color:#fff;">Poste N° ${shift.id} <span style="font-weight:400;opacity:.5;font-size:13px;">— En Cours</span></div>
-        <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:2px;">Ouvert par <strong style="color:rgba(255,255,255,.8);">${shift.opened_by_name}</strong> · ${fmtDT(shift.opened_at)}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:2px;">Ouvert par <strong style="color:rgba(255,255,255,.8);">${shift.opened_by_name}</strong> · ${fmtDT(shift.opened_at)}${shift.pompiste?` · <strong style="color:rgba(255,255,255,.8);">Pompiste: ${shift.pompiste}</strong>`:''}${shift.heure_debut?' · '+shift.heure_debut+(shift.heure_fin?' → '+shift.heure_fin:''):''}</div>
       </div>
       <span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);color:#4ADE80;padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:700;">● En Cours</span>
     </div>
@@ -913,8 +959,11 @@ async function submitOpenShift() {
   });
   if (!valid || !readings.length) { toast('Veuillez saisir tous les compteurs', 'er'); return; }
   try {
-    const avance = parseFloat(document.getElementById('os-avance').value) || 0;
-    const shift = await api('POST', '/shifts', { readings, notes: document.getElementById('os-notes').value, avance });
+    const avance    = parseFloat(document.getElementById('os-avance').value) || 0;
+    const pompiste  = document.getElementById('os-pompiste').value.trim();
+    const heure_debut = document.getElementById('os-heure-debut').value;
+    const heure_fin   = document.getElementById('os-heure-fin').value;
+    const shift = await api('POST', '/shifts', { readings, notes: document.getElementById('os-notes').value, avance, pompiste, heure_debut, heure_fin });
     S.activeShift = shift;
     closeModal('m-open-shift');
     toast('Poste N° ' + shift.id + ' ouvert avec succès');
@@ -1095,29 +1144,86 @@ async function submitPayment() {
   } catch (e) { toast(e.message, 'er'); }
 }
 
-async function submitCreditSale() {
-  if (!S.activeShift) { toast('Aucun poste ouvert — ouvrez un poste d\'abord', 'wn'); return; }
-  const clientId = parseInt(document.getElementById('cs-client-id').value);
-  const pumpId   = parseInt(document.getElementById('cs-pump-id').value);
-  const amount   = parseFloat(document.getElementById('cs-amount').value);
-  if (!clientId) { toast('Veuillez sélectionner un client', 'er'); return; }
-  if (!pumpId)   { toast('Veuillez choisir Gazoil ou Essence', 'er'); return; }
-  if (!amount || amount <= 0) { toast('Montant invalide', 'er'); return; }
-  try {
-    await api('POST', '/credits/sales', {
-      shift_id: S.activeShift.id, credit_client_id: clientId, pump_id: pumpId, amount,
-      notes: document.getElementById('cs-notes-f').value
-    });
-    closeModal('m-credit-sale');
-    document.getElementById('cs-amount').value = '';
-    document.getElementById('cs-client-input').value = '';
-    document.getElementById('cs-client-id').value = '';
-    document.getElementById('cs-pump-id').value = '';
-    document.querySelectorAll('.fuel-btn').forEach(b => b.className = 'fuel-btn');
-    toast('Vente crédit enregistrée — ' + fmt(amount) + ' MAD');
-    if (document.querySelector('#p-credits.active')) loadCredits();
-    if (document.querySelector('#p-shift.active')) loadShiftPage();
-  } catch (e) { toast(e.message, 'er'); }
+let csPending = [];
+let _csFuelType = '';
+
+function csCancel() {
+  csPending = []; _csFuelType = '';
+  updateCsPendingUI();
+  document.getElementById('cs-client-input').value = '';
+  document.getElementById('cs-client-id').value = '';
+  document.getElementById('cs-pump-id').value = '';
+  document.getElementById('cs-amount').value = '';
+  document.getElementById('cs-notes-f').value = '';
+  document.querySelectorAll('.fuel-btn').forEach(b => b.className = 'fuel-btn');
+  closeModal('m-credit-sale');
+}
+
+function csAddToList() {
+  const clientId   = parseInt(document.getElementById('cs-client-id').value);
+  const clientName = document.getElementById('cs-client-input').value.trim();
+  const pumpId     = document.getElementById('cs-pump-id').value;
+  const amount     = parseFloat(document.getElementById('cs-amount').value);
+  const notes      = document.getElementById('cs-notes-f').value;
+  if (!clientId)             { toast('Sélectionnez un client', 'wn'); return; }
+  if (!_csFuelType)          { toast('Choisissez le type (Gazoil / Essence / Lubrifiant)', 'wn'); return; }
+  if (!amount || amount <= 0){ toast('Montant invalide', 'er'); return; }
+  if (_csFuelType !== 'lubrifiant' && !pumpId) { toast('Sélectionnez le carburant', 'wn'); return; }
+  csPending.push({ client_id: clientId, client_name: clientName, pump_id: pumpId ? parseInt(pumpId) : null, product_type: _csFuelType, amount, notes });
+  document.getElementById('cs-client-input').value = '';
+  document.getElementById('cs-client-id').value = '';
+  document.getElementById('cs-pump-id').value = '';
+  document.getElementById('cs-amount').value = '';
+  document.getElementById('cs-notes-f').value = '';
+  document.querySelectorAll('.fuel-btn').forEach(b => b.className = 'fuel-btn');
+  _csFuelType = '';
+  updateCsPendingUI();
+  document.getElementById('cs-client-input').focus();
+}
+
+function updateCsPendingUI() {
+  const wrap  = document.getElementById('cs-pending-wrap');
+  const items = document.getElementById('cs-pending-items');
+  const btn   = document.getElementById('cs-submit-btn');
+  if (!wrap) return;
+  if (!csPending.length) {
+    wrap.style.display = 'none';
+    btn.disabled = true; btn.textContent = '✅ Enregistrer tout (0)'; return;
+  }
+  wrap.style.display = 'block';
+  const typeIcon = { gazoil:'⛽', essence:'🟢', lubrifiant:'🛢️' };
+  items.innerHTML = csPending.map((c,i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg2);border-radius:6px;margin-bottom:4px;gap:8px;">
+      <span style="flex:1">${typeIcon[c.product_type]||''} <strong>${c.client_name}</strong> — ${c.product_type} — <strong style="color:var(--orange)">${fmt(c.amount)} MAD</strong>${c.notes?' <span style="color:var(--muted);font-size:11px;">'+c.notes+'</span>':''}</span>
+      <button class="btn btn-d btn-xs" onclick="csRemovePending(${i})">✕</button>
+    </div>`).join('');
+  btn.disabled = false; btn.textContent = `✅ Enregistrer tout (${csPending.length})`;
+}
+
+function csRemovePending(i) { csPending.splice(i,1); updateCsPendingUI(); }
+
+async function csSubmitAll() {
+  if (!S.activeShift) { toast('Aucun poste ouvert', 'wn'); return; }
+  if (!csPending.length) return;
+  const btn = document.getElementById('cs-submit-btn');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  let saved = 0;
+  for (const c of csPending) {
+    try {
+      await api('POST', '/credits/sales', {
+        shift_id: S.activeShift.id, credit_client_id: c.client_id,
+        pump_id: c.pump_id || null, amount: c.amount,
+        notes: c.notes, product_type: c.product_type
+      });
+      saved++;
+    } catch(e) { toast(`${c.client_name}: ${e.message}`, 'er'); }
+  }
+  csPending = []; _csFuelType = '';
+  updateCsPendingUI();
+  csCancel();
+  toast(`${saved} vente(s) crédit enregistrée(s) ✓`, 'g');
+  if (document.querySelector('#p-credits.active')) loadCredits();
+  if (document.querySelector('#p-shift.active')) loadShiftPage();
 }
 
 async function deleteCreditSale(id) {
@@ -1127,12 +1233,13 @@ async function deleteCreditSale(id) {
 }
 
 function populateCreditSaleModal() {
-  // Reset autocomplete
   document.getElementById('cs-client-input').value = '';
   document.getElementById('cs-client-id').value = '';
   document.getElementById('cs-pump-id').value = '';
   document.getElementById('cs-amount').value = '';
+  document.getElementById('cs-notes-f').value = '';
   document.querySelectorAll('.fuel-btn').forEach(b => b.className = 'fuel-btn');
+  _csFuelType = '';
   acRender('cs', S.clients);
 }
 
@@ -1166,11 +1273,15 @@ function acClose(ns) { const dd = document.getElementById(ns + '-client-dropdown
 
 // ─── FUEL TOGGLE ────────────────────────────────────────────
 function csSelectFuel(type) {
+  document.getElementById('cs-btn-gazoil').className     = 'fuel-btn' + (type==='gazoil'     ? ' selected-gazoil'     : '');
+  document.getElementById('cs-btn-essence').className    = 'fuel-btn' + (type==='essence'    ? ' selected-essence'    : '');
+  document.getElementById('cs-btn-lubrifiant').className = 'fuel-btn' + (type==='lubrifiant' ? ' selected-gazoil'     : '');
+  document.getElementById('cs-pump-id').value = '';
+  _csFuelType = type;
+  if (type === 'lubrifiant') return;
   const pump = S.pumps.find(p => p.status === 'active' && (p.fuel_name||'').toLowerCase().includes(type));
   if (!pump) { toast('Aucune pompe ' + type + ' active', 'wn'); return; }
   document.getElementById('cs-pump-id').value = pump.id;
-  document.getElementById('cs-btn-gazoil').className = 'fuel-btn' + (type==='gazoil' ? ' selected-gazoil' : '');
-  document.getElementById('cs-btn-essence').className = 'fuel-btn' + (type==='essence' ? ' selected-essence' : '');
 }
 
 // ─── AUTOCOMPLETE: PRODUCTS ─────────────────────────────────
@@ -1223,6 +1334,7 @@ async function loadProducts() {
       <td class="num fw7 ${out?'c-r':low?'c-o':'c-g'}">${p.stock_qty}</td>
       <td><span class="st ${sc}">${sl}</span></td>
       <td>
+        <button class="btn btn-sm btn-xs" style="background:#dcfce7;color:#15803d;border:none;cursor:pointer;padding:3px 8px;border-radius:5px;font-weight:700" onclick="addProductStock(${p.id},'${esc(p.name)}')">+Stock</button>
         <button class="btn btn-g btn-xs" onclick="editProductPrice(${p.id},${p.price},'${esc(p.name)}')">✏️</button>
         <button class="btn btn-d btn-xs" onclick="deleteProduct(${p.id})">✕</button>
       </td>
@@ -1287,6 +1399,20 @@ async function deleteProduct(id) {
   if (!confirm('Désactiver ce produit ?')) return;
   try { await api('DELETE', '/products/' + id); toast('Produit désactivé'); loadProducts(); }
   catch (e) { toast(e.message, 'er'); }
+}
+
+async function addProductStock(id, name) {
+  const qty = prompt(`Ajouter du stock pour "${name}"\nQuantité à ajouter :`);
+  if (!qty || isNaN(qty) || parseFloat(qty) <= 0) return;
+  try {
+    // Fetch current stock then update
+    const products = S.products || [];
+    const p = products.find(x => x.id === id);
+    const newQty = (p ? parseFloat(p.stock_qty) : 0) + parseFloat(qty);
+    await api('PUT', '/products/' + id, { stock_qty: newQty });
+    toast(`+${qty} unités ajoutées au stock ✓`);
+    loadProducts();
+  } catch(e) { toast(e.message, 'er'); }
 }
 
 async function deleteProductSale(id) {
@@ -1656,10 +1782,11 @@ async function loadStock() {
       <td class="num">${d.cost_per_liter ? d.cost_per_liter.toFixed(3) + ' MAD/L' : '—'}</td>
       <td class="num fw7">${totalCostRow != null ? fmt(totalCostRow) + ' MAD' : '—'}</td>
       <td>${d.supplier||'—'}</td>
+      <td class="muted sm">${d.numero_cheque ? `<span style="font-weight:700;color:var(--blue)">${d.numero_cheque}</span>` : '—'}</td>
       <td class="muted sm">${d.notes||'—'}</td>
       <td><button class="btn btn-d btn-xs" onclick="deleteDelivery(${d.id})">✕</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="8" class="tc muted" style="padding:20px">Aucune livraison</td></tr>';
+  }).join('') || '<tr><td colspan="9" class="tc muted" style="padding:20px">Aucune livraison</td></tr>';
 
   document.getElementById('dl-fuel').innerHTML = fuels.map(ft => `<option value="${ft.id}">${ft.name}</option>`).join('');
 }
@@ -1695,11 +1822,13 @@ async function submitAddDelivery() {
       delivery_date: document.getElementById('dl-date').value || new Date().toISOString().slice(0,10),
       supplier: document.getElementById('dl-supplier').value,
       notes: document.getElementById('dl-notes').value,
-      cost_per_liter: parseFloat(document.getElementById('dl-cost').value) || null
+      cost_per_liter: parseFloat(document.getElementById('dl-cost').value) || null,
+      numero_cheque: document.getElementById('dl-cheque').value || null
     });
     closeModal('m-add-delivery');
     document.getElementById('dl-qty').value = '';
     document.getElementById('dl-cost').value = '';
+    document.getElementById('dl-cheque').value = '';
     document.getElementById('dl-preview').innerHTML = '';
     toast('Livraison enregistrée');
     loadStock();
@@ -1730,7 +1859,8 @@ function printShift(id) {
       <div class="row"><span class="big">CAISSE NETTE</span><span class="big">${fmt(s.net_cash||0)} MAD</span></div>
     </div>
     <p style="margin-top:20px;color:#999;font-size:11px">Imprimé le ${new Date().toLocaleString('fr-MA')} — MENASTA</p>
-    </body></html>`);
+    <script src="/js/ai-widget.js"></script>
+</body></html>`);
     w.document.close(); w.print();
   });
 }
@@ -1764,8 +1894,12 @@ async function boot() {
   }
 }
 
-// Intercept credit sale modal open to refresh selects
-document.getElementById('m-credit-sale').addEventListener('transitionend', () => populateCreditSaleModal());
+// Refresh selects when credit sale modal opens
+const _origOpenCS = window.openModal;
+document.addEventListener('DOMContentLoaded', () => {
+  const orig = window.openModal;
+  window.openModal = function(id) { orig(id); if (id === 'm-credit-sale') populateCreditSaleModal(); };
+});
 // Button wiring for close shift
 // submitCloseShift wired via onclick on the button directly
 // Close shift button in page actions (dynamic)
@@ -1779,6 +1913,39 @@ document.getElementById('ex-date').value = today;
 document.getElementById('dl-date').value = today;
 
 boot();
+
+// ── EXPORT HELPERS ───────────────────────────────────────────
+function _tblData(tableId, tblEl) {
+  const tbl = tblEl || (tableId ? document.getElementById(tableId) : null);
+  if (!tbl) return { headers: [], rows: [] };
+  const headers = [...tbl.querySelectorAll('thead th')].map(th => th.textContent.trim()).filter(h => h);
+  const rows = [...tbl.querySelectorAll('tbody tr')].map(tr =>
+    [...tr.querySelectorAll('td')].slice(0, headers.length).map(td => td.textContent.trim())
+  );
+  return { headers, rows };
+}
+function expPDF(tableId, title, tblEl) {
+  if (!window.jspdf) { alert('PDF lib loading...'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text((title||'Export') + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
+  const { headers, rows } = _tblData(tableId, tblEl);
+  doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [29, 45, 62] } });
+  doc.save((title||'export').replace(/\s+/g,'_') + '.pdf');
+}
+function expXL(tableId, title, tblEl) { exportTableToExcel(tblEl || document.getElementById(tableId), title, { skipLastCols: 0 }); }
+function expXLtbl(tblEl, title) { exportTableToExcel(tblEl, title, { skipLastCols: 0 }); }
+function expWord(tableId, title, tblEl) {
+  const tbl = tblEl || (tableId ? document.getElementById(tableId) : null);
+  if (!tbl) return;
+  const clone = tbl.cloneNode(true);
+  clone.querySelectorAll('input,button').forEach(el => el.remove());
+  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px;text-align:left}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2><p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>${clone.outerHTML}<script src="/js/ai-widget.js"></script>
+</body></html>`;
+  const blob = new Blob([html], { type: 'application/msword' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (title||'export').replace(/\s+/g,'_') + '.doc'; a.click();
+}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="/js/excel-utils.js"></script>
@@ -1790,5 +1957,6 @@ window.navigate = function(p) {
 };
 attachExportBtns();
 </script>
+<script src="/js/ai-widget.js"></script>
 </body>
 </html>

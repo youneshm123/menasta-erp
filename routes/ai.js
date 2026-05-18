@@ -12,55 +12,70 @@ async function getBusinessData() {
   const today = new Date().toISOString().slice(0, 10);
   const ym    = today.slice(0, 7);
 
+  const q = (sql, params) => pool.query(sql, params).catch(e => { console.error('[AI DATA]', e.message); return { rows: [] }; });
+  const q1 = (sql, params, def) => pool.query(sql, params).catch(e => { console.error('[AI DATA]', e.message); return { rows: [def] }; });
+
   const [
-    { rows: [car] },
-    { rows: [cafe] },
-    { rows: [tabac] },
-    { rows: [bs] },
-    { rows: [{ bal }] },
-    { rows: [factures] },
-    { rows: [{ total_due, nb_clients }] },
-    { rows: creditClients },
-    { rows: recentShifts7 },
-    { rows: daily30 },
-    { rows: dailyCafe30 },
-    { rows: dailyTabac30 },
-    { rows: tabacProducts },
-    { rows: cafeMenu },
-    { rows: stockProducts },
-    { rows: recentBankTxns },
-    { rows: pumps },
+    rCar, rCafe, rTabac, rBs, rBal, rFact, rDebt,
+    rCredClients, rShifts7, rDaily30, rCafe30, rTabac30,
+    rTabacProd, rCafeMenu, rStock, rBankTxns, rPumps, rExp, rCuves,
   ] = await Promise.all([
-    pool.query(`SELECT COALESCE(SUM(total_fuel_revenue),0) as ca, COALESCE(SUM(total_liters_sold),0) as liters,
-                       COALESCE(SUM(net_cash),0) as net, COALESCE(SUM(avance),0) as avance,
-                       COALESCE(SUM(total_credit_deducted),0) as credits, COUNT(*) as postes
-                FROM shifts WHERE date(opened_at)=$1 AND status='closed'`, [today]),
-    pool.query(`SELECT COALESCE(SUM(total),0) as revenue FROM cafe_sales WHERE sale_date=$1`, [today]),
-    pool.query(`SELECT COALESCE(SUM(montant),0) as montant, COALESCE(SUM(benefice),0) as benefice FROM tabac_ventes WHERE vente_date=$1`, [today]),
-    pool.query('SELECT initial_balance FROM bank_settings WHERE id=1'),
-    pool.query(`SELECT COALESCE(SUM(CASE WHEN type IN ('depot','virement_recu','cheque_recu') THEN amount ELSE -amount END),0) as bal FROM bank_transactions`),
-    pool.query(`SELECT COUNT(*) as count, COALESCE(SUM(total_ttc),0) as total FROM factures WHERE strftime('%Y-%m', facture_date)=$1`, [ym]),
-    pool.query(`SELECT COALESCE(SUM(balance_due),0) as total_due, COUNT(*) as nb_clients FROM credit_clients WHERE is_active=1 AND balance_due > 0`),
-    pool.query(`SELECT name, balance_due, phone FROM credit_clients WHERE is_active=1 AND balance_due > 0 ORDER BY balance_due DESC`),
-    pool.query(`SELECT date(opened_at) as day, COALESCE(SUM(total_fuel_revenue),0) as carburant,
-                       COALESCE(SUM(total_liters_sold),0) as liters, COALESCE(SUM(net_cash),0) as net,
-                       COALESCE(SUM(avance),0) as avance, COUNT(*) as postes
-                FROM shifts WHERE date(opened_at) >= date('now','-6 days') AND status='closed'
-                GROUP BY day ORDER BY day DESC`),
-    pool.query(`SELECT date(opened_at) as day, COALESCE(SUM(total_fuel_revenue),0) as carburant,
-                       COALESCE(SUM(total_liters_sold),0) as liters, COALESCE(SUM(net_cash),0) as net
-                FROM shifts WHERE date(opened_at) >= date('now','-29 days') AND status='closed'
-                GROUP BY day ORDER BY day DESC`),
-    pool.query(`SELECT sale_date as day, COALESCE(SUM(total),0) as cafe FROM cafe_sales WHERE sale_date >= date('now','-29 days') GROUP BY sale_date`),
-    pool.query(`SELECT vente_date as day, COALESCE(SUM(montant),0) as montant, COALESCE(SUM(benefice),0) as benefice FROM tabac_ventes WHERE vente_date >= date('now','-29 days') GROUP BY vente_date`),
-    pool.query(`SELECT tp.name, COALESCE(SUM(tv.montant),0) as ca, COALESCE(SUM(tv.benefice),0) as benefice, COALESCE(SUM(tv.quantite),0) as qty
-                FROM tabac_products tp LEFT JOIN tabac_ventes tv ON tv.product_id=tp.id AND tv.vente_date >= date('now','-29 days')
-                WHERE tp.is_active=1 GROUP BY tp.id, tp.name ORDER BY ca DESC`),
-    pool.query(`SELECT name, price FROM cafe_menu WHERE is_active=1 ORDER BY price DESC LIMIT 20`),
-    pool.query(`SELECT name, stock_qty, stock_min, price FROM products WHERE is_active=1 ORDER BY name`),
-    pool.query(`SELECT type, amount, description, txn_date FROM bank_transactions ORDER BY txn_date DESC, id DESC LIMIT 10`),
-    pool.query(`SELECT p.name, ft.name as fuel, p.current_price FROM pumps p JOIN fuel_types ft ON ft.id=p.fuel_type_id WHERE p.is_active=1`),
+    q1(`SELECT COALESCE(SUM(total_fuel_revenue),0) as ca, COALESCE(SUM(total_liters_sold),0) as liters,
+               COALESCE(SUM(net_cash),0) as net, COALESCE(SUM(avance),0) as avance,
+               COALESCE(SUM(total_credit_deducted),0) as credits, COUNT(*) as postes
+        FROM shifts WHERE date(opened_at)=$1 AND status='closed'`, [today],
+       { ca:0, liters:0, net:0, avance:0, credits:0, postes:0 }),
+    q1(`SELECT COALESCE(SUM(total),0) as revenue FROM cafe_sales WHERE sale_date=$1`, [today], { revenue:0 }),
+    q1(`SELECT COALESCE(SUM(montant),0) as montant, COALESCE(SUM(benefice),0) as benefice FROM tabac_ventes WHERE vente_date=$1`, [today], { montant:0, benefice:0 }),
+    q(`SELECT initial_balance FROM bank_settings WHERE id=1`),
+    q1(`SELECT COALESCE(SUM(CASE WHEN type IN ('depot','virement_in','cheque_in') THEN amount ELSE -amount END),0) as bal FROM bank_transactions`, [], { bal:0 }),
+    q1(`SELECT COUNT(*) as count, COALESCE(SUM(total_ttc),0) as total FROM factures WHERE TO_CHAR(facture_date,'YYYY-MM')=$1`, [ym], { count:0, total:0 }),
+    q1(`SELECT COALESCE(SUM(balance_due),0) as total_due, COUNT(*) as nb_clients FROM credit_clients WHERE is_active=1 AND balance_due > 0`, [], { total_due:0, nb_clients:0 }),
+    q(`SELECT name, balance_due, credit_limit, phone FROM credit_clients WHERE is_active=1 AND balance_due > 0 ORDER BY balance_due DESC`),
+    q(`SELECT (opened_at)::date as day, COALESCE(SUM(total_fuel_revenue),0) as carburant,
+              COALESCE(SUM(total_liters_sold),0) as liters, COALESCE(SUM(net_cash),0) as net,
+              COALESCE(SUM(avance),0) as avance, COUNT(*) as postes
+       FROM shifts WHERE (opened_at)::date >= CURRENT_DATE - INTERVAL '6 days' AND status='closed'
+       GROUP BY (opened_at)::date ORDER BY (opened_at)::date DESC`),
+    q(`SELECT (opened_at)::date as day, COALESCE(SUM(total_fuel_revenue),0) as carburant,
+              COALESCE(SUM(total_liters_sold),0) as liters, COALESCE(SUM(net_cash),0) as net
+       FROM shifts WHERE (opened_at)::date >= CURRENT_DATE - INTERVAL '29 days' AND status='closed'
+       GROUP BY (opened_at)::date ORDER BY (opened_at)::date DESC`),
+    q(`SELECT sale_date as day, COALESCE(SUM(total),0) as cafe FROM cafe_sales WHERE sale_date >= CURRENT_DATE - INTERVAL '29 days' GROUP BY sale_date`),
+    q(`SELECT vente_date as day, COALESCE(SUM(montant),0) as montant, COALESCE(SUM(benefice),0) as benefice FROM tabac_ventes WHERE vente_date >= CURRENT_DATE - INTERVAL '29 days' GROUP BY vente_date`),
+    q(`SELECT tp.name, COALESCE(SUM(tv.montant),0) as ca, COALESCE(SUM(tv.benefice),0) as benefice, COALESCE(SUM(tv.quantite),0) as qty
+       FROM tabac_products tp LEFT JOIN tabac_ventes tv ON tv.product_id=tp.id AND tv.vente_date >= CURRENT_DATE - INTERVAL '29 days'
+       WHERE tp.is_active=1 GROUP BY tp.id, tp.name ORDER BY ca DESC`),
+    q(`SELECT name, price FROM cafe_menu WHERE is_active=1 ORDER BY price DESC LIMIT 20`),
+    q(`SELECT name, stock_qty, stock_min, price FROM products WHERE is_active=1 ORDER BY name`),
+    q(`SELECT type, amount, description, txn_date FROM bank_transactions ORDER BY txn_date DESC, id DESC LIMIT 10`),
+    q(`SELECT p.name, ft.name as fuel, ft.price_per_liter FROM pumps p JOIN fuel_types ft ON ft.id=p.fuel_type_id WHERE p.status != 'inactive' ORDER BY p.id`),
+    q(`SELECT category, COALESCE(SUM(amount),0) as total FROM expenses WHERE expense_date >= CURRENT_DATE - INTERVAL '29 days' GROUP BY category ORDER BY total DESC`),
+    q(`SELECT c.name, ft.name as fuel_name, c.capacite_max, c.niveau_alerte,
+              (SELECT niveau_litres FROM cuve_lectures WHERE cuve_id=c.id ORDER BY lecture_date DESC LIMIT 1) as niveau_litres,
+              (SELECT lecture_date FROM cuve_lectures WHERE cuve_id=c.id ORDER BY lecture_date DESC LIMIT 1) as lecture_date
+       FROM cuves c JOIN fuel_types ft ON ft.id=c.fuel_type_id WHERE c.is_active=1 ORDER BY c.id`),
   ]);
+
+  const car           = rCar.rows[0]    || { ca:0, liters:0, net:0, avance:0, credits:0, postes:0 };
+  const cafe          = rCafe.rows[0]   || { revenue:0 };
+  const tabac         = rTabac.rows[0]  || { montant:0, benefice:0 };
+  const bs            = rBs.rows[0];
+  const bal           = (rBal.rows[0]   || {}).bal || 0;
+  const factures      = rFact.rows[0]   || { count:0, total:0 };
+  const { total_due=0, nb_clients=0 } = rDebt.rows[0] || {};
+  const creditClients  = rCredClients.rows;
+  const recentShifts7  = rShifts7.rows;
+  const daily30        = rDaily30.rows;
+  const dailyCafe30    = rCafe30.rows;
+  const dailyTabac30   = rTabac30.rows;
+  const tabacProducts  = rTabacProd.rows;
+  const cafeMenu       = rCafeMenu.rows;
+  const stockProducts  = rStock.rows;
+  const recentBankTxns = rBankTxns.rows;
+  const pumps          = rPumps.rows;
+  const expenses30     = rExp.rows;
+  const cuves          = rCuves.rows;
 
   const bankBalance = parseFloat(bs?.initial_balance || 0) + parseFloat(bal || 0);
   const totalCA = parseFloat(car.ca) + parseFloat(cafe.revenue) + parseFloat(tabac.montant);
@@ -79,15 +94,17 @@ async function getBusinessData() {
   }));
 
   return { today, ym, car, cafe, tabac, bankBalance, totalCA, factures, total_due, nb_clients,
-           creditClients, recentShifts7, merged30, tabacProducts, cafeMenu, stockProducts, recentBankTxns, pumps };
+           creditClients, recentShifts7, merged30, tabacProducts, cafeMenu, stockProducts, recentBankTxns, pumps,
+           expenses30, cuves };
 }
 
 // ── Build system prompt ───────────────────────────────────────────────────────
-function buildSystemPrompt(d) {
+function buildSystemPrompt(d, language = 'fr') {
   const fmt  = n => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const fmt0 = n => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0});
   const { today, ym, car, cafe, tabac, bankBalance, totalCA, factures, total_due, nb_clients,
-          creditClients, recentShifts7, merged30, tabacProducts, cafeMenu, stockProducts, recentBankTxns, pumps } = d;
+          creditClients, recentShifts7, merged30, tabacProducts, cafeMenu, stockProducts, recentBankTxns, pumps,
+          expenses30, cuves } = d;
 
   let p = `Tu es MENASTA AI, l'assistant intelligent d'une station service au Maroc. Tu es très puissant, précis, et tu réponds toujours en français de manière claire et structurée. Tu as accès à toutes les données en temps réel de la station.
 
@@ -132,7 +149,9 @@ function buildSystemPrompt(d) {
 • Total dettes : ${fmt(total_due)} MAD sur ${nb_clients} clients
 `;
   creditClients.forEach(c => {
-    p += `• ${c.name}${c.phone?' ('+c.phone+')':''} : ${fmt(c.balance_due)} MAD\n`;
+    const lim = c.credit_limit ? ` / limite ${fmt(c.credit_limit)} MAD` : '';
+    const pct = c.credit_limit ? ` (${Math.round(parseFloat(c.balance_due)/parseFloat(c.credit_limit)*100)}%)` : '';
+    p += `• ${c.name}${c.phone?' ('+c.phone+')':''} : ${fmt(c.balance_due)} MAD${lim}${pct}\n`;
   });
 
   p += `
@@ -145,7 +164,7 @@ function buildSystemPrompt(d) {
 ⛽ POMPES & PRIX
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
-  pumps.forEach(p2 => { p += `• ${p2.name} (${p2.fuel}) : ${parseFloat(p2.current_price).toFixed(3)} MAD/L\n`; });
+  pumps.forEach(p2 => { p += `• ${p2.name} (${p2.fuel}) : ${parseFloat(p2.price_per_liter).toFixed(3)} MAD/L\n`; });
 
   p += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -165,6 +184,31 @@ function buildSystemPrompt(d) {
   tabacProducts.forEach(t => {
     p += `• ${t.name} : CA ${fmt(t.ca)} MAD | Bénéfice ${fmt(t.benefice)} MAD | Qté ${fmt0(t.qty)}\n`;
   });
+
+  p += `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛢️ NIVEAUX CUVES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+  cuves.forEach(c => {
+    const niv = c.niveau_litres ? parseFloat(c.niveau_litres) : null;
+    const pct = niv !== null && c.capacite_max ? Math.round(niv / parseFloat(c.capacite_max) * 100) : null;
+    const alerte = niv !== null && niv <= parseFloat(c.niveau_alerte) ? ' ⚠️ ALERTE' : '';
+    p += `• ${c.name} (${c.fuel_name}) : ${niv !== null ? fmt0(niv)+' L ('+pct+'%)' : 'Pas de lecture'} — Capacité ${fmt0(c.capacite_max)} L${alerte}${c.lecture_date ? ' · Dernière lecture: '+c.lecture_date : ''}\n`;
+  });
+
+  p += `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💸 DÉPENSES — 30 DERNIERS JOURS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+  if (expenses30.length) {
+    const totalExp = expenses30.reduce((s,e) => s+parseFloat(e.total), 0);
+    p += `• Total dépenses : ${fmt(totalExp)} MAD\n`;
+    expenses30.forEach(e => { p += `• ${e.category} : ${fmt(e.total)} MAD\n`; });
+  } else {
+    p += `• Aucune dépense enregistrée sur 30 jours\n`;
+  }
 
   p += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -199,19 +243,33 @@ function buildSystemPrompt(d) {
     p += `\n📊 Statistiques 30j : Moyenne/jour ${fmt(avg)} MAD | Meilleur jour: ${best.day} (${fmt(best.total)} MAD) | Total période: ${fmt(totalMonth)} MAD\n`;
   }
 
+  const langInstr = {
+    fr:     'Réponds TOUJOURS en français, de façon claire, structurée et professionnelle.',
+    en:     'ALWAYS respond in English, clearly, structured, and professionally.',
+    ar:     'أجب دائماً باللغة العربية الفصحى بأسلوب واضح ومنظم واحترافي.',
+    darija: 'جاوب دائماً بالدارجة المغربية. ماباسش تخلط شي كلمات فرنسية أو عربية فصحى إذا كان لازم.',
+  }[language] || 'Réponds toujours en français.';
+
+  const pdfWords = {
+    fr:     'pdf, rapport, imprimer, exporter, télécharger',
+    en:     'pdf, report, print, export, download',
+    ar:     'pdf, تقرير, طباعة, تصدير, تحميل',
+    darija: 'pdf, rapport, taqrir, تحميل, طباعة',
+  }[language] || 'pdf, rapport';
+
   p += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 INSTRUCTIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Réponds toujours en français, de façon claire, structurée, et professionnelle.
+- ${langInstr}
 - Utilise des emojis avec modération pour aérer les réponses.
 - Pour les calculs, sois précis. Pour les analyses, donne des recommandations concrètes.
 - Tu peux comparer des périodes, identifier des tendances, détecter des anomalies.
-- Si l'utilisateur demande un PDF ou rapport (mots: pdf, rapport, imprimer, exporter, télécharger le rapport), réponds UNIQUEMENT avec ce JSON exact sans aucun autre texte:
-  {"action":"pdf","type":"daily"} pour rapport journalier
-  {"action":"pdf","type":"weekly"} pour rapport hebdomadaire
-  {"action":"pdf","type":"credits"} pour liste des créances
-  {"action":"pdf","type":"monthly"} pour rapport mensuel`;
+- Si l'utilisateur demande un PDF ou rapport (mots-clés: ${pdfWords}), réponds UNIQUEMENT avec ce JSON exact sans aucun autre texte:
+  {"action":"pdf","type":"daily"} — rapport journalier
+  {"action":"pdf","type":"weekly"} — rapport hebdomadaire
+  {"action":"pdf","type":"credits"} — liste des créances
+  {"action":"pdf","type":"monthly"} — rapport mensuel`;
 
   return p;
 }
@@ -500,11 +558,11 @@ function pdfMonthly(res, d) {
 // Streaming chat
 router.post('/chat', requireAuth, async (req, res, next) => {
   try {
-    const { message, history = [] } = req.body;
+    const { message, history = [], language = 'fr' } = req.body;
     if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message requis' });
 
     const data = await getBusinessData();
-    const systemPrompt = buildSystemPrompt(data);
+    const systemPrompt = buildSystemPrompt(data, language);
 
     const messages = [
       ...history.slice(-14).map(m => ({ role: m.role, content: m.content })),
@@ -520,7 +578,7 @@ router.post('/chat', requireAuth, async (req, res, next) => {
 
     const stream = client.messages.stream({
       model: 'claude-sonnet-4-6',
-      max_tokens: 2048,
+      max_tokens: 8192,
       system: systemPrompt,
       messages,
     });
@@ -544,11 +602,15 @@ router.post('/chat', requireAuth, async (req, res, next) => {
     });
 
     stream.on('error', (err) => {
+      console.error('[AI STREAM ERROR]', err.status, err.message, err.error);
       res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
       res.end();
     });
 
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('[AI ROUTE ERROR]', err.status, err.message, err.error || err);
+    next(err);
+  }
 });
 
 // PDF endpoints

@@ -13,6 +13,9 @@ async function start() {
 
   const app = express();
 
+  // ── Trust Railway's proxy ──
+  app.set('trust proxy', 1);
+
   // ── Security headers ──
   app.use(helmet({
     contentSecurityPolicy: false,
@@ -49,7 +52,7 @@ async function start() {
     'DELETE /shifts/:id':            ['Carburant',  'Supprimer Poste'],
     'POST /credits/sales':           ['Créances',   'Vente Crédit'],
     'DELETE /credits/sales/:id':     ['Créances',   'Annuler Vente Crédit'],
-    'POST /credits/payments/:id':    ['Créances',   'Paiement Client'],
+    'POST /credits/payments':         ['Créances',   'Paiement Client'],
     'POST /credits/clients':         ['Créances',   'Nouveau Client'],
     'PUT /credits/clients/:id':      ['Créances',   'Modifier Client'],
     'DELETE /credits/clients/:id':   ['Créances',   'Supprimer Client'],
@@ -133,6 +136,11 @@ async function start() {
   app.use(express.static(path.join(__dirname, 'public'), {
     maxAge: '1h',
     etag: true,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html') || filePath.endsWith('.css') || filePath.endsWith('.js')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
+    },
   }));
 
   // ── API Routes ──
@@ -200,6 +208,62 @@ async function start() {
   app.listen(PORT, () => {
     console.log(`\n⛽  MENASTA v2 — http://localhost:${PORT}\n`);
   });
+
+  // ── Daily WhatsApp summary at 22:00 ──
+  startDailySummary();
+}
+
+function startDailySummary() {
+  const { sendWhatsApp } = require('./services/whatsapp');
+  let lastSentDate = '';
+
+  setInterval(async () => {
+    const now = new Date();
+    const hm  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const today = now.toISOString().slice(0,10);
+    const targetHour = process.env.DAILY_SUMMARY_HOUR || '22:00';
+    if (hm !== targetHour || lastSentDate === today) return;
+    lastSentDate = today;
+
+    const ownerPhone = process.env.OWNER_PHONE;
+    if (!ownerPhone) return;
+
+    try {
+      const { rows: shifts } = await pool.query(
+        "SELECT SUM(total_fuel_revenue) as ca, SUM(net_cash) as cash, COUNT(*) as nb FROM shifts WHERE status='closed' AND DATE(closed_at)=CURRENT_DATE"
+      );
+      const { rows: credits } = await pool.query(
+        "SELECT COALESCE(SUM(amount),0) as total FROM credit_sales WHERE DATE(sale_time)=CURRENT_DATE"
+      );
+      const { rows: expenses } = await pool.query(
+        "SELECT COALESCE(SUM(amount),0) as total FROM expenses WHERE expense_date=CURRENT_DATE"
+      );
+      const { rows: tabac } = await pool.query(
+        "SELECT COALESCE(SUM(montant),0) as total, COALESCE(SUM(benefice),0) as benefice FROM tabac_ventes WHERE vente_date=CURRENT_DATE"
+      );
+
+      const s = shifts[0];
+      const ca       = parseFloat(s.ca||0).toFixed(2);
+      const cash     = parseFloat(s.cash||0).toFixed(2);
+      const cred     = parseFloat(credits[0].total).toFixed(2);
+      const exp      = parseFloat(expenses[0].total).toFixed(2);
+      const tabacCA  = parseFloat(tabac[0].total).toFixed(2);
+      const tabacBen = parseFloat(tabac[0].benefice).toFixed(2);
+
+      const msg = `📊 *Résumé MENASTA — ${today}*\n\n`
+        + `⛽ CA Carburant : ${ca} MAD\n`
+        + `💵 Caisse Nette : ${cash} MAD\n`
+        + `🤝 Crédits du jour : ${cred} MAD\n`
+        + `💸 Dépenses : ${exp} MAD\n`
+        + `🚬 Tabac CA : ${tabacCA} MAD (bénéfice : ${tabacBen} MAD)\n\n`
+        + `_Envoyé automatiquement par MENASTA_`;
+
+      await sendWhatsApp(ownerPhone, msg);
+      console.log(`[WhatsApp] Résumé journalier envoyé à ${ownerPhone}`);
+    } catch(e) {
+      console.error('[WhatsApp Daily]', e.message);
+    }
+  }, 60 * 1000);
 }
 
 start().catch(err => { console.error('Démarrage impossible:', err); process.exit(1); });

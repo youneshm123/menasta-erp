@@ -116,7 +116,27 @@ async function initDB() {
   `);
 
   await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS avance REAL NOT NULL DEFAULT 0');
+  await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS pompiste TEXT');
+  await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS heure_debut TEXT');
+  await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS heure_fin TEXT');
+  await pgPool.query('ALTER TABLE credit_sales ADD COLUMN IF NOT EXISTS product_type TEXT NOT NULL DEFAULT \'carburant\'');
+  try { await pgPool.query('ALTER TABLE credit_sales ALTER COLUMN pump_id DROP NOT NULL'); } catch(_) {}
   await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS credit_limit REAL');
+  await pgPool.query('ALTER TABLE fuel_deliveries ADD COLUMN IF NOT EXISTS numero_cheque TEXT');
+  await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS ice TEXT');
+  await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS adresse TEXT');
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS tabac_achats (
+      id          SERIAL PRIMARY KEY,
+      product_id  INTEGER NOT NULL REFERENCES tabac_products(id),
+      quantite    REAL NOT NULL,
+      prix_achat  REAL NOT NULL,
+      achat_date  DATE NOT NULL DEFAULT CURRENT_DATE,
+      notes       TEXT,
+      recorded_by INTEGER REFERENCES users(id),
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 
   // Seed cuves
   const { rows: [{ c: cuvc }] } = await pgPool.query('SELECT COUNT(*) as c FROM cuves');

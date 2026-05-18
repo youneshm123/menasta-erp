@@ -4,7 +4,7 @@ const { requireAuth } = require('../middleware');
 
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
-const DENSITY = { 'Gazoil': 1176, 'Essence': 1340 };
+const DENSITY = 1000;
 
 router.get('/', requireAuth, wrap(async (_req, res) => {
   const { rows: fuels } = await pool.query('SELECT * FROM fuel_types WHERE is_active=1');
@@ -36,16 +36,30 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
 }));
 
 router.post('/delivery', requireAuth, wrap(async (req, res) => {
-  const { fuel_type_id, quantity, unit, delivery_date, supplier, notes, cost_per_liter } = req.body || {};
+  const { fuel_type_id, quantity, unit, delivery_date, supplier, notes, cost_per_liter, numero_cheque } = req.body || {};
   if (!fuel_type_id || !quantity) return res.status(400).json({ error: 'Carburant et quantité requis' });
   const { rows: ftr } = await pool.query('SELECT * FROM fuel_types WHERE id=$1', [Number(fuel_type_id)]);
   if (!ftr.length) return res.status(404).json({ error: 'Carburant introuvable' });
-  const litres = unit === 'tonnes' ? parseFloat(quantity) * (DENSITY[ftr[0].name] || 1176) : parseFloat(quantity);
+  const litres = unit === 'tonnes' ? parseFloat(quantity) * DENSITY : parseFloat(quantity);
   const cost   = cost_per_liter ? parseFloat(cost_per_liter) : null;
+  const delivDate = delivery_date || new Date().toISOString().slice(0,10);
   const { rows: [{ id }] } = await pool.query(`
-    INSERT INTO fuel_deliveries (fuel_type_id,quantity_liters,delivery_date,supplier,notes,cost_per_liter,recorded_by)
-    VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id
-  `, [Number(fuel_type_id), litres, delivery_date||new Date().toISOString().slice(0,10), supplier||null, notes||null, cost, req.user.id]);
+    INSERT INTO fuel_deliveries (fuel_type_id,quantity_liters,delivery_date,supplier,notes,cost_per_liter,numero_cheque,recorded_by)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id
+  `, [Number(fuel_type_id), litres, delivDate, supplier||null, notes||null, cost, numero_cheque||null, req.user.id]);
+
+  // Auto-fill cuve livraison for the matching fuel type
+  const { rows: cuves } = await pool.query(
+    'SELECT id FROM cuves WHERE fuel_type_id=$1 AND is_active=1 ORDER BY id LIMIT 1',
+    [Number(fuel_type_id)]
+  );
+  if (cuves.length) {
+    await pool.query(`
+      INSERT INTO cuve_livraisons (cuve_id,livraison_date,litres_recus,fournisseur,prix_unitaire,notes,recorded_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+    `, [cuves[0].id, delivDate, litres, supplier||null, cost||null, notes||null, req.user.id]);
+  }
+
   res.status(201).json({ ok: true, id: Number(id), quantity_liters: litres });
 }));
 

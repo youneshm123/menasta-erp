@@ -15,7 +15,7 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
            COALESCE(SUM(total_credit_deducted),0) as credits,
            COALESCE(SUM(net_cash),0) as net,
            COALESCE(SUM(total_liters_sold),0) as liters
-    FROM shifts WHERE opened_at::date=$1 AND status='closed'
+    FROM shifts WHERE date(opened_at)=$1 AND status='closed'
   `, [today]);
 
   const { rows: [{ t: debt }] }    = await pool.query('SELECT COALESCE(SUM(balance_due),0) as t FROM credit_clients WHERE is_active=1');
@@ -39,12 +39,12 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
 
 router.get('/weekly', requireAuth, wrap(async (_req, res) => {
   const { rows } = await pool.query(`
-    SELECT opened_at::date as day,
+    SELECT date(opened_at) as day,
       COALESCE(SUM(total_fuel_revenue),0) as fuel,
       COALESCE(SUM(total_product_sales),0) as products,
       COALESCE(SUM(net_cash),0) as net
     FROM shifts
-    WHERE opened_at::date >= CURRENT_DATE - INTERVAL '6 days' AND status='closed'
+    WHERE date(opened_at) >= date('now', '-6 days') AND status='closed'
     GROUP BY day ORDER BY day
   `);
   res.json(rows);
@@ -61,7 +61,7 @@ router.get('/fuel-split', requireAuth, wrap(async (_req, res) => {
     JOIN pump_readings pr_end   ON pr_end.pump_id=p.id   AND pr_end.reading_type='end'
                                 AND pr_end.shift_id=pr_start.shift_id
     JOIN shifts s ON s.id=pr_start.shift_id
-    WHERE s.opened_at::date=$1 AND s.status='closed'
+    WHERE date(s.opened_at)=$1 AND s.status='closed'
     GROUP BY ft.id, ft.name, ft.color_hex
   `, [today]);
   res.json(rows);

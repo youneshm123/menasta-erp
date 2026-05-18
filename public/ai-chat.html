@@ -8,90 +8,89 @@
 <style>
 .app-main { overflow: hidden; display: flex; flex-direction: column; }
 .chat-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
-/* Messages area */
 .chat-messages {
-  flex: 1; overflow-y: auto; padding: 24px 28px;
-  display: flex; flex-direction: column; gap: 18px;
+  flex: 1; overflow-y: auto; padding: 20px 24px;
+  display: flex; flex-direction: column; gap: 16px;
   scroll-behavior: smooth;
 }
-
+.chat-messages.rtl { direction: rtl; }
 /* Welcome */
 .chat-welcome {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 40px 20px; gap: 20px; text-align: center;
+  padding: 32px 20px; gap: 16px; text-align: center;
 }
 .welcome-icon {
-  width: 68px; height: 68px; border-radius: 20px;
+  width: 72px; height: 72px; border-radius: 22px;
   background: linear-gradient(135deg,#2563EB,#7C3AED);
   display: flex; align-items: center; justify-content: center;
-  font-size: 34px; box-shadow: 0 8px 32px rgba(37,99,235,.25);
+  font-size: 36px; box-shadow: 0 8px 32px rgba(37,99,235,.3);
+  animation: pulse 3s ease-in-out infinite;
 }
-.welcome-title { font-size: 22px; font-weight: 900; color: var(--text); letter-spacing: -.4px; }
-.welcome-sub { font-size: 14px; color: var(--muted); max-width: 380px; line-height: 1.65; }
-
-.chip-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 600px; }
+@keyframes pulse { 0%,100%{box-shadow:0 8px 32px rgba(37,99,235,.3)} 50%{box-shadow:0 8px 48px rgba(37,99,235,.55)} }
+.welcome-title { font-size: 22px; font-weight: 900; color: var(--text); letter-spacing:-.4px; }
+.welcome-sub { font-size: 13.5px; color: var(--muted); max-width: 380px; line-height: 1.7; }
+.chip-grid { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; max-width: 640px; }
 .chip {
   background: var(--surface); border: 1.5px solid var(--border);
-  border-radius: 20px; padding: 8px 16px;
-  font-size: 13px; font-weight: 600; color: var(--text-2);
+  border-radius: 20px; padding: 7px 14px;
+  font-size: 12.5px; font-weight: 600; color: var(--text-2);
   cursor: pointer; transition: all .15s; box-shadow: var(--sh-xs);
   white-space: nowrap;
 }
 .chip:hover { background: #EFF6FF; border-color: var(--blue); color: var(--blue); transform: translateY(-2px); }
-
 /* Messages */
 .msg { display: flex; gap: 10px; animation: msgIn .2s ease; }
 @keyframes msgIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
-.msg.user { align-self: flex-end; flex-direction: row-reverse; max-width: 75%; }
-.msg.ai   { align-self: flex-start; max-width: 85%; }
-
+.msg.user { align-self: flex-end; flex-direction: row-reverse; max-width: 78%; }
+.msg.ai   { align-self: flex-start; max-width: 88%; }
+.rtl .msg.user { flex-direction: row; align-self: flex-start; }
+.rtl .msg.ai   { flex-direction: row-reverse; align-self: flex-end; }
 .msg-av {
   width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 800; margin-top: 2px;
 }
-.msg.user .msg-av { background: linear-gradient(135deg,#2563EB,#7C3AED); color: #fff; font-size: 12px; }
+.msg.user .msg-av { background: linear-gradient(135deg,#2563EB,#7C3AED); color: #fff; font-size: 11px; }
 .msg.ai   .msg-av { background: linear-gradient(135deg,#2563EB,#7C3AED); font-size: 17px; }
-
 .msg-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .msg-meta { font-size: 10.5px; color: var(--subtle); padding: 0 4px; display: flex; align-items: center; gap: 8px; }
 .msg.user .msg-meta { justify-content: flex-end; }
-
 .msg-bubble {
   padding: 12px 16px; border-radius: 16px;
-  font-size: 13.5px; line-height: 1.75; word-break: break-word;
+  font-size: 13.5px; line-height: 1.8; word-break: break-word;
 }
-.msg.user .msg-bubble {
-  background: #2563EB; color: #fff;
-  border-bottom-right-radius: 4px;
-}
-.msg.ai .msg-bubble {
-  background: var(--surface); color: var(--text);
-  border: 1px solid var(--border); border-bottom-left-radius: 4px;
-  box-shadow: var(--sh-xs);
-}
-
-/* Markdown in AI bubbles */
+.msg.user .msg-bubble { background: #2563EB; color: #fff; border-bottom-right-radius: 4px; }
+.msg.ai   .msg-bubble { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 4px; box-shadow: var(--sh-xs); }
+.rtl .msg.user .msg-bubble { border-bottom-right-radius: 16px; border-bottom-left-radius: 4px; }
+.rtl .msg.ai   .msg-bubble { border-bottom-left-radius: 16px; border-bottom-right-radius: 4px; }
+/* Markdown */
 .msg.ai .msg-bubble h2 { font-size: 14px; font-weight: 800; color: var(--blue); margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border-lt); }
 .msg.ai .msg-bubble h3 { font-size: 13px; font-weight: 700; color: var(--text); margin: 10px 0 4px; }
 .msg.ai .msg-bubble strong { font-weight: 700; }
 .msg.ai .msg-bubble em { font-style: italic; color: var(--text-2); }
-.msg.ai .msg-bubble ul, .msg.ai .msg-bubble ol { margin: 6px 0 6px 16px; padding: 0; }
+.msg.ai .msg-bubble ul { margin: 6px 0 6px 18px; padding: 0; }
 .msg.ai .msg-bubble li { margin-bottom: 4px; }
 .msg.ai .msg-bubble p { margin: 0 0 8px; }
 .msg.ai .msg-bubble p:last-child { margin: 0; }
 .msg.ai .msg-bubble code { background: #F1F5F9; padding: 1px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #1D4ED8; }
+.msg.ai .msg-bubble pre { background: #F1F5F9; padding: 12px; border-radius: 8px; font-size: 12px; overflow-x: auto; margin: 8px 0; }
 .msg.ai .msg-bubble hr { border: none; border-top: 1px solid var(--border-lt); margin: 10px 0; }
 .msg.ai .msg-bubble table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0; }
 .msg.ai .msg-bubble th { background: #F1F5F9; padding: 7px 10px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); border-bottom: 1px solid var(--border); }
 .msg.ai .msg-bubble td { padding: 7px 10px; border-bottom: 1px solid var(--border-lt); }
 .msg.ai .msg-bubble tr:last-child td { border-bottom: none; }
 .msg.ai .msg-bubble .num { font-weight: 700; color: #2563EB; font-variant-numeric: tabular-nums; }
-.msg.user .msg-bubble a { color: #93C5FD; }
-.msg.ai .msg-bubble a { color: var(--blue); }
-
+/* Follow-up chips */
+.followup-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding: 0 4px; }
+.rtl .followup-wrap { flex-direction: row-reverse; }
+.fchip {
+  background: #EFF6FF; border: 1.5px solid #BFDBFE;
+  border-radius: 16px; padding: 5px 12px;
+  font-size: 12px; color: #2563EB; cursor: pointer;
+  transition: all .15s; white-space: nowrap; font-weight: 500;
+}
+.fchip:hover { background: #DBEAFE; transform: translateY(-1px); }
 /* Copy button */
 .copy-btn {
   background: none; border: none; cursor: pointer;
@@ -100,67 +99,59 @@
   display: inline-flex; align-items: center; gap: 3px;
 }
 .copy-btn:hover { background: var(--bg2); color: var(--text-2); }
-
-/* Typing indicator */
-.typing { display: flex; gap: 4px; align-items: center; padding: 2px 0; }
-.typing span {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--blue); opacity: .4;
-  animation: bounce .9s infinite;
-}
+/* Typing */
+.typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+.typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); opacity: .4; animation: bounce .9s infinite; }
 .typing span:nth-child(2) { animation-delay: .15s; }
 .typing span:nth-child(3) { animation-delay: .30s; }
 @keyframes bounce { 0%,80%,100% { transform:scale(.7); opacity:.4; } 40% { transform:scale(1.2); opacity:1; } }
-
-/* PDF download card */
-.pdf-card {
-  background: #EFF6FF; border: 1.5px solid #BFDBFE;
-  border-radius: 12px; padding: 14px 16px;
-  display: flex; align-items: center; gap: 12px;
-  margin-top: 4px;
-}
+/* PDF card */
+.pdf-card { background: #EFF6FF; border: 1.5px solid #BFDBFE; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; margin-top: 4px; }
 .pdf-icon { font-size: 28px; }
 .pdf-info { flex: 1; }
 .pdf-info .pdf-title { font-size: 13px; font-weight: 700; color: #1D4ED8; }
 .pdf-info .pdf-sub { font-size: 11.5px; color: #64748B; margin-top: 2px; }
-.pdf-dl-btn {
-  background: #2563EB; color: #fff; border: none; cursor: pointer;
-  padding: 8px 16px; border-radius: 8px; font-size: 12.5px; font-weight: 700;
-  display: flex; align-items: center; gap: 6px; white-space: nowrap;
-  transition: background .15s;
-}
+.pdf-dl-btn { background: #2563EB; color: #fff; border: none; cursor: pointer; padding: 8px 16px; border-radius: 8px; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap; transition: background .15s; }
 .pdf-dl-btn:hover { background: #1D4ED8; }
-
+/* Quick PDF bar */
+.quick-pdf-bar { display: flex; gap: 6px; padding: 8px 20px 0; flex-wrap: wrap; }
+.rtl-bar { direction: rtl; }
+.qpdf-btn { background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px; padding: 5px 11px; font-size: 11.5px; font-weight: 600; color: var(--text-2); cursor: pointer; transition: all .13s; display: flex; align-items: center; gap: 5px; }
+.qpdf-btn:hover { background: #EFF6FF; border-color: var(--blue); color: var(--blue); }
 /* Input */
-.chat-input-area {
-  padding: 12px 20px 16px;
-  background: var(--surface); border-top: 1px solid var(--border);
-}
-.chat-input-row {
-  display: flex; gap: 8px; align-items: flex-end;
-  background: var(--bg); border: 1.5px solid var(--border);
-  border-radius: 14px; padding: 8px 12px;
-  transition: border-color .15s, box-shadow .15s;
-}
+.chat-input-area { padding: 8px 20px 14px; background: var(--surface); border-top: 1px solid var(--border); }
+.chat-input-row { display: flex; gap: 8px; align-items: flex-end; background: var(--bg); border: 1.5px solid var(--border); border-radius: 14px; padding: 8px 10px; transition: border-color .15s, box-shadow .15s; }
 .chat-input-row:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
-#chat-input {
-  flex: 1; border: none; background: none; outline: none;
-  font-size: 14px; font-family: var(--font); color: var(--text);
-  resize: none; min-height: 22px; max-height: 140px;
-  line-height: 1.5; overflow-y: auto;
-}
+.chat-input-row.rtl-input { flex-direction: row-reverse; }
+#chat-input { flex: 1; border: none; background: none; outline: none; font-size: 14px; font-family: var(--font); color: var(--text); resize: none; min-height: 22px; max-height: 140px; line-height: 1.5; overflow-y: auto; }
 #chat-input::placeholder { color: var(--disabled); }
-#send-btn {
-  width: 34px; height: 34px; border-radius: 9px;
-  background: var(--blue); border: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; flex-shrink: 0;
-  transition: background .15s, transform .1s; font-size: 14px;
-}
+#chat-input.rtl-input { direction: rtl; text-align: right; }
+.input-btn { width: 34px; height: 34px; border-radius: 9px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; transition: background .15s, transform .1s; font-size: 15px; }
+#send-btn { background: var(--blue); }
 #send-btn:hover { background: #1D4ED8; }
 #send-btn:active { transform: scale(.93); }
 #send-btn:disabled { background: var(--disabled); cursor: not-allowed; }
-.chat-hint { font-size: 11px; color: var(--subtle); text-align: center; margin-top: 6px; }
+#mic-btn { background: var(--bg2); color: var(--text-2); border: 1.5px solid var(--border); }
+#mic-btn:hover { background: #EFF6FF; color: var(--blue); border-color: var(--blue); }
+#mic-btn.listening { background: #FEE2E2; color: #DC2626; border-color: #DC2626; animation: micPulse .8s ease-in-out infinite; }
+@keyframes micPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+.chat-hint { font-size: 11px; color: var(--subtle); text-align: center; margin-top: 5px; }
+/* Language selector */
+.lang-bar { display: flex; gap: 4px; align-items: center; }
+.lang-btn {
+  padding: 4px 10px; border-radius: 14px; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: all .13s; border: 1.5px solid transparent;
+  background: transparent; color: var(--muted);
+}
+.lang-btn:hover { color: var(--blue); background: #EFF6FF; border-color: #BFDBFE; }
+.lang-btn.active { background: #2563EB; color: #fff; border-color: #2563EB; }
+/* Data badge */
+.data-badge { font-size: 11px; background: #D1FAE5; color: #065F46; border-radius: 12px; padding: 3px 9px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+.data-dot { width: 6px; height: 6px; border-radius: 50%; background: #22C55E; animation: blink 2s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+/* Retry */
+.retry-btn { background: #FEE2E2; color: #DC2626; border: 1.5px solid #FCA5A5; border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 6px; transition: all .13s; }
+.retry-btn:hover { background: #FECACA; }
 </style>
 </head>
 <body class="app-layout">
@@ -191,40 +182,57 @@
       <div class="sb-avatar" id="sb-av">?</div>
       <div>
         <div class="sb-uname" id="sb-name">—</div>
-        <div class="sb-urole">Administrateur</div>
+        <div class="sb-urole" id="sb-role">Administrateur</div>
       </div>
     </div>
-    <button class="sb-logout" onclick="logout()">↪ Déconnexion</button>
+    <button class="sb-logout" onclick="logout()">↪ <span id="lbl-logout">Déconnexion</span></button>
   </div>
 </aside>
 
 <div class="app-main">
   <div class="app-topbar">
-    <div class="topbar-title">🤖 Assistant IA MENASTA</div>
-    <div class="topbar-meta" style="display:flex;align-items:center;gap:6px;">
-      <span style="width:7px;height:7px;border-radius:50%;background:#22C55E;display:inline-block;"></span>
-      <span style="font-size:12px;color:var(--muted);">Claude Sonnet · Données en temps réel</span>
+    <div class="topbar-title" id="lbl-title">🤖 Assistant IA MENASTA</div>
+    <div style="display:flex;align-items:center;gap:8px;flex:1;justify-content:center">
+      <div class="data-badge"><div class="data-dot"></div><span id="data-time">—</span></div>
     </div>
-    <button class="btn btn-g btn-sm" onclick="clearChat()">🗑 Nouveau</button>
+    <div style="display:flex;gap:6px;align-items:center">
+      <!-- Language selector -->
+      <div class="lang-bar">
+        <button class="lang-btn active" onclick="setLang('fr')">FR</button>
+        <button class="lang-btn" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" onclick="setLang('ar')">عربي</button>
+        <button class="lang-btn" onclick="setLang('darija')">دارجة</button>
+      </div>
+      <button class="btn btn-g btn-sm" id="btn-export" onclick="exportChat()">↓ Export</button>
+      <button class="btn btn-g btn-sm" id="btn-new" onclick="clearChat()">🗑 Nouveau</button>
+    </div>
   </div>
 
   <div class="chat-wrap">
     <div class="chat-messages" id="messages">
       <div class="chat-welcome" id="welcome-screen">
         <div class="welcome-icon">🤖</div>
-        <div class="welcome-title">Assistant IA MENASTA</div>
-        <div class="welcome-sub">Posez-moi n'importe quelle question sur votre station. J'ai accès à toutes vos données en temps réel.</div>
-        <div class="chip-grid" id="chip-grid"></div>
+        <div class="welcome-title" id="lbl-welcome-title">Assistant IA MENASTA</div>
+        <div class="welcome-sub" id="lbl-welcome-sub">Je connais toutes vos données en temps réel. Posez-moi n'importe quelle question.</div>
+        <div id="chip-grid" class="chip-grid"></div>
       </div>
     </div>
 
+    <div class="quick-pdf-bar" id="pdf-bar">
+      <button class="qpdf-btn" onclick="dlPDF('daily')" id="qpdf-daily">📄 Rapport du jour</button>
+      <button class="qpdf-btn" onclick="dlPDF('weekly')" id="qpdf-weekly">📊 Rapport semaine</button>
+      <button class="qpdf-btn" onclick="dlPDF('monthly')" id="qpdf-monthly">📅 Rapport mois</button>
+      <button class="qpdf-btn" onclick="dlPDF('credits')" id="qpdf-credits">🤝 Créances</button>
+    </div>
+
     <div class="chat-input-area">
-      <div class="chat-input-row">
-        <textarea id="chat-input" placeholder="Posez votre question…" rows="1"
+      <div class="chat-input-row" id="input-row">
+        <textarea id="chat-input" rows="1"
           onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-        <button id="send-btn" onclick="sendMessage()" title="Envoyer">➤</button>
+        <button id="mic-btn" class="input-btn" onclick="toggleVoice()" style="font-size:16px;background:var(--bg2);color:var(--text-2);border:1.5px solid var(--border)">🎤</button>
+        <button id="send-btn" class="input-btn" onclick="sendMessage()">➤</button>
       </div>
-      <div class="chat-hint">Ctrl+Enter pour envoyer · Powered by Claude Sonnet</div>
+      <div class="chat-hint" id="lbl-hint">Entrée pour envoyer · Shift+Entrée pour saut de ligne · 🎤 Voix</div>
     </div>
   </div>
 </div>
@@ -241,62 +249,301 @@ if (USER) {
 function logout() { localStorage.clear(); window.location.href = '/'; }
 const ME = USER ? (USER.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '?';
 
+// ── Language data ─────────────────────────────────────────────────────────────
+const LANGS = {
+  fr: {
+    dir: 'ltr',
+    welcomeTitle: 'Assistant IA MENASTA',
+    welcomeSub: 'Je connais toutes vos données en temps réel — carburant, café, tabac, banque, créances, cuves, dépenses.',
+    placeholder: 'Posez votre question…',
+    hint: 'Entrée pour envoyer · Shift+Entrée pour saut de ligne · 🎤 Voix',
+    export: '↓ Export',
+    nouveau: '🗑 Nouveau',
+    dataLabel: 'Données du',
+    pdfDaily: '📄 Rapport du jour',
+    pdfWeekly: '📊 Rapport semaine',
+    pdfMonthly: '📅 Rapport mois',
+    pdfCredits: '🤝 Créances',
+    chips: [
+      {e:'💰', t:"Résumé complet de la station aujourd'hui"},
+      {e:'📊', t:"Compare les 7 derniers jours de ventes"},
+      {e:'⛽', t:"Combien de litres vendus cette semaine ?"},
+      {e:'🤝', t:"Qui me doit de l'argent et combien ?"},
+      {e:'🏦', t:"Quel est le solde de la banque ?"},
+      {e:'☕', t:"CA café et tabac aujourd'hui ?"},
+      {e:'🏆', t:"Quel est le meilleur jour du mois ?"},
+      {e:'📈', t:"Analyse les tendances des 30 derniers jours"},
+      {e:'🛢️', t:"Quels sont les niveaux des cuves ?"},
+      {e:'💸', t:"Quelles sont mes dépenses ce mois ?"},
+      {e:'⚠️', t:"Y a-t-il des alertes ou problèmes ?"},
+      {e:'📦', t:"Quels produits sont en rupture de stock ?"},
+    ],
+    followups: [
+      "Donne-moi plus de détails","Compare avec la semaine dernière",
+      "Qu'est-ce qui explique cette tendance ?","Quelles sont tes recommandations ?",
+      "Montre-moi les chiffres par jour","Y a-t-il des anomalies ?",
+      "Calcule le bénéfice net","Comment améliorer ces résultats ?",
+      "Qui doit le plus ?","Quel carburant est le plus vendu ?",
+      "Génère le rapport PDF du jour","Analyse les dépenses",
+    ],
+    errServer: '⚠️ Erreur serveur. Réessayez.',
+    errConn: "⚠️ Impossible de contacter l'assistant.",
+    retry: '↻ Réessayer',
+    copied: '✓ Copié',
+    copy: '⧉ Copier',
+  },
+  en: {
+    dir: 'ltr',
+    welcomeTitle: 'MENASTA AI Assistant',
+    welcomeSub: 'I have access to all your real-time data — fuel, café, tobacco, bank, receivables, tanks, expenses.',
+    placeholder: 'Ask me anything…',
+    hint: 'Enter to send · Shift+Enter for new line · 🎤 Voice',
+    export: '↓ Export',
+    nouveau: '🗑 New',
+    dataLabel: 'Data at',
+    pdfDaily: '📄 Daily report',
+    pdfWeekly: '📊 Weekly report',
+    pdfMonthly: '📅 Monthly report',
+    pdfCredits: '🤝 Receivables',
+    chips: [
+      {e:'💰', t:"Complete station summary for today"},
+      {e:'📊', t:"Compare the last 7 days of sales"},
+      {e:'⛽', t:"How many liters sold this week?"},
+      {e:'🤝', t:"Who owes money and how much?"},
+      {e:'🏦', t:"What is the current bank balance?"},
+      {e:'☕', t:"Café and tobacco revenue today?"},
+      {e:'🏆', t:"What was the best day this month?"},
+      {e:'📈', t:"Analyze 30-day trends"},
+      {e:'🛢️', t:"What are the current tank levels?"},
+      {e:'💸', t:"What are my expenses this month?"},
+      {e:'⚠️', t:"Are there any alerts or problems?"},
+      {e:'📦', t:"Which products are out of stock?"},
+    ],
+    followups: [
+      "Give me more details","Compare with last week",
+      "What explains this trend?","What are your recommendations?",
+      "Show me the numbers by day","Are there any anomalies?",
+      "Calculate the net profit","How can I improve these results?",
+      "Who owes the most?","Which fuel sells the most?",
+      "Generate the daily PDF report","Analyze the expenses",
+    ],
+    errServer: '⚠️ Server error. Please try again.',
+    errConn: '⚠️ Unable to reach the assistant.',
+    retry: '↻ Retry',
+    copied: '✓ Copied',
+    copy: '⧉ Copy',
+  },
+  ar: {
+    dir: 'rtl',
+    welcomeTitle: 'مساعد الذكاء الاصطناعي — مناستا',
+    welcomeSub: 'أعرف جميع بياناتك في الوقت الفعلي — الوقود، المقهى، التبغ، البنك، الذمم، الخزانات، المصاريف.',
+    placeholder: 'اطرح سؤالك هنا…',
+    hint: 'Enter للإرسال · Shift+Enter لسطر جديد · 🎤 صوت',
+    export: '↓ تصدير',
+    nouveau: '🗑 جديد',
+    dataLabel: 'بيانات الساعة',
+    pdfDaily: '📄 تقرير اليوم',
+    pdfWeekly: '📊 تقرير الأسبوع',
+    pdfMonthly: '📅 تقرير الشهر',
+    pdfCredits: '🤝 الذمم',
+    chips: [
+      {e:'💰', t:"ملخص كامل للمحطة اليوم"},
+      {e:'📊', t:"قارن مبيعات آخر 7 أيام"},
+      {e:'⛽', t:"كم لتراً تم بيعه هذا الأسبوع؟"},
+      {e:'🤝', t:"من يدين بالمال وبكم؟"},
+      {e:'🏦', t:"ما هو رصيد البنك الحالي؟"},
+      {e:'☕', t:"إيرادات القهوة والتبغ اليوم؟"},
+      {e:'🏆', t:"ما أفضل يوم في الشهر؟"},
+      {e:'📈', t:"تحليل اتجاهات 30 يومًا الأخيرة"},
+      {e:'🛢️', t:"ما مستويات الخزانات الحالية؟"},
+      {e:'💸', t:"ما هي مصاريفي هذا الشهر؟"},
+      {e:'⚠️', t:"هل توجد تنبيهات أو مشاكل؟"},
+      {e:'📦', t:"أي منتجات نفذت من المخزون؟"},
+    ],
+    followups: [
+      "أعطني مزيداً من التفاصيل","قارن مع الأسبوع الماضي",
+      "ما الذي يفسر هذا الاتجاه؟","ما هي توصياتك؟",
+      "أرني الأرقام يوماً بيوم","هل هناك شذوذات؟",
+      "احسب صافي الربح","كيف يمكنني تحسين النتائج؟",
+      "من يدين بأكثر المبالغ؟","أي وقود الأكثر مبيعاً؟",
+      "أنشئ تقرير PDF اليوم","حلل المصاريف بالتفصيل",
+    ],
+    errServer: '⚠️ خطأ في الخادم. حاول مرة أخرى.',
+    errConn: '⚠️ تعذر الاتصال بالمساعد.',
+    retry: '↻ إعادة المحاولة',
+    copied: '✓ تم النسخ',
+    copy: '⧉ نسخ',
+  },
+  darija: {
+    dir: 'rtl',
+    welcomeTitle: 'المساعد ديال MENASTA',
+    welcomeSub: 'عندي جميع داتا ديالك في الوقت الحقيقي — الكاربورون، القهوة، التباكو، البنك، الديون، الكيزان، المصاريف.',
+    placeholder: 'اكتب سؤالك هنا…',
+    hint: 'Enter باش تبعت · Shift+Enter لسطر جديد · 🎤 صوت',
+    export: '↓ تحميل',
+    nouveau: '🗑 جديد',
+    dataLabel: 'داتا ديال',
+    pdfDaily: '📄 rapport ديال اليوم',
+    pdfWeekly: '📊 rapport ديال الأسبوع',
+    pdfMonthly: '📅 rapport ديال الشهر',
+    pdfCredits: '🤝 الديون',
+    chips: [
+      {e:'💰', t:"عطيني ملخص كامل ديال المحطة اليوم"},
+      {e:'📊', t:"قارن لي المبيعات ديال 7 ايام"},
+      {e:'⛽', t:"شحال من لتر تباع هذا الأسبوع؟"},
+      {e:'🤝', t:"شكون خاصو يخلص ومن فلوس؟"},
+      {e:'🏦', t:"شحال رصيد البنك دابا؟"},
+      {e:'☕', t:"شحال دارت القهوة والتباكو اليوم؟"},
+      {e:'🏆', t:"أنهار كان أحسن يوم فالشهر؟"},
+      {e:'📈', t:"حلل لي 30 يوم لفوت"},
+      {e:'🛢️', t:"شحال الكيزان ديال الكاربورون؟"},
+      {e:'💸', t:"شحال صرفت هذا الشهر؟"},
+      {e:'⚠️', t:"واش كاين مشاكل أو تحذيرات؟"},
+      {e:'📦', t:"أنهاد البروديسات ناقصين فالستوك؟"},
+    ],
+    followups: [
+      "زيد عطيني تفاصيل","قارن مع الأسبوع لفوت",
+      "علاش كاين هاد الاتجاه؟","أشنو هي توصياتك؟",
+      "وريني الأرقام يوم بيوم","واش كاين شي مشاكل؟",
+      "حسب لي الربح الصافي","كيفاش نحسن النتائج؟",
+      "شكون خاصو يخلص أكتر؟","أنهاد الكاربورون يتباع أكتر؟",
+      "ولد لي rapport PDF ديال اليوم","حلل لي المصاريف",
+    ],
+    errServer: '⚠️ كاين مشكل فالسيرفر. حاول مرة خرى.',
+    errConn: '⚠️ ما قدرش نوصل للمساعد.',
+    retry: '↻ عاود',
+    copied: '✓ نسخت',
+    copy: '⧉ نسخ',
+  },
+};
+
+let currentLang = 'fr';
 let history = [];
 let isLoading = false;
 
-const CHIPS = [
-  {e:'💰', t:"Résumé complet de la station aujourd'hui"},
-  {e:'📊', t:"Compare les 7 derniers jours de ventes"},
-  {e:'⛽', t:"Combien de litres vendus cette semaine ?"},
-  {e:'🤝', t:"Qui doit de l'argent et combien ?"},
-  {e:'🏦', t:"Quel est le solde de la banque ?"},
-  {e:'☕', t:"CA café et tabac aujourd'hui ?"},
-  {e:'🏆', t:"Quel est le meilleur jour du mois ?"},
-  {e:'📈', t:"Analyse les tendances des 30 derniers jours"},
-  {e:'📄', t:"Génère le rapport PDF journalier"},
-  {e:'📋', t:"Rapport PDF hebdomadaire"},
-  {e:'🤝', t:"PDF de toutes les créances clients"},
-  {e:'📅', t:"Rapport PDF mensuel complet"},
-];
+// ── Apply language ─────────────────────────────────────────────────────────────
+function setLang(lang) {
+  currentLang = lang;
+  const L = LANGS[lang];
+  const isRTL = L.dir === 'rtl';
 
-document.getElementById('chip-grid').innerHTML = CHIPS.map(c =>
-  `<div class="chip" onclick="ask(${JSON.stringify(c.t)})">${c.e} ${c.t.length > 35 ? c.t.slice(0,35)+'…' : c.t}</div>`
-).join('');
+  // Update lang buttons
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  event && event.target && event.target.classList.add('active');
+  // Find the right button
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    if ((lang==='fr'&&b.textContent==='FR')||(lang==='en'&&b.textContent==='EN')||
+        (lang==='ar'&&b.textContent==='عربي')||(lang==='darija'&&b.textContent==='دارجة'))
+      b.classList.add('active');
+  });
 
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+  // Update HTML lang/dir
+  document.documentElement.lang = lang === 'ar' ? 'ar' : lang === 'darija' ? 'ar-MA' : lang;
+
+  // UI text
+  document.getElementById('lbl-welcome-title').textContent = L.welcomeTitle;
+  document.getElementById('lbl-welcome-sub').textContent = L.welcomeSub;
+  document.getElementById('chat-input').placeholder = L.placeholder;
+  document.getElementById('lbl-hint').textContent = L.hint;
+  document.getElementById('btn-export').textContent = L.export;
+  document.getElementById('btn-new').textContent = L.nouveau;
+  document.getElementById('qpdf-daily').textContent = L.pdfDaily;
+  document.getElementById('qpdf-weekly').textContent = L.pdfWeekly;
+  document.getElementById('qpdf-monthly').textContent = L.pdfMonthly;
+  document.getElementById('qpdf-credits').textContent = L.pdfCredits;
+
+  // RTL classes
+  const msgs = document.getElementById('messages');
+  const inputRow = document.getElementById('input-row');
+  const chatInput = document.getElementById('chat-input');
+  const pdfBar = document.getElementById('pdf-bar');
+
+  msgs.classList.toggle('rtl', isRTL);
+  inputRow.classList.toggle('rtl-input', isRTL);
+  chatInput.classList.toggle('rtl-input', isRTL);
+  chatInput.dir = isRTL ? 'rtl' : 'ltr';
+  pdfBar.classList.toggle('rtl-bar', isRTL);
+
+  // Rebuild chips if welcome screen visible
+  const chipGrid = document.getElementById('chip-grid');
+  if (chipGrid) {
+    chipGrid.innerHTML = L.chips.map(c =>
+      `<div class="chip" onclick="ask(${JSON.stringify(c.t)})">${c.e} ${c.t.length > 36 ? c.t.slice(0,36)+'…' : c.t}</div>`
+    ).join('');
+  }
+
+  // Update data time label
+  updateDataTime();
 }
-function handleKey(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+
+function updateDataTime() {
+  const L = LANGS[currentLang];
+  const t = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('data-time').textContent = L.dataLabel + ' ' + t;
 }
-function scrollToBottom() {
-  const m = document.getElementById('messages');
-  m.scrollTop = m.scrollHeight;
+
+// Init
+setLang('fr');
+
+// ── Voice input ───────────────────────────────────────────────────────────────
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isListening = false;
+
+if (SR) {
+  recognition = new SR();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  recognition.onresult = (e) => {
+    let transcript = '';
+    for (const result of e.results) transcript += result[0].transcript;
+    const input = document.getElementById('chat-input');
+    input.value = transcript;
+    autoResize(input);
+    if (e.results[e.results.length - 1].isFinal) { stopVoice(); sendMessage(); }
+  };
+  recognition.onerror = () => stopVoice();
+  recognition.onend = () => stopVoice();
+} else {
+  document.getElementById('mic-btn').style.display = 'none';
 }
-function fmtTime() {
-  return new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+
+function toggleVoice() {
+  if (isListening) { stopVoice(); return; }
+  if (!recognition) return;
+  const langMap = { fr:'fr-FR', en:'en-US', ar:'ar-MA', darija:'ar-MA' };
+  recognition.lang = langMap[currentLang] || 'fr-FR';
+  isListening = true;
+  const btn = document.getElementById('mic-btn');
+  btn.classList.add('listening');
+  btn.textContent = '⏹';
+  recognition.start();
 }
+function stopVoice() {
+  isListening = false;
+  const btn = document.getElementById('mic-btn');
+  btn.classList.remove('listening');
+  btn.textContent = '🎤';
+  try { recognition && recognition.stop(); } catch(_) {}
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,140)+'px'; }
+function handleKey(e) { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function scrollToBottom() { const m=document.getElementById('messages'); m.scrollTop=m.scrollHeight; }
+function fmtTime() { return new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
 
 function md(text) {
-  // Escape HTML first
   let t = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  // Code blocks
-  t = t.replace(/```[\w]*\n?([\s\S]*?)```/g, (_,c) => `<pre style="background:#F1F5F9;padding:12px;border-radius:8px;font-size:12px;overflow-x:auto;margin:8px 0;"><code>${c.trim()}</code></pre>`);
-  // Inline code
-  t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // Bold
-  t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  // Italic
-  t = t.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  // H2
-  t = t.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  // H3
-  t = t.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  // HR
-  t = t.replace(/^[-─━]{3,}$/gm, '<hr>');
-  // Tables
-  t = t.replace(/^\|(.+)\|\s*\n\|[-| :]+\|\s*\n((?:\|.+\|\s*\n?)*)/gm, (_, header, body) => {
+  t = t.replace(/```[\w]*\n?([\s\S]*?)```/g, (_,c) => `<pre><code>${c.trim()}</code></pre>`);
+  t = t.replace(/`([^`]+)`/g,'<code>$1</code>');
+  t = t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  t = t.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  t = t.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+  t = t.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  t = t.replace(/^[-─━]{3,}$/gm,'<hr>');
+  t = t.replace(/^\|(.+)\|\s*\n\|[-| :]+\|\s*\n((?:\|.+\|\s*\n?)*)/gm, (_,header,body) => {
     const ths = header.split('|').filter(x=>x.trim()).map(h=>`<th>${h.trim()}</th>`).join('');
     const trs = body.trim().split('\n').map(row => {
       const tds = row.split('|').filter(x=>x.trim()).map(c=>`<td>${c.trim()}</td>`).join('');
@@ -304,38 +551,52 @@ function md(text) {
     }).join('');
     return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
   });
-  // Lists
-  t = t.replace(/^[•·]\s+(.+)$/gm, '<li>$1</li>');
-  t = t.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
-  t = t.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
-  t = t.replace(/(<li>[\s\S]+?<\/li>)/g, s => `<ul>${s}</ul>`);
-  // Paragraphs
-  t = t.replace(/\n\n+/g, '</p><p>');
-  t = t.replace(/\n/g, '<br>');
-  if (!t.startsWith('<')) t = `<p>${t}</p>`;
-  // Highlight numbers with MAD/L
-  t = t.replace(/(\d[\d\s,.]*)(\s*MAD|\s*L\b)/g, '<span class="num">$1$2</span>');
+  t = t.replace(/^[•·]\s+(.+)$/gm,'<li>$1</li>');
+  t = t.replace(/^[-*]\s+(.+)$/gm,'<li>$1</li>');
+  t = t.replace(/^(\d+)\.\s+(.+)$/gm,'<li>$2</li>');
+  t = t.replace(/(<li>[\s\S]+?<\/li>)/g, s=>`<ul>${s}</ul>`);
+  t = t.replace(/\n\n+/g,'</p><p>');
+  t = t.replace(/\n/g,'<br>');
+  if (!t.startsWith('<')) t=`<p>${t}</p>`;
+  t = t.replace(/(\d[\d\s,.]*)\s*(MAD|DH)\b/g,'<span class="num">$1 $2</span>');
   return t;
 }
 
 function appendMsg(role, htmlContent, time) {
   const welcome = document.getElementById('welcome-screen');
   if (welcome) welcome.remove();
-
   const msgs = document.getElementById('messages');
   const div = document.createElement('div');
-  div.className = 'msg ' + role;
-  const copyBtn = role === 'ai' ? `<button class="copy-btn" onclick="copyMsg(this)" title="Copier">⧉ Copier</button>` : '';
+  div.className = 'msg '+role;
+  const L = LANGS[currentLang];
+  const copyBtn = role==='ai' ? `<button class="copy-btn" onclick="copyMsg(this)">${L.copy}</button>` : '';
   div.innerHTML = `
-    <div class="msg-av">${role === 'user' ? ME : '🤖'}</div>
+    <div class="msg-av">${role==='user' ? ME : '🤖'}</div>
     <div class="msg-col">
-      <div class="msg-meta">${time || fmtTime()} ${copyBtn}</div>
+      <div class="msg-meta">${time||fmtTime()} <div style="display:flex;gap:4px">${copyBtn}</div></div>
       <div class="msg-bubble"></div>
     </div>`;
   if (htmlContent) div.querySelector('.msg-bubble').innerHTML = htmlContent;
   msgs.appendChild(div);
   scrollToBottom();
   return div.querySelector('.msg-bubble');
+}
+
+function addFollowupChips(parentBubble, questionText) {
+  const L = LANGS[currentLang];
+  const pool = L.followups.filter(f => !questionText.toLowerCase().includes(f.toLowerCase().slice(0,10)));
+  const chips = pool.sort(()=>Math.random()-.5).slice(0,3);
+  if (!chips.length) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'followup-wrap';
+  chips.forEach(c => {
+    const chip = document.createElement('div');
+    chip.className = 'fchip';
+    chip.textContent = c;
+    chip.onclick = () => ask(c);
+    wrap.appendChild(chip);
+  });
+  parentBubble.closest('.msg-col').appendChild(wrap);
 }
 
 function showTyping() {
@@ -355,27 +616,24 @@ function showTyping() {
 function removeTyping() { const t=document.getElementById('typing-el'); if(t) t.remove(); }
 
 function copyMsg(btn) {
+  const L = LANGS[currentLang];
   const bubble = btn.closest('.msg-col').querySelector('.msg-bubble');
   navigator.clipboard.writeText(bubble.innerText).then(() => {
-    btn.textContent = '✓ Copié'; setTimeout(() => { btn.textContent = '⧉ Copier'; }, 1500);
+    btn.textContent = L.copied; setTimeout(()=>{ btn.textContent=L.copy; }, 1500);
   });
 }
 
+// ── PDF ───────────────────────────────────────────────────────────────────────
 function pdfCard(type, title, sub) {
-  return `<div class="pdf-card">
-    <div class="pdf-icon">📄</div>
-    <div class="pdf-info">
-      <div class="pdf-title">${title}</div>
-      <div class="pdf-sub">${sub}</div>
-    </div>
-    <button class="pdf-dl-btn" onclick="dlPDF('${type}')">⬇️ Télécharger</button>
-  </div>`;
+  return `<div class="pdf-card"><div class="pdf-icon">📄</div>
+    <div class="pdf-info"><div class="pdf-title">${title}</div><div class="pdf-sub">${sub}</div></div>
+    <button class="pdf-dl-btn" onclick="dlPDF('${type}')">⬇️ Télécharger</button></div>`;
 }
 
 async function dlPDF(type) {
   try {
     const r = await fetch('/api/ai/pdf/'+type, { headers:{ Authorization:'Bearer '+TOKEN } });
-    if (!r.ok) throw new Error();
+    if (!r.ok) throw new Error('Erreur serveur');
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -383,9 +641,10 @@ async function dlPDF(type) {
     const names = { daily:'Journalier', weekly:'Hebdo', credits:'Creances', monthly:'Mensuel' };
     a.href=url; a.download=`MENASTA_${names[type]||type}_${today}.pdf`; a.click();
     URL.revokeObjectURL(url);
-  } catch { appendMsg('ai', '⚠️ Erreur lors de la génération du PDF.'); }
+  } catch(e) { appendMsg('ai','⚠️ Erreur PDF: '+e.message); }
 }
 
+// ── Send ──────────────────────────────────────────────────────────────────────
 async function sendMessage() {
   if (isLoading) return;
   const input = document.getElementById('chat-input');
@@ -394,6 +653,7 @@ async function sendMessage() {
   input.value = ''; input.style.height = 'auto';
   isLoading = true;
   document.getElementById('send-btn').disabled = true;
+  const L = LANGS[currentLang];
 
   appendMsg('user', md(text));
   showTyping();
@@ -402,13 +662,20 @@ async function sendMessage() {
     const res = await fetch('/api/ai/chat', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+TOKEN },
-      body: JSON.stringify({ message: text, history })
+      body: JSON.stringify({ message: text, history, language: currentLang })
     });
 
     removeTyping();
 
     if (!res.ok) {
-      appendMsg('ai', '⚠️ Erreur serveur. Réessayez.');
+      if (res.status === 401) { window.location.href = '/'; return; }
+      let errBody = '';
+      try { const j = await res.json(); errBody = j.error || ''; } catch(_) {}
+      const bubble = appendMsg('ai', `⚠️ Erreur ${res.status}${errBody ? ': '+errBody : ''}. Réessayez.`);
+      const btn = document.createElement('button');
+      btn.className = 'retry-btn'; btn.textContent = L.retry;
+      btn.onclick = () => { bubble.closest('.msg').remove(); input.value = text; sendMessage(); };
+      bubble.after(btn);
     } else {
       const bubble = appendMsg('ai', '');
       let fullText = '';
@@ -424,7 +691,6 @@ async function sendMessage() {
         buf += decoder.decode(value, { stream: true });
         const lines = buf.split('\n');
         buf = lines.pop();
-
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           const raw = line.slice(6).trim();
@@ -437,53 +703,77 @@ async function sendMessage() {
               scrollToBottom();
             } else if (parsed.pdf) {
               isPDF = true;
-              const pdfType = parsed.pdf;
               const labels = {
-                daily:   ['Rapport Journalier', "Carburant, café, tabac, banque, créances — aujourd'hui"],
-                weekly:  ['Rapport Hebdomadaire', '7 derniers jours — tous modules'],
-                credits: ['Liste des Créances', 'Tous les clients débiteurs avec montants'],
-                monthly: ['Rapport Mensuel', '30 jours — analyse complète'],
+                daily:   ['Rapport Journalier','Carburant, café, tabac, banque'],
+                weekly:  ['Rapport Hebdomadaire','7 derniers jours'],
+                credits: ['Liste des Créances','Tous les clients débiteurs'],
+                monthly: ['Rapport Mensuel','30 jours — analyse complète'],
               };
-              const [title, sub] = labels[pdfType] || ['Rapport', 'Données MENASTA'];
-              bubble.innerHTML = pdfCard(pdfType, title, sub);
-              fullText = `Je génère le rapport PDF: ${title}`;
+              const [title, sub] = labels[parsed.pdf] || ['Rapport','Données MENASTA'];
+              bubble.innerHTML = pdfCard(parsed.pdf, title, sub);
+              fullText = 'PDF: '+title;
               scrollToBottom();
             } else if (parsed.error) {
-              bubble.innerHTML = '⚠️ ' + parsed.error;
+              bubble.innerHTML = '⚠️ '+parsed.error;
             }
-          } catch (_) {}
+          } catch(_) {}
         }
       }
 
-      if (!isPDF) {
-        history.push({ role: 'user', content: text });
-        history.push({ role: 'assistant', content: fullText });
+      if (!isPDF && fullText) {
+        history.push({ role:'user', content:text });
+        history.push({ role:'assistant', content:fullText });
         if (history.length > 28) history = history.slice(-28);
+        addFollowupChips(bubble, text);
       }
     }
   } catch(e) {
     removeTyping();
-    appendMsg('ai', '⚠️ Impossible de contacter l\'assistant.');
+    const L2 = LANGS[currentLang];
+    const bubble = appendMsg('ai', L2.errConn);
+    const btn = document.createElement('button');
+    btn.className = 'retry-btn'; btn.textContent = L2.retry;
+    btn.onclick = () => { bubble.closest('.msg').remove(); input.value = text; sendMessage(); };
+    bubble.after(btn);
   }
 
   isLoading = false;
   document.getElementById('send-btn').disabled = false;
+  updateDataTime();
   input.focus();
 }
 
-function ask(q) {
-  document.getElementById('chat-input').value = q;
-  sendMessage();
+function ask(q) { document.getElementById('chat-input').value = q; sendMessage(); }
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function exportChat() {
+  const msgs = document.querySelectorAll('.msg');
+  if (!msgs.length) return;
+  let text = `MENASTA AI — ${new Date().toLocaleString('fr-FR')}\n${'='.repeat(60)}\n\n`;
+  msgs.forEach(msg => {
+    const isUser = msg.classList.contains('user');
+    const bubble = msg.querySelector('.msg-bubble');
+    const time = msg.querySelector('.msg-meta')?.textContent?.trim()?.split(' ')[0] || '';
+    if (bubble) text += `[${isUser?'VOUS':'AI'} ${time}]\n${bubble.innerText}\n\n`;
+  });
+  const blob = new Blob([text], { type:'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`MENASTA_AI_${new Date().toISOString().slice(0,10)}.txt`; a.click();
+  URL.revokeObjectURL(url);
 }
 
+// ── Clear ─────────────────────────────────────────────────────────────────────
 function clearChat() {
   history = [];
+  const L = LANGS[currentLang];
+  const isRTL = L.dir === 'rtl';
   document.getElementById('messages').innerHTML = `
     <div class="chat-welcome" id="welcome-screen">
       <div class="welcome-icon">🤖</div>
-      <div class="welcome-title">Assistant IA MENASTA</div>
-      <div class="welcome-sub">Posez-moi n'importe quelle question sur votre station. J'ai accès à toutes vos données en temps réel.</div>
-      <div class="chip-grid">${CHIPS.map(c=>`<div class="chip" onclick="ask(${JSON.stringify(c.t)})">${c.e} ${c.t.length>35?c.t.slice(0,35)+'…':c.t}</div>`).join('')}</div>
+      <div class="welcome-title" id="lbl-welcome-title">${L.welcomeTitle}</div>
+      <div class="welcome-sub" id="lbl-welcome-sub">${L.welcomeSub}</div>
+      <div class="chip-grid" id="chip-grid">${L.chips.map(c=>`<div class="chip" onclick="ask(${JSON.stringify(c.t)})">${c.e} ${c.t.length>36?c.t.slice(0,36)+'…':c.t}</div>`).join('')}</div>
     </div>`;
 }
 

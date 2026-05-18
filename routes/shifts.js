@@ -40,10 +40,11 @@ async function shiftDetail(shift) {
   shift.pump_readings = pr;
 
   const { rows: cs } = await pool.query(`
-    SELECT cs.*, cc.name as client_name, p.name as pump_name
+    SELECT cs.*, cc.name as client_name,
+      COALESCE(p.name, 'Lubrifiant') as pump_name
     FROM credit_sales cs
     JOIN credit_clients cc ON cc.id=cs.credit_client_id
-    JOIN pumps p ON p.id=cs.pump_id
+    LEFT JOIN pumps p ON p.id=cs.pump_id
     WHERE cs.shift_id=$1 ORDER BY cs.sale_time
   `, [shift.id]);
   shift.credit_sales = cs;
@@ -102,7 +103,7 @@ router.get('/:id', requireAuth, wrap(async (req, res) => {
 }));
 
 router.post('/', requireAuth, wrap(async (req, res) => {
-  const { readings, notes, avance } = req.body || {};
+  const { readings, notes, avance, pompiste, heure_debut, heure_fin } = req.body || {};
   if (!readings || !readings.length)
     return res.status(400).json({ error: 'Relevés de début requis' });
 
@@ -110,8 +111,8 @@ router.post('/', requireAuth, wrap(async (req, res) => {
   if (open.length) return res.status(400).json({ error: 'Un poste est déjà ouvert (ID ' + open[0].id + ')' });
 
   const { rows: [{ id: shiftId }] } = await pool.query(
-    'INSERT INTO shifts (opened_by,notes,avance) VALUES ($1,$2,$3) RETURNING id',
-    [req.user.id, notes || '', parseFloat(avance) || 0]
+    'INSERT INTO shifts (opened_by,notes,avance,pompiste,heure_debut,heure_fin) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
+    [req.user.id, notes || '', parseFloat(avance) || 0, pompiste||null, heure_debut||null, heure_fin||null]
   );
   for (const r of readings)
     await pool.query(

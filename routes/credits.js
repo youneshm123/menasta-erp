@@ -44,9 +44,9 @@ router.get('/clients/:id/history', requireAuth, wrap(async (req, res) => {
   const { rows: cr } = await pool.query('SELECT * FROM credit_clients WHERE id=$1', [req.params.id]);
   if (!cr.length) return res.status(404).json({ error: 'Client introuvable' });
   const { rows: sales } = await pool.query(`
-    SELECT cs.*, p.name as pump_name, s.opened_at as shift_date
+    SELECT cs.*, COALESCE(p.name,'Lubrifiant') as pump_name, s.opened_at as shift_date
     FROM credit_sales cs
-    JOIN pumps p ON p.id=cs.pump_id
+    LEFT JOIN pumps p ON p.id=cs.pump_id
     JOIN shifts s ON s.id=cs.shift_id
     WHERE cs.credit_client_id=$1 ORDER BY cs.sale_time DESC
   `, [req.params.id]);
@@ -63,10 +63,10 @@ router.get('/clients/:id/history', requireAuth, wrap(async (req, res) => {
 router.get('/sales', requireAuth, wrap(async (req, res) => {
   const { shift_id, client_id } = req.query;
   let q = `
-    SELECT cs.*, cc.name as client_name, p.name as pump_name
+    SELECT cs.*, cc.name as client_name, COALESCE(p.name,'Lubrifiant') as pump_name
     FROM credit_sales cs
     JOIN credit_clients cc ON cc.id=cs.credit_client_id
-    JOIN pumps p ON p.id=cs.pump_id WHERE 1=1
+    LEFT JOIN pumps p ON p.id=cs.pump_id WHERE 1=1
   `;
   const params = []; let i = 1;
   if (shift_id)  { q += ` AND cs.shift_id=$${i++}`;          params.push(shift_id);  }
@@ -77,23 +77,28 @@ router.get('/sales', requireAuth, wrap(async (req, res) => {
 }));
 
 router.post('/sales', requireAuth, wrap(async (req, res) => {
-  const { shift_id, credit_client_id, pump_id, amount, notes } = req.body || {};
-  if (!shift_id || !credit_client_id || !pump_id || !amount)
+  const { shift_id, credit_client_id, pump_id, amount, notes, product_type } = req.body || {};
+  if (!shift_id || !credit_client_id || !amount)
     return res.status(400).json({ error: 'Champs obligatoires manquants' });
 
   const { rows: sr } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='open'", [shift_id]);
   if (!sr.length) return res.status(400).json({ error: 'Poste non trouvé ou déjà fermé' });
 
-  const { rows: ftr } = await pool.query(
-    'SELECT ft.price_per_liter FROM pumps p JOIN fuel_types ft ON ft.id=p.fuel_type_id WHERE p.id=$1', [pump_id]
-  );
-  if (!ftr.length) return res.status(400).json({ error: 'Pompe introuvable' });
+  let liters = 0, price_per_liter = 0;
+  if (pump_id) {
+    const { rows: ftr } = await pool.query(
+      'SELECT ft.price_per_liter FROM pumps p JOIN fuel_types ft ON ft.id=p.fuel_type_id WHERE p.id=$1', [pump_id]
+    );
+    if (!ftr.length) return res.status(400).json({ error: 'Pompe introuvable' });
+    liters = +(amount / ftr[0].price_per_liter).toFixed(2);
+    price_per_liter = ftr[0].price_per_liter;
+  }
 
-  const liters = +(amount / ftr[0].price_per_liter).toFixed(2);
+  const pType = product_type || (pump_id ? 'carburant' : 'lubrifiant');
   const { rows: [{ id }] } = await pool.query(`
-    INSERT INTO credit_sales (shift_id,credit_client_id,pump_id,liters,price_per_liter,amount,recorded_by,notes)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id
-  `, [shift_id, credit_client_id, pump_id, liters, ftr[0].price_per_liter, amount, req.user.id, notes||null]);
+    INSERT INTO credit_sales (shift_id,credit_client_id,pump_id,liters,price_per_liter,amount,recorded_by,notes,product_type)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id
+  `, [shift_id, credit_client_id, pump_id||null, liters, price_per_liter, amount, req.user.id, notes||null, pType]);
 
   await pool.query('UPDATE credit_clients SET balance_due=balance_due+$1 WHERE id=$2', [amount, credit_client_id]);
 
@@ -122,7 +127,7 @@ router.delete('/sales/:id', requireAuth, wrap(async (req, res) => {
   const sale = rows[0];
   if (!sale) return res.status(404).json({ error: 'Vente introuvable' });
   if (sale.status !== 'open') return res.status(400).json({ error: "Impossible d'annuler: poste fermé" });
-  await pool.query('UPDATE credit_clients SET balance_due=balance_due-$1 WHERE id=$2', [sale.amount, sale.credit_client_id]);
+  await pool.query('UPDATE credit_clients SET balance_due=GREATEST(balance_due-$1, 0) WHERE id=$2', [sale.amount, sale.credit_client_id]);
   await pool.query('DELETE FROM credit_sales WHERE id=$1', [sale.id]);
   res.json({ ok: true });
 }));
@@ -159,7 +164,7 @@ router.post('/payments', requireAuth, wrap(async (req, res) => {
     VALUES ($1,$2,$3,$4,$5) RETURNING id
   `, [credit_client_id, shift_id||null, amount, req.user.id, notes||null]);
 
-  await pool.query('UPDATE credit_clients SET balance_due=CASE WHEN balance_due-? < 0 THEN 0 ELSE balance_due-? END WHERE id=?', [amount, amount, credit_client_id]);
+  await pool.query('UPDATE credit_clients SET balance_due=GREATEST(balance_due-$1, 0) WHERE id=$2', [amount, credit_client_id]);
 
   const { rows: [p] } = await pool.query('SELECT * FROM credit_payments WHERE id=$1', [id]);
   res.status(201).json(p);

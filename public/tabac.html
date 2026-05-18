@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MENASTA — Tabac</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/fiori.css?v=18"/>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<style>
+.exp-btns { display:flex; gap:6px; align-items:center; }
+.exp-btn { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:none; transition:background .15s; }
+.exp-pdf { background:#fee2e2; color:#b91c1c; }
+.exp-pdf:hover { background:#fca5a5; }
+.exp-xl  { background:#dcfce7; color:#15803d; }
+.exp-xl:hover  { background:#86efac; }
+.exp-word { background:#dbeafe; color:#1d4ed8; }
+.exp-word:hover { background:#93c5fd; }
+.stock-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:700; }
+.badge-ok  { background:#dcfce7; color:#15803d; }
+.badge-low { background:#fef9c3; color:#92400e; }
+.badge-out { background:#fee2e2; color:#b91c1c; }
+</style>
+</head>
+<body class="app-layout">
+
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo-row">
+      <div class="sb-mark">🚬</div>
+      <div>
+        <div class="sb-name">Tabac</div>
+        <div class="sb-sub">Module MENASTA</div>
+      </div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <div class="nav-item active" onclick="switchTab('ventes',this)"><span class="ni">📋</span> Ventes du Jour</div>
+    <div class="nav-item" onclick="switchTab('historique',this)"><span class="ni">📊</span> Historique</div>
+    <div class="nav-item" onclick="switchTab('stock',this)"><span class="ni">📦</span> Stock</div>
+    <div class="nav-item" onclick="switchTab('produits',this)"><span class="ni">🛒</span> Produits</div>
+  </div>
+  <div class="sb-foot">
+    <a href="/home" class="sb-back">← Accueil</a>
+    <a href="#" onclick="logout()">Déconnexion</a>
+  </div>
+</aside>
+
+<div class="app-main">
+  <div class="app-topbar">
+    <div class="topbar-title">🚬 Module Tabac</div>
+    <div class="topbar-meta" id="user-name"></div>
+  </div>
+  <div class="app-content">
+
+    <!-- VENTES DU JOUR -->
+    <div id="tab-ventes" class="tab-pane active">
+      <div class="date-row">
+        <strong style="font-size:13px">Date :</strong>
+        <input type="date" id="vente-date"/>
+        <button class="btn btn-g btn-sm" onclick="loadVentes()">Actualiser</button>
+        <button class="btn btn-p btn-sm" onclick="saveVentes()">💾 Enregistrer</button>
+      </div>
+      <div class="section">
+        <div class="s-head">
+          <span class="s-title">Saisie des Ventes</span>
+          <div class="exp-btns">
+            <button class="exp-btn exp-pdf" onclick="exportPDF('ventes-table','Ventes Tabac')">📄 PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('ventes-table','Ventes Tabac')">📊 Excel</button>
+            <button class="exp-btn exp-word" onclick="exportWord('ventes-table','Ventes Tabac')">📝 Word</button>
+          </div>
+        </div>
+        <div class="s-body">
+          <table class="t" id="ventes-table">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th class="num">Prix Vente</th>
+                <th class="num">Prix Achat</th>
+                <th class="num">Quantité</th>
+                <th class="num">Montant à Remettre</th>
+                <th class="num">Bénéfice</th>
+              </tr>
+            </thead>
+            <tbody id="ventes-body"></tbody>
+          </table>
+        </div>
+        <div class="totals-bar">
+          <div class="tot-item">
+            <div class="tot-lbl">💰 Total à Remettre au Patron</div>
+            <div class="tot-val" id="tot-montant">0.00 MAD</div>
+          </div>
+          <div class="tot-item" style="margin-left:auto">
+            <div class="tot-lbl">📈 Bénéfice Total</div>
+            <div class="tot-val" id="tot-benefice">0.00 MAD</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORIQUE -->
+    <div id="tab-historique" class="tab-pane">
+      <div class="section">
+        <div class="s-head">
+          <span class="s-title">Historique des 30 derniers jours</span>
+          <div class="exp-btns">
+            <button class="exp-btn exp-pdf" onclick="exportPDF('histo-table','Historique Tabac')">📄 PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('histo-table','Historique Tabac')">📊 Excel</button>
+            <button class="exp-btn exp-word" onclick="exportWord('histo-table','Historique Tabac')">📝 Word</button>
+          </div>
+        </div>
+        <div class="s-body">
+          <table class="t" id="histo-table">
+            <thead><tr><th>Date</th><th class="num">Total Ventes</th><th class="num">Bénéfice</th></tr></thead>
+            <tbody id="histo-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- STOCK -->
+    <div id="tab-stock" class="tab-pane">
+      <div style="margin-bottom:16px;display:flex;gap:10px;align-items:center">
+        <button class="btn btn-p" onclick="openAddAchat()">+ Ajouter Approvisionnement</button>
+        <button class="btn btn-g btn-sm" onclick="loadStock()">Actualiser</button>
+      </div>
+      <div class="section" style="margin-bottom:16px">
+        <div class="s-head">
+          <span class="s-title">📦 Niveaux de Stock</span>
+          <div class="exp-btns">
+            <button class="exp-btn exp-pdf" onclick="exportPDF('stock-table','Stock Tabac')">📄 PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('stock-table','Stock Tabac')">📊 Excel</button>
+            <button class="exp-btn exp-word" onclick="exportWord('stock-table','Stock Tabac')">📝 Word</button>
+          </div>
+        </div>
+        <div class="s-body">
+          <table class="t" id="stock-table">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th class="num">Acheté</th>
+                <th class="num">Vendu</th>
+                <th class="num">Stock Actuel</th>
+                <th class="num">État</th>
+              </tr>
+            </thead>
+            <tbody id="stock-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="section">
+        <div class="s-head">
+          <span class="s-title">📋 Historique des Approvisionnements</span>
+          <div class="exp-btns">
+            <button class="exp-btn exp-pdf" onclick="exportPDF('achats-table','Approvisionnements Tabac')">📄 PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('achats-table','Approvisionnements Tabac')">📊 Excel</button>
+            <button class="exp-btn exp-word" onclick="exportWord('achats-table','Approvisionnements Tabac')">📝 Word</button>
+          </div>
+        </div>
+        <div class="s-body">
+          <table class="t" id="achats-table">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th class="num">Quantité</th>
+                <th class="num">Prix Achat</th>
+                <th class="num">Montant Total</th>
+                <th>Date</th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="achats-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUITS -->
+    <div id="tab-produits" class="tab-pane">
+      <div style="margin-bottom:16px">
+        <button class="btn btn-p" onclick="openAddProduit()">+ Ajouter Produit</button>
+      </div>
+      <div class="section">
+        <div class="s-head">
+          <span class="s-title">Catalogue Tabac</span>
+          <div class="exp-btns">
+            <button class="exp-btn exp-pdf" onclick="exportPDF('produits-table','Catalogue Tabac')">📄 PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('produits-table','Catalogue Tabac')">📊 Excel</button>
+            <button class="exp-btn exp-word" onclick="exportWord('produits-table','Catalogue Tabac')">📝 Word</button>
+          </div>
+        </div>
+        <div class="s-body">
+          <table class="t" id="produits-table">
+            <thead><tr><th>Produit</th><th class="num">Prix Achat</th><th class="num">Prix Vente</th><th class="num">Marge</th><th></th></tr></thead>
+            <tbody id="produits-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal Produit -->
+<div class="overlay" id="modal-produit">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3 id="modal-produit-title">Ajouter Produit</h3>
+      <button class="x" onclick="closeModal('modal-produit')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mp-id"/>
+      <div class="fg"><label>Nom du Produit</label><input type="text" id="mp-name" placeholder="Ex: Camel"/></div>
+      <div class="fgrid">
+        <div class="fg"><label>Prix Achat (MAD)</label><input type="number" id="mp-achat" step="0.01" min="0"/></div>
+        <div class="fg"><label>Prix Vente (MAD)</label><input type="number" id="mp-vente" step="0.01" min="0"/></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('modal-produit')">Annuler</button>
+      <button class="btn btn-p" onclick="saveProduit()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Approvisionnement -->
+<div class="overlay" id="modal-achat">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3>Ajouter Approvisionnement</h3>
+      <button class="x" onclick="closeModal('modal-achat')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label>Produit</label>
+        <select id="aa-product"></select>
+      </div>
+      <div class="fgrid">
+        <div class="fg"><label>Quantité</label><input type="number" id="aa-qty" step="0.5" min="0.5" value="1"/></div>
+        <div class="fg"><label>Prix Achat Unitaire (MAD)</label><input type="number" id="aa-prix" step="0.01" min="0"/></div>
+      </div>
+      <div class="fgrid">
+        <div class="fg"><label>Date</label><input type="date" id="aa-date"/></div>
+        <div class="fg"><label>Notes (optionnel)</label><input type="text" id="aa-notes" placeholder="Ex: Livraison fournisseur"/></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('modal-achat')">Annuler</button>
+      <button class="btn btn-p" onclick="saveAchat()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+const token = localStorage.getItem('fm_token');
+const user = JSON.parse(localStorage.getItem('fm_user') || 'null');
+if (!token) location.href = '/';
+if (user) document.getElementById('user-name').textContent = user.full_name;
+
+const A = (url, opt={}) => fetch(url, { headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, ...opt }).then(r => r.json());
+const fmt = n => (parseFloat(n)||0).toFixed(2);
+function toast(msg, t='g') {
+  const d = document.createElement('div');
+  d.className = 'toast t-' + t;
+  d.textContent = msg;
+  document.getElementById('toasts').appendChild(d);
+  setTimeout(() => d.remove(), 3000);
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+const dateInp = document.getElementById('vente-date');
+dateInp.value = new Date().toISOString().slice(0, 10);
+
+let produitsCache = [];
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  if (name === 'historique') loadHistorique();
+  if (name === 'produits') loadProduits();
+  if (name === 'stock') loadStock();
+}
+
+// ── VENTES ───────────────────────────────────────────────────
+async function loadVentes() {
+  const date = dateInp.value;
+  const data = await A('/api/tabac/ventes?date=' + date);
+  const tbody = document.getElementById('ventes-body');
+  tbody.innerHTML = '';
+  produitsCache = data.produits;
+  data.produits.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${p.name}</strong></td>
+      <td class="num fw7 c-br">${fmt(p.prix_vente)} MAD</td>
+      <td class="num" style="color:var(--muted)">${fmt(p.prix_achat)} MAD</td>
+      <td class="num"><input class="qty-inp" type="number" min="0" step="0.5" value="${p.quantite||0}" data-id="${p.id}" oninput="recalc()"/></td>
+      <td class="num fw8 c-br" id="mont-${p.id}">${fmt((p.quantite||0)*p.prix_vente)} MAD</td>
+      <td class="num fw7 c-g" id="ben-${p.id}">${fmt((p.quantite||0)*(p.prix_vente-p.prix_achat))} MAD</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  recalc();
+}
+
+function recalc() {
+  let total = 0, benefice = 0;
+  document.querySelectorAll('.qty-inp').forEach(inp => {
+    const id = inp.dataset.id;
+    const p = produitsCache.find(x => x.id == id);
+    if (!p) return;
+    const q = parseFloat(inp.value) || 0;
+    const mont = q * p.prix_vente;
+    const ben = q * (p.prix_vente - p.prix_achat);
+    document.getElementById('mont-' + id).textContent = fmt(mont) + ' MAD';
+    document.getElementById('ben-' + id).textContent = fmt(ben) + ' MAD';
+    total += mont;
+    benefice += ben;
+  });
+  document.getElementById('tot-montant').textContent = fmt(total) + ' MAD';
+  document.getElementById('tot-benefice').textContent = fmt(benefice) + ' MAD';
+}
+
+async function saveVentes() {
+  const date = dateInp.value;
+  const entries = [];
+  document.querySelectorAll('.qty-inp').forEach(inp => {
+    const q = parseFloat(inp.value) || 0;
+    if (q > 0) entries.push({ product_id: parseInt(inp.dataset.id), quantite: q });
+  });
+  if (!entries.length) { toast('Aucune quantité saisie', 'er'); return; }
+  await A('/api/tabac/ventes', { method: 'POST', body: JSON.stringify({ date, entries }) });
+  toast('Ventes enregistrées ✓');
+  loadVentes();
+}
+
+// ── HISTORIQUE ───────────────────────────────────────────────
+async function loadHistorique() {
+  const rows = await A('/api/tabac/historique');
+  const tbody = document.getElementById('histo-body');
+  tbody.innerHTML = '';
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted)">Aucun historique</td></tr>'; return; }
+  rows.forEach(r => {
+    tbody.innerHTML += `<tr>
+      <td>${r.vente_date}</td>
+      <td class="num fw7 c-br">${fmt(r.total)} MAD</td>
+      <td class="num fw7 c-g">${fmt(r.benefice)} MAD</td>
+    </tr>`;
+  });
+}
+
+// ── STOCK ────────────────────────────────────────────────────
+async function loadStock() {
+  const [stock, achats] = await Promise.all([
+    A('/api/tabac/stock'),
+    A('/api/tabac/achats')
+  ]);
+
+  // Stock table
+  const sb = document.getElementById('stock-body');
+  sb.innerHTML = '';
+  if (!stock.length) { sb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)">Aucun produit</td></tr>'; }
+  stock.forEach(s => {
+    const actuel = parseFloat(s.stock_actuel);
+    let badge, label;
+    if (actuel <= 0)   { badge = 'badge-out'; label = '❌ Rupture'; }
+    else if (actuel < 5) { badge = 'badge-low'; label = '⚠️ Faible'; }
+    else                 { badge = 'badge-ok';  label = '✅ OK'; }
+    sb.innerHTML += `<tr>
+      <td><strong>${s.name}</strong></td>
+      <td class="num">${fmt(s.total_achete)}</td>
+      <td class="num">${fmt(s.total_vendu)}</td>
+      <td class="num fw8 c-br">${fmt(actuel)}</td>
+      <td class="num"><span class="stock-badge ${badge}">${label}</span></td>
+    </tr>`;
+  });
+
+  // Achats table
+  const ab = document.getElementById('achats-body');
+  ab.innerHTML = '';
+  if (!achats.length) { ab.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Aucun approvisionnement enregistré</td></tr>'; return; }
+  achats.forEach(a => {
+    const total = (parseFloat(a.quantite) * parseFloat(a.prix_achat)).toFixed(2);
+    ab.innerHTML += `<tr>
+      <td><strong>${a.product_name}</strong></td>
+      <td class="num">${fmt(a.quantite)}</td>
+      <td class="num">${fmt(a.prix_achat)} MAD</td>
+      <td class="num fw7 c-br">${total} MAD</td>
+      <td>${a.achat_date}</td>
+      <td style="color:var(--muted);font-size:12px">${a.notes||'—'}</td>
+      <td><button class="btn btn-d btn-xs" onclick="deleteAchat(${a.id})">🗑️</button></td>
+    </tr>`;
+  });
+}
+
+async function openAddAchat() {
+  const produits = await A('/api/tabac/produits');
+  const sel = document.getElementById('aa-product');
+  sel.innerHTML = produits.map(p => `<option value="${p.id}" data-pa="${p.prix_achat}">${p.name}</option>`).join('');
+  // pre-fill prix_achat from product
+  sel.onchange = () => {
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('aa-prix').value = opt ? parseFloat(opt.dataset.pa).toFixed(2) : '';
+  };
+  sel.dispatchEvent(new Event('change'));
+  document.getElementById('aa-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('aa-qty').value = 1;
+  document.getElementById('aa-notes').value = '';
+  document.getElementById('modal-achat').classList.add('open');
+}
+
+async function saveAchat() {
+  const product_id = parseInt(document.getElementById('aa-product').value);
+  const quantite   = parseFloat(document.getElementById('aa-qty').value);
+  const prix_achat = parseFloat(document.getElementById('aa-prix').value);
+  const achat_date = document.getElementById('aa-date').value;
+  const notes      = document.getElementById('aa-notes').value || null;
+  if (!product_id || !quantite || quantite <= 0) { toast('Produit et quantité requis', 'er'); return; }
+  await A('/api/tabac/achats', { method: 'POST', body: JSON.stringify({ product_id, quantite, prix_achat, achat_date, notes }) });
+  closeModal('modal-achat');
+  toast('Approvisionnement enregistré ✓');
+  loadStock();
+}
+
+async function deleteAchat(id) {
+  if (!confirm('Supprimer cet approvisionnement ?')) return;
+  await A('/api/tabac/achats/' + id, { method: 'DELETE' });
+  toast('Supprimé');
+  loadStock();
+}
+
+// ── PRODUITS ─────────────────────────────────────────────────
+async function loadProduits() {
+  const rows = await A('/api/tabac/produits');
+  const tbody = document.getElementById('produits-body');
+  tbody.innerHTML = '';
+  rows.forEach(p => {
+    const marge = fmt(p.prix_vente - p.prix_achat);
+    tbody.innerHTML += `<tr>
+      <td><strong>${p.name}</strong></td>
+      <td class="num">${fmt(p.prix_achat)} MAD</td>
+      <td class="num fw7 c-br">${fmt(p.prix_vente)} MAD</td>
+      <td class="num fw7 c-g">+${marge} MAD</td>
+      <td class="num">
+        <button class="btn btn-g btn-xs" onclick="editProduit(${p.id},'${p.name.replace(/'/g,"\\'")}',${p.prix_achat},${p.prix_vente})">✏️</button>
+        <button class="btn btn-d btn-xs" onclick="deleteProduit(${p.id})">🗑️</button>
+      </td>
+    </tr>`;
+  });
+}
+
+function openAddProduit() {
+  document.getElementById('mp-id').value = '';
+  document.getElementById('mp-name').value = '';
+  document.getElementById('mp-achat').value = '';
+  document.getElementById('mp-vente').value = '';
+  document.getElementById('modal-produit-title').textContent = 'Ajouter Produit';
+  document.getElementById('modal-produit').classList.add('open');
+}
+
+function editProduit(id, name, achat, vente) {
+  document.getElementById('mp-id').value = id;
+  document.getElementById('mp-name').value = name;
+  document.getElementById('mp-achat').value = achat;
+  document.getElementById('mp-vente').value = vente;
+  document.getElementById('modal-produit-title').textContent = 'Modifier Produit';
+  document.getElementById('modal-produit').classList.add('open');
+}
+
+async function saveProduit() {
+  const id = document.getElementById('mp-id').value;
+  const body = {
+    name: document.getElementById('mp-name').value,
+    prix_achat: parseFloat(document.getElementById('mp-achat').value),
+    prix_vente: parseFloat(document.getElementById('mp-vente').value),
+  };
+  if (!body.name || !body.prix_achat || !body.prix_vente) { toast('Remplissez tous les champs', 'er'); return; }
+  if (id) await A('/api/tabac/produits/' + id, { method: 'PUT', body: JSON.stringify(body) });
+  else await A('/api/tabac/produits', { method: 'POST', body: JSON.stringify(body) });
+  closeModal('modal-produit');
+  toast('Produit enregistré ✓');
+  loadProduits();
+}
+
+async function deleteProduit(id) {
+  if (!confirm('Supprimer ce produit ?')) return;
+  await A('/api/tabac/produits/' + id, { method: 'DELETE' });
+  toast('Supprimé');
+  loadProduits();
+}
+
+// ── EXPORT ───────────────────────────────────────────────────
+function tableToData(tableId) {
+  const tbl = document.getElementById(tableId);
+  if (!tbl) return { headers: [], rows: [] };
+  const headers = [...tbl.querySelectorAll('thead th')].map(th => th.textContent.trim()).filter(h => h);
+  const rows = [...tbl.querySelectorAll('tbody tr')].map(tr =>
+    [...tr.querySelectorAll('td')].slice(0, headers.length).map(td => td.textContent.trim())
+  );
+  return { headers, rows };
+}
+
+function exportPDF(tableId, title) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text(title + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
+  const { headers, rows } = tableToData(tableId);
+  doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [99, 60, 180] } });
+  doc.save(title.replace(/\s+/g,'_') + '.pdf');
+}
+
+function exportExcel(tableId, title) {
+  const { headers, rows } = tableToData(tableId);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, title.slice(0,31));
+  XLSX.writeFile(wb, title.replace(/\s+/g,'_') + '.xlsx');
+}
+
+function exportWord(tableId, title) {
+  const tbl = document.getElementById(tableId);
+  if (!tbl) return;
+  const clone = tbl.cloneNode(true);
+  clone.querySelectorAll('input,button').forEach(el => el.remove());
+  const html = `<html><head><meta charset="UTF-8"><style>
+    body{font-family:Arial,sans-serif;font-size:12px}
+    h2{color:#333;margin-bottom:12px}
+    table{border-collapse:collapse;width:100%}
+    th{background:#6b21a8;color:#fff;padding:6px 10px;text-align:left}
+    td{border:1px solid #ddd;padding:5px 10px}
+    tr:nth-child(even)td{background:#f9f9f9}
+  </style></head><body>
+  <h2>${title}</h2>
+  <p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>
+  ${clone.outerHTML}
+  <script src="/js/ai-widget.js"></script>
+</body></html>`;
+  const blob = new Blob([html], { type: 'application/msword' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = title.replace(/\s+/g,'_') + '.doc';
+  a.click();
+}
+
+function logout() { localStorage.clear(); location.href = '/'; }
+
+loadVentes();
+</script>
+<script src="/js/ai-widget.js"></script>
+</body>
+</html>

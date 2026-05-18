@@ -4,109 +4,43 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA — Café</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --br:#7B3F00;--br-lt:#FFF8F3;--br-dk:#5C2E00;
-  --green:#188918;--red:#BB0000;--blue:#0070F2;--orange:#E65100;
-  --shell:#3E1F00;--text:#1D1D1F;--muted:#6A6D70;--border:#E5E5EA;
-  --bg:#F5F5F7;
-}
-body{font-family:"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden}
-#sidebar{width:210px;background:var(--shell);display:flex;flex-direction:column;flex-shrink:0}
-.sb-brand{padding:18px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.1)}
-.sb-brand .ic{font-size:26px}.sb-brand .tx{color:#fff;font-size:15px;font-weight:800}.sb-brand .tx small{display:block;color:rgba(255,255,255,.5);font-size:11px;font-weight:400}
-nav{flex:1;padding:10px 0}
-.nav-item{padding:11px 16px;color:rgba(255,255,255,.7);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .12s}
-.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-item.active{background:rgba(255,255,255,.15);color:#fff;border-left:3px solid #D4A06A}
-.sb-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.1)}
-.sb-foot a{color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;display:block;margin-bottom:4px}
-.sb-foot a:hover{color:#fff}
-#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-#topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-#topbar .tb-title{font-size:15px;font-weight:700}
-.tb-date{font-size:12px;color:var(--muted)}
-#content{flex:1;overflow-y:auto;padding:24px}
-.page{display:none}.page.active{display:block}
-/* tiles */
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px}
-.tile{background:#fff;border-radius:10px;padding:16px 18px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-top:3px solid var(--tile-color,#ccc)}
-.tile-ic{font-size:22px;margin-bottom:6px}.tile-val{font-size:20px;font-weight:900;color:var(--tile-color,#333)}.tile-lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
-/* section */
-.section{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.07);overflow:hidden;margin-bottom:20px}
-.s-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.s-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
-.s-body{padding:18px}
-/* table */
-.t{width:100%;border-collapse:collapse;font-size:13px}
-.t th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
-.t td{padding:10px 14px;border-bottom:1px solid var(--border)}
-.t tr:last-child td{border-bottom:none}.t tr:hover td{background:#FAFAFA}
-.num{text-align:right}.fw7{font-weight:700}.fw8{font-weight:900}
-.c-g{color:var(--green)}.c-r{color:var(--red)}.c-b{color:var(--blue)}.c-br{color:var(--br)}
-.muted{color:var(--muted)}.sm{font-size:12px}
-/* buttons */
-.btn{padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .12s}
-.btn:hover{opacity:.85}.btn-g{background:#eee;color:#333}.btn-p{background:var(--br);color:#fff}
-.btn-s{background:var(--green);color:#fff}.btn-d{background:var(--red);color:#fff}
-.btn-sm{padding:6px 12px;font-size:12px}.btn-xs{padding:4px 8px;font-size:11px}
-/* forms */
-.fg{display:flex;flex-direction:column;gap:5px}
-.fg label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
-.fg input,.fg select{padding:9px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit}
-.fg input:focus,.fg select:focus{outline:none;border-color:var(--br);box-shadow:0 0 0 2px rgba(123,63,0,.12)}
-.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-/* overlay */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:center;justify-content:center}
-.overlay.open{display:flex}
-.modal{background:#fff;border-radius:12px;width:440px;max-width:94vw;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.modal-hd{background:var(--shell);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:10px;flex-shrink:0}
-.modal-hd h3{flex:1;font-size:15px;font-weight:700}.modal-hd .x{background:none;border:none;color:rgba(255,255,255,.7);font-size:22px;cursor:pointer;line-height:1}
-.modal-hd .x:hover{color:#fff}
-.modal-body{padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
-.modal-ft{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
-/* toast */
-#toasts{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:999}
-.toast{padding:11px 18px;border-radius:8px;color:#fff;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.2);animation:tIn .25s ease}
-.t-g{background:var(--green)}.t-er{background:var(--red)}.t-wn{background:var(--orange)}
-@keyframes tIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-/* qty input */
-.qty-inp{width:90px;padding:8px 10px;border:2px solid var(--border);border-radius:6px;font-size:15px;font-weight:700;text-align:center;font-family:inherit;transition:border-color .12s}
-.qty-inp:focus{outline:none;border-color:var(--br)}
-.cost-cell{font-size:13px;color:var(--br);font-weight:700}
-/* date picker row */
-.date-row{display:flex;align-items:center;gap:10px;margin-bottom:20px}
-.date-row input{padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit}
-/* profit bar */
-.profit-bar{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px}
-.pbar-card{flex:1;min-width:140px;background:#fff;border-radius:10px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
-.pbar-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
-.pbar-val{font-size:22px;font-weight:900}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/fiori.css?v=18"/>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 </head>
-<body>
+<body class="app-layout">
 
-<div id="sidebar">
-  <div class="sb-brand"><div class="ic">☕</div><div class="tx">Café<small>MENASTA</small></div></div>
-  <nav>
-    <div class="nav-item active" data-p="ventes">☕ Ventes du Jour</div>
-    <div class="nav-item" data-p="stock">📦 Stock du Jour</div>
-    <div class="nav-item" data-p="rapport">📊 Rapport Journalier</div>
-    <div class="nav-item" data-p="mensuel">📅 Rapport Mensuel</div>
-    <div class="nav-item" data-p="settings">⚙️ Paramètres</div>
-  </nav>
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo-row">
+      <div class="sb-mark">☕</div>
+      <div>
+        <div class="sb-name">Café</div>
+        <div class="sb-sub">Module MENASTA</div>
+      </div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <div class="nav-item active" data-p="ventes"><span class="ni">☕</span> Ventes du Jour</div>
+    <div class="nav-item" data-p="stock"><span class="ni">📦</span> Stock du Jour</div>
+    <div class="nav-item" data-p="rapport"><span class="ni">📊</span> Rapport Journalier</div>
+    <div class="nav-item" data-p="mensuel"><span class="ni">📅</span> Rapport Mensuel</div>
+    <div class="nav-item" data-p="settings"><span class="ni">⚙️</span> Paramètres</div>
+  </div>
   <div class="sb-foot">
-    <a href="/home">← Retour Accueil</a>
+    <a href="/home" class="sb-back">← Retour Accueil</a>
   </div>
-</div>
+</aside>
 
-<div id="main">
-  <div id="topbar">
-    <div class="tb-title" id="page-title">Ventes du Jour</div>
-    <div class="tb-date" id="top-date"></div>
+<div class="app-main">
+  <div class="app-topbar">
+    <div class="topbar-title" id="page-title">Ventes du Jour</div>
+    <div class="topbar-meta" id="top-date"></div>
   </div>
-  <div id="content">
+  <div class="app-content">
 
     <!-- ══ VENTES ══ -->
     <div class="page active" id="p-ventes">
@@ -630,6 +564,55 @@ document.getElementById('s-date').value = today();
 document.getElementById('r-date').value = today();
 document.getElementById('m-month').value = today().slice(0,7);
 loadVentes();
+
+// ── EXPORT ────────────────────────────────────────────────────
+function _expData(tbl) {
+  if (!tbl) return { headers: [], rows: [] };
+  const headers = [...tbl.querySelectorAll('thead th')].map(th => th.textContent.trim()).filter(h => h);
+  const rows = [...tbl.querySelectorAll('tbody tr')].map(tr =>
+    [...tr.querySelectorAll('td')].slice(0, headers.length).map(td => td.textContent.trim())
+  );
+  return { headers, rows };
+}
+function expPDF(tbl, title) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(13); doc.text((title||'Export') + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
+  const { headers, rows } = _expData(tbl);
+  doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [29, 45, 62] } });
+  doc.save((title||'export').replace(/\s+/g,'_') + '.pdf');
+}
+function expXL(tbl, title) {
+  const { headers, rows } = _expData(tbl);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, (title||'export').slice(0,31));
+  XLSX.writeFile(wb, (title||'export').replace(/\s+/g,'_') + '.xlsx');
+}
+function expWord(tbl, title) {
+  const clone = tbl.cloneNode(true); clone.querySelectorAll('input,button').forEach(el => el.remove());
+  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2><p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>${clone.outerHTML}<script src="/js/ai-widget.js"></script>
+</body></html>`;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html],{type:'application/msword'})); a.download = (title||'export').replace(/\s+/g,'_')+'.doc'; a.click();
+}
+(function wireExport() {
+  const style = `.exp-btns{display:flex;gap:5px;align-items:center;flex-shrink:0}.exp-btn{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:none;transition:background .15s}.exp-pdf{background:#fee2e2;color:#b91c1c}.exp-pdf:hover{background:#fca5a5}.exp-xl{background:#dcfce7;color:#15803d}.exp-xl:hover{background:#86efac}.exp-word{background:#dbeafe;color:#1d4ed8}.exp-word:hover{background:#93c5fd}`;
+  const s = document.createElement('style'); s.textContent = style; document.head.appendChild(s);
+  function wire() {
+    document.querySelectorAll('.section:not([data-ew])').forEach(sec => {
+      const sh = sec.querySelector('.s-head');
+      const tbl = sec.querySelector('table');
+      if (!tbl || !sh || sh.querySelector('.exp-btns')) return;
+      sec.setAttribute('data-ew', '1');
+      const t = sh.querySelector('.s-title')?.textContent.trim().slice(0,30) || 'Export';
+      const w = document.createElement('div'); w.className = 'exp-btns';
+      w.innerHTML = `<button class="exp-btn exp-pdf" onclick="expPDF(this.closest('.section').querySelector('table'),'${t.replace(/'/g,"\\'")}')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL(this.closest('.section').querySelector('table'),'${t.replace(/'/g,"\\'")}')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord(this.closest('.section').querySelector('table'),'${t.replace(/'/g,"\\'")}')">📝 Word</button>`;
+      sh.appendChild(w);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(wire, 500));
+  else setTimeout(wire, 500);
+})();
 </script>
+<script src="/js/ai-widget.js"></script>
 </body>
 </html>
