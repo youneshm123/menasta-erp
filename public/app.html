@@ -1857,7 +1857,6 @@ function printShift(id) {
       <div class="row"><span class="big">CAISSE NETTE</span><span class="big">${fmt(s.net_cash||0)} MAD</span></div>
     </div>
     <p style="margin-top:20px;color:#999;font-size:11px">Imprimé le ${new Date().toLocaleString('fr-MA')} — MENASTA</p>
-    <script src="/js/ai-widget.js?v=2"></script>
 </body></html>`);
     w.document.close(); w.print();
   });
@@ -1939,8 +1938,7 @@ function expWord(tableId, title, tblEl) {
   if (!tbl) return;
   const clone = tbl.cloneNode(true);
   clone.querySelectorAll('input,button').forEach(el => el.remove());
-  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px;text-align:left}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2><p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>${clone.outerHTML}<script src="/js/ai-widget.js?v=2"></script>
-</body></html>`;
+  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px;text-align:left}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2><p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>${clone.outerHTML}</body></html>`;
   const blob = new Blob([html], { type: 'application/msword' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (title||'export').replace(/\s+/g,'_') + '.doc'; a.click();
 }
