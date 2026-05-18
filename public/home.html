@@ -7,101 +7,107 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="/css/fiori.css?v=19"/>
 <style>
-.app-main { overflow-y: auto; }
+.app-main { overflow-y: auto; display: flex; flex-direction: column; }
 
-/* Hero */
+/* ── Top module nav bar ── */
+.mod-topbar {
+  background: #0F172A;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.mod-topbar::-webkit-scrollbar { height: 0; }
+.mod-tab {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 20px; height: 48px;
+  color: rgba(255,255,255,.5);
+  text-decoration: none;
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 3px solid transparent;
+  transition: color .15s, border-color .15s, background .15s;
+  position: relative;
+}
+.mod-tab:hover { color: rgba(255,255,255,.9); background: rgba(255,255,255,.05); }
+.mod-tab .mt-icon { font-size: 16px; line-height: 1; }
+.mod-tab .mt-label { letter-spacing: .1px; }
+.mod-tab[data-color="blue"]:hover,   .mod-tab[data-color="blue"].active   { border-bottom-color: #3B82F6; color: #93C5FD; }
+.mod-tab[data-color="amber"]:hover,  .mod-tab[data-color="amber"].active  { border-bottom-color: #F59E0B; color: #FCD34D; }
+.mod-tab[data-color="teal"]:hover,   .mod-tab[data-color="teal"].active   { border-bottom-color: #14B8A6; color: #5EEAD4; }
+.mod-tab[data-color="brown"]:hover,  .mod-tab[data-color="brown"].active  { border-bottom-color: #D97706; color: #FDE68A; }
+.mod-tab[data-color="indigo"]:hover, .mod-tab[data-color="indigo"].active { border-bottom-color: #818CF8; color: #C7D2FE; }
+.mod-tab[data-color="sky"]:hover,    .mod-tab[data-color="sky"].active    { border-bottom-color: #38BDF8; color: #BAE6FD; }
+.mod-tab-sep { width: 1px; background: rgba(255,255,255,.07); margin: 10px 0; flex-shrink: 0; }
+
+/* ── Hero ── */
 .home-hero {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 32px 36px 26px;
-  display: flex; align-items: flex-start; justify-content: space-between;
-  flex-wrap: wrap; gap: 16px;
-  box-shadow: var(--sh-xs);
+  padding: 28px 36px 22px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 14px;
+  flex-shrink: 0;
 }
-.hero-greeting { font-size: 28px; font-weight: 900; color: var(--text); letter-spacing: -.5px; }
-.hero-sub { font-size: 13.5px; color: var(--muted); margin-top: 5px; font-weight: 400; }
+.hero-greeting { font-size: 24px; font-weight: 900; color: var(--text); letter-spacing: -.4px; }
+.hero-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
 .hero-clock {
   background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--r-lg); padding: 10px 20px;
-  font-size: 14px; color: var(--text-2); font-weight: 600;
+  border-radius: var(--r-lg); padding: 9px 18px;
+  font-size: 13.5px; color: var(--text-2); font-weight: 600;
   font-variant-numeric: tabular-nums; white-space: nowrap;
-  box-shadow: var(--sh-xs);
 }
 
-/* Content wrapper */
+/* ── Content ── */
 .home-content { padding: 28px 36px 40px; }
-
-/* Section label */
 .home-label {
   font-size: 10.5px; font-weight: 700;
   color: var(--subtle); text-transform: uppercase; letter-spacing: 1.2px;
-  margin-bottom: 14px; margin-top: 28px;
+  margin-bottom: 14px;
   display: flex; align-items: center; gap: 10px;
 }
-.home-label:first-child { margin-top: 0; }
 .home-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-/* Module cards */
-.mod-grid {
+/* ── Quick access module grid (small cards) ── */
+.mod-quick {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
+  gap: 12px;
+  margin-bottom: 28px;
 }
-.mcard {
+.mq-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  overflow: hidden;
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  display: flex; align-items: center; gap: 14px;
   text-decoration: none;
-  display: flex; flex-direction: column;
+  transition: box-shadow .18s, transform .18s, border-color .18s;
   box-shadow: var(--sh-sm);
-  transition: box-shadow .2s, transform .2s, border-color .2s;
-  position: relative;
+  border-left: 3px solid var(--mc, #2563EB);
 }
-.mcard:hover { box-shadow: var(--sh-lg); transform: translateY(-3px); border-color: var(--disabled); }
-.mcard-top { height: 4px; background: var(--mc, var(--blue)); }
-.mcard-body { padding: 22px 22px 16px; flex: 1; }
-.mcard-icon {
-  width: 52px; height: 52px;
-  border-radius: 14px;
+.mq-card:hover { box-shadow: var(--sh-md); transform: translateY(-2px); }
+.mq-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--mc-lt, #EFF6FF);
   display: flex; align-items: center; justify-content: center;
-  font-size: 26px;
-  background: var(--mc-lt, var(--blue-lt));
-  margin-bottom: 16px;
-  box-shadow: var(--sh-xs);
+  font-size: 20px; flex-shrink: 0;
 }
-.mcard-name { font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -.3px; margin-bottom: 6px; }
-.mcard-desc { font-size: 12.5px; color: var(--muted); line-height: 1.65; margin-bottom: 14px; }
-.mcard-tags { display: flex; gap: 5px; flex-wrap: wrap; }
-.mtag {
-  font-size: 10px; font-weight: 700;
-  padding: 3px 9px; border-radius: 20px; letter-spacing: .1px;
-  background: var(--mc-lt, var(--blue-lt));
-  color: var(--mc-dk, var(--blue-dk));
-}
-.mcard-footer {
-  padding: 12px 22px;
-  border-top: 1px solid var(--border-lt);
-  font-size: 12.5px; font-weight: 700;
-  color: var(--mc, var(--blue));
-  display: flex; align-items: center; justify-content: space-between;
-}
-.mcard-arrow {
-  width: 26px; height: 26px; border-radius: 8px;
-  background: var(--mc-lt, var(--blue-lt));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; color: var(--mc, var(--blue));
-  transition: all .15s; font-style: normal;
-}
-.mcard:hover .mcard-arrow { background: var(--mc, var(--blue)); color: #fff; }
+.mq-name { font-size: 13.5px; font-weight: 700; color: var(--text); }
+.mq-hint { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.mq-arrow { margin-left: auto; font-size: 16px; color: var(--mc, #2563EB); opacity: .6; flex-shrink: 0; }
+.mq-card:hover .mq-arrow { opacity: 1; }
 
-@media(max-width:900px) { .mod-grid { grid-template-columns: 1fr 1fr; } .home-content,.home-hero { padding-left: 22px; padding-right: 22px; } }
-@media(max-width:600px) { .mod-grid { grid-template-columns: 1fr; } }
+@media(max-width:900px) { .mod-quick { grid-template-columns: 1fr 1fr; } .home-content,.home-hero { padding-left: 20px; padding-right: 20px; } }
+@media(max-width:600px) { .mod-quick { grid-template-columns: 1fr; } .mod-topbar { padding: 0 10px; } .mod-tab { padding: 0 13px; font-size: 12px; } }
 </style>
 </head>
 <body class="app-layout">
 
-<!-- SIDEBAR -->
+<!-- SIDEBAR (Direction only) -->
 <aside class="sidebar">
   <div class="sb-brand">
     <div class="sb-logo-row">
@@ -113,17 +119,10 @@
     </div>
   </div>
   <div class="sb-nav">
-    <div class="sb-section-label">Modules</div>
-    <a href="/app"      class="nav-item"><span class="ni">⛽</span> Carburant</a>
-    <a href="/cafe"     class="nav-item"><span class="ni">☕</span> Café</a>
-    <a href="/bank"     class="nav-item"><span class="ni">🏦</span> Banque</a>
-    <a href="/tabac"    class="nav-item"><span class="ni">🚬</span> Tabac</a>
-    <a href="/factures" class="nav-item"><span class="ni">🧾</span> Factures</a>
-    <a href="/cuves"    class="nav-item"><span class="ni">🛢️</span> Cuves</a>
     <div class="sb-section-label">Direction</div>
-    <a href="/patron"   class="nav-item"><span class="ni">👑</span> Tableau Patron</a>
-    <a href="/logs"     class="nav-item"><span class="ni">📋</span> Journal</a>
-    <a href="/home"     class="nav-item active"><span class="ni">🏠</span> Accueil</a>
+    <a href="/patron" class="nav-item"><span class="ni">👑</span> Tableau Patron</a>
+    <a href="/logs"   class="nav-item"><span class="ni">📋</span> Journal</a>
+    <a href="/home"   class="nav-item active"><span class="ni">🏠</span> Accueil</a>
   </div>
   <div class="sb-foot">
     <div class="sb-user">
@@ -140,19 +139,44 @@
 <!-- MAIN -->
 <div class="app-main">
 
+  <!-- ── MODULE TOP NAV ── -->
+  <nav class="mod-topbar">
+    <a href="/app"      class="mod-tab" data-color="blue">
+      <span class="mt-icon">⛽</span><span class="mt-label">Carburant</span>
+    </a>
+    <a href="/cafe"     class="mod-tab" data-color="amber">
+      <span class="mt-icon">☕</span><span class="mt-label">Café</span>
+    </a>
+    <a href="/bank"     class="mod-tab" data-color="teal">
+      <span class="mt-icon">🏦</span><span class="mt-label">Banque</span>
+    </a>
+    <div class="mod-tab-sep"></div>
+    <a href="/tabac"    class="mod-tab" data-color="brown">
+      <span class="mt-icon">🚬</span><span class="mt-label">Tabac</span>
+    </a>
+    <a href="/factures" class="mod-tab" data-color="indigo">
+      <span class="mt-icon">🧾</span><span class="mt-label">Factures</span>
+    </a>
+    <a href="/cuves"    class="mod-tab" data-color="sky">
+      <span class="mt-icon">🛢️</span><span class="mt-label">Cuves</span>
+    </a>
+  </nav>
+
+  <!-- ── HERO ── -->
   <div class="home-hero">
     <div>
       <div class="hero-greeting" id="greeting">Bonjour 👋</div>
-      <div class="hero-sub">Bienvenue sur votre tableau de bord MENASTA</div>
+      <div class="hero-sub">Tableau de bord MENASTA — Vue d'ensemble</div>
     </div>
     <div class="hero-clock" id="clock">—</div>
   </div>
 
+  <!-- ── CONTENT ── -->
   <div class="home-content">
 
-    <!-- KPI STATS -->
-    <div class="home-label">Vue d'ensemble</div>
-    <div class="kpi-row">
+    <!-- KPI -->
+    <div class="home-label">Aujourd'hui</div>
+    <div class="kpi-row" style="margin-bottom:28px">
       <div class="kpi-card">
         <div class="kpi-icon" style="background:#DBEAFE">💰</div>
         <div class="kpi-val" id="s-ca">—</div>
@@ -179,89 +203,41 @@
       </div>
     </div>
 
-    <!-- MODULES -->
-    <div class="home-label">Modules</div>
-    <div class="mod-grid">
-
-      <a href="/app" class="mcard" style="--mc:#2563EB;--mc-lt:#EFF6FF;--mc-dk:#1D4ED8">
-        <div class="mcard-top"></div>
-        <div class="mcard-body">
-          <div class="mcard-icon">⛽</div>
-          <div class="mcard-name">Carburant</div>
-          <div class="mcard-desc">Postes, pompes, relevés compteurs, ventes crédit, stock et rapports mensuels.</div>
-          <div class="mcard-tags"><span class="mtag">Postes</span><span class="mtag">Pompes</span><span class="mtag">Crédits</span><span class="mtag">Rapports</span></div>
-        </div>
-        <div class="mcard-footer">Ouvrir le module <div class="mcard-arrow">→</div></div>
+    <!-- QUICK ACCESS -->
+    <div class="home-label">Accès rapide</div>
+    <div class="mod-quick">
+      <a href="/app"      class="mq-card" style="--mc:#2563EB;--mc-lt:#EFF6FF">
+        <div class="mq-icon">⛽</div>
+        <div><div class="mq-name">Carburant</div><div class="mq-hint">Postes · Pompes · Crédits</div></div>
+        <span class="mq-arrow">→</span>
       </a>
-
-      <a href="/cafe" class="mcard" style="--mc:#D97706;--mc-lt:#FFFBEB;--mc-dk:#92400E">
-        <div class="mcard-top"></div>
-        <div class="mcard-body">
-          <div class="mcard-icon">☕</div>
-          <div class="mcard-name">Café</div>
-          <div class="mcard-desc">Ventes journalières, consommation stock, bénéfice net et rapport mensuel.</div>
-          <div class="mcard-tags"><span class="mtag">Ventes</span><span class="mtag">Stock</span><span class="mtag">Bénéfice</span></div>
-        </div>
-        <div class="mcard-footer">Ouvrir le module <div class="mcard-arrow">→</div></div>
+      <a href="/cafe"     class="mq-card" style="--mc:#D97706;--mc-lt:#FFFBEB">
+        <div class="mq-icon">☕</div>
+        <div><div class="mq-name">Café</div><div class="mq-hint">Ventes · Stock · Bénéfice</div></div>
+        <span class="mq-arrow">→</span>
       </a>
-
-      <a href="/bank" class="mcard" style="--mc:#0D9488;--mc-lt:#F0FDFA;--mc-dk:#0F766E">
-        <div class="mcard-top"></div>
-        <div class="mcard-body">
-          <div class="mcard-icon">🏦</div>
-          <div class="mcard-name">Banque</div>
-          <div class="mcard-desc">Dépôts, retraits, virements, chèques reçus et émis, solde en temps réel.</div>
-          <div class="mcard-tags"><span class="mtag">Transactions</span><span class="mtag">Chèques</span><span class="mtag">Solde</span></div>
-        </div>
-        <div class="mcard-footer">Ouvrir le module <div class="mcard-arrow">→</div></div>
+      <a href="/bank"     class="mq-card" style="--mc:#0D9488;--mc-lt:#F0FDFA">
+        <div class="mq-icon">🏦</div>
+        <div><div class="mq-name">Banque</div><div class="mq-hint">Dépôts · Chèques · Solde</div></div>
+        <span class="mq-arrow">→</span>
       </a>
-
-      <a href="/tabac" class="mcard" style="--mc:#92400E;--mc-lt:#FDF4EC;--mc-dk:#78350F">
-        <div class="mcard-top"></div>
-        <div class="mcard-body">
-          <div class="mcard-icon">🚬</div>
-          <div class="mcard-name">Tabac</div>
-          <div class="mcard-desc">Ventes journalières, suivi bénéfice, montant à remettre au patron.</div>
-          <div class="mcard-tags"><span class="mtag">Ventes</span><span class="mtag">Bénéfice</span><span class="mtag">Remise</span></div>
-        </div>
-        <div class="mcard-footer">Ouvrir le module <div class="mcard-arrow">→</div></div>
+      <a href="/tabac"    class="mq-card" style="--mc:#92400E;--mc-lt:#FDF4EC">
+        <div class="mq-icon">🚬</div>
+        <div><div class="mq-name">Tabac</div><div class="mq-hint">Ventes · Bénéfice · Remise</div></div>
+        <span class="mq-arrow">→</span>
       </a>
-
-      <a href="/factures" class="mcard" style="--mc:#4338CA;--mc-lt:#EEF2FF;--mc-dk:#3730A3">
-        <div class="mcard-top"></div>
-        <div class="mcard-body">
-          <div class="mcard-icon">🧾</div>
-          <div class="mcard-name">Factures</div>
-          <div class="mcard-desc">Création et impression de factures clients avec TVA, format officiel MENASTA.</div>
-          <div class="mcard-tags"><span class="mtag">Factures</span><span class="mtag">TVA</span><span class="mtag">Impression</span></div>
-        </div>
-        <div class="mcard-footer">Ouvrir le module <div class="mcard-arrow">→</div></div>
+      <a href="/factures" class="mq-card" style="--mc:#4338CA;--mc-lt:#EEF2FF">
+        <div class="mq-icon">🧾</div>
+        <div><div class="mq-name">Factures</div><div class="mq-hint">Factures · TVA · Impression</div></div>
+        <span class="mq-arrow">→</span>
       </a>
-
-      <a href="/cuves" class="mcard" style="--mc:#2563EB;--mc-lt:#EFF6FF;--mc-dk:#1D4ED8">
-        <div class="mcard-top"></div>
-        <div class="mcard-body">
-          <div class="mcard-icon">🛢️</div>
-          <div class="mcard-name">Cuves</div>
-          <div class="mcard-desc">Suivi des niveaux de cuves, livraisons carburant et détection des pertes.</div>
-          <div class="mcard-tags"><span class="mtag">Niveaux</span><span class="mtag">Livraisons</span><span class="mtag">Écarts</span></div>
-        </div>
-        <div class="mcard-footer">Ouvrir le module <div class="mcard-arrow">→</div></div>
+      <a href="/cuves"    class="mq-card" style="--mc:#0284C7;--mc-lt:#E0F2FE">
+        <div class="mq-icon">🛢️</div>
+        <div><div class="mq-name">Cuves</div><div class="mq-hint">Niveaux · Livraisons · Écarts</div></div>
+        <span class="mq-arrow">→</span>
       </a>
-
-      <a href="/patron" class="mcard" style="--mc:#D97706;--mc-lt:#FFFBEB;--mc-dk:#92400E">
-        <div class="mcard-top"></div>
-        <div class="mcard-body">
-          <div class="mcard-icon">👑</div>
-          <div class="mcard-name">Tableau Patron</div>
-          <div class="mcard-desc">Vue d'ensemble complète — carburant, café, tabac, banque, factures et créances.</div>
-          <div class="mcard-tags"><span class="mtag">Vue globale</span><span class="mtag">Direction</span></div>
-        </div>
-        <div class="mcard-footer">Ouvrir le tableau <div class="mcard-arrow">→</div></div>
-      </a>
-
-
     </div>
+
   </div>
 </div>
 
