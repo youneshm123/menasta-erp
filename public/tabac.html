@@ -542,7 +542,7 @@ function exportWord(tableId, title) {
   <h2>${title}</h2>
   <p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>
   ${clone.outerHTML}
-  <script src="/js/ai-widget.js"></script>
+  <script src="/js/ai-widget.js?v=2"></script>
 </body></html>`;
   const blob = new Blob([html], { type: 'application/msword' });
   const a = document.createElement('a');
@@ -555,6 +555,6 @@ function logout() { localStorage.clear(); location.href = '/'; }
 
 loadVentes();
 </script>
-<script src="/js/ai-widget.js"></script>
+<script src="/js/ai-widget.js?v=2"></script>
 </body>
 </html>

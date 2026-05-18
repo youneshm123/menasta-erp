@@ -186,9 +186,7 @@
       msgs.scrollTop = msgs.scrollHeight;
 
     } catch (e) {
-      if (document.getElementById('aiw-msgs').contains(document.querySelector('.aiw-typing'))) {
-        try { document.querySelector('.aiw-typing').remove(); } catch(_) {}
-      }
+      try { tp.remove(); } catch(_) {}
       addErr(msgs, '⚠️ Connexion impossible. Vérifiez votre réseau.');
     } finally {
       busy = false;
