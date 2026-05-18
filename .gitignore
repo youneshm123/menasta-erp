@@ -7,3 +7,4 @@ server_err.txt
 .claude/
 *.bat
 .env
+backups/

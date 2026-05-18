@@ -613,6 +613,90 @@ router.post('/chat', requireAuth, async (req, res, next) => {
   }
 });
 
+// ── Text-to-SQL: natural language → SQL → answer ─────────────────────────────
+const DB_SCHEMA = `
+Tables PostgreSQL disponibles:
+- users(id, full_name, username, role, is_active, created_at)
+- shifts(id, opened_by, opened_at, closed_at, status, total_liters_sold, total_fuel_revenue, total_credit_deducted, total_product_sales, net_cash, avance, notes)
+- pump_readings(id, shift_id, pump_id, reading_type, meter_value, recorded_at, recorded_by)
+- pumps(id, name, fuel_type_id, status, created_at)
+- fuel_types(id, name, price_per_liter, color_hex, is_active)
+- credit_clients(id, name, phone, company, balance_due, is_active, notes, created_at)
+- credit_sales(id, shift_id, credit_client_id, pump_id, liters, price_per_liter, amount, sale_time, recorded_by, notes)
+- credit_payments(id, credit_client_id, shift_id, amount, payment_time, recorded_by, notes)
+- products(id, reference, name, category, unit, price, stock_qty, stock_min, is_active, created_at)
+- product_sales(id, shift_id, product_id, quantity, unit_price, total_amount, sale_time, recorded_by)
+- expenses(id, expense_date, category, description, amount, recorded_by, created_at)
+- cafe_sales(id, sale_date, items_json, total, recorded_by, created_at)
+- cafe_menu(id, name, category, price, is_active)
+- tabac_products(id, name, prix_achat, prix_vente, is_active)
+- tabac_ventes(id, vente_date, product_id, quantite, prix_vente, prix_achat, montant, benefice, recorded_by)
+- bank_transactions(id, transaction_date, type, description, amount, reference, is_reconciled, created_at)
+- factures(id, numero, facture_date, client_name, total_ht, montant_tva, total_ttc, notes)
+- cuves(id, name, fuel_type_id, capacite_max, niveau_alerte, is_active)
+- cuve_lectures(id, cuve_id, lecture_date, niveau_litres, recorded_by, notes)
+- activity_logs(id, user_id, username, module, action, details, ip_addr, created_at)
+`;
+
+router.post('/query', requireAuth, wrap(async (req, res) => {
+  const { question } = req.body || {};
+  if (!question) return res.status(400).json({ error: 'Question requise' });
+
+  // Step 1: Claude generates the SQL
+  const sqlResp = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: `Tu es un expert SQL PostgreSQL pour un ERP de station service marocaine (MENASTA).
+Génère UNE SEULE requête SQL SELECT valide pour répondre à cette question: "${question}"
+
+Schéma:
+${DB_SCHEMA}
+
+RÈGLES STRICTES:
+- Génère UNIQUEMENT le SQL, sans explication, sans markdown, sans \`\`\`
+- Utilise ONLY SELECT (jamais INSERT/UPDATE/DELETE/DROP)
+- Limite à 100 résultats maximum (LIMIT 100)
+- Utilise COALESCE pour éviter les NULL
+- Les dates sont en TIMESTAMPTZ ou DATE
+- Utilise TO_CHAR pour formater les dates si nécessaire`
+    }]
+  });
+
+  const sql = sqlResp.content[0]?.text?.trim();
+  if (!sql || !sql.toUpperCase().startsWith('SELECT')) {
+    return res.status(400).json({ error: 'Impossible de générer une requête SQL valide' });
+  }
+
+  // Step 2: Execute the SQL
+  let rows;
+  try {
+    const result = await pool.query(sql);
+    rows = result.rows;
+  } catch (e) {
+    return res.status(400).json({ error: `Erreur SQL: ${e.message}`, sql });
+  }
+
+  // Step 3: Claude interprets the results in natural language
+  const interpretResp = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: `Question posée: "${question}"
+SQL exécuté: ${sql}
+Résultats (${rows.length} ligne(s)): ${JSON.stringify(rows.slice(0, 20))}
+
+Réponds à la question en français de manière claire et concise, comme si tu parlais à un gérant de station service. Utilise des chiffres précis. Sois direct.`
+    }]
+  });
+
+  const answer = interpretResp.content[0]?.text?.trim();
+
+  res.json({ question, sql, rows, answer, count: rows.length });
+}));
+
 // PDF endpoints
 router.get('/pdf/daily',   requireAuth, wrap(async (req, res) => { pdfDaily(res,   await getBusinessData()); }));
 router.get('/pdf/weekly',  requireAuth, wrap(async (req, res) => { pdfWeekly(res,  await getBusinessData()); }));

@@ -6,7 +6,7 @@ const helmet     = require('helmet');
 const rateLimit  = require('express-rate-limit');
 const compression = require('compression');
 const { initDB, pool } = require('./db');
-const { requireAuth } = require('./middleware');
+const { requireAuth, requireMinRole } = require('./middleware');
 
 async function start() {
   await initDB();
@@ -144,25 +144,31 @@ async function start() {
   }));
 
   // ── API Routes ──
+  // Public (any authenticated user)
   app.use('/api/auth',      require('./routes/auth'));
-  app.use('/api/shifts',    require('./routes/shifts'));
-  app.use('/api/pumps',     require('./routes/pumps'));
-  app.use('/api/credits',   require('./routes/credits'));
-  app.use('/api/products',  require('./routes/products'));
-  app.use('/api/dashboard', require('./routes/dashboard'));
-  app.use('/api/reports',   require('./routes/reports'));
-  app.use('/api/expenses',  require('./routes/expenses'));
-  app.use('/api/stock',     require('./routes/stock'));
-  app.use('/api/cafe',      require('./routes/cafe'));
-  app.use('/api/bank',      require('./routes/bank'));
-  app.use('/api/tabac',     require('./routes/tabac'));
-  app.use('/api/factures',  require('./routes/factures'));
-  app.use('/api/patron',    require('./routes/patron'));
-  app.use('/api/cuves',     require('./routes/cuves'));
+  app.use('/api/shifts',    requireAuth, require('./routes/shifts'));
+  app.use('/api/pumps',     requireAuth, require('./routes/pumps'));
+  app.use('/api/credits',   requireAuth, require('./routes/credits'));
+  app.use('/api/products',  requireAuth, require('./routes/products'));
+  app.use('/api/dashboard', requireAuth, require('./routes/dashboard'));
+  app.use('/api/expenses',  requireAuth, require('./routes/expenses'));
+  app.use('/api/cafe',      requireAuth, require('./routes/cafe'));
+  app.use('/api/tabac',     requireAuth, require('./routes/tabac'));
+  app.use('/api/cuves',     requireAuth, require('./routes/cuves'));
+  app.use('/api/ai',        requireAuth, require('./routes/ai'));
+
+  // Gérant and above
+  app.use('/api/reports',   requireAuth, requireMinRole('gerant'), require('./routes/reports'));
+  app.use('/api/stock',     requireAuth, requireMinRole('gerant'), require('./routes/stock'));
+  app.use('/api/factures',  requireAuth, requireMinRole('gerant'), require('./routes/factures'));
+
+  // Patron only
+  app.use('/api/bank',      requireAuth, requireMinRole('patron'), require('./routes/bank'));
+  app.use('/api/patron',    requireAuth, requireMinRole('patron'), require('./routes/patron'));
   app.use('/api/ai',        require('./routes/ai'));
 
   // ── Logs API ──
-  app.get('/api/logs', requireAuth, async (req, res, next) => {
+  app.get('/api/logs', requireAuth, requireMinRole('gerant'), async (req, res, next) => {
     try {
       const { module: mod, from, to, limit = 200 } = req.query;
       let sql = 'SELECT * FROM activity_logs WHERE 1=1';
@@ -177,7 +183,7 @@ async function start() {
     } catch(e) { next(e); }
   });
 
-  app.get('/api/logs/modules', requireAuth, async (_req, res, next) => {
+  app.get('/api/logs/modules', requireAuth, requireMinRole('gerant'), async (_req, res, next) => {
     try {
       const { rows } = await pool.query('SELECT DISTINCT module FROM activity_logs ORDER BY module');
       res.json(rows.map(r => r.module));
@@ -211,6 +217,35 @@ async function start() {
 
   // ── Daily WhatsApp summary at 22:00 ──
   startDailySummary();
+
+  // ── Anomaly detection (every hour) ──
+  const { startAnomalyDetection } = require('./services/anomaly');
+  startAnomalyDetection();
+
+  // ── Automated backups (daily at 03:00) ──
+  const { startScheduledBackups, runBackup, listBackups } = require('./services/backup');
+  startScheduledBackups();
+
+  // Backup API (patron only)
+  app.get('/api/backups', requireAuth, requireMinRole('patron'), (_req, res) => {
+    res.json(listBackups());
+  });
+  app.post('/api/backups/run', requireAuth, requireMinRole('patron'), async (_req, res, next) => {
+    try {
+      const result = await runBackup();
+      if (result) res.json({ ok: true, ...result });
+      else res.status(500).json({ error: 'Backup échoué — vérifiez les logs' });
+    } catch(e) { next(e); }
+  });
+
+  // ── Manual anomaly trigger (patron only) ──
+  app.get('/api/anomaly/check', requireAuth, requireMinRole('patron'), async (_req, res, next) => {
+    try {
+      const { runChecksNow } = require('./services/anomaly');
+      const alerts = await runChecksNow();
+      res.json({ alerts, count: alerts.length });
+    } catch(e) { next(e); }
+  });
 }
 
 function startDailySummary() {
