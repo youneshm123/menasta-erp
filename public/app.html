@@ -6,7 +6,7 @@
 <title>MENASTA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=18"/>
+<link rel="stylesheet" href="/css/fiori.css?v=19"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -39,16 +39,14 @@
 .fuel-btn{flex:1;padding:7px 6px;border:2px solid var(--border);border-radius:var(--r);background:var(--surface);font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;white-space:nowrap;}
 .fuel-btn.selected-gazoil{border-color:#1D4ED8;background:#EFF6FF;color:#1D4ED8;}
 .fuel-btn.selected-essence{border-color:#059669;background:#ECFDF5;color:#059669;}
-/* ── Modal top-slide override ── */
-.overlay{align-items:flex-start!important;justify-content:center!important;padding:0!important;background:rgba(15,23,42,.45)!important;backdrop-filter:blur(3px)!important;}
-.overlay.open{display:flex!important;}
-.modal{border-radius:0 0 20px 20px!important;border-top:3px solid #2563EB!important;border-left:none!important;border-right:none!important;border-bottom:none!important;animation:msd .25s cubic-bezier(.22,1,.36,1) forwards!important;width:600px!important;max-width:100%!important;}
+/* ── Modal top-slide (transition approach, works every open) ── */
+.overlay{display:flex!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;align-items:flex-start!important;justify-content:center!important;padding:0!important;transition:opacity .18s,visibility .18s!important;}
+.overlay.open{visibility:visible!important;opacity:1!important;pointer-events:all!important;}
+.modal{transform:translateY(-100%)!important;transition:transform .28s cubic-bezier(.22,1,.36,1)!important;border-radius:0 0 20px 20px!important;border-top:3px solid #2563EB!important;border-left:none!important;border-right:none!important;border-bottom:none!important;width:600px!important;max-width:100%!important;}
+.overlay.open .modal{transform:translateY(0)!important;}
 .modal-lg{width:800px!important;}.modal-xl{width:1000px!important;}
-@keyframes msd{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
 .modal-hd{background:#0F172A!important;color:#fff!important;padding:13px 20px!important;border-bottom:none!important;}
 .modal-hd h3{font-size:14px!important;color:#fff!important;font-weight:800!important;}
-.modal-hd .modal-close{color:rgba(255,255,255,.5)!important;font-size:20px!important;}
-.modal-hd .modal-close:hover{color:#fff!important;background:rgba(255,255,255,.1)!important;}
 .modal-body{padding:18px 20px!important;gap:12px!important;}
 .modal-ft{padding:12px 20px!important;background:#F8FAFC!important;border-top:1px solid #E2E8F0!important;}
 </style>

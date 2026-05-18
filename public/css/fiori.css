@@ -650,11 +650,15 @@ body.app-layout { display: flex; height: 100vh; overflow: hidden; }
 .overlay {
   position: fixed; inset: 0;
   background: rgba(15,23,42,.45); z-index: 500;
-  display: none; align-items: flex-start; justify-content: center;
+  display: flex; align-items: flex-start; justify-content: center;
   padding: 0;
   backdrop-filter: blur(3px);
+  visibility: hidden; opacity: 0; pointer-events: none;
+  transition: opacity .18s, visibility .18s;
 }
-.overlay.open { display: flex; }
+.overlay.open {
+  visibility: visible; opacity: 1; pointer-events: all;
+}
 .modal {
   background: var(--surface);
   border-radius: 0 0 20px 20px;
@@ -664,11 +668,11 @@ body.app-layout { display: flex; height: 100vh; overflow: hidden; }
   overflow: hidden;
   border: none;
   border-top: 3px solid #2563EB;
-  animation: modalSlideDown .25s cubic-bezier(.22,1,.36,1) forwards;
+  transform: translateY(-100%);
+  transition: transform .28s cubic-bezier(.22,1,.36,1);
 }
-@keyframes modalSlideDown {
-  from { transform: translateY(-100%); opacity: 0; }
-  to   { transform: translateY(0);     opacity: 1; }
+.overlay.open .modal {
+  transform: translateY(0);
 }
 .modal-lg { width: 800px; }
 .modal-xl { width: 1000px; }
@@ -676,9 +680,9 @@ body.app-layout { display: flex; height: 100vh; overflow: hidden; }
   background: #0F172A; color: #fff;
   padding: 14px 22px;
   display: flex; align-items: center; gap: 12px;
-  flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,.08);
+  flex-shrink: 0; border-bottom: none;
 }
-.modal-hd h3 { flex: 1; font-size: 14px; font-weight: 700; letter-spacing: .2px; }
+.modal-hd h3 { flex: 1; font-size: 14px; font-weight: 700; letter-spacing: .2px; color: #fff; }
 .modal-hd span { font-size: 18px; }
 .modal-hd .x {
   background: none; border: none;
