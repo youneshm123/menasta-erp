@@ -3,282 +3,575 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MENASTA — Accueil</title>
+<title>MENASTA — Launchpad</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="/css/fiori.css?v=19"/>
+<link rel="stylesheet" href="/css/fiori.css?v=21"/>
 <style>
-.app-main { overflow-y: auto; display: flex; flex-direction: column; }
+/* ── Page scaffold ── */
+body { background: #f2f4f7; margin: 0; padding: 0; font-family: var(--font); }
+.lp-root { padding-top: var(--shell-h); min-height: 100vh; display: flex; flex-direction: column; }
 
-/* ── Top module nav bar ── */
-.mod-topbar {
-  background: #0F172A;
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  padding: 0 20px;
-  border-bottom: 1px solid rgba(255,255,255,.07);
-  flex-shrink: 0;
-  overflow-x: auto;
-}
-.mod-topbar::-webkit-scrollbar { height: 0; }
-.mod-tab {
-  display: flex; align-items: center; gap: 8px;
-  padding: 0 20px; height: 48px;
-  color: rgba(255,255,255,.5);
-  text-decoration: none;
-  font-size: 13px; font-weight: 600;
-  white-space: nowrap;
-  border-bottom: 3px solid transparent;
-  transition: color .15s, border-color .15s, background .15s;
-  position: relative;
-}
-.mod-tab:hover { color: rgba(255,255,255,.9); background: rgba(255,255,255,.05); }
-.mod-tab .mt-icon { font-size: 16px; line-height: 1; }
-.mod-tab .mt-label { letter-spacing: .1px; }
-.mod-tab[data-color="blue"]:hover,   .mod-tab[data-color="blue"].active   { border-bottom-color: #3B82F6; color: #93C5FD; }
-.mod-tab[data-color="amber"]:hover,  .mod-tab[data-color="amber"].active  { border-bottom-color: #F59E0B; color: #FCD34D; }
-.mod-tab[data-color="teal"]:hover,   .mod-tab[data-color="teal"].active   { border-bottom-color: #14B8A6; color: #5EEAD4; }
-.mod-tab[data-color="brown"]:hover,  .mod-tab[data-color="brown"].active  { border-bottom-color: #D97706; color: #FDE68A; }
-.mod-tab[data-color="indigo"]:hover, .mod-tab[data-color="indigo"].active { border-bottom-color: #818CF8; color: #C7D2FE; }
-.mod-tab[data-color="sky"]:hover,    .mod-tab[data-color="sky"].active    { border-bottom-color: #38BDF8; color: #BAE6FD; }
-.mod-tab-sep { width: 1px; background: rgba(255,255,255,.07); margin: 10px 0; flex-shrink: 0; }
-
-/* ── Hero ── */
-.home-hero {
-  background: var(--surface);
+/* ── Launchpad header strip ── */
+.lp-header {
+  background: #ffffff;
   border-bottom: 1px solid var(--border);
-  padding: 28px 36px 22px;
-  display: flex; align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 14px;
-  flex-shrink: 0;
+  padding: 0 28px;
+  height: 52px;
+  display: flex; align-items: center; gap: 16px;
+  box-shadow: var(--sh-xs);
 }
-.hero-greeting { font-size: 24px; font-weight: 900; color: var(--text); letter-spacing: -.4px; }
-.hero-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
-.hero-clock {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--r-lg); padding: 9px 18px;
-  font-size: 13.5px; color: var(--text-2); font-weight: 600;
-  font-variant-numeric: tabular-nums; white-space: nowrap;
+.lp-title   { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -.3px; flex: 1; }
+.lp-date    { font-size: 12.5px; color: var(--muted); }
+.lp-search  {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 20px; padding: 6px 14px;
+  font-size: 13px; color: var(--muted);
+  cursor: pointer; transition: border-color .14s;
+  min-width: 200px;
 }
+.lp-search:hover { border-color: var(--blue); color: var(--text); }
 
-/* ── Content ── */
-.home-content { padding: 28px 36px 40px; }
-.home-label {
-  font-size: 10.5px; font-weight: 700;
-  color: var(--subtle); text-transform: uppercase; letter-spacing: 1.2px;
+/* ── KPI Overview bar ── */
+.lp-kpi-bar {
+  background: var(--shell-bg);
+  display: flex; align-items: center;
+  padding: 0 28px; gap: 0;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.lp-kpi-item {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 12px 24px;
+  border-right: 1px solid rgba(255,255,255,.1);
+  cursor: default;
+  transition: background .14s;
+}
+.lp-kpi-item:first-child { padding-left: 0; }
+.lp-kpi-item:hover { background: rgba(255,255,255,.06); }
+.lp-kpi-lbl { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .6px; }
+.lp-kpi-val { font-size: 18px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: -.3px; }
+.lp-kpi-sub { font-size: 10.5px; font-weight: 500; }
+.lp-kpi-sub.up   { color: #4ade80; }
+.lp-kpi-sub.dn   { color: #fca5a5; }
+.lp-kpi-sub.warn { color: #fbbf24; }
+.lp-kpi-clock { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; padding: 12px 0; }
+.lp-kpi-clock .time { font-size: 20px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+.lp-kpi-clock .day  { font-size: 10.5px; color: rgba(255,255,255,.5); }
+
+/* ── Launchpad body ── */
+.lp-body { flex: 1; padding: 28px 28px 48px; max-width: 1400px; width: 100%; margin: 0 auto; }
+
+/* ── Group section ── */
+.lp-group { margin-bottom: 32px; }
+.lp-group-title {
+  font-size: 12px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px;
   margin-bottom: 14px;
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 12px;
 }
-.home-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.lp-group-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-/* ── Quick access module grid (small cards) ── */
-.mod-quick {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 28px;
+/* ── Tile grid ── */
+.tile-grid {
+  display: flex; flex-wrap: wrap; gap: 14px;
 }
-.mq-card {
+
+/* ── Base tile ── */
+.lp-tile {
+  width: 188px; min-height: 140px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 16px 18px;
-  display: flex; align-items: center; gap: 14px;
+  border-radius: 10px;
+  padding: 16px 18px 14px;
+  cursor: pointer;
+  transition: box-shadow .18s, border-color .18s, transform .18s;
+  box-shadow: var(--sh-xs);
+  display: flex; flex-direction: column;
   text-decoration: none;
-  transition: box-shadow .18s, transform .18s, border-color .18s;
-  box-shadow: var(--sh-sm);
-  border-left: 3px solid var(--mc, #2563EB);
+  color: var(--text);
+  position: relative;
+  overflow: hidden;
 }
-.mq-card:hover { box-shadow: var(--sh-md); transform: translateY(-2px); }
-.mq-icon {
-  width: 40px; height: 40px; border-radius: 10px;
-  background: var(--mc-lt, #EFF6FF);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px; flex-shrink: 0;
+.lp-tile:hover {
+  box-shadow: var(--sh-md);
+  border-color: var(--blue);
+  transform: translateY(-2px);
 }
-.mq-name { font-size: 13.5px; font-weight: 700; color: var(--text); }
-.mq-hint { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-.mq-arrow { margin-left: auto; font-size: 16px; color: var(--mc, #2563EB); opacity: .6; flex-shrink: 0; }
-.mq-card:hover .mq-arrow { opacity: 1; }
+.lp-tile:active { transform: translateY(0); box-shadow: var(--sh-xs); }
 
-@media(max-width:900px) { .mod-quick { grid-template-columns: 1fr 1fr; } .home-content,.home-hero { padding-left: 20px; padding-right: 20px; } }
-@media(max-width:600px) { .mod-quick { grid-template-columns: 1fr; } .mod-topbar { padding: 0 10px; } .mod-tab { padding: 0 13px; font-size: 12px; } }
+/* Tile color top bar */
+.lp-tile::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: var(--tc, var(--blue));
+  border-radius: 10px 10px 0 0;
+}
+
+/* ── Dynamic tile (shows KPI number) ── */
+.lt-icon { font-size: 26px; margin-bottom: 8px; line-height: 1; }
+.lt-kpi  { font-size: 28px; font-weight: 700; letter-spacing: -.5px; font-variant-numeric: tabular-nums; color: var(--text); line-height: 1; margin-bottom: 4px; }
+.lt-kpi-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+.lt-title { font-size: 13px; font-weight: 600; color: var(--text); margin-top: auto; }
+.lt-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* Trend badge on tile */
+.lt-trend {
+  position: absolute; top: 12px; right: 12px;
+  font-size: 10.5px; font-weight: 700;
+  padding: 2px 7px; border-radius: 20px;
+}
+.lt-trend.up   { background: var(--green-lt); color: var(--green); }
+.lt-trend.dn   { background: var(--red-lt);   color: var(--red);   }
+.lt-trend.warn { background: var(--orange-lt);color: var(--orange);}
+
+/* ── Standard navigation tile ── */
+.lt-nav-icon { font-size: 32px; margin-bottom: 12px; }
+.lt-nav-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.lt-nav-sub   { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+.lt-arrow { position: absolute; bottom: 12px; right: 14px; font-size: 16px; color: var(--blue); opacity: .6; }
+.lp-tile:hover .lt-arrow { opacity: 1; }
+
+/* ── Wide tile (2 units wide) ── */
+.lp-tile-wide { width: 390px; }
+
+/* ── Activity tile ── */
+.lt-feed { display: flex; flex-direction: column; gap: 0; flex: 1; margin-top: 6px; }
+.lt-feed-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-lt);
+  font-size: 11.5px;
+}
+.lt-feed-row:last-child { border-bottom: none; }
+.lt-feed-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.lt-feed-txt { flex: 1; color: var(--text-2); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lt-feed-time { color: var(--subtle); font-size: 10.5px; flex-shrink: 0; }
+
+/* ── Status indicator ── */
+.lp-status-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px; flex-wrap: wrap;
+}
+.lp-status-dot {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 500; color: var(--muted);
+}
+.lp-status-dot::before {
+  content: '';
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--sc, var(--green));
+  display: block;
+}
+
+/* ── Section label in KPI bar ── */
+.lp-sep { width: 1px; height: 36px; background: rgba(255,255,255,.12); }
+
+/* ── Welcome message ── */
+.lp-welcome {
+  background: linear-gradient(135deg, var(--shell-bg) 0%, #2d4157 100%);
+  border-radius: 10px;
+  padding: 20px 24px;
+  color: #fff;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px;
+  box-shadow: var(--sh-sm);
+  overflow: hidden;
+  position: relative;
+}
+.lp-welcome::after {
+  content: '⛽';
+  position: absolute; right: 24px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 64px; opacity: .08;
+  pointer-events: none;
+}
+.lp-welcome-text h2 { font-size: 20px; font-weight: 700; letter-spacing: -.3px; margin-bottom: 4px; }
+.lp-welcome-text p  { font-size: 13px; opacity: .65; }
+.lp-welcome-actions { display: flex; gap: 8px; position: relative; z-index: 1; }
+.lp-wbtn {
+  padding: 8px 16px; border-radius: var(--r);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  border: none; font-family: var(--font); transition: all .14s;
+  text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+}
+.lp-wbtn-p { background: #fff; color: var(--shell-bg); }
+.lp-wbtn-p:hover { background: #eff6ff; color: var(--blue); }
+.lp-wbtn-g { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25); }
+.lp-wbtn-g:hover { background: rgba(255,255,255,.2); }
+
+/* Responsive */
+@media(max-width:1100px) { .lp-tile { width: calc(25% - 11px); } .lp-tile-wide { width: calc(50% - 7px); } }
+@media(max-width:860px)  { .lp-tile { width: calc(33.33% - 10px); } .lp-tile-wide { width: calc(66.66% - 5px); } .lp-kpi-item { padding: 10px 14px; } }
+@media(max-width:640px)  { .lp-tile { width: calc(50% - 7px); } .lp-tile-wide { width: 100%; } .lp-kpi-item:nth-child(n+4) { display: none; } .lp-body { padding: 16px; } }
+@media(max-width:400px)  { .lp-tile { width: 100%; } }
 </style>
 </head>
-<body class="app-layout">
+<body>
 
-<!-- SIDEBAR (Direction only) -->
-<aside class="sidebar">
-  <div class="sb-brand">
-    <div class="sb-logo-row">
-      <div class="sb-mark">⛽</div>
-      <div>
-        <div class="sb-name">MENASTA</div>
-        <div class="sb-sub">Station Service</div>
-      </div>
-    </div>
+<!-- ══ SAP FIORI SHELL BAR ══ -->
+<header class="fiori-shell">
+  <div class="fs-logo">
+    <div class="fs-mark">⛽</div>
+    <div class="fs-brand">MENASTA</div>
   </div>
-  <div class="sb-nav">
-    <div class="sb-section-label">Direction</div>
-    <a href="/patron" class="nav-item"><span class="ni">👑</span> Tableau Patron</a>
-    <a href="/logs"   class="nav-item"><span class="ni">📋</span> Journal</a>
-    <a href="/home"   class="nav-item active"><span class="ni">🏠</span> Accueil</a>
-  </div>
-  <div class="sb-foot">
-    <div class="sb-user">
-      <div class="sb-avatar" id="sb-av">?</div>
-      <div>
-        <div class="sb-uname" id="sb-name">—</div>
-        <div class="sb-urole">Administrateur</div>
-      </div>
-    </div>
-    <button class="sb-logout" onclick="logout()">↪ Déconnexion</button>
-  </div>
-</aside>
-
-<!-- MAIN -->
-<div class="app-main">
-
-  <!-- ── MODULE TOP NAV ── -->
-  <nav class="mod-topbar">
-    <a href="/app"      class="mod-tab" data-color="blue">
-      <span class="mt-icon">⛽</span><span class="mt-label">Carburant</span>
-    </a>
-    <a href="/cafe"     class="mod-tab" data-color="amber">
-      <span class="mt-icon">☕</span><span class="mt-label">Café</span>
-    </a>
-    <a href="/bank"     class="mod-tab" data-color="teal">
-      <span class="mt-icon">🏦</span><span class="mt-label">Banque</span>
-    </a>
-    <div class="mod-tab-sep"></div>
-    <a href="/tabac"    class="mod-tab" data-color="brown">
-      <span class="mt-icon">🚬</span><span class="mt-label">Tabac</span>
-    </a>
-    <a href="/factures" class="mod-tab" data-color="indigo">
-      <span class="mt-icon">🧾</span><span class="mt-label">Factures</span>
-    </a>
-    <a href="/cuves"    class="mod-tab" data-color="sky">
-      <span class="mt-icon">🛢️</span><span class="mt-label">Cuves</span>
-    </a>
+  <div class="fs-divider"></div>
+  <nav class="fs-nav">
+    <a href="/home"     class="fs-nav-item active"><span class="fn-icon">🏠</span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
+    <a href="/bank"     class="fs-nav-item" id="nav-bank" style="display:none"><span class="fn-icon">🏦</span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
+    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> Assistant IA</a>
   </nav>
+  <div class="fs-actions">
+    <button class="fs-icon-btn" id="notif-btn" style="display:none" onclick="location.href='/logs'" title="Alertes">
+      🔔<div class="fs-notif-dot" id="notif-dot"></div>
+    </button>
+    <button class="fs-icon-btn" onclick="location.href='/ai'" title="Assistant IA">🤖</button>
+    <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
+  </div>
+</header>
 
-  <!-- ── HERO ── -->
-  <div class="home-hero">
-    <div>
-      <div class="hero-greeting" id="greeting">Bonjour 👋</div>
-      <div class="hero-sub">Tableau de bord MENASTA — Vue d'ensemble</div>
-    </div>
-    <div class="hero-clock" id="clock">—</div>
+<!-- ══ LAUNCHPAD ROOT ══ -->
+<div class="lp-root">
+
+  <!-- ── Page header ── -->
+  <div class="lp-header">
+    <div class="lp-title">Launchpad</div>
+    <div class="lp-date" id="lp-date">—</div>
   </div>
 
-  <!-- ── CONTENT ── -->
-  <div class="home-content">
-
-    <!-- KPI -->
-    <div class="home-label">Aujourd'hui</div>
-    <div class="kpi-row" style="margin-bottom:28px">
-      <div class="kpi-card">
-        <div class="kpi-icon" style="background:#DBEAFE">💰</div>
-        <div class="kpi-val" id="s-ca">—</div>
-        <div class="kpi-lbl">CA Aujourd'hui</div>
-        <div class="kpi-sub">Carburant + Café + Tabac</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon" style="background:#D1FAE5">🏦</div>
-        <div class="kpi-val" id="s-bank">—</div>
-        <div class="kpi-lbl">Solde Banque</div>
-        <div class="kpi-sub">Solde en temps réel</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon" style="background:#FEE2E2">🤝</div>
-        <div class="kpi-val" id="s-credits" style="color:var(--red)">—</div>
-        <div class="kpi-lbl">Créances Clients</div>
-        <div class="kpi-sub">Total dettes en cours</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon" style="background:#FEF3C7">⛽</div>
-        <div class="kpi-val" id="s-liters" style="color:var(--blue)">—</div>
-        <div class="kpi-lbl">Litres Vendus</div>
-        <div class="kpi-sub">Carburant aujourd'hui</div>
-      </div>
+  <!-- ── KPI bar ── -->
+  <div class="lp-kpi-bar">
+    <div class="lp-kpi-item">
+      <div class="lp-kpi-lbl">CA Aujourd'hui</div>
+      <div class="lp-kpi-val" id="kb-ca">—</div>
+      <div class="lp-kpi-sub" id="kb-ca-sub"> </div>
     </div>
-
-    <!-- QUICK ACCESS -->
-    <div class="home-label">Accès rapide</div>
-    <div class="mod-quick">
-      <a href="/app"      class="mq-card" style="--mc:#2563EB;--mc-lt:#EFF6FF">
-        <div class="mq-icon">⛽</div>
-        <div><div class="mq-name">Carburant</div><div class="mq-hint">Postes · Pompes · Crédits</div></div>
-        <span class="mq-arrow">→</span>
-      </a>
-      <a href="/cafe"     class="mq-card" style="--mc:#D97706;--mc-lt:#FFFBEB">
-        <div class="mq-icon">☕</div>
-        <div><div class="mq-name">Café</div><div class="mq-hint">Ventes · Stock · Bénéfice</div></div>
-        <span class="mq-arrow">→</span>
-      </a>
-      <a href="/bank"     class="mq-card" style="--mc:#0D9488;--mc-lt:#F0FDFA">
-        <div class="mq-icon">🏦</div>
-        <div><div class="mq-name">Banque</div><div class="mq-hint">Dépôts · Chèques · Solde</div></div>
-        <span class="mq-arrow">→</span>
-      </a>
-      <a href="/tabac"    class="mq-card" style="--mc:#92400E;--mc-lt:#FDF4EC">
-        <div class="mq-icon">🚬</div>
-        <div><div class="mq-name">Tabac</div><div class="mq-hint">Ventes · Bénéfice · Remise</div></div>
-        <span class="mq-arrow">→</span>
-      </a>
-      <a href="/factures" class="mq-card" style="--mc:#4338CA;--mc-lt:#EEF2FF">
-        <div class="mq-icon">🧾</div>
-        <div><div class="mq-name">Factures</div><div class="mq-hint">Factures · TVA · Impression</div></div>
-        <span class="mq-arrow">→</span>
-      </a>
-      <a href="/cuves"    class="mq-card" style="--mc:#0284C7;--mc-lt:#E0F2FE">
-        <div class="mq-icon">🛢️</div>
-        <div><div class="mq-name">Cuves</div><div class="mq-hint">Niveaux · Livraisons · Écarts</div></div>
-        <span class="mq-arrow">→</span>
-      </a>
+    <div class="lp-sep"></div>
+    <div class="lp-kpi-item">
+      <div class="lp-kpi-lbl">Litres Vendus</div>
+      <div class="lp-kpi-val" id="kb-liters">—</div>
+      <div class="lp-kpi-sub"> </div>
     </div>
-
+    <div class="lp-sep"></div>
+    <div class="lp-kpi-item">
+      <div class="lp-kpi-lbl">Créances</div>
+      <div class="lp-kpi-val" id="kb-credits" style="color:#fca5a5">—</div>
+      <div class="lp-kpi-sub dn" id="kb-credits-sub"> </div>
+    </div>
+    <div class="lp-sep"></div>
+    <div class="lp-kpi-item" id="kb-bank-item" style="display:none">
+      <div class="lp-kpi-lbl">Solde Banque</div>
+      <div class="lp-kpi-val" id="kb-bank" style="color:#4ade80">—</div>
+      <div class="lp-kpi-sub up"> </div>
+    </div>
+    <div class="lp-kpi-clock">
+      <div class="time" id="kb-time">00:00</div>
+      <div class="day"  id="kb-day">—</div>
+    </div>
   </div>
-</div>
+
+  <!-- ── Launchpad body ── -->
+  <div class="lp-body">
+
+    <!-- Welcome card -->
+    <div class="lp-welcome" id="lp-welcome">
+      <div class="lp-welcome-text">
+        <h2 id="welcome-greeting">Bonjour 👋</h2>
+        <p>Station Hmimidi · Kénitra, Maroc — Système de gestion intégré MENASTA v2</p>
+      </div>
+      <div class="lp-welcome-actions">
+        <a href="/app" class="lp-wbtn lp-wbtn-p">⛽ Nouveau poste</a>
+        <a href="/ai"  class="lp-wbtn lp-wbtn-g">🤖 Assistant IA</a>
+      </div>
+    </div>
+
+    <!-- ══ GROUP : OPÉRATIONS ══ -->
+    <div class="lp-group">
+      <div class="lp-group-title">Opérations</div>
+      <div class="tile-grid stagger">
+
+        <!-- Carburant — dynamic tile with KPI -->
+        <a href="/app" class="lp-tile" style="--tc:#0070f2">
+          <div class="lt-icon">⛽</div>
+          <div class="lt-kpi" id="t-fuel-ca">—</div>
+          <div class="lt-kpi-label">CA Carburant · MAD</div>
+          <div class="lt-title">Carburant</div>
+          <div class="lt-sub">Postes · Pompes · Crédits</div>
+          <div class="lt-trend up" id="t-fuel-liters">— L</div>
+        </a>
+
+        <!-- Cuves — dynamic tile -->
+        <a href="/cuves" class="lp-tile" style="--tc:#0e7490">
+          <div class="lt-icon">🛢️</div>
+          <div class="lt-kpi" id="t-cuves-pct">—</div>
+          <div class="lt-kpi-label">Niveaux cuves</div>
+          <div class="lt-title">Cuves</div>
+          <div class="lt-sub">Niveaux · Livraisons · Écarts</div>
+          <div class="lt-trend" id="t-cuves-badge">—</div>
+        </a>
+
+        <!-- Café — dynamic tile -->
+        <a href="/cafe" class="lp-tile" style="--tc:#d97706">
+          <div class="lt-icon">☕</div>
+          <div class="lt-kpi" id="t-cafe-ca">—</div>
+          <div class="lt-kpi-label">CA Café · MAD</div>
+          <div class="lt-title">Café</div>
+          <div class="lt-sub">Ventes · Stock · Bénéfice</div>
+        </a>
+
+        <!-- Tabac -->
+        <a href="/tabac" class="lp-tile" style="--tc:#78350f">
+          <div class="lt-icon">🚬</div>
+          <div class="lt-kpi" id="t-tabac-ca">—</div>
+          <div class="lt-kpi-label">CA Tabac · MAD</div>
+          <div class="lt-title">Tabac</div>
+          <div class="lt-sub">Ventes · Bénéfice · Remise</div>
+        </a>
+
+        <!-- Crédits — dynamic tile -->
+        <a href="/app" class="lp-tile" style="--tc:#dc2626">
+          <div class="lt-icon">🤝</div>
+          <div class="lt-kpi" style="color:var(--red)" id="t-credits">—</div>
+          <div class="lt-kpi-label">Créances clients · MAD</div>
+          <div class="lt-title">Crédits</div>
+          <div class="lt-sub">Clients · Soldes · Paiements</div>
+          <div class="lt-trend dn" id="t-credits-badge">—</div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- ══ GROUP : FINANCE ══ (gérant+) -->
+    <div class="lp-group" id="group-finance" style="display:none">
+      <div class="lp-group-title">Finance & Administration</div>
+      <div class="tile-grid stagger">
+
+        <!-- Banque -->
+        <a href="/bank" class="lp-tile" style="--tc:#107e3e">
+          <div class="lt-icon">🏦</div>
+          <div class="lt-kpi" style="color:var(--green)" id="t-bank">—</div>
+          <div class="lt-kpi-label">Solde Banque · MAD</div>
+          <div class="lt-title">Banque</div>
+          <div class="lt-sub">Dépôts · Chèques · Transactions</div>
+        </a>
+
+        <!-- Factures -->
+        <a href="/factures" class="lp-tile" style="--tc:#6c32a0">
+          <div class="lt-icon">🧾</div>
+          <div class="lt-kpi" id="t-factures">—</div>
+          <div class="lt-kpi-label">Factures ce mois</div>
+          <div class="lt-title">Factures</div>
+          <div class="lt-sub">Créer · Imprimer · TVA</div>
+        </a>
+
+        <!-- Dépenses -->
+        <a href="/app" class="lp-tile" style="--tc:#e9730c">
+          <div class="lt-icon">💸</div>
+          <div class="lt-kpi" id="t-expenses">—</div>
+          <div class="lt-kpi-label">Dépenses du jour · MAD</div>
+          <div class="lt-title">Dépenses</div>
+          <div class="lt-sub">Charges · Frais · Sorties</div>
+        </a>
+
+        <!-- Rapports -->
+        <a href="/patron" class="lp-tile" style="--tc:#354a5e" id="tile-patron" style="display:none">
+          <div class="lt-nav-icon">👑</div>
+          <div class="lt-nav-title">Tableau Patron</div>
+          <div class="lt-nav-sub">Vue d'ensemble direction</div>
+          <div class="lt-arrow">→</div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- ══ GROUP : OUTILS ══ -->
+    <div class="lp-group">
+      <div class="lp-group-title">Outils & Paramètres</div>
+      <div class="tile-grid stagger">
+
+        <!-- AI Assistant — wide tile with feed -->
+        <a href="/ai" class="lp-tile lp-tile-wide" style="--tc:#4f46e5">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:24px">🤖</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Assistant IA MENASTA</div>
+              <div style="font-size:11.5px;color:var(--muted)">Posez vos questions en langage naturel · Multilingue</div>
+            </div>
+          </div>
+          <div class="lt-feed" id="ai-preview">
+            <div class="lt-feed-row"><div class="lt-feed-dot" style="background:#4f46e5"></div><div class="lt-feed-txt">Quel est le CA d'aujourd'hui ?</div></div>
+            <div class="lt-feed-row"><div class="lt-feed-dot" style="background:#4f46e5"></div><div class="lt-feed-txt">Combien de litres vendus cette semaine ?</div></div>
+            <div class="lt-feed-row"><div class="lt-feed-dot" style="background:#4f46e5"></div><div class="lt-feed-txt">Liste des clients avec solde impayé</div></div>
+          </div>
+        </a>
+
+        <!-- Journal -->
+        <a href="/logs" class="lp-tile" style="--tc:#354a5e" id="tile-logs" style="display:none">
+          <div class="lt-nav-icon">📋</div>
+          <div class="lt-nav-title">Journal d'activité</div>
+          <div class="lt-nav-sub">Traçabilité toutes actions</div>
+          <div class="lt-arrow">→</div>
+        </a>
+
+        <!-- Logout -->
+        <div class="lp-tile" style="--tc:#dc2626;cursor:pointer" onclick="logout()">
+          <div class="lt-nav-icon">↪</div>
+          <div class="lt-nav-title">Déconnexion</div>
+          <div class="lt-nav-sub" id="logout-name">—</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end lp-body -->
+</div><!-- end lp-root -->
+
+<div id="toasts"></div>
 
 <script>
+/* ── Auth check ── */
 const token = localStorage.getItem('fm_token');
 const user  = JSON.parse(localStorage.getItem('fm_user') || 'null');
 if (!token) { window.location.href = '/'; }
-if (user) {
-  const n = user.full_name || '';
-  document.getElementById('sb-name').textContent = n;
-  document.getElementById('greeting').textContent = 'Bonjour, ' + (n.split(' ')[0] || n) + ' 👋';
-  document.getElementById('sb-av').textContent = n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+
+const role    = user?.role || 'caissier';
+const lvl     = {caissier:1, gerant:2, patron:3}[role] || 0;
+const name    = user?.full_name || '';
+const first   = name.split(' ')[0] || name;
+const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
+
+/* ── Apply user info ── */
+document.getElementById('fs-av').textContent = initials;
+document.getElementById('welcome-greeting').textContent = 'Bonjour, ' + (first || 'utilisateur') + ' 👋';
+document.getElementById('logout-name').textContent = name || role;
+
+if (lvl >= 2) {
+  document.getElementById('group-finance').style.display = '';
+  document.getElementById('nav-bank').style.display = '';
+  document.getElementById('tile-logs').style.display = '';
+  document.getElementById('notif-btn').style.display = '';
 }
+if (lvl >= 3) {
+  document.getElementById('kb-bank-item').style.display = '';
+  document.getElementById('tile-patron').style.display = '';
+}
+
 function logout() { localStorage.clear(); window.location.href = '/'; }
 
+/* ── Clock ── */
+const DAYS   = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 function updateClock() {
   const now = new Date();
-  const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
-  const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
   const h = String(now.getHours()).padStart(2,'0');
   const m = String(now.getMinutes()).padStart(2,'0');
-  document.getElementById('clock').textContent = days[now.getDay()] + ' ' + now.getDate() + ' ' + months[now.getMonth()] + ' · ' + h + ':' + m;
+  document.getElementById('kb-time').textContent = h + ':' + m;
+  document.getElementById('kb-day').textContent  = DAYS[now.getDay()] + ' ' + now.getDate() + ' ' + MONTHS[now.getMonth()];
+  document.getElementById('lp-date').textContent = DAYS[now.getDay()] + ' ' + now.getDate() + ' ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
 }
 updateClock(); setInterval(updateClock, 1000);
 
-const fmt = n => (parseFloat(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0});
+/* ── Number formatting ── */
+const fmt = n => (parseFloat(n)||0).toLocaleString('fr-FR', {minimumFractionDigits:0, maximumFractionDigits:0});
 
-async function loadStats() {
-  try {
-    const [dash, patron] = await Promise.all([
-      fetch('/api/dashboard', { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
-      fetch('/api/patron/summary', { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json()),
-    ]);
-    const totalCA = (dash.today?.fuel_revenue||0) + (patron.cafe?.revenue||0) + (patron.tabac?.montant||0);
-    document.getElementById('s-ca').textContent = fmt(totalCA) + ' MAD';
-    document.getElementById('s-bank').textContent = fmt(patron.banque?.balance||0) + ' MAD';
-    document.getElementById('s-credits').textContent = fmt(dash.total_debt||0) + ' MAD';
-    document.getElementById('s-liters').textContent = fmt(dash.today?.liters_sold||0) + ' L';
-  } catch {}
+function countUp(el, target, suffix='', dur=900) {
+  if (!el) return;
+  const start = Date.now();
+  (function run() {
+    const p = Math.min((Date.now()-start)/dur, 1);
+    const e = 1-Math.pow(1-p, 3);
+    el.textContent = Math.round(e*target).toLocaleString('fr-FR') + suffix;
+    if (p < 1) requestAnimationFrame(run);
+  })();
 }
-loadStats();
+
+/* ── Fetch helper ── */
+const api = url => fetch(url, { headers: { Authorization: 'Bearer ' + token } }).then(r=>r.ok?r.json():{}).catch(()=>({}));
+
+/* ── Load all tile data ── */
+async function loadData() {
+  const [dash, patronData] = await Promise.all([
+    api('/api/dashboard'),
+    lvl >= 2 ? api('/api/patron/summary') : Promise.resolve({}),
+  ]);
+
+  const fuelCA   = parseFloat(dash.today?.fuel_revenue || 0);
+  const liters   = parseFloat(dash.today?.liters_sold  || 0);
+  const debt     = parseFloat(dash.total_debt || 0);
+  const cafeCA   = parseFloat(patronData.cafe?.revenue   || 0);
+  const tabacCA  = parseFloat(patronData.tabac?.montant  || 0);
+  const bankBal  = parseFloat(patronData.banque?.balance || 0);
+  const expenses = parseFloat(patronData.depenses?.today || 0);
+  const totalCA  = fuelCA + cafeCA + tabacCA;
+
+  /* KPI bar */
+  countUp(document.getElementById('kb-ca'),      totalCA, ' MAD');
+  countUp(document.getElementById('kb-liters'),  liters,  ' L');
+  countUp(document.getElementById('kb-credits'), debt,    ' MAD');
+  if (lvl >= 3) countUp(document.getElementById('kb-bank'), bankBal, ' MAD');
+
+  /* Tiles */
+  countUp(document.getElementById('t-fuel-ca'),  fuelCA, '');
+  countUp(document.getElementById('t-cafe-ca'),  cafeCA, '');
+  countUp(document.getElementById('t-tabac-ca'), tabacCA,'');
+  countUp(document.getElementById('t-credits'),  debt,   '');
+  countUp(document.getElementById('t-bank'),     bankBal,'');
+  countUp(document.getElementById('t-expenses'), expenses,'');
+
+  /* Fuel liters badge */
+  const lEl = document.getElementById('t-fuel-liters');
+  if (lEl) { lEl.textContent = fmt(liters) + ' L'; }
+
+  /* Credits badge */
+  const cBadge = document.getElementById('t-credits-badge');
+  if (cBadge) { cBadge.textContent = (dash.debt_clients || 0) + ' clients'; }
+
+  /* Factures count from credits count (proxy) */
+  const fEl = document.getElementById('t-factures');
+  if (fEl) { fEl.textContent = '—'; }
+}
+
+/* ── Cuves levels ── */
+async function loadCuves() {
+  try {
+    const cuves = await api('/api/cuves');
+    if (!cuves?.length) return;
+    const avgPct = Math.round(cuves.reduce((s,c)=>s+(c.pct||0),0)/cuves.length);
+    const el = document.getElementById('t-cuves-pct');
+    if (el) countUp(el, avgPct, '%');
+    const badge = document.getElementById('t-cuves-badge');
+    if (badge) {
+      const low = cuves.filter(c=>(c.pct||0) < 20).length;
+      if (low > 0) {
+        badge.className = 'lt-trend warn';
+        badge.textContent = low + ' cuv. critique';
+      } else {
+        badge.className = 'lt-trend up';
+        badge.textContent = 'Niveaux OK';
+      }
+    }
+  } catch(_) {}
+}
+
+/* ── Anomaly notifications ── */
+async function checkAnomalies() {
+  if (lvl < 3) return;
+  try {
+    const r = await api('/api/anomaly/check');
+    if (r?.count > 0) {
+      document.getElementById('notif-btn').style.display = '';
+      document.getElementById('notif-dot').style.display = '';
+    }
+  } catch(_) {}
+}
+
+/* ── Init ── */
+loadData();
+loadCuves();
+checkAnomalies();
 </script>
 <script src="/js/ai-widget.js?v=3"></script>
 </body>

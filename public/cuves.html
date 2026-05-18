@@ -6,11 +6,12 @@
 <title>MENASTA — Cuves</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=19"/>
+<link rel="stylesheet" href="/css/fiori.css?v=21"/>
+<script src="/js/shell-init.js?v=1" defer></script>
 <style>
 body.app-layout{overflow:auto}
-.sidebar{position:fixed;left:0;top:0;bottom:0;overflow-y:auto}
-.main{margin-left:var(--sb-w);padding:28px 32px;min-height:100vh}
+.sidebar{position:fixed;left:0;top:var(--shell-h);bottom:0;overflow-y:auto}
+.main{margin-left:var(--sb-w);padding:28px 32px;min-height:calc(100vh - var(--shell-h))}
 .cuves-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px;margin-bottom:24px}
 .cuve-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;box-shadow:var(--shadow-sm)}
 .cuve-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
@@ -33,6 +34,28 @@ body.app-layout{overflow:auto}
 </style>
 </head>
 <body class="app-layout">
+
+<header class="fiori-shell">
+  <a href="/home" class="fs-logo" style="text-decoration:none">
+    <div class="fs-mark">⛽</div>
+    <div class="fs-brand">MENASTA</div>
+  </a>
+  <div class="fs-divider"></div>
+  <nav class="fs-nav">
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">🏦</span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item active"><span class="fn-icon">🛢️</span> Cuves</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
+    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> IA</a>
+  </nav>
+  <div class="fs-actions">
+    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
+    <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
+  </div>
+</header>
 
 <aside class="sidebar">
   <div class="sb-brand">

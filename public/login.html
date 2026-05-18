@@ -6,159 +6,232 @@
 <title>MENASTA — Connexion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=19"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --primary:#2563EB;--primary-dark:#1D4ED8;--primary-light:#EFF6FF;
-  --dark:#0F172A;--surface:#FFFFFF;--bg:#F1F5F9;
-  --border:#E2E8F0;--text:#0F172A;--muted:#64748B;--subtle:#94A3B8;
-  --success:#059669;--danger:#DC2626;--warning:#D97706;
-  --font:'Inter','Segoe UI',system-ui,sans-serif;
-  --radius:10px;--radius-lg:16px;
-  --shadow:0 4px 24px rgba(15,23,42,.08);
+  --shell-bg:#354a5e;
+  --blue:#0070f2;--blue-dk:#0064d9;--blue-lt:#e8f2ff;
+  --bg:#f2f4f7;--surface:#ffffff;
+  --border:#d9d9d9;--border-dk:#b0b0b0;
+  --text:#32363a;--muted:#6a6d70;--subtle:#89919a;--disabled:#bdc0c2;
+  --red:#bb0000;--red-lt:#fff2f2;
+  --font:'Inter','72',system-ui,sans-serif;
+  --r:6px;--r-lg:10px;
 }
-body{font-family:var(--font);min-height:100vh;display:flex;background:var(--bg)}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;min-height:100vh}
 
-/* ── LEFT PANEL ── */
-.panel-left{
-  width:440px;flex-shrink:0;
-  background:var(--dark);
-  display:flex;flex-direction:column;justify-content:space-between;
-  padding:52px 48px;position:relative;overflow:hidden;
+/* ── SAP Fiori shell bar ── */
+.fs{
+  height:44px;background:var(--shell-bg);
+  display:flex;align-items:center;padding:0 16px;gap:0;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);flex-shrink:0;
 }
-.panel-left::before{
+.fs-logo{display:flex;align-items:center;gap:8px}
+.fs-mark{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,#0070f2,#4fa3e0);display:flex;align-items:center;justify-content:center;font-size:14px}
+.fs-brand{font-size:14px;font-weight:700;color:#fff;letter-spacing:-.2px}
+.fs-spacer{flex:1}
+.fs-help{color:rgba(255,255,255,.65);font-size:12.5px;cursor:pointer;padding:6px 10px;border-radius:4px;transition:all .12s}
+.fs-help:hover{background:rgba(255,255,255,.1);color:#fff}
+
+/* ── Layout ── */
+.login-wrap{flex:1;display:flex;align-items:stretch}
+
+/* ── Left brand panel ── */
+.brand-panel{
+  width:420px;flex-shrink:0;
+  background:linear-gradient(160deg,var(--shell-bg) 0%,#2a3a4d 100%);
+  color:#fff;padding:60px 48px;
+  display:flex;flex-direction:column;justify-content:space-between;
+  position:relative;overflow:hidden;
+}
+.brand-panel::before{
   content:'';position:absolute;inset:0;
   background:
-    radial-gradient(ellipse 600px 600px at 110% 120%,rgba(37,99,235,.25),transparent),
-    radial-gradient(ellipse 400px 400px at -10% -10%,rgba(37,99,235,.1),transparent);
+    radial-gradient(circle at 80% 20%,rgba(0,112,242,.18),transparent 60%),
+    radial-gradient(circle at 10% 90%,rgba(79,163,224,.15),transparent 50%);
   pointer-events:none;
 }
-.panel-left::after{
-  content:'';position:absolute;
-  width:1px;top:0;bottom:0;right:0;
-  background:linear-gradient(180deg,transparent,rgba(255,255,255,.06) 30%,rgba(255,255,255,.06) 70%,transparent);
+.bp-top{position:relative;z-index:1}
+.bp-logo{
+  width:60px;height:60px;border-radius:12px;
+  background:linear-gradient(135deg,#0070f2,#4fa3e0);
+  display:flex;align-items:center;justify-content:center;font-size:30px;
+  margin-bottom:24px;
+  box-shadow:0 8px 28px rgba(0,112,242,.4);
 }
-.brand{position:relative;z-index:1}
-.brand-mark{
-  width:52px;height:52px;border-radius:14px;
-  background:linear-gradient(135deg,#2563EB,#60A5FA);
-  display:flex;align-items:center;justify-content:center;
-  font-size:26px;margin-bottom:20px;
-  box-shadow:0 8px 32px rgba(37,99,235,.4);
-}
-.brand-name{font-size:28px;font-weight:900;color:#fff;letter-spacing:-.3px}
-.brand-tagline{font-size:13px;color:rgba(255,255,255,.4);margin-top:8px;line-height:1.5;font-weight:400}
+.bp-title{font-size:32px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px}
+.bp-tagline{font-size:14px;color:rgba(255,255,255,.6);line-height:1.5;max-width:300px}
 
-.features{position:relative;z-index:1;display:flex;flex-direction:column;gap:20px}
-.feature{display:flex;align-items:center;gap:14px}
-.feature-dot{
-  width:36px;height:36px;border-radius:9px;flex-shrink:0;
+.bp-features{position:relative;z-index:1;display:flex;flex-direction:column;gap:18px;margin-top:48px}
+.bp-feat{display:flex;align-items:center;gap:12px}
+.bp-feat-ic{
+  width:36px;height:36px;border-radius:8px;flex-shrink:0;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.12);
   display:flex;align-items:center;justify-content:center;font-size:16px;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
 }
-.feature-text{font-size:13px;color:rgba(255,255,255,.5);line-height:1.4}
-.feature-text b{display:block;color:rgba(255,255,255,.85);font-weight:600;margin-bottom:1px}
+.bp-feat-txt{font-size:12.5px;color:rgba(255,255,255,.55);line-height:1.4}
+.bp-feat-txt b{display:block;color:#fff;font-weight:600;font-size:13px;margin-bottom:1px}
 
-.panel-left-foot{position:relative;z-index:1;font-size:11px;color:rgba(255,255,255,.2);letter-spacing:.3px}
+.bp-foot{position:relative;z-index:1;font-size:11px;color:rgba(255,255,255,.35);letter-spacing:.3px}
 
-/* ── RIGHT PANEL ── */
-.panel-right{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 24px}
-.login-card{width:100%;max-width:400px}
-
-.login-heading{font-size:26px;font-weight:800;color:var(--text);letter-spacing:-.4px;margin-bottom:6px}
-.login-sub{font-size:14px;color:var(--muted);margin-bottom:36px;font-weight:400}
-
-.field{margin-bottom:20px}
-.field label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px}
-.field input{
-  width:100%;padding:13px 15px;
-  border:1.5px solid var(--border);border-radius:var(--radius);
-  font-size:14px;font-family:var(--font);color:var(--text);background:#fff;
-  transition:border-color .15s,box-shadow .15s;
+/* ── Right form panel ── */
+.form-panel{flex:1;display:flex;align-items:center;justify-content:center;padding:40px}
+.login-card{
+  width:100%;max-width:400px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:36px 38px;
+  box-shadow:0 8px 32px rgba(0,0,0,.06);
 }
-.field input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
-.field input::placeholder{color:#C8D0DC}
-
-.alert-err{
-  display:none;background:#FEF2F2;border:1px solid #FECACA;
-  color:var(--danger);padding:11px 14px;border-radius:var(--radius);
-  font-size:13px;font-weight:500;margin-bottom:20px;
-  display:none;align-items:center;gap:8px;
+.login-card h1{
+  font-size:22px;font-weight:700;color:var(--text);
+  letter-spacing:-.3px;margin-bottom:6px;
 }
-.alert-err.show{display:flex}
-
-.btn-submit{
-  width:100%;padding:14px;border:none;border-radius:var(--radius);
-  background:var(--primary);color:#fff;
-  font-size:14px;font-weight:700;font-family:var(--font);
-  cursor:pointer;letter-spacing:.2px;
-  transition:background .15s,transform .1s,box-shadow .15s;
-  box-shadow:0 4px 16px rgba(37,99,235,.3);
+.login-card .sub{
+  font-size:13px;color:var(--muted);
+  margin-bottom:28px;
 }
-.btn-submit:hover{background:var(--primary-dark);box-shadow:0 6px 24px rgba(37,99,235,.4)}
-.btn-submit:active{transform:scale(.99)}
-.btn-submit:disabled{opacity:.55;cursor:not-allowed;transform:none}
 
-.login-footer{margin-top:32px;text-align:center;font-size:11px;color:var(--subtle)}
+.fld{margin-bottom:16px}
+.fld label{
+  display:block;font-size:11.5px;font-weight:600;
+  color:var(--text);margin-bottom:5px;
+}
+.fld label::after{
+  content:'*';color:var(--red);margin-left:3px;
+}
+.fld input{
+  width:100%;padding:10px 13px;
+  border:1px solid var(--border);border-radius:var(--r);
+  font-size:13.5px;font-family:var(--font);
+  color:var(--text);background:var(--surface);
+  transition:border-color .14s,box-shadow .14s;
+  box-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+.fld input:hover:not(:focus){border-color:var(--border-dk)}
+.fld input:focus{
+  outline:none;border-color:var(--blue);
+  box-shadow:0 0 0 2px rgba(0,112,242,.2);
+}
+.fld input::placeholder{color:var(--disabled)}
 
-@media(max-width:720px){
-  body{flex-direction:column}
-  .panel-left{width:100%;padding:36px 28px;min-height:auto}
-  .features{display:none}
+.err-box{
+  display:none;background:var(--red-lt);
+  border-left:4px solid var(--red);
+  color:var(--red);padding:10px 13px;border-radius:var(--r);
+  font-size:12.5px;font-weight:500;margin-bottom:16px;
+  align-items:center;gap:8px;
+}
+.err-box.show{display:flex}
+
+.btn-login{
+  width:100%;padding:11px;border:1px solid var(--blue);border-radius:var(--r);
+  background:var(--blue);color:#fff;
+  font-size:14px;font-weight:600;font-family:var(--font);
+  cursor:pointer;letter-spacing:-.1px;
+  transition:all .14s;
+  box-shadow:0 1px 4px rgba(0,112,242,.25);
+}
+.btn-login:hover{background:var(--blue-dk);box-shadow:0 2px 8px rgba(0,112,242,.35)}
+.btn-login:active{transform:scale(.99)}
+.btn-login:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+.form-foot{
+  margin-top:24px;text-align:center;
+  font-size:11.5px;color:var(--subtle);
+}
+.form-foot a{color:var(--blue);text-decoration:none;font-weight:500}
+.form-foot a:hover{text-decoration:underline}
+
+@media(max-width:840px){
+  .brand-panel{display:none}
+  .form-panel{padding:24px 16px}
 }
 </style>
 </head>
 <body>
 
-<div class="panel-left">
-  <div class="brand">
-    <div class="brand-mark">⛽</div>
-    <div class="brand-name">MENASTA</div>
-    <div class="brand-tagline">Système de gestion intégré<br>pour station-service</div>
+<!-- SAP Fiori Shell Bar -->
+<header class="fs">
+  <div class="fs-logo">
+    <div class="fs-mark">⛽</div>
+    <div class="fs-brand">MENASTA</div>
   </div>
+  <div class="fs-spacer"></div>
+  <div class="fs-help">Aide</div>
+</header>
 
-  <div class="features">
-    <div class="feature"><div class="feature-dot">⛽</div><div class="feature-text"><b>Carburant</b>Postes, pompes, ventes crédit, stock carburant</div></div>
-    <div class="feature"><div class="feature-dot">🛢️</div><div class="feature-text"><b>Cuves</b>Suivi niveaux, livraisons, détection des pertes</div></div>
-    <div class="feature"><div class="feature-dot">🏦</div><div class="feature-text"><b>Banque & Finances</b>Transactions, chèques, solde en temps réel</div></div>
-    <div class="feature"><div class="feature-dot">👑</div><div class="feature-text"><b>Tableau Patron</b>Vue d'ensemble complète pour la direction</div></div>
-    <div class="feature"><div class="feature-dot">🧾</div><div class="feature-text"><b>Facturation</b>Factures officielles TVA, format MENASTA</div></div>
-  </div>
+<div class="login-wrap">
 
-  <div class="panel-left-foot">MENASTA v2.0 · Station Hmimidi · Kénitra, Maroc</div>
-</div>
-
-<div class="panel-right">
-  <div class="login-card">
-    <div class="login-heading">Connexion</div>
-    <div class="login-sub">Entrez vos identifiants pour accéder à votre espace</div>
-
-    <div class="alert-err" id="err-box">
-      <span>⚠</span><span id="err-msg"></span>
+  <!-- Brand panel (left) -->
+  <div class="brand-panel">
+    <div class="bp-top">
+      <div class="bp-logo">⛽</div>
+      <div class="bp-title">MENASTA</div>
+      <div class="bp-tagline">Système ERP intégré de gestion pour stations-service · Conçu pour la Station Hmimidi</div>
     </div>
 
-    <div class="field">
-      <label>Identifiant</label>
-      <input id="usr" type="text" placeholder="ex: aida.hmimidi" autocomplete="username" autofocus/>
-    </div>
-    <div class="field">
-      <label>Mot de Passe</label>
-      <input id="pwd" type="password" placeholder="••••••••" autocomplete="current-password"/>
+    <div class="bp-features">
+      <div class="bp-feat">
+        <div class="bp-feat-ic">⛽</div>
+        <div class="bp-feat-txt"><b>Carburant & Cuves</b>Postes, pompes, niveaux, livraisons</div>
+      </div>
+      <div class="bp-feat">
+        <div class="bp-feat-ic">🏦</div>
+        <div class="bp-feat-txt"><b>Banque & Finances</b>Comptes, chèques, transactions</div>
+      </div>
+      <div class="bp-feat">
+        <div class="bp-feat-ic">🤖</div>
+        <div class="bp-feat-txt"><b>Assistant IA</b>Analyses & rapports en langage naturel</div>
+      </div>
+      <div class="bp-feat">
+        <div class="bp-feat-ic">🔐</div>
+        <div class="bp-feat-txt"><b>Sécurité RBAC</b>Caissier · Gérant · Patron — rôles définis</div>
+      </div>
     </div>
 
-    <button class="btn-submit" id="btn-login">Se connecter →</button>
-    <div class="login-footer">Station Hmimidi · Kénitra, Maroc</div>
+    <div class="bp-foot">MENASTA v2.0 · © 2026 Station Hmimidi · Kénitra, Maroc</div>
   </div>
+
+  <!-- Form panel (right) -->
+  <div class="form-panel">
+    <div class="login-card">
+      <h1>Connexion</h1>
+      <div class="sub">Entrez vos identifiants pour accéder à votre espace de travail.</div>
+
+      <div class="err-box" id="err-box">
+        <span>⚠</span><span id="err-msg"></span>
+      </div>
+
+      <div class="fld">
+        <label for="usr">Identifiant</label>
+        <input id="usr" type="text" placeholder="ex. aida.hmimidi" autocomplete="username" autofocus/>
+      </div>
+      <div class="fld">
+        <label for="pwd">Mot de passe</label>
+        <input id="pwd" type="password" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+
+      <button class="btn-login" id="btn-login">Se connecter</button>
+
+      <div class="form-foot">
+        Problème de connexion ? Contactez votre administrateur.
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
-const btn = document.getElementById('btn-login');
+const btn    = document.getElementById('btn-login');
 const errBox = document.getElementById('err-box');
 const errMsg = document.getElementById('err-msg');
 
 function showErr(msg) { errMsg.textContent = msg; errBox.classList.add('show'); }
-function hideErr() { errBox.classList.remove('show'); }
+function hideErr()    { errBox.classList.remove('show'); }
 
 async function login() {
   const username = document.getElementById('usr').value.trim();
@@ -173,12 +246,15 @@ async function login() {
       body: JSON.stringify({ username, password })
     });
     const data = await r.json();
-    if (!r.ok) { showErr(data.error || 'Identifiants incorrects'); return; }
+    if (!r.ok) { showErr(data.error || 'Identifiants incorrects.'); return; }
     localStorage.setItem('fm_token', data.token);
     localStorage.setItem('fm_user', JSON.stringify(data.user));
     window.location.href = '/home';
-  } catch { showErr('Impossible de contacter le serveur.'); }
-  finally { btn.disabled = false; btn.textContent = 'Se connecter →'; }
+  } catch {
+    showErr('Impossible de contacter le serveur. Vérifiez votre connexion.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Se connecter';
+  }
 }
 
 btn.addEventListener('click', login);

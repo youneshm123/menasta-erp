@@ -4,7 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA — Assistant IA</title>
-<link rel="stylesheet" href="/css/fiori.css"/>
+<link rel="stylesheet" href="/css/fiori.css?v=21"/>
+<script src="/js/shell-init.js?v=1" defer></script>
 <style>
 .app-main { overflow: hidden; display: flex; flex-direction: column; }
 .chat-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -155,6 +156,27 @@
 </style>
 </head>
 <body class="app-layout">
+
+<header class="fiori-shell">
+  <a href="/home" class="fs-logo" style="text-decoration:none">
+    <div class="fs-mark">⛽</div>
+    <div class="fs-brand">MENASTA</div>
+  </a>
+  <div class="fs-divider"></div>
+  <nav class="fs-nav">
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">🏦</span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
+    <a href="/ai"       class="fs-nav-item active"><span class="fn-icon">🤖</span> Assistant IA</a>
+  </nav>
+  <div class="fs-actions">
+    <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
+  </div>
+</header>
 
 <aside class="sidebar">
   <div class="sb-brand">
