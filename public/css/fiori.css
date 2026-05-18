@@ -780,107 +780,367 @@ body.app-layout {
 }
 
 /* ══════════════════════════════════════════════════
-   ADVANCED DIALOG — SAP Fiori Dialog style
-   Scale-in from center · Frosted backdrop · Clean
+   SAP FIORI DIALOG — Authentic S/4HANA dialog
+   Clean header · Subtle scale-in · Sectioned body
 ══════════════════════════════════════════════════ */
 .overlay {
   position: fixed; inset: 0;
-  background: rgba(50,54,58,.55);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(50,54,58,.45);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   z-index: 500;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 24px;
   visibility: hidden; opacity: 0; pointer-events: none;
-  transition: opacity .18s, visibility .18s;
+  transition: opacity .2s, visibility .2s;
 }
-.overlay.open {
-  visibility: visible; opacity: 1; pointer-events: all;
-}
+.overlay.open { visibility: visible; opacity: 1; pointer-events: all; }
+
+/* Stack multiple overlays */
+.overlay { transition: opacity .2s, visibility .2s; }
+.overlay + .overlay.open { z-index: 501; }
 
 .modal {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
+  border: none;
+  border-radius: 8px;
   width: 600px; max-width: 100%;
   max-height: 88vh;
   display: flex; flex-direction: column;
-  box-shadow: var(--sh-xl);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.05),
+    0 20px 60px rgba(0,0,0,.18),
+    0 8px 24px rgba(0,0,0,.12);
   overflow: hidden;
-  transform: scale(0.92) translateY(10px);
+  transform: scale(0.95);
   opacity: 0;
-  transition: transform .28s cubic-bezier(.22,1,.36,1), opacity .2s ease;
+  transition: transform .25s cubic-bezier(.22,1,.36,1), opacity .18s ease;
 }
-.overlay.open .modal {
-  transform: scale(1) translateY(0);
-  opacity: 1;
-}
+.overlay.open .modal { transform: scale(1); opacity: 1; }
 .modal-lg { width: 800px; }
 .modal-xl { width: 1000px; }
+.modal-sm { width: 440px; }
 
-/* Dialog header — Fiori style: white with blue accent bar */
+/* ── Dialog Header (SAP Fiori 3 style) ── */
 .modal-hd {
   background: var(--surface);
-  border-bottom: 2px solid var(--blue);
+  border-bottom: 1px solid var(--border-lt);
   padding: 14px 20px;
   display: flex; align-items: center; gap: 12px;
   flex-shrink: 0;
+  position: relative;
+}
+.modal-hd::after {
+  content: '';
+  position: absolute; bottom: -1px; left: 0;
+  width: 60px; height: 2px;
+  background: var(--blue);
+  border-radius: 0 2px 0 0;
 }
 .modal-hd h3 {
   flex: 1; font-size: 15px; font-weight: 700;
-  color: var(--text); letter-spacing: -.2px;
+  color: var(--text); letter-spacing: -.2px; line-height: 1.3;
 }
-.modal-hd span { font-size: 20px; }
+/* Icon chip in header */
+.modal-hd > span:not(.x),
+.modal-hd .mh-ic {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--blue-lt);
+  color: var(--blue);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 17px; line-height: 1;
+  flex-shrink: 0;
+}
+/* Close button */
 .modal-hd .x {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: none;
+  width: 30px; height: 30px; border-radius: 6px;
+  background: transparent;
   border: none;
   color: var(--muted); font-size: 20px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: all .14s; line-height: 1; font-weight: 300;
+  transition: background .14s, color .14s;
+  line-height: 1; font-weight: 300;
+  font-family: var(--font);
 }
 .modal-hd .x:hover {
   background: var(--red-lt);
   color: var(--red);
-  transform: rotate(90deg);
 }
 
-/* Dialog body */
+/* ── Sub-header (optional second row) ── */
+.modal-subhd {
+  padding: 8px 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-lt);
+  font-size: 12px; color: var(--muted);
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Dialog Body ── */
 .modal-body {
-  padding: 20px; flex: 1; overflow-y: auto;
+  padding: 20px;
+  flex: 1; overflow-y: auto;
   display: flex; flex-direction: column; gap: 14px;
   background: var(--bg);
+  scroll-behavior: smooth;
 }
-.modal-body::-webkit-scrollbar { width: 5px; }
-.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.modal-body::-webkit-scrollbar { width: 8px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; }
+.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+.modal-body::-webkit-scrollbar-thumb:hover { background: var(--border-dk); }
 
-/* Dialog form group override for light inputs */
+/* Inputs in modal stay clean white */
 .modal-body .fg input,
 .modal-body .fg select,
 .modal-body .fg textarea {
   background: var(--surface);
   border-color: var(--border);
+  box-shadow: var(--sh-xs);
+}
+.modal-body .fg input:hover:not(:focus),
+.modal-body .fg select:hover:not(:focus),
+.modal-body .fg textarea:hover:not(:focus) {
+  border-color: var(--blue);
+  background: var(--surface);
 }
 
-/* Section header inside dialog */
+/* ── Form labels — SAP Fiori style ── */
+.modal-body .fg label {
+  font-size: 12px; font-weight: 600;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+/* Required field marker (red asterisk after label) */
+.fg.required label::after,
+.modal-body .fg label[data-required]::after {
+  content: ' *';
+  color: var(--red);
+  font-weight: 700;
+}
+
+/* Field hint text below input */
+.fg-hint {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+  display: flex; align-items: center; gap: 4px;
+}
+.fg-hint::before {
+  content: 'ⓘ';
+  font-size: 10px; opacity: .6;
+}
+
+/* ── Inline validation error ── */
+.fg.error label { color: var(--red); }
+.fg.error input,
+.fg.error select,
+.fg.error textarea {
+  border-color: var(--red) !important;
+  background: var(--red-lt) !important;
+  box-shadow: 0 0 0 2px rgba(187,0,0,.1) !important;
+}
+.fg-error {
+  font-size: 11.5px;
+  color: var(--red);
+  margin-top: 3px;
+  display: flex; align-items: center; gap: 5px;
+  font-weight: 500;
+  animation: fadeIn .2s ease;
+}
+.fg-error::before {
+  content: '⚠';
+  font-size: 11px;
+}
+
+/* ── Success state on field ── */
+.fg.success input,
+.fg.success select {
+  border-color: var(--green) !important;
+  background: var(--green-lt) !important;
+}
+
+/* ── Section divider inside dialog ── */
 .modal-section {
-  font-size: 11px; font-weight: 700; color: var(--blue);
+  font-size: 11px; font-weight: 700; color: var(--blue-dk);
   text-transform: uppercase; letter-spacing: .8px;
-  padding-bottom: 8px;
+  padding: 4px 0 8px;
   border-bottom: 1px solid var(--border-lt);
+  margin-top: 4px;
+  display: flex; align-items: center; gap: 8px;
+}
+.modal-section:first-child { margin-top: 0; }
+.modal-section .ms-count {
+  background: var(--blue-lt); color: var(--blue);
+  padding: 1px 8px; border-radius: 20px;
+  font-size: 10px; letter-spacing: .2px;
+  margin-left: auto;
 }
 
-/* Dialog footer */
+/* ── Inline message box inside dialog ── */
+.modal-msg {
+  padding: 10px 13px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  display: flex; align-items: flex-start; gap: 8px;
+  line-height: 1.5;
+  border: 1px solid;
+}
+.modal-msg::before { font-size: 14px; line-height: 1.3; flex-shrink: 0; }
+.modal-msg.info  { background: var(--blue-lt);   border-color: rgba(0,112,242,.2); color: var(--blue-dk);  }
+.modal-msg.info::before { content: 'ⓘ'; }
+.modal-msg.warn  { background: var(--orange-lt); border-color: rgba(233,115,12,.2); color: #7c3d0c; }
+.modal-msg.warn::before { content: '⚠'; }
+.modal-msg.err   { background: var(--red-lt);    border-color: rgba(187,0,0,.2);    color: var(--red); }
+.modal-msg.err::before { content: '✕'; }
+.modal-msg.success { background: var(--green-lt); border-color: rgba(16,126,62,.2); color: var(--green); }
+.modal-msg.success::before { content: '✓'; }
+
+/* ── Dialog Footer ── */
 .modal-ft {
   padding: 12px 20px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-lt);
   display: flex; justify-content: flex-end; gap: 8px;
   flex-shrink: 0;
   background: var(--surface);
 }
+.modal-ft .ft-left {
+  margin-right: auto;
+  display: flex; gap: 8px; align-items: center;
+}
+
+/* ── Button loading state ── */
+.btn.loading {
+  pointer-events: none !important;
+  color: transparent !important;
+  position: relative;
+}
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 14px; height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+.btn-g.loading::after,
+.btn-ghost.loading::after {
+  border-color: rgba(0,0,0,.2);
+  border-top-color: var(--text);
+}
+
+/* ── Modal shake animation (on validation error) ── */
+.modal.shake {
+  animation: modalShake .38s cubic-bezier(.36,.07,.19,.97);
+}
+@keyframes modalShake {
+  10%,90% { transform: scale(1) translateX(-2px); }
+  20%,80% { transform: scale(1) translateX(4px); }
+  30%,50%,70% { transform: scale(1) translateX(-6px); }
+  40%,60% { transform: scale(1) translateX(6px); }
+}
+
+/* ── Modal success flash ── */
+.modal.flash-success {
+  animation: modalFlashSuccess .6s ease;
+}
+@keyframes modalFlashSuccess {
+  0%   { box-shadow: 0 0 0 0   rgba(16,126,62,0),   0 20px 60px rgba(0,0,0,.18); }
+  40%  { box-shadow: 0 0 0 6px rgba(16,126,62,.4),  0 20px 60px rgba(0,0,0,.18); }
+  100% { box-shadow: 0 0 0 0   rgba(16,126,62,0),   0 20px 60px rgba(0,0,0,.18); }
+}
+
+/* ── Confirm dialog style (compact) ── */
+.modal.confirm {
+  width: 420px;
+}
+.modal.confirm .modal-body {
+  background: var(--surface);
+  text-align: center;
+  padding: 24px 20px 20px;
+}
+.modal.confirm .confirm-icon {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; margin: 0 auto 14px;
+}
+.modal.confirm .confirm-icon.warn   { background: var(--orange-lt); color: var(--orange); }
+.modal.confirm .confirm-icon.danger { background: var(--red-lt);    color: var(--red); }
+.modal.confirm .confirm-icon.info   { background: var(--blue-lt);   color: var(--blue); }
+.modal.confirm .confirm-msg {
+  font-size: 14px; color: var(--text); line-height: 1.5;
+}
+.modal.confirm .confirm-sub {
+  font-size: 12.5px; color: var(--muted); margin-top: 6px;
+}
+
+/* ── Field with clear button ── */
+.fg-clearable {
+  position: relative;
+}
+.fg-clearable input { padding-right: 30px; }
+.fg-clearable .fg-clear {
+  position: absolute;
+  right: 8px; top: 50%;
+  transform: translateY(-50%);
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--bg2);
+  color: var(--muted);
+  border: none; cursor: pointer;
+  font-size: 11px; line-height: 1;
+  display: none;
+  align-items: center; justify-content: center;
+}
+.fg-clearable input:not(:placeholder-shown) ~ .fg-clear { display: flex; }
+.fg-clearable .fg-clear:hover { background: var(--red-lt); color: var(--red); }
+
+/* ── Step indicator (wizard dialogs) ── */
+.modal-steps {
+  display: flex; align-items: center; gap: 0;
+  padding: 12px 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-lt);
+  flex-shrink: 0;
+}
+.ms-step {
+  display: flex; align-items: center; gap: 8px;
+  flex: 1; font-size: 12px;
+  color: var(--muted);
+  position: relative;
+}
+.ms-step:not(:last-child)::after {
+  content: ''; flex: 1; height: 2px;
+  background: var(--border);
+  margin: 0 10px;
+}
+.ms-step.done:not(:last-child)::after,
+.ms-step.active:not(:last-child)::after {
+  background: var(--blue);
+}
+.ms-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  flex-shrink: 0;
+}
+.ms-step.active .ms-num { background: var(--blue); border-color: var(--blue); color: #fff; }
+.ms-step.done .ms-num   { background: var(--green); border-color: var(--green); color: #fff; }
+.ms-step.done .ms-num::before { content: '✓'; }
+.ms-step.done .ms-num > span { display: none; }
+.ms-step.active .ms-lbl { color: var(--text); font-weight: 600; }
+.ms-step.done .ms-lbl   { color: var(--green); }
 
 /* ══════════════════════════════════════════════════
    MESSAGES
