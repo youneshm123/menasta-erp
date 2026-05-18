@@ -243,29 +243,27 @@ function buildSystemPrompt(d, language = 'fr') {
     p += `\n📊 Statistiques 30j : Moyenne/jour ${fmt(avg)} MAD | Meilleur jour: ${best.day} (${fmt(best.total)} MAD) | Total période: ${fmt(totalMonth)} MAD\n`;
   }
 
-  const langInstr = {
-    fr:     'Réponds TOUJOURS en français, de façon claire, structurée et professionnelle.',
-    en:     'ALWAYS respond in English, clearly, structured, and professionally.',
-    ar:     'أجب دائماً باللغة العربية الفصحى بأسلوب واضح ومنظم واحترافي.',
-    darija: 'جاوب دائماً بالدارجة المغربية. ماباسش تخلط شي كلمات فرنسية أو عربية فصحى إذا كان لازم.',
-  }[language] || 'Réponds toujours en français.';
-
-  const pdfWords = {
-    fr:     'pdf, rapport, imprimer, exporter, télécharger',
-    en:     'pdf, report, print, export, download',
-    ar:     'pdf, تقرير, طباعة, تصدير, تحميل',
-    darija: 'pdf, rapport, taqrir, تحميل, طباعة',
-  }[language] || 'pdf, rapport';
-
   p += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-INSTRUCTIONS
+INSTRUCTIONS LANGUE & STYLE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- ${langInstr}
+- 🌍 DÉTECTION AUTOMATIQUE DE LANGUE : Identifie la langue de chaque message de l'utilisateur et réponds EXACTEMENT dans la même langue.
+  Exemples:
+  • L'utilisateur écrit en français → tu réponds en français
+  • The user writes in English → you respond in English
+  • المستخدم يكتب بالعربية الفصحى → تجاوب بالعربية الفصحى
+  • المستخدم يكتب بالدارجة المغربية → تجاوب بالدارجة (ماباسش تخلط فرنسية أو عربية فصحى)
+  • El usuario escribe en español → responde en español
+  • Der Benutzer schreibt auf Deutsch → antworte auf Deutsch
+  • L'utente scrive in italiano → rispondi in italiano
+  • O utilizador escreve em português → responde em português
+  • Any other language → detect and respond in that exact language
+- Ne change JAMAIS de langue en cours de conversation sauf si l'utilisateur change de langue.
+- Si le message mélange plusieurs langues, utilise la langue dominante.
 - Utilise des emojis avec modération pour aérer les réponses.
 - Pour les calculs, sois précis. Pour les analyses, donne des recommandations concrètes.
 - Tu peux comparer des périodes, identifier des tendances, détecter des anomalies.
-- Si l'utilisateur demande un PDF ou rapport (mots-clés: ${pdfWords}), réponds UNIQUEMENT avec ce JSON exact sans aucun autre texte:
+- Si l'utilisateur demande un PDF ou rapport (mots-clés dans n'importe quelle langue: pdf, rapport, report, تقرير, تحميل, imprimir, bericht), réponds UNIQUEMENT avec ce JSON exact sans aucun autre texte:
   {"action":"pdf","type":"daily"} — rapport journalier
   {"action":"pdf","type":"weekly"} — rapport hebdomadaire
   {"action":"pdf","type":"credits"} — liste des créances
