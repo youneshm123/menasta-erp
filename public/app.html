@@ -1230,14 +1230,16 @@ function acRender(ns, items) {
   const dd = document.getElementById(ns + '-client-dropdown');
   if (!dd) return;
   dd.innerHTML = items.map(c => `
-    <div class="ac-item" onmousedown="acSelect('${ns}',${c.id},${JSON.stringify(c.name)})">
+    <div class="ac-item" onmousedown="event.preventDefault();acSelect('${ns}',${c.id},${JSON.stringify(c.name)})">
       <span class="ac-item-name">${c.name}</span>
-      <span class="ac-item-sub">${c.company||''}${c.balance_due>0?' · Solde: '+fmt(c.balance_due)+' MAD':''}</span>
-    </div>`).join('') || '<div class="ac-item" style="color:var(--muted)">Aucun client trouvé</div>';
+      <span class="ac-item-sub">${c.company ? c.company + ' · ' : ''}${c.balance_due > 0 ? 'Solde: ' + fmt(c.balance_due) + ' MAD' : 'Aucune dette'}</span>
+    </div>`).join('') || '<div class="ac-item muted" style="pointer-events:none;padding:10px 14px;">Aucun client trouvé</div>';
 }
 function acFilter(ns, val) {
-  const q = val.toLowerCase();
-  const filtered = S.clients.filter(c => c.name.toLowerCase().includes(q) || (c.company||'').toLowerCase().includes(q));
+  const q = val.toLowerCase().trim();
+  const filtered = q
+    ? S.clients.filter(c => c.name.toLowerCase().includes(q) || (c.company||'').toLowerCase().includes(q))
+    : S.clients;
   acRender(ns, filtered);
   acOpen(ns);
   if (!val) document.getElementById(ns + '-client-id').value = '';
@@ -1246,12 +1248,22 @@ function acSelect(ns, id, name) {
   document.getElementById(ns + '-client-input').value = name;
   document.getElementById(ns + '-client-id').value = id;
   acClose(ns);
+  document.getElementById(ns + '-client-input').focus();
 }
 function acOpen(ns) {
   const dd = document.getElementById(ns + '-client-dropdown');
-  if (dd) { acRender(ns, S.clients.filter(c => (c.name+c.company||'').toLowerCase().includes((document.getElementById(ns+'-client-input').value||'').toLowerCase()))); dd.classList.add('open'); }
+  if (!dd) return;
+  const inputVal = (document.getElementById(ns + '-client-input').value || '').toLowerCase();
+  const filtered = inputVal
+    ? S.clients.filter(c => c.name.toLowerCase().includes(inputVal) || (c.company||'').toLowerCase().includes(inputVal))
+    : S.clients;
+  acRender(ns, filtered);
+  dd.classList.add('open');
 }
-function acClose(ns) { const dd = document.getElementById(ns + '-client-dropdown'); if (dd) dd.classList.remove('open'); }
+function acClose(ns) {
+  const dd = document.getElementById(ns + '-client-dropdown');
+  if (dd) dd.classList.remove('open');
+}
 
 // ─── FUEL TOGGLE ────────────────────────────────────────────
 function csSelectFuel(type) {
@@ -1276,10 +1288,10 @@ function spFilter(val) {
 }
 function spRenderDD(items) {
   document.getElementById('sp-product-dropdown').innerHTML = items.map(p => `
-    <div class="ac-item" onmousedown="spSelect(${p.id},${JSON.stringify(p.name)},${p.price})">
+    <div class="ac-item" onmousedown="event.preventDefault();spSelect(${p.id},${JSON.stringify(p.name)},${p.price})">
       <span class="ac-item-name">${p.name}</span>
-      <span class="ac-item-sub">Stock: ${p.stock_qty} · Prix: ${p.price?.toFixed(2)} MAD</span>
-    </div>`).join('') || '<div class="ac-item" style="color:var(--muted)">Aucun produit en stock</div>';
+      <span class="ac-item-sub">Stock: ${p.stock_qty} u. · Prix: ${(p.price||0).toFixed(2)} MAD</span>
+    </div>`).join('') || '<div class="ac-item muted" style="pointer-events:none;padding:10px 14px;">Aucun produit en stock</div>';
 }
 function spSelect(id, name, price) {
   document.getElementById('sp-product-input').value = name;

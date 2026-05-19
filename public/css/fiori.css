@@ -806,13 +806,19 @@ body.lp-layout {
 
 /* Body */
 .modal-body {
-  padding: 20px; flex: 1; overflow-y: auto;
+  padding: 20px; flex: 1; overflow-y: auto; overflow-x: visible;
   display: flex; flex-direction: column; gap: 14px;
   background: var(--bg);
 }
 .modal-body::-webkit-scrollbar { width: 6px; }
 .modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
 .modal-body .fg input, .modal-body .fg select, .modal-body .fg textarea { background: var(--surface); }
+
+/* Autocomplete dropdown inside modal — must escape overflow */
+.modal-body .ac-dropdown {
+  position: absolute;
+  z-index: 9999;
+}
 
 /* Section divider inside dialog */
 .modal-section {
