@@ -18,7 +18,19 @@ async function start() {
 
   // ── Security headers ──
   app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc:  ["'self'"],
+        scriptSrc:   ["'self'", "cdn.jsdelivr.net", "'unsafe-inline'"],
+        styleSrc:    ["'self'", "fonts.googleapis.com", "'unsafe-inline'"],
+        fontSrc:     ["'self'", "fonts.gstatic.com"],
+        imgSrc:      ["'self'", "data:"],
+        connectSrc:  ["'self'"],
+        objectSrc:   ["'none'"],
+        frameSrc:    ["'none'"],
+        baseUri:     ["'self'"],
+      },
+    },
     crossOriginEmbedderPolicy: false,
   }));
 
@@ -134,11 +146,13 @@ async function start() {
 
   // ── Static files ──
   app.use(express.static(path.join(__dirname, 'public'), {
-    maxAge: '1h',
     etag: true,
     setHeaders: (res, filePath) => {
-      if (filePath.endsWith('.html') || filePath.endsWith('.css') || filePath.endsWith('.js')) {
+      if (filePath.endsWith('.html')) {
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      } else if (filePath.endsWith('.css') || filePath.endsWith('.js')) {
+        // versioned with ?v= query strings — safe to cache 1 year
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       }
     },
   }));
@@ -158,6 +172,7 @@ async function start() {
   app.use('/api/ai',        requireAuth, require('./routes/ai'));
 
   // Gérant and above
+
   app.use('/api/reports',   requireAuth, requireMinRole('gerant'), require('./routes/reports'));
   app.use('/api/stock',     requireAuth, requireMinRole('gerant'), require('./routes/stock'));
   app.use('/api/factures',  requireAuth, requireMinRole('gerant'), require('./routes/factures'));
@@ -165,7 +180,9 @@ async function start() {
   // Patron only
   app.use('/api/bank',      requireAuth, requireMinRole('patron'), require('./routes/bank'));
   app.use('/api/patron',    requireAuth, requireMinRole('patron'), require('./routes/patron'));
-  app.use('/api/ai',        require('./routes/ai'));
+
+  // Admin only
+  app.use('/api/admin',     requireAuth, requireMinRole('admin'), require('./routes/admin'));
 
   // ── Logs API ──
   app.get('/api/logs', requireAuth, requireMinRole('gerant'), async (req, res, next) => {
@@ -200,6 +217,7 @@ async function start() {
   app.get('/tabac',    page('tabac.html'));
   app.get('/factures', page('factures.html'));
   app.get('/patron',   page('patron.html'));
+  app.get('/admin',    page('admin.html'));
   app.get('/cuves',    page('cuves.html'));
   app.get('/logs',     page('logs.html'));
   app.get('/ai',       page('ai-chat.html'));

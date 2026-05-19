@@ -42,6 +42,12 @@ router.post('/', requireAuth, wrap(async (req, res) => {
   const { facture_date, client_name, client_adresse, client_ice, lignes, notes } = req.body || {};
   if (!client_name || !lignes || !lignes.length) return res.status(400).json({ error: 'Client et lignes requis' });
 
+  for (const l of lignes) {
+    const qty = +l.quantite, prix = +l.prix_ht, tva = +l.taux_tva;
+    if (!isFinite(qty) || qty < 0 || !isFinite(prix) || prix < 0 || !isFinite(tva) || tva < 0 || tva > 100)
+      return res.status(400).json({ error: 'Valeurs de ligne invalides (quantité, prix ou TVA)' });
+  }
+
   const yymm = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
   const { rows: [last] } = await pool.query(`SELECT COUNT(*) as c FROM factures WHERE facture_date >= $1`, [`${yymm}-01`]);
   const numero = genNumero(parseInt(last.c));
@@ -82,6 +88,12 @@ router.put('/:id', requireAuth, wrap(async (req, res) => {
 
   const { facture_date, client_name, client_adresse, client_ice, lignes, notes } = req.body || {};
   if (!client_name || !lignes || !lignes.length) return res.status(400).json({ error: 'Client et lignes requis' });
+
+  for (const l of lignes) {
+    const qty = +l.quantite, prix = +l.prix_ht, tva = +l.taux_tva;
+    if (!isFinite(qty) || qty < 0 || !isFinite(prix) || prix < 0 || !isFinite(tva) || tva < 0 || tva > 100)
+      return res.status(400).json({ error: 'Valeurs de ligne invalides (quantité, prix ou TVA)' });
+  }
 
   let total_ht = 0, montant_tva = 0, total_ttc = 0;
   for (const l of lignes) {

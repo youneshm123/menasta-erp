@@ -6,8 +6,8 @@
 <title>MENASTA — Factures</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=24"/>
-<script src="/js/shell-init.js?v=2" defer></script>
+<link rel="stylesheet" href="/css/fiori.css?v=25"/>
+<script src="/js/shell-init.js?v=3" defer></script>
 <script src="/js/modal-init.js?v=1" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -58,6 +58,7 @@
     <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
     <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
     <a href="/factures" class="fs-nav-item active"><span class="fn-icon">🧾</span> Factures</a>
+    <a href="/admin"    class="fs-nav-item"><span class="fn-icon">⚙️</span> Admin</a>
     <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> IA</a>
   </nav>
   <div class="fs-actions">
@@ -130,12 +131,12 @@
         <table class="lignes-table" id="lignes-table">
           <thead>
             <tr>
-              <th style="width:90px">Code Prod.</th>
+              <th style="width:80px">Code Prod.</th>
               <th>Désignation</th>
-              <th style="width:80px">Quantité</th>
+              <th style="width:120px;background:#FFF7ED;color:#C2410C" title="Entrez le montant TTC → quantité calculée auto">💰 Montant TTC</th>
               <th style="width:100px">Prix U. HT</th>
-              <th style="width:80px">TVA %</th>
-              <th style="width:110px" title="Entrez le montant total TTC pour calculer la quantité automatiquement">Montant TTC Saisi</th>
+              <th style="width:70px">TVA %</th>
+              <th style="width:90px;background:#F0FDF4;color:#15803D" title="Calculé automatiquement">Qté (auto)</th>
               <th style="width:90px" class="num">Total HT</th>
               <th style="width:90px" class="num">TTC</th>
               <th style="width:36px"></th>
@@ -212,6 +213,9 @@
 const token = localStorage.getItem('fm_token');
 const user = JSON.parse(localStorage.getItem('fm_user') || 'null');
 if (!token) location.href = '/';
+
+// XSS escape — applied to all user/DB data interpolated into HTML
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
 const A = (url, opt={}) => fetch(url, { headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, ...opt }).then(r => r.json());
 const fmt = (n, d=2) => (parseFloat(n)||0).toFixed(d);
@@ -359,10 +363,10 @@ function addLigne() {
   tr.innerHTML = `
     <td><input type="text" placeholder="100002" data-f="code" oninput="recalcLignes()"/></td>
     <td><input type="text" placeholder="GASOIL" data-f="designation" oninput="recalcLignes()"/></td>
-    <td><input type="number" value="1" min="0" step="0.01" data-f="quantite" oninput="recalcLigne(${id})"/></td>
-    <td><input type="number" value="0" min="0" step="0.01" data-f="prix_ht" oninput="recalcLigne(${id})"/></td>
-    <td><input type="number" value="10" min="0" step="1" data-f="taux_tva" oninput="recalcLigne(${id})"/></td>
-    <td><input type="number" min="0" step="0.01" data-f="montant_saisi" placeholder="Montant TTC" title="Entrez le montant TTC total → quantité calculée auto" style="background:#FFFBEB;border-color:#FDE68A" oninput="calcQtyFromMontant(${id})"/></td>
+    <td><input type="number" min="0" step="0.01" data-f="montant_saisi" placeholder="ex: 5000.00" title="Entrez le montant TTC → quantité auto" style="background:#FFF7ED;border-color:#FB923C;font-weight:700;font-size:14px" oninput="calcQtyFromMontant(${id})"/></td>
+    <td><input type="number" value="0" min="0" step="0.01" data-f="prix_ht" oninput="calcQtyFromMontant(${id})"/></td>
+    <td><input type="number" value="10" min="0" step="1" data-f="taux_tva" oninput="calcQtyFromMontant(${id})"/></td>
+    <td><input type="number" value="0" min="0" step="0.0001" data-f="quantite" id="qty-${id}" readonly style="background:#F0FDF4;border-color:#86EFAC;color:#15803D;font-weight:700;cursor:default" title="Calculé auto depuis Montant TTC"/></td>
     <td class="num" id="l-ht-${id}" style="font-weight:700">0.00</td>
     <td class="num" id="l-ttc-${id}" style="font-weight:700;color:var(--blue)">0.00</td>
     <td><button class="btn btn-d btn-xs" onclick="removeLigne(${id})">×</button></td>
@@ -376,10 +380,14 @@ function calcQtyFromMontant(id) {
   const montant = parseFloat(tr.querySelector('[data-f=montant_saisi]').value) || 0;
   const prix    = parseFloat(tr.querySelector('[data-f=prix_ht]').value) || 0;
   const tva     = parseFloat(tr.querySelector('[data-f=taux_tva]').value) || 0;
-  if (!montant || !prix) return;
-  const prixTtc = prix * (1 + tva / 100);
-  const qty = montant / prixTtc;
-  tr.querySelector('[data-f=quantite]').value = fmt(qty, 4);
+  const qtyEl   = tr.querySelector('[data-f=quantite]');
+  if (montant && prix) {
+    const prixTtc = prix * (1 + tva / 100);
+    const qty = montant / prixTtc;
+    qtyEl.value = fmt(qty, 4);
+  } else if (!montant) {
+    qtyEl.value = '0';
+  }
   recalcLigne(id);
 }
 
@@ -480,10 +488,10 @@ async function editFacture(id) {
     tr.innerHTML = `
       <td><input type="text" data-f="code" value="${l.code_produit||''}" oninput="recalcLignes()"/></td>
       <td><input type="text" data-f="designation" value="${l.designation||''}" oninput="recalcLignes()"/></td>
-      <td><input type="number" step="0.01" data-f="quantite" value="${fmt(l.quantite,4)}" oninput="recalcLigne(${id2})"/></td>
-      <td><input type="number" step="0.01" data-f="prix_ht" value="${fmt(l.prix_ht)}" oninput="recalcLigne(${id2})"/></td>
-      <td><input type="number" step="1" data-f="taux_tva" value="${l.taux_tva||10}" oninput="recalcLigne(${id2})"/></td>
-      <td><input type="number" step="0.01" data-f="montant_saisi" placeholder="Montant TTC" style="background:#FFFBEB;border-color:#FDE68A" oninput="calcQtyFromMontant(${id2})"/></td>
+      <td><input type="number" step="0.01" data-f="montant_saisi" value="${fmt(l.montant_ttc)}" placeholder="ex: 5000.00" style="background:#FFF7ED;border-color:#FB923C;font-weight:700;font-size:14px" oninput="calcQtyFromMontant(${id2})"/></td>
+      <td><input type="number" step="0.01" data-f="prix_ht" value="${fmt(l.prix_ht)}" oninput="calcQtyFromMontant(${id2})"/></td>
+      <td><input type="number" step="1" data-f="taux_tva" value="${l.taux_tva||10}" oninput="calcQtyFromMontant(${id2})"/></td>
+      <td><input type="number" step="0.0001" data-f="quantite" id="qty-${id2}" value="${fmt(l.quantite,4)}" readonly style="background:#F0FDF4;border-color:#86EFAC;color:#15803D;font-weight:700;cursor:default" title="Calculé auto"/></td>
       <td class="num" id="l-ht-${id2}" style="font-weight:700">${fmt(l.total_ht)}</td>
       <td class="num" id="l-ttc-${id2}" style="font-weight:700;color:var(--blue)">${fmt(l.montant_ttc)}</td>
       <td><button class="btn btn-d btn-xs" onclick="removeLigne(${id2})">×</button></td>
@@ -558,8 +566,8 @@ function montantEnLettres(n) {
 function buildPrintHtml(f) {
   const lignesHtml = f.lignes.map((l, i) => `
     <tr style="background:${i%2===0?'#fff':'#F9FAFB'}">
-      <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:12px;color:#6B7280">${l.code_produit||''}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;font-weight:600">${l.designation}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:12px;color:#6B7280">${esc(l.code_produit)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;font-weight:600">${esc(l.designation)}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;text-align:center;font-size:12px">${fmt(l.quantite,0)}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;text-align:right;font-size:12px">${fmt(l.prix_ht)}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;text-align:center;font-size:12px">${fmt(l.taux_tva,0)}%</td>
@@ -587,13 +595,25 @@ function buildPrintHtml(f) {
     <!-- HEADER -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;padding-bottom:20px;border-bottom:3px solid #1A2332">
       <!-- LOGO -->
-      <div style="display:flex;align-items:center;gap:16px">
-        <div style="width:62px;height:62px;background:linear-gradient(135deg,#1A2332 60%,#0070F2);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(26,35,50,.25)">
-          <span style="font-size:30px">⛽</span>
-        </div>
+      <div style="display:flex;align-items:center;gap:18px">
+        <svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;border-radius:14px;box-shadow:0 4px 18px rgba(26,35,50,.28)">
+          <rect width="72" height="72" rx="14" fill="#1A2332"/>
+          <rect x="0" y="54" width="72" height="18" rx="0" fill="#E65100"/>
+          <rect x="0" y="54" width="72" height="4" fill="#FF7043"/>
+          <!-- pump body -->
+          <rect x="18" y="18" width="22" height="28" rx="3" fill="#0070F2"/>
+          <rect x="20" y="20" width="18" height="10" rx="2" fill="#93C5FD"/>
+          <!-- nozzle -->
+          <rect x="40" y="26" width="10" height="4" rx="2" fill="#60A5FA"/>
+          <rect x="48" y="22" width="4" height="8" rx="2" fill="#60A5FA"/>
+          <!-- base -->
+          <rect x="14" y="46" width="30" height="4" rx="2" fill="#0070F2"/>
+          <!-- text MENASTA -->
+          <text x="36" y="64" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" font-weight="900" fill="#fff" letter-spacing="1">MENASTA</text>
+        </svg>
         <div>
-          <div style="font-size:20px;font-weight:900;letter-spacing:.5px;color:#1A2332;line-height:1.1">STE MENASTA SARL AU</div>
-          <div style="font-size:11px;color:#6B7280;margin-top:3px">Station Service — Kenitra, Maroc</div>
+          <div style="font-size:26px;font-weight:900;letter-spacing:.5px;color:#1A2332;line-height:1.1">STE MENASTA SARL AU</div>
+          <div style="font-size:11px;color:#6B7280;margin-top:4px">Station Service — Kenitra, Maroc</div>
           <div style="margin-top:6px;font-size:10.5px;color:#6B7280;line-height:1.7">
             RC : 67019 &nbsp;·&nbsp; IF : 53221208 &nbsp;·&nbsp; ICE : 003172239000062
           </div>
@@ -601,9 +621,9 @@ function buildPrintHtml(f) {
       </div>
       <!-- FACTURE BADGE -->
       <div style="text-align:right">
-        <div style="background:linear-gradient(135deg,#1A2332,#0070F2);color:#fff;padding:10px 26px;border-radius:8px;font-size:20px;font-weight:900;letter-spacing:4px;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,112,242,.3)">FACTURE</div>
-        <div style="font-size:14px;font-weight:800;color:#1A2332">${f.numero}</div>
-        <div style="font-size:11px;color:#6B7280;margin-top:3px">${dateStr}</div>
+        <div style="background:linear-gradient(135deg,#1A2332,#0070F2);color:#fff;padding:14px 32px;border-radius:10px;font-size:30px;font-weight:900;letter-spacing:5px;margin-bottom:12px;box-shadow:0 6px 20px rgba(0,112,242,.35)">FACTURE</div>
+        <div style="font-size:15px;font-weight:800;color:#1A2332">${esc(f.numero)}</div>
+        <div style="font-size:11px;color:#6B7280;margin-top:3px">${esc(dateStr)}</div>
       </div>
     </div>
 
@@ -611,14 +631,14 @@ function buildPrintHtml(f) {
     <div style="display:flex;gap:16px;margin-bottom:24px">
       <div style="flex:1;background:#F8FAFF;border:1px solid #DBEAFE;border-radius:8px;padding:14px 16px">
         <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:#6B7280;margin-bottom:8px">Facturé à</div>
-        <div style="font-size:14px;font-weight:800;color:#1A2332;margin-bottom:4px">${f.client_name}</div>
-        ${f.client_adresse ? `<div style="font-size:12px;color:#6B7280">${f.client_adresse}</div>` : ''}
-        ${f.client_ice ? `<div style="font-size:11px;color:#6B7280;margin-top:4px">ICE : <strong style="color:#1A2332">${f.client_ice}</strong></div>` : ''}
+        <div style="font-size:14px;font-weight:800;color:#1A2332;margin-bottom:4px">${esc(f.client_name)}</div>
+        ${f.client_adresse ? `<div style="font-size:12px;color:#6B7280">${esc(f.client_adresse)}</div>` : ''}
+        ${f.client_ice ? `<div style="font-size:11px;color:#6B7280;margin-top:4px">ICE : <strong style="color:#1A2332">${esc(f.client_ice)}</strong></div>` : ''}
       </div>
       <div style="width:200px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:14px 16px">
         <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:#6B7280;margin-bottom:8px">Détails</div>
-        <div style="font-size:11px;margin-bottom:5px"><span style="color:#6B7280">Facture N° :</span> <strong>${f.numero}</strong></div>
-        <div style="font-size:11px;margin-bottom:5px"><span style="color:#6B7280">Date :</span> <strong>${f.facture_date}</strong></div>
+        <div style="font-size:11px;margin-bottom:5px"><span style="color:#6B7280">Facture N° :</span> <strong>${esc(f.numero)}</strong></div>
+        <div style="font-size:11px;margin-bottom:5px"><span style="color:#6B7280">Date :</span> <strong>${esc(f.facture_date)}</strong></div>
         <div style="font-size:11px"><span style="color:#6B7280">Conditions :</span> <strong>À vue</strong></div>
       </div>
     </div>
@@ -675,9 +695,9 @@ function buildPrintHtml(f) {
           <span style="color:#6B7280;font-size:12px">Montant TVA</span>
           <span style="font-size:13px">${fmt(f.montant_tva)} MAD</span>
         </div>
-        <div style="display:flex;justify-content:space-between;padding:12px 14px;background:#1A2332;border-radius:6px;margin-top:4px">
-          <span style="color:#fff;font-weight:800;font-size:14px">Total TTC</span>
-          <span style="color:#fff;font-weight:900;font-size:16px">${fmt(f.total_ttc)} MAD</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:linear-gradient(135deg,#1A2332,#0070F2);border-radius:8px;margin-top:4px;box-shadow:0 4px 14px rgba(0,112,242,.25)">
+          <span style="color:#fff;font-weight:800;font-size:16px;letter-spacing:.5px">Total TTC</span>
+          <span style="color:#fff;font-weight:900;font-size:22px">${fmt(f.total_ttc)} MAD</span>
         </div>
       </div>
     </div>
@@ -689,9 +709,17 @@ function buildPrintHtml(f) {
     </div>
 
     <!-- FOOTER -->
-    <div style="display:flex;align-items:center;justify-content:center;gap:10px;border-top:2px solid #1A2332;padding-top:12px;margin-top:8px">
-      <span style="font-size:18px">⛽</span>
-      <span style="font-size:10.5px;color:#6B7280;letter-spacing:.3px">STE MENASTA SARL AU &nbsp;·&nbsp; Kenitra, Maroc &nbsp;·&nbsp; ICE : 003172239000062</span>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;border-top:3px solid #1A2332;padding-top:14px;margin-top:8px">
+      <svg width="28" height="28" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px">
+        <rect width="72" height="72" rx="10" fill="#1A2332"/>
+        <rect x="0" y="58" width="72" height="14" fill="#E65100"/>
+        <rect x="18" y="16" width="22" height="30" rx="3" fill="#0070F2"/>
+        <rect x="20" y="18" width="18" height="11" rx="2" fill="#93C5FD"/>
+        <rect x="40" y="25" width="10" height="4" rx="2" fill="#60A5FA"/>
+        <rect x="48" y="21" width="4" height="8" rx="2" fill="#60A5FA"/>
+        <rect x="14" y="46" width="30" height="4" rx="2" fill="#0070F2"/>
+      </svg>
+      <span style="font-size:11px;color:#6B7280;letter-spacing:.3px;font-weight:600">STE MENASTA SARL AU &nbsp;·&nbsp; Kenitra, Maroc &nbsp;·&nbsp; ICE : 003172239000062</span>
     </div>
   </div>`;
 }

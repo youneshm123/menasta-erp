@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="description" content="MENASTA ERP — Connexion au système de gestion de la station service"/>
+<meta name="theme-color" content="#354a5e"/>
 <title>MENASTA — Connexion</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23354a5e'/><text y='23' x='6' font-size='20'>⛽</text></svg>"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -118,6 +121,16 @@ body{display:flex;flex-direction:column;min-height:100vh}
 }
 .fld input::placeholder{color:var(--disabled)}
 
+.pwd-wrap { position: relative; }
+.pwd-wrap input { padding-right: 42px; }
+.pwd-toggle {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; padding: 4px;
+  color: var(--subtle); font-size: 16px; line-height: 1;
+  border-radius: 4px; transition: color .12s;
+}
+.pwd-toggle:hover { color: var(--text); }
+
 .err-box{
   display:none;background:var(--red-lt);
   border-left:4px solid var(--red);
@@ -212,7 +225,10 @@ body{display:flex;flex-direction:column;min-height:100vh}
       </div>
       <div class="fld">
         <label for="pwd">Mot de passe</label>
-        <input id="pwd" type="password" placeholder="••••••••" autocomplete="current-password"/>
+        <div class="pwd-wrap">
+          <input id="pwd" type="password" placeholder="••••••••" autocomplete="current-password"/>
+          <button type="button" class="pwd-toggle" id="pwd-toggle" aria-label="Afficher le mot de passe">👁</button>
+        </div>
       </div>
 
       <button class="btn-login" id="btn-login">Se connecter</button>
@@ -226,9 +242,18 @@ body{display:flex;flex-direction:column;min-height:100vh}
 </div>
 
 <script>
-const btn    = document.getElementById('btn-login');
-const errBox = document.getElementById('err-box');
-const errMsg = document.getElementById('err-msg');
+const btn       = document.getElementById('btn-login');
+const errBox    = document.getElementById('err-box');
+const errMsg    = document.getElementById('err-msg');
+const pwdInput  = document.getElementById('pwd');
+const pwdToggle = document.getElementById('pwd-toggle');
+
+pwdToggle.addEventListener('click', () => {
+  const show = pwdInput.type === 'password';
+  pwdInput.type = show ? 'text' : 'password';
+  pwdToggle.textContent = show ? '🙈' : '👁';
+  pwdToggle.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+});
 
 function showErr(msg) { errMsg.textContent = msg; errBox.classList.add('show'); }
 function hideErr()    { errBox.classList.remove('show'); }

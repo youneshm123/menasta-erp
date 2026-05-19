@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
@@ -6,8 +6,8 @@
 <title>MENASTA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=24"/>
-<script src="/js/shell-init.js?v=2" defer></script>
+<link rel="stylesheet" href="/css/fiori.css?v=25"/>
+<script src="/js/shell-init.js?v=3" defer></script>
 <script src="/js/modal-init.js?v=1" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -40,6 +40,7 @@
     <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
     <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
     <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
+    <a href="/admin"    class="fs-nav-item"><span class="fn-icon">⚙️</span> Admin</a>
     <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> IA</a>
   </nav>
   <div class="fs-actions">
@@ -177,6 +178,17 @@
               <button class="btn btn-p btn-sm" onclick="openModal('m-add-product')">+ Ajouter</button>
             </div>
           </div>
+          <!-- Search bar -->
+          <div style="padding:10px 16px 4px;border-bottom:1px solid var(--border-lt);">
+            <div style="position:relative;max-width:360px;">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none;">🔍</span>
+              <input id="products-search" type="text" placeholder="Rechercher par nom, référence ou catégorie…"
+                style="width:100%;padding:8px 12px 8px 34px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13.5px;font-family:var(--font);background:var(--surface);outline:none;box-sizing:border-box;"
+                oninput="filterProducts(this.value)"
+                onfocus="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 2px var(--blue-ring)'"
+                onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'"/>
+            </div>
+          </div>
           <div class="s-body-flush" style="overflow-x:auto">
             <table class="t" id="products-tbl">
               <thead><tr><th>Réf.</th><th>Produit</th><th>Catégorie</th><th>Unité</th><th class="num">Prix (MAD)</th><th class="num">Stock</th><th>Statut Stock</th><th></th></tr></thead>
@@ -266,7 +278,7 @@
             <div class="s-title">🚛 Historique Livraisons</div>
             <div class="fxg">
               <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('stock-tbl','Livraisons Carburant')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('stock-tbl','Livraisons Carburant')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('stock-tbl','Livraisons Carburant')">📝 Word</button></div>
-              <button class="btn btn-p btn-sm" onclick="openModal('m-add-delivery')">+ Livraison</button>
+              <button class="btn btn-p btn-sm" onclick="openDeliveryModal()">+ Livraison</button>
             </div>
           </div>
           <div class="s-body-flush" style="overflow-x:auto">
@@ -364,7 +376,6 @@
           <label>Client</label>
           <div class="ac-wrap">
             <input class="ac-input" id="cs-client-input" placeholder="Tapez le nom du client…" autocomplete="off" oninput="acFilter('cs',this.value)" onfocus="acOpen('cs')"/>
-            <div class="ac-dropdown" id="cs-client-dropdown"></div>
             <input type="hidden" id="cs-client-id"/>
           </div>
         </div>
@@ -448,7 +459,6 @@
         <label>Produit</label>
         <div class="ac-wrap">
           <input class="ac-input" id="sp-product-input" placeholder="Tapez le nom du produit…" autocomplete="off" oninput="spFilter(this.value)" onfocus="spOpen()"/>
-          <div class="ac-dropdown" id="sp-product-dropdown"></div>
           <input type="hidden" id="sp-product-id"/>
           <input type="hidden" id="sp-product-price"/>
         </div>
@@ -588,7 +598,7 @@
         </div>
         <div class="fg"><label>Quantité *</label><input type="number" id="dl-qty" placeholder="0.0" step="0.01" oninput="updateDlPreview()"/></div>
         <div class="fg"><label>Prix d'achat (MAD/L)</label><input type="number" id="dl-cost" placeholder="ex: 8.50" step="0.001" min="0"/></div>
-        <div class="fg" style="grid-column:1/-1" id="dl-preview" style="display:none"></div>
+        <div class="fg" style="grid-column:1/-1;display:none" id="dl-preview"></div>
         <div class="fg"><label>Fournisseur</label><input id="dl-supplier" placeholder="Nom du fournisseur"/></div>
         <div class="fg"><label>N° Chèque (si paiement par chèque)</label><input id="dl-cheque" placeholder="Ex: 0012345"/></div>
         <div class="fg" style="grid-column:1/-1"><label>Notes</label><input id="dl-notes" placeholder="facultatif"/></div>
@@ -664,8 +674,14 @@ function toast(msg, type = 'ok') {
 }
 
 // ─── MODALS ─────────────────────────────────────────────────
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id)  {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  // Hide the autocomplete portal when any modal closes
+  if (typeof _acPortalHide === 'function') _acPortalHide();
+}
 document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); }));
 
 // ─── NAV ────────────────────────────────────────────────────
@@ -899,7 +915,97 @@ async function loadShiftPage() {
           </tr>`).join('')}
         </tbody></table>
       </div>
-    </div>` : ''}`;
+    </div>` : ''}
+
+    <!-- ── DÉPENSES DU POSTE ── -->
+    <div class="section" style="margin-top:20px;" id="shift-depenses-section">
+      <div class="s-head">
+        <div class="s-title">💸 Dépenses du Poste</div>
+        <span style="font-size:12px;color:var(--muted);">Enregistrées automatiquement dans la page Dépenses</span>
+      </div>
+      <div style="padding:16px;border-bottom:1px solid var(--border-lt);">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Catégorie</label>
+            <select id="sd-cat" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13.5px;font-family:var(--font);background:var(--surface);">
+              <option>Maintenance</option><option>Salaires</option><option>Fournitures</option><option>Carburant</option><option>Loyer</option><option>Autre</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Montant (MAD) *</label>
+            <input type="number" id="sd-amount" placeholder="0.00" step="0.01" min="0"
+              style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13.5px;font-family:var(--font);background:var(--surface);box-sizing:border-box;"
+              onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/>
+          </div>
+          <div style="grid-column:1/-1;">
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Description *</label>
+            <input type="text" id="sd-desc" placeholder="Ex: Réparation pompe, achat fournitures…"
+              style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13.5px;font-family:var(--font);background:var(--surface);box-sizing:border-box;"
+              onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"
+              onkeydown="if(event.key==='Enter') shiftAddDepense()"/>
+          </div>
+        </div>
+        <button class="btn btn-p" style="width:100%;font-size:14px;" onclick="shiftAddDepense()">💸 Enregistrer la Dépense</button>
+      </div>
+      <div id="sd-list" style="max-height:220px;overflow-y:auto;"></div>
+    </div>`;
+  // Load today's expenses into the shift depenses list
+  shiftLoadDepenses();
+}
+
+// ─── DÉPENSES DU POSTE ──────────────────────────────────────
+async function shiftLoadDepenses() {
+  const list = document.getElementById('sd-list');
+  if (!list) return;
+  try {
+    const expenses = await api('GET', '/expenses');
+    const today = new Date().toISOString().slice(0,10);
+    const todayExp = expenses.filter(e => e.expense_date === today);
+    if (!todayExp.length) {
+      list.innerHTML = '<div style="padding:14px 16px;color:var(--muted);font-size:13px;text-align:center;">Aucune dépense aujourd\'hui</div>';
+      return;
+    }
+    list.innerHTML = todayExp.map(e => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-lt);">
+        <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg2);color:var(--muted);white-space:nowrap;">${e.category}</span>
+        <span style="flex:1;font-size:13px;font-weight:600;color:var(--text);">${e.description}</span>
+        <span style="font-size:13px;font-weight:800;color:var(--red);white-space:nowrap;">-${fmt(e.amount)} MAD</span>
+        <button class="btn btn-d btn-xs" onclick="shiftDeleteDepense(${e.id})">✕</button>
+      </div>`).join('');
+  } catch(e) { /* silent */ }
+}
+
+async function shiftAddDepense() {
+  const desc   = (document.getElementById('sd-desc')?.value || '').trim();
+  const amount = parseFloat(document.getElementById('sd-amount')?.value || 0);
+  const cat    = document.getElementById('sd-cat')?.value || 'Autre';
+  if (!desc)            { toast('Description requise', 'wn'); return; }
+  if (!amount || amount <= 0) { toast('Montant invalide', 'er'); return; }
+  try {
+    await api('POST', '/expenses', {
+      category: cat,
+      description: desc,
+      amount,
+      expense_date: new Date().toISOString().slice(0,10),
+      notes: ''
+    });
+    document.getElementById('sd-desc').value   = '';
+    document.getElementById('sd-amount').value = '';
+    toast('Dépense enregistrée ✓');
+    shiftLoadDepenses();
+    // Refresh main expenses page if it's active
+    if (document.querySelector('#p-expenses.active')) loadExpenses();
+  } catch(e) { toast(e.message, 'er'); }
+}
+
+async function shiftDeleteDepense(id) {
+  if (!confirm('Supprimer cette dépense ?')) return;
+  try {
+    await api('DELETE', '/expenses/' + id);
+    toast('Dépense supprimée');
+    shiftLoadDepenses();
+    if (document.querySelector('#p-expenses.active')) loadExpenses();
+  } catch(e) { toast(e.message, 'er'); }
 }
 
 // ─── OPEN SHIFT ─────────────────────────────────────────────
@@ -1150,7 +1256,6 @@ function csAddToList() {
   if (!clientId)             { toast('Sélectionnez un client', 'wn'); return; }
   if (!_csFuelType)          { toast('Choisissez le type (Gazoil / Essence / Lubrifiant)', 'wn'); return; }
   if (!amount || amount <= 0){ toast('Montant invalide', 'er'); return; }
-  if (_csFuelType !== 'lubrifiant' && !pumpId) { toast('Sélectionnez le carburant', 'wn'); return; }
   csPending.push({ client_id: clientId, client_name: clientName, pump_id: pumpId ? parseInt(pumpId) : null, product_type: _csFuelType, amount, notes });
   document.getElementById('cs-client-input').value = '';
   document.getElementById('cs-client-id').value = '';
@@ -1225,38 +1330,86 @@ function populateCreditSaleModal() {
   acRender('cs', S.clients);
 }
 
-// ─── AUTOCOMPLETE: CLIENTS ──────────────────────────────────
-// Uses position:fixed so the dropdown escapes overflow:hidden on modal
-function acPositionDD(ns) {
-  const inp = document.getElementById(ns + '-client-input');
-  const dd  = document.getElementById(ns + '-client-dropdown');
-  if (!inp || !dd) return;
-  const r = inp.getBoundingClientRect();
-  dd.style.position = 'fixed';
-  dd.style.top      = (r.bottom + 2) + 'px';
-  dd.style.left     = r.left + 'px';
-  dd.style.width    = r.width + 'px';
-  dd.style.zIndex   = '99999';
-}
+// ─── AUTOCOMPLETE PORTAL ─────────────────────────────────────
+// Single dropdown div attached to document.body — completely outside the
+// modal DOM so CSS transform / overflow:hidden on .modal cannot affect it.
+(function () {
+  const portal = document.createElement('div');
+  portal.id = 'ac-portal';
+  portal.className = 'ac-dropdown';
+  portal.style.cssText = 'position:fixed;z-index:99999;display:none;min-width:200px;';
+  document.body.appendChild(portal);
 
-function acRender(ns, items) {
-  const dd = document.getElementById(ns + '-client-dropdown');
-  if (!dd) return;
-  dd.innerHTML = items.length
-    ? items.map(c => `<div class="ac-item" data-id="${c.id}" data-name="${(c.name||'').replace(/"/g,'&quot;')}" data-ns="${ns}">
-        <span class="ac-item-name">${c.name}</span>
-        <span class="ac-item-sub">${c.company ? c.company + ' · ' : ''}${c.balance_due > 0 ? 'Solde: ' + fmt(c.balance_due) + ' MAD' : ''}</span>
-      </div>`).join('')
-    : '<div style="padding:10px 14px;color:var(--muted);font-size:13px;">Aucun client trouvé</div>';
-}
+  let _ns = null, _type = null;
+
+  // Item click — mousedown + preventDefault so input blur never fires first
+  portal.addEventListener('mousedown', function (e) {
+    const item = e.target.closest('[data-id]');
+    if (!item) return;
+    e.preventDefault();
+    if (_type === 'sp') {
+      spSelect(item.dataset.id, item.dataset.name, parseFloat(item.dataset.price) || 0);
+    } else {
+      acSelect(_ns, item.dataset.id, item.dataset.name);
+    }
+  });
+
+  // Click outside → hide
+  document.addEventListener('mousedown', function (e) {
+    if (!portal.classList.contains('open')) return;
+    if (portal.contains(e.target)) return;
+    // allow clicks on ac-input to re-trigger onfocus without hiding first
+    if (e.target.classList.contains('ac-input')) return;
+    _hide();
+  });
+
+  function _show(ns, type, inp, items) {
+    _ns = ns; _type = type;
+    const r = inp.getBoundingClientRect();
+    portal.style.top   = (r.bottom + 2) + 'px';
+    portal.style.left  = r.left + 'px';
+    portal.style.width = r.width + 'px';
+    portal.style.display = '';
+    if (items.length) {
+      portal.innerHTML = items.map(function (it) {
+        if (type === 'sp') {
+          return '<div class="ac-item" data-id="' + it.id + '" data-name="' + (it.name||'').replace(/"/g,'&quot;') + '" data-price="' + (it.price||0) + '">'
+            + '<span class="ac-item-name">' + it.name + '</span>'
+            + '<span class="ac-item-sub">Stock : ' + it.stock_qty + ' u. · Prix : ' + (it.price||0).toFixed(2) + ' MAD</span>'
+            + '</div>';
+        } else {
+          return '<div class="ac-item" data-id="' + it.id + '" data-name="' + (it.name||'').replace(/"/g,'&quot;') + '">'
+            + '<span class="ac-item-name">' + it.name + '</span>'
+            + '<span class="ac-item-sub">' + (it.company ? it.company + ' · ' : '') + (it.balance_due > 0 ? 'Solde : ' + fmt(it.balance_due) + ' MAD' : '') + '</span>'
+            + '</div>';
+        }
+      }).join('');
+    } else {
+      portal.innerHTML = '<div style="padding:10px 14px;color:var(--muted);font-size:13px;">Aucun résultat</div>';
+    }
+    portal.classList.add('open');
+  }
+
+  function _hide() {
+    portal.classList.remove('open');
+    portal.style.display = 'none';
+    _ns = null; _type = null;
+  }
+
+  window._acPortalShow = _show;
+  window._acPortalHide = _hide;
+})();
+
+// ─── AUTOCOMPLETE: CLIENTS ──────────────────────────────────
+function acRender(ns, items) { /* no-op — portal renders on demand */ }
 
 function acFilter(ns, val) {
   const q = (val || '').toLowerCase().trim();
   const filtered = q
     ? S.clients.filter(c => c.name.toLowerCase().includes(q) || (c.company||'').toLowerCase().includes(q))
     : S.clients;
-  acRender(ns, filtered);
-  acOpen(ns);
+  const inp = document.getElementById(ns + '-client-input');
+  if (inp) _acPortalShow(ns, 'client', inp, filtered);
   if (!val) document.getElementById(ns + '-client-id').value = '';
 }
 
@@ -1265,49 +1418,20 @@ function acSelect(ns, id, name) {
   const hid = document.getElementById(ns + '-client-id');
   if (inp) inp.value = name;
   if (hid) hid.value = id;
-  acClose(ns);
+  _acPortalHide();
 }
 
 function acOpen(ns) {
   const inp = document.getElementById(ns + '-client-input');
-  const dd  = document.getElementById(ns + '-client-dropdown');
-  if (!dd) return;
-  const inputVal = (inp ? inp.value : '').toLowerCase().trim();
-  const filtered = inputVal
-    ? S.clients.filter(c => c.name.toLowerCase().includes(inputVal) || (c.company||'').toLowerCase().includes(inputVal))
+  if (!inp) return;
+  const q = inp.value.toLowerCase().trim();
+  const filtered = q
+    ? S.clients.filter(c => c.name.toLowerCase().includes(q) || (c.company||'').toLowerCase().includes(q))
     : S.clients;
-  acRender(ns, filtered);
-  acPositionDD(ns);
-  dd.classList.add('open');
+  _acPortalShow(ns, 'client', inp, filtered);
 }
 
-function acClose(ns) {
-  const dd = document.getElementById(ns + '-client-dropdown');
-  if (dd) dd.classList.remove('open');
-}
-
-// Global click delegation for ALL autocomplete dropdowns
-// Using mousedown + preventDefault keeps the input focused, so blur doesn't fire
-document.addEventListener('mousedown', function(e) {
-  const item = e.target.closest('.ac-item[data-id]');
-  if (item) {
-    e.preventDefault();
-    const ns    = item.dataset.ns;
-    const id    = item.dataset.id;
-    const name  = item.dataset.name;
-    const price = item.dataset.price;
-    if (ns === 'sp') {
-      spSelect(id, name, price);
-    } else {
-      acSelect(ns, id, name);
-    }
-    return;
-  }
-  // Close dropdowns when clicking outside
-  document.querySelectorAll('.ac-dropdown.open').forEach(dd => {
-    if (!dd.contains(e.target)) dd.classList.remove('open');
-  });
-});
+function acClose(ns) { _acPortalHide(); }
 
 // ─── FUEL TOGGLE ────────────────────────────────────────────
 function csSelectFuel(type) {
@@ -1317,57 +1441,41 @@ function csSelectFuel(type) {
   document.getElementById('cs-pump-id').value = '';
   _csFuelType = type;
   if (type === 'lubrifiant') return;
+  // Auto-fill pump if one is active for this fuel type — but pump is optional
   const pump = S.pumps.find(p => p.status === 'active' && (p.fuel_name||'').toLowerCase().includes(type));
-  if (!pump) { toast('Aucune pompe ' + type + ' active', 'wn'); return; }
-  document.getElementById('cs-pump-id').value = pump.id;
+  if (pump) document.getElementById('cs-pump-id').value = pump.id;
 }
 
 // ─── AUTOCOMPLETE: PRODUCTS ─────────────────────────────────
-function spPositionDD() {
-  const inp = document.getElementById('sp-product-input');
-  const dd  = document.getElementById('sp-product-dropdown');
-  if (!inp || !dd) return;
-  const r = inp.getBoundingClientRect();
-  dd.style.position = 'fixed';
-  dd.style.top      = (r.bottom + 2) + 'px';
-  dd.style.left     = r.left + 'px';
-  dd.style.width    = r.width + 'px';
-  dd.style.zIndex   = '99999';
-}
+function spRenderDD(items) { /* no-op — portal renders on demand */ }
 function spFilter(val) {
   const q = (val || '').toLowerCase();
   const filtered = q
     ? S.products.filter(p => p.stock_qty > 0 && p.name.toLowerCase().includes(q))
     : S.products.filter(p => p.stock_qty > 0);
-  spRenderDD(filtered);
-  spPositionDD();
-  document.getElementById('sp-product-dropdown').classList.add('open');
+  const inp = document.getElementById('sp-product-input');
+  if (inp) _acPortalShow(null, 'sp', inp, filtered);
   if (!val) { document.getElementById('sp-product-id').value = ''; document.getElementById('sp-product-price').value = ''; updateSellTotal(); }
-}
-function spRenderDD(items) {
-  document.getElementById('sp-product-dropdown').innerHTML = items.length
-    ? items.map(p => `<div class="ac-item" data-id="${p.id}" data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-price="${p.price||0}" data-ns="sp">
-        <span class="ac-item-name">${p.name}</span>
-        <span class="ac-item-sub">Stock: ${p.stock_qty} u. · Prix: ${(p.price||0).toFixed(2)} MAD</span>
-      </div>`).join('')
-    : '<div style="padding:10px 14px;color:var(--muted);font-size:13px;">Aucun produit en stock</div>';
 }
 function spSelect(id, name, price) {
   document.getElementById('sp-product-input').value = name;
   document.getElementById('sp-product-id').value = id;
   document.getElementById('sp-product-price').value = price;
-  document.getElementById('sp-product-dropdown').classList.remove('open');
+  _acPortalHide();
   updateSellTotal();
 }
 function spOpen() {
-  spRenderDD(S.products.filter(p => p.stock_qty > 0));
-  spPositionDD();
-  document.getElementById('sp-product-dropdown').classList.add('open');
+  const inp = document.getElementById('sp-product-input');
+  if (inp) _acPortalShow(null, 'sp', inp, S.products.filter(p => p.stock_qty > 0));
 }
-function spClose() { document.getElementById('sp-product-dropdown').classList.remove('open'); }
+function spClose() { _acPortalHide(); }
 
 // ─── PRODUCTS ──────────────────────────────────────────────
 async function loadProducts() {
+  // Clear search bar on reload
+  const searchEl = document.getElementById('products-search');
+  if (searchEl) searchEl.value = '';
+
   const [products, sales] = await Promise.all([
     api('GET', '/products'),
     api('GET', '/products/sales'),
@@ -1405,6 +1513,33 @@ async function loadProducts() {
     </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucune vente</td></tr>';
 
   populateSellModal();
+}
+
+function filterProducts(val) {
+  const q = (val || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('#products-body tr');
+  let visible = 0;
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    const show = !q || text.includes(q);
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  // show "no results" row if needed
+  let noRes = document.getElementById('products-no-results');
+  if (!visible && q) {
+    if (!noRes) {
+      noRes = document.createElement('tr');
+      noRes.id = 'products-no-results';
+      noRes.innerHTML = '<td colspan="8" class="tc muted" style="padding:20px">Aucun produit trouvé pour « ' + val + ' »</td>';
+      document.getElementById('products-body').appendChild(noRes);
+    } else {
+      noRes.querySelector('td').textContent = 'Aucun produit trouvé pour « ' + val + ' »';
+      noRes.style.display = '';
+    }
+  } else if (noRes) {
+    noRes.style.display = 'none';
+  }
 }
 
 function populateSellModal() {
@@ -1773,6 +1908,29 @@ async function deleteExpense(id) {
   loadExpenses();
 }
 
+// ─── LIVRAISON MODAL ────────────────────────────────────────
+async function openDeliveryModal() {
+  // Always fetch fresh fuel types so the select is never empty
+  try {
+    const fuels = await api('GET', '/pumps/fuel-types');
+    if (fuels && fuels.length) {
+      S.fuelTypes = fuels;
+      document.getElementById('dl-fuel').innerHTML = fuels
+        .map(ft => `<option value="${ft.id}">${ft.name}</option>`).join('');
+    } else if (S.fuelTypes && S.fuelTypes.length) {
+      document.getElementById('dl-fuel').innerHTML = S.fuelTypes
+        .map(ft => `<option value="${ft.id}">${ft.name}</option>`).join('');
+    } else {
+      document.getElementById('dl-fuel').innerHTML = '<option value="">— Aucun type configuré —</option>';
+    }
+  } catch(e) {
+    // fallback to cached
+    document.getElementById('dl-fuel').innerHTML = (S.fuelTypes||[])
+      .map(ft => `<option value="${ft.id}">${ft.name}</option>`).join('') || '<option value="">— Erreur chargement —</option>';
+  }
+  openModal('m-add-delivery');
+}
+
 // ─── STOCK CARBURANT ────────────────────────────────────────
 async function loadStock() {
   const data = await api('GET', '/stock');
@@ -1842,7 +2000,12 @@ async function loadStock() {
     </tr>`;
   }).join('') || '<tr><td colspan="9" class="tc muted" style="padding:20px">Aucune livraison</td></tr>';
 
-  document.getElementById('dl-fuel').innerHTML = fuels.map(ft => `<option value="${ft.id}">${ft.name}</option>`).join('');
+  // Keep S.fuelTypes in sync with stock API data (includes color + id + name)
+  if (fuels.length) S.fuelTypes = fuels.map(ft => ({ id: ft.id, name: ft.name, color_hex: ft.color_hex, price_per_liter: ft.price_per_liter }));
+
+  // Populate the delivery modal select — use S.fuelTypes as ultimate fallback
+  const dlFuelSrc = fuels.length ? fuels : S.fuelTypes;
+  document.getElementById('dl-fuel').innerHTML = dlFuelSrc.map(ft => `<option value="${ft.id}">${ft.name}</option>`).join('');
 }
 
 async function deleteDelivery(id) {
@@ -1852,7 +2015,6 @@ async function deleteDelivery(id) {
   loadStock();
 }
 
-const DENSITY = { 'Gazoil': 1176, 'Essence': 1340 };
 function updateDlPreview() {
   const unit = document.getElementById('dl-unit').value;
   const qty  = parseFloat(document.getElementById('dl-qty').value) || 0;
@@ -1860,9 +2022,10 @@ function updateDlPreview() {
   const fuelName = sel.selectedOptions[0]?.text || '';
   const prev = document.getElementById('dl-preview');
   if (unit === 'tonnes' && qty > 0) {
-    const litres = qty * (DENSITY[fuelName] || 1176);
-    prev.innerHTML = `<div class="msg msg-i">≈ <strong>${litres.toLocaleString('fr-FR', {maximumFractionDigits:0})} L</strong> (densité ${DENSITY[fuelName]||1176} L/tonne pour ${fuelName})</div>`;
-  } else { prev.innerHTML = ''; }
+    const litres = qty * 1000;
+    prev.style.display = '';
+    prev.innerHTML = `<div class="msg msg-i">≈ <strong>${litres.toLocaleString('fr-FR', {maximumFractionDigits:0})} L</strong> (1 tonne = 1 000 L)</div>`;
+  } else { prev.style.display = 'none'; prev.innerHTML = ''; }
 }
 
 async function submitAddDelivery() {
@@ -1883,7 +2046,9 @@ async function submitAddDelivery() {
     document.getElementById('dl-qty').value = '';
     document.getElementById('dl-cost').value = '';
     document.getElementById('dl-cheque').value = '';
-    document.getElementById('dl-preview').innerHTML = '';
+    const prevEl = document.getElementById('dl-preview');
+    prevEl.innerHTML = '';
+    prevEl.style.display = 'none';
     toast('Livraison enregistrée');
     loadStock();
   } catch(e) { toast(e.message,'er'); }
@@ -1947,11 +2112,15 @@ async function boot() {
   }
 }
 
-// Refresh selects when credit sale modal opens
-const _origOpenCS = window.openModal;
+// Refresh selects / portal whenever any modal opens
 document.addEventListener('DOMContentLoaded', () => {
-  const orig = window.openModal;
-  window.openModal = function(id) { orig(id); if (id === 'm-credit-sale') populateCreditSaleModal(); };
+  const _orig = window.openModal;
+  window.openModal = function(id) {
+    // Always hide any stale autocomplete portal first
+    if (typeof _acPortalHide === 'function') _acPortalHide();
+    _orig(id);
+    if (id === 'm-credit-sale') populateCreditSaleModal();
+  };
 });
 // Button wiring for close shift
 // submitCloseShift wired via onclick on the button directly

@@ -1,8 +1,10 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'yexweb-hmimidi-xK9$mP2@nQ7&zL4!vR8#wJ5^tY3*cB6';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error('[MENASTA] JWT_SECRET env var manquant — serveur refusé');
 
 // Role hierarchy — higher index = more permissions
-const ROLE_LEVELS = { caissier: 1, gerant: 2, patron: 3 };
+// admin = 99 → bypasses all role restrictions automatically
+const ROLE_LEVELS = { caissier: 1, gerant: 2, patron: 3, admin: 99 };
 
 function requireAuth(req, res, next) {
   const header = req.headers.authorization;

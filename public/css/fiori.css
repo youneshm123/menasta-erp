@@ -1067,6 +1067,37 @@ body.lp-layout {
 .stagger > *:nth-child(8){animation:slideUp .32s ease .32s both}
 
 /* ══════════════════════════════════════════════════
+   MOBILE SIDEBAR — hamburger + overlay
+══════════════════════════════════════════════════ */
+.sb-hamburger {
+  display: none;
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: none; border: none;
+  color: rgba(255,255,255,.8);
+  font-size: 20px; cursor: pointer;
+  align-items: center; justify-content: center;
+  transition: background .14s;
+  flex-shrink: 0;
+  padding: 0;
+}
+.sb-hamburger:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+.sb-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(10,18,30,.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 290;
+}
+body.sb-open .sb-overlay { display: block; }
+body.sb-open .sidebar {
+  transform: translateX(0) !important;
+  box-shadow: var(--sh-lg);
+}
+
+/* ══════════════════════════════════════════════════
    PRINT
 ══════════════════════════════════════════════════ */
 @media print {
@@ -1079,16 +1110,105 @@ body.lp-layout {
    RESPONSIVE
 ══════════════════════════════════════════════════ */
 @media(max-width:768px) {
-  :root { --sb-w: 200px; }
+  :root { --sb-w: 260px; }
   .app-content,#content { padding: 16px; }
   .tiles  { grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); }
   .kpi-row { grid-template-columns: 1fr 1fr; }
   .fgrid,.fgrid3 { grid-template-columns: 1fr; }
   .lp-tile { width: 150px; height: 150px; }
+
+  .sb-hamburger { display: inline-flex; }
+
+  .sidebar {
+    position: fixed;
+    top: var(--shell-h); left: 0; bottom: 0;
+    z-index: 295;
+    transform: translateX(-100%);
+    transition: transform .28s cubic-bezier(.22,1,.36,1);
+  }
 }
 @media(max-width:560px) {
-  .sidebar { display: none; }
   .kpi-row { grid-template-columns: 1fr; }
   .lp-tiles { gap: 8px; }
   .lp-tile { width: calc(50% - 4px); height: 140px; }
+}
+
+/* ══════════════════════════════════════════════════
+   DARK MODE
+══════════════════════════════════════════════════ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:       #13171c;
+    --bg2:      #1a1f26;
+    --surface:  #1e2530;
+    --surface2: #252d39;
+
+    --border:    #2e3740;
+    --border-lt: #252c38;
+    --border-dk: #3d4a58;
+
+    --text:     #e2e8f0;
+    --text-2:   #b8c5d3;
+    --muted:    #7d8fa3;
+    --subtle:   #4f6070;
+    --disabled: #3d4a58;
+
+    --shell-bg: #0f1318;
+
+    --blue-lt:   rgba(0,112,242,.15);
+    --blue-ring: rgba(0,112,242,.3);
+
+    --green-lt:  rgba(16,126,62,.18);
+    --red-lt:    rgba(187,0,0,.18);
+    --orange-lt: rgba(233,115,12,.18);
+    --purple-lt: rgba(108,50,160,.18);
+  }
+
+  /* Shell bar darkens further */
+  .fiori-shell, #shell { background: #0f1318; box-shadow: 0 2px 10px rgba(0,0,0,.5); }
+  .fs-avatar { border-color: rgba(255,255,255,.15); }
+
+  /* Sidebar */
+  .sidebar, #nav { background: #191f29; border-color: var(--border); }
+  .sb-brand { background: #0f1318; }
+
+  /* Modals */
+  .modal-hd { background: #191f29; }
+  .modal-body { background: var(--bg); }
+
+  /* Tables */
+  .t thead { background: #191f29; }
+  .t tbody tr:hover { background: rgba(0,112,242,.08); }
+
+  /* Topbar */
+  .app-topbar, #topbar, #sub-header { background: #1e2530; border-color: var(--border); }
+
+  /* Toasts — keep readable */
+  .t-ok, .t-g { background: #0f5e2f; }
+  .t-er        { background: #8a0000; }
+
+  /* Inputs */
+  .fg input, .fg select, .fg textarea {
+    background: #252d39;
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .fg input::placeholder, .fg textarea::placeholder { color: var(--subtle); }
+  .search-bar input { background: #252d39; color: var(--text); }
+
+  /* Sections */
+  .section, .panel { background: var(--surface); border-color: var(--border); }
+  .s-head, .panel-head { background: var(--surface); border-color: var(--border); }
+
+  /* KPI / Tile cards */
+  .lp-kpi, .lp-tile, .tile, .kpi-card { background: var(--surface); border-color: var(--border); }
+  .lp-kpi:hover, .lp-tile:hover { border-color: var(--blue); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-dk); }
+
+  /* Login page */
+  .login-card { background: #1e2530; border-color: var(--border); }
+  .brand-panel { background: linear-gradient(160deg,#0f1318 0%,#161d28 100%); }
 }
