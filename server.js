@@ -236,6 +236,11 @@ async function start() {
   // ── Daily WhatsApp summary at 22:00 ──
   startDailySummary();
 
+  // ── DB keep-alive (prevents Neon cold starts) ──
+  setInterval(async () => {
+    try { await pool.query('SELECT 1'); } catch (_) {}
+  }, 4 * 60 * 1000); // every 4 minutes
+
   // ── Anomaly detection (every hour) ──
   const { startAnomalyDetection } = require('./services/anomaly');
   startAnomalyDetection();
