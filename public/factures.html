@@ -232,8 +232,9 @@ function toast(msg, t='g') {
 }
 function logout() { localStorage.clear(); location.href = '/'; }
 
-document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
-document.getElementById('tab-month').value = new Date().toISOString().slice(0,7);
+const _today = new Date().toISOString();
+const _fd = document.getElementById('f-date'); if(_fd) _fd.value = _today.slice(0,10);
+const _tm = document.getElementById('tab-month'); if(_tm) _tm.value = _today.slice(0,7);
 
 function showTab(name, el) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));

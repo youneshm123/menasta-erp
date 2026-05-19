@@ -208,7 +208,12 @@ async function start() {
   });
 
   // ── Page Routes ──
-  const page = f => (_req, res) => res.sendFile(path.join(__dirname, 'public', f));
+  const page = f => (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(path.join(__dirname, 'public', f));
+  };
   app.get('/',         page('login.html'));
   app.get('/home',     page('home.html'));
   app.get('/app',      page('app.html'));
