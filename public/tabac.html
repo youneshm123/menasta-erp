@@ -1,13 +1,13 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MENASTA — Tabac</title>
+<title>MENASTA â€” Tabac</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=23"/>
-<script src="/js/shell-init.js?v=1" defer></script>
+<link rel="stylesheet" href="/css/fiori.css?v=24"/>
+<script src="/js/shell-init.js?v=2" defer></script>
 <script src="/js/modal-init.js?v=1" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -31,22 +31,22 @@
 
 <header class="fiori-shell">
   <a href="/home" class="fs-logo" style="text-decoration:none">
-    <div class="fs-mark">⛽</div>
+    <div class="fs-mark">â›½</div>
     <div class="fs-brand">MENASTA</div>
   </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
-    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
-    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">🏦</span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item active"><span class="fn-icon">🚬</span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
-    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
-    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> IA</a>
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon">ðŸ </span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon">â›½</span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">â˜•</span> CafÃ©</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">ðŸ¦</span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item active"><span class="fn-icon">ðŸš¬</span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">ðŸ›¢ï¸</span> Cuves</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon">ðŸ§¾</span> Factures</a>
+    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">ðŸ¤–</span> IA</a>
   </nav>
   <div class="fs-actions">
-    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
+    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">ðŸ¤–</button>
     <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
   </div>
 </header>
@@ -54,7 +54,7 @@
 <aside class="sidebar">
   <div class="sb-brand">
     <div class="sb-logo-row">
-      <div class="sb-mark">🚬</div>
+      <div class="sb-mark">ðŸš¬</div>
       <div>
         <div class="sb-name">Tabac</div>
         <div class="sb-sub">Module MENASTA</div>
@@ -62,20 +62,20 @@
     </div>
   </div>
   <div class="sb-nav">
-    <div class="nav-item active" onclick="switchTab('ventes',this)"><span class="ni">📋</span> Ventes du Jour</div>
-    <div class="nav-item" onclick="switchTab('historique',this)"><span class="ni">📊</span> Historique</div>
-    <div class="nav-item" onclick="switchTab('stock',this)"><span class="ni">📦</span> Stock</div>
-    <div class="nav-item" onclick="switchTab('produits',this)"><span class="ni">🛒</span> Produits</div>
+    <div class="nav-item active" onclick="switchTab('ventes',this)"><span class="ni">ðŸ“‹</span> Ventes du Jour</div>
+    <div class="nav-item" onclick="switchTab('historique',this)"><span class="ni">ðŸ“Š</span> Historique</div>
+    <div class="nav-item" onclick="switchTab('stock',this)"><span class="ni">ðŸ“¦</span> Stock</div>
+    <div class="nav-item" onclick="switchTab('produits',this)"><span class="ni">ðŸ›’</span> Produits</div>
   </div>
   <div class="sb-foot">
-    <a href="/home" class="sb-back">← Accueil</a>
-    <a href="#" onclick="logout()">Déconnexion</a>
+    <a href="/home" class="sb-back">â† Accueil</a>
+    <a href="#" onclick="logout()">DÃ©connexion</a>
   </div>
 </aside>
 
 <div class="app-main">
   <div class="app-topbar">
-    <div class="topbar-title">🚬 Module Tabac</div>
+    <div class="topbar-title">ðŸš¬ Module Tabac</div>
     <div class="topbar-meta" id="user-name"></div>
   </div>
   <div class="app-content">
@@ -86,15 +86,15 @@
         <strong style="font-size:13px">Date :</strong>
         <input type="date" id="vente-date"/>
         <button class="btn btn-g btn-sm" onclick="loadVentes()">Actualiser</button>
-        <button class="btn btn-p btn-sm" onclick="saveVentes()">💾 Enregistrer</button>
+        <button class="btn btn-p btn-sm" onclick="saveVentes()">ðŸ’¾ Enregistrer</button>
       </div>
       <div class="section">
         <div class="s-head">
           <span class="s-title">Saisie des Ventes</span>
           <div class="exp-btns">
-            <button class="exp-btn exp-pdf" onclick="exportPDF('ventes-table','Ventes Tabac')">📄 PDF</button>
-            <button class="exp-btn exp-xl"  onclick="exportExcel('ventes-table','Ventes Tabac')">📊 Excel</button>
-            <button class="exp-btn exp-word" onclick="exportWord('ventes-table','Ventes Tabac')">📝 Word</button>
+            <button class="exp-btn exp-pdf" onclick="exportPDF('ventes-table','Ventes Tabac')">ðŸ“„ PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('ventes-table','Ventes Tabac')">ðŸ“Š Excel</button>
+            <button class="exp-btn exp-word" onclick="exportWord('ventes-table','Ventes Tabac')">ðŸ“ Word</button>
           </div>
         </div>
         <div class="s-body">
@@ -104,9 +104,9 @@
                 <th>Produit</th>
                 <th class="num">Prix Vente</th>
                 <th class="num">Prix Achat</th>
-                <th class="num">Quantité</th>
-                <th class="num">Montant à Remettre</th>
-                <th class="num">Bénéfice</th>
+                <th class="num">QuantitÃ©</th>
+                <th class="num">Montant Ã  Remettre</th>
+                <th class="num">BÃ©nÃ©fice</th>
               </tr>
             </thead>
             <tbody id="ventes-body"></tbody>
@@ -114,11 +114,11 @@
         </div>
         <div class="totals-bar">
           <div class="tot-item">
-            <div class="tot-lbl">💰 Total à Remettre au Patron</div>
+            <div class="tot-lbl">ðŸ’° Total Ã  Remettre au Patron</div>
             <div class="tot-val" id="tot-montant">0.00 MAD</div>
           </div>
           <div class="tot-item" style="margin-left:auto">
-            <div class="tot-lbl">📈 Bénéfice Total</div>
+            <div class="tot-lbl">ðŸ“ˆ BÃ©nÃ©fice Total</div>
             <div class="tot-val" id="tot-benefice">0.00 MAD</div>
           </div>
         </div>
@@ -131,14 +131,14 @@
         <div class="s-head">
           <span class="s-title">Historique des 30 derniers jours</span>
           <div class="exp-btns">
-            <button class="exp-btn exp-pdf" onclick="exportPDF('histo-table','Historique Tabac')">📄 PDF</button>
-            <button class="exp-btn exp-xl"  onclick="exportExcel('histo-table','Historique Tabac')">📊 Excel</button>
-            <button class="exp-btn exp-word" onclick="exportWord('histo-table','Historique Tabac')">📝 Word</button>
+            <button class="exp-btn exp-pdf" onclick="exportPDF('histo-table','Historique Tabac')">ðŸ“„ PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('histo-table','Historique Tabac')">ðŸ“Š Excel</button>
+            <button class="exp-btn exp-word" onclick="exportWord('histo-table','Historique Tabac')">ðŸ“ Word</button>
           </div>
         </div>
         <div class="s-body">
           <table class="t" id="histo-table">
-            <thead><tr><th>Date</th><th class="num">Total Ventes</th><th class="num">Bénéfice</th></tr></thead>
+            <thead><tr><th>Date</th><th class="num">Total Ventes</th><th class="num">BÃ©nÃ©fice</th></tr></thead>
             <tbody id="histo-body"></tbody>
           </table>
         </div>
@@ -153,11 +153,11 @@
       </div>
       <div class="section" style="margin-bottom:16px">
         <div class="s-head">
-          <span class="s-title">📦 Niveaux de Stock</span>
+          <span class="s-title">ðŸ“¦ Niveaux de Stock</span>
           <div class="exp-btns">
-            <button class="exp-btn exp-pdf" onclick="exportPDF('stock-table','Stock Tabac')">📄 PDF</button>
-            <button class="exp-btn exp-xl"  onclick="exportExcel('stock-table','Stock Tabac')">📊 Excel</button>
-            <button class="exp-btn exp-word" onclick="exportWord('stock-table','Stock Tabac')">📝 Word</button>
+            <button class="exp-btn exp-pdf" onclick="exportPDF('stock-table','Stock Tabac')">ðŸ“„ PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('stock-table','Stock Tabac')">ðŸ“Š Excel</button>
+            <button class="exp-btn exp-word" onclick="exportWord('stock-table','Stock Tabac')">ðŸ“ Word</button>
           </div>
         </div>
         <div class="s-body">
@@ -165,10 +165,10 @@
             <thead>
               <tr>
                 <th>Produit</th>
-                <th class="num">Acheté</th>
+                <th class="num">AchetÃ©</th>
                 <th class="num">Vendu</th>
                 <th class="num">Stock Actuel</th>
-                <th class="num">État</th>
+                <th class="num">Ã‰tat</th>
               </tr>
             </thead>
             <tbody id="stock-body"></tbody>
@@ -177,11 +177,11 @@
       </div>
       <div class="section">
         <div class="s-head">
-          <span class="s-title">📋 Historique des Approvisionnements</span>
+          <span class="s-title">ðŸ“‹ Historique des Approvisionnements</span>
           <div class="exp-btns">
-            <button class="exp-btn exp-pdf" onclick="exportPDF('achats-table','Approvisionnements Tabac')">📄 PDF</button>
-            <button class="exp-btn exp-xl"  onclick="exportExcel('achats-table','Approvisionnements Tabac')">📊 Excel</button>
-            <button class="exp-btn exp-word" onclick="exportWord('achats-table','Approvisionnements Tabac')">📝 Word</button>
+            <button class="exp-btn exp-pdf" onclick="exportPDF('achats-table','Approvisionnements Tabac')">ðŸ“„ PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('achats-table','Approvisionnements Tabac')">ðŸ“Š Excel</button>
+            <button class="exp-btn exp-word" onclick="exportWord('achats-table','Approvisionnements Tabac')">ðŸ“ Word</button>
           </div>
         </div>
         <div class="s-body">
@@ -189,7 +189,7 @@
             <thead>
               <tr>
                 <th>Produit</th>
-                <th class="num">Quantité</th>
+                <th class="num">QuantitÃ©</th>
                 <th class="num">Prix Achat</th>
                 <th class="num">Montant Total</th>
                 <th>Date</th>
@@ -212,9 +212,9 @@
         <div class="s-head">
           <span class="s-title">Catalogue Tabac</span>
           <div class="exp-btns">
-            <button class="exp-btn exp-pdf" onclick="exportPDF('produits-table','Catalogue Tabac')">📄 PDF</button>
-            <button class="exp-btn exp-xl"  onclick="exportExcel('produits-table','Catalogue Tabac')">📊 Excel</button>
-            <button class="exp-btn exp-word" onclick="exportWord('produits-table','Catalogue Tabac')">📝 Word</button>
+            <button class="exp-btn exp-pdf" onclick="exportPDF('produits-table','Catalogue Tabac')">ðŸ“„ PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('produits-table','Catalogue Tabac')">ðŸ“Š Excel</button>
+            <button class="exp-btn exp-word" onclick="exportWord('produits-table','Catalogue Tabac')">ðŸ“ Word</button>
           </div>
         </div>
         <div class="s-body">
@@ -234,7 +234,7 @@
   <div class="modal">
     <div class="modal-hd">
       <h3 id="modal-produit-title">Ajouter Produit</h3>
-      <button class="x" onclick="closeModal('modal-produit')">×</button>
+      <button class="x" onclick="closeModal('modal-produit')">Ã—</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="mp-id"/>
@@ -256,7 +256,7 @@
   <div class="modal">
     <div class="modal-hd">
       <h3>Ajouter Approvisionnement</h3>
-      <button class="x" onclick="closeModal('modal-achat')">×</button>
+      <button class="x" onclick="closeModal('modal-achat')">Ã—</button>
     </div>
     <div class="modal-body">
       <div class="fg">
@@ -264,7 +264,7 @@
         <select id="aa-product"></select>
       </div>
       <div class="fgrid">
-        <div class="fg"><label>Quantité</label><input type="number" id="aa-qty" step="0.5" min="0.5" value="1"/></div>
+        <div class="fg"><label>QuantitÃ©</label><input type="number" id="aa-qty" step="0.5" min="0.5" value="1"/></div>
         <div class="fg"><label>Prix Achat Unitaire (MAD)</label><input type="number" id="aa-prix" step="0.01" min="0"/></div>
       </div>
       <div class="fgrid">
@@ -313,7 +313,7 @@ function switchTab(name, el) {
   if (name === 'stock') loadStock();
 }
 
-// ── VENTES ───────────────────────────────────────────────────
+// â”€â”€ VENTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadVentes() {
   const date = dateInp.value;
   const data = await A('/api/tabac/ventes?date=' + date);
@@ -360,13 +360,13 @@ async function saveVentes() {
     const q = parseFloat(inp.value) || 0;
     if (q > 0) entries.push({ product_id: parseInt(inp.dataset.id), quantite: q });
   });
-  if (!entries.length) { toast('Aucune quantité saisie', 'er'); return; }
+  if (!entries.length) { toast('Aucune quantitÃ© saisie', 'er'); return; }
   await A('/api/tabac/ventes', { method: 'POST', body: JSON.stringify({ date, entries }) });
-  toast('Ventes enregistrées ✓');
+  toast('Ventes enregistrÃ©es âœ“');
   loadVentes();
 }
 
-// ── HISTORIQUE ───────────────────────────────────────────────
+// â”€â”€ HISTORIQUE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadHistorique() {
   const rows = await A('/api/tabac/historique');
   const tbody = document.getElementById('histo-body');
@@ -381,7 +381,7 @@ async function loadHistorique() {
   });
 }
 
-// ── STOCK ────────────────────────────────────────────────────
+// â”€â”€ STOCK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadStock() {
   const [stock, achats] = await Promise.all([
     A('/api/tabac/stock'),
@@ -395,9 +395,9 @@ async function loadStock() {
   stock.forEach(s => {
     const actuel = parseFloat(s.stock_actuel);
     let badge, label;
-    if (actuel <= 0)   { badge = 'badge-out'; label = '❌ Rupture'; }
-    else if (actuel < 5) { badge = 'badge-low'; label = '⚠️ Faible'; }
-    else                 { badge = 'badge-ok';  label = '✅ OK'; }
+    if (actuel <= 0)   { badge = 'badge-out'; label = 'âŒ Rupture'; }
+    else if (actuel < 5) { badge = 'badge-low'; label = 'âš ï¸ Faible'; }
+    else                 { badge = 'badge-ok';  label = 'âœ… OK'; }
     sb.innerHTML += `<tr>
       <td><strong>${s.name}</strong></td>
       <td class="num">${fmt(s.total_achete)}</td>
@@ -410,7 +410,7 @@ async function loadStock() {
   // Achats table
   const ab = document.getElementById('achats-body');
   ab.innerHTML = '';
-  if (!achats.length) { ab.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Aucun approvisionnement enregistré</td></tr>'; return; }
+  if (!achats.length) { ab.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Aucun approvisionnement enregistrÃ©</td></tr>'; return; }
   achats.forEach(a => {
     const total = (parseFloat(a.quantite) * parseFloat(a.prix_achat)).toFixed(2);
     ab.innerHTML += `<tr>
@@ -419,8 +419,8 @@ async function loadStock() {
       <td class="num">${fmt(a.prix_achat)} MAD</td>
       <td class="num fw7 c-br">${total} MAD</td>
       <td>${a.achat_date}</td>
-      <td style="color:var(--muted);font-size:12px">${a.notes||'—'}</td>
-      <td><button class="btn btn-d btn-xs" onclick="deleteAchat(${a.id})">🗑️</button></td>
+      <td style="color:var(--muted);font-size:12px">${a.notes||'â€”'}</td>
+      <td><button class="btn btn-d btn-xs" onclick="deleteAchat(${a.id})">ðŸ—‘ï¸</button></td>
     </tr>`;
   });
 }
@@ -447,21 +447,21 @@ async function saveAchat() {
   const prix_achat = parseFloat(document.getElementById('aa-prix').value);
   const achat_date = document.getElementById('aa-date').value;
   const notes      = document.getElementById('aa-notes').value || null;
-  if (!product_id || !quantite || quantite <= 0) { toast('Produit et quantité requis', 'er'); return; }
+  if (!product_id || !quantite || quantite <= 0) { toast('Produit et quantitÃ© requis', 'er'); return; }
   await A('/api/tabac/achats', { method: 'POST', body: JSON.stringify({ product_id, quantite, prix_achat, achat_date, notes }) });
   closeModal('modal-achat');
-  toast('Approvisionnement enregistré ✓');
+  toast('Approvisionnement enregistrÃ© âœ“');
   loadStock();
 }
 
 async function deleteAchat(id) {
   if (!confirm('Supprimer cet approvisionnement ?')) return;
   await A('/api/tabac/achats/' + id, { method: 'DELETE' });
-  toast('Supprimé');
+  toast('SupprimÃ©');
   loadStock();
 }
 
-// ── PRODUITS ─────────────────────────────────────────────────
+// â”€â”€ PRODUITS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadProduits() {
   const rows = await A('/api/tabac/produits');
   const tbody = document.getElementById('produits-body');
@@ -474,8 +474,8 @@ async function loadProduits() {
       <td class="num fw7 c-br">${fmt(p.prix_vente)} MAD</td>
       <td class="num fw7 c-g">+${marge} MAD</td>
       <td class="num">
-        <button class="btn btn-g btn-xs" onclick="editProduit(${p.id},'${p.name.replace(/'/g,"\\'")}',${p.prix_achat},${p.prix_vente})">✏️</button>
-        <button class="btn btn-d btn-xs" onclick="deleteProduit(${p.id})">🗑️</button>
+        <button class="btn btn-g btn-xs" onclick="editProduit(${p.id},'${p.name.replace(/'/g,"\\'")}',${p.prix_achat},${p.prix_vente})">âœï¸</button>
+        <button class="btn btn-d btn-xs" onclick="deleteProduit(${p.id})">ðŸ—‘ï¸</button>
       </td>
     </tr>`;
   });
@@ -510,18 +510,18 @@ async function saveProduit() {
   if (id) await A('/api/tabac/produits/' + id, { method: 'PUT', body: JSON.stringify(body) });
   else await A('/api/tabac/produits', { method: 'POST', body: JSON.stringify(body) });
   closeModal('modal-produit');
-  toast('Produit enregistré ✓');
+  toast('Produit enregistrÃ© âœ“');
   loadProduits();
 }
 
 async function deleteProduit(id) {
   if (!confirm('Supprimer ce produit ?')) return;
   await A('/api/tabac/produits/' + id, { method: 'DELETE' });
-  toast('Supprimé');
+  toast('SupprimÃ©');
   loadProduits();
 }
 
-// ── EXPORT ───────────────────────────────────────────────────
+// â”€â”€ EXPORT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function tableToData(tableId) {
   const tbl = document.getElementById(tableId);
   if (!tbl) return { headers: [], rows: [] };
@@ -536,7 +536,7 @@ function exportPDF(tableId, title) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape' });
   doc.setFontSize(14);
-  doc.text(title + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
+  doc.text(title + ' â€” ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
   const { headers, rows } = tableToData(tableId);
   doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [99, 60, 180] } });
   doc.save(title.replace(/\s+/g,'_') + '.pdf');
@@ -564,7 +564,7 @@ function exportWord(tableId, title) {
     tr:nth-child(even)td{background:#f9f9f9}
   </style></head><body>
   <h2>${title}</h2>
-  <p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>
+  <p style="color:#666;font-size:11px">ExportÃ© le ${new Date().toLocaleDateString('fr-FR')}</p>
   ${clone.outerHTML}
 
 </body></html>`;
@@ -582,3 +582,4 @@ loadVentes();
 <script src="/js/ai-widget.js?v=3"></script>
 </body>
 </html>
+

@@ -6,8 +6,8 @@
 <title>MENASTA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=23"/>
-<script src="/js/shell-init.js?v=1" defer></script>
+<link rel="stylesheet" href="/css/fiori.css?v=24"/>
+<script src="/js/shell-init.js?v=2" defer></script>
 <script src="/js/modal-init.js?v=1" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -20,37 +20,7 @@
 .exp-xl{background:#dcfce7;color:#15803d}.exp-xl:hover{background:#86efac}
 .exp-word{background:#dbeafe;color:#1d4ed8}.exp-word:hover{background:#93c5fd}
 .chart-box{position:relative;height:220px;width:100%}
-.mb2{margin-bottom:8px}.mb3{margin-bottom:12px}.mb4{margin-bottom:20px}
-.mt3{margin-top:12px}.mt4{margin-top:20px}
-.fxg{display:flex;gap:8px}.fxb{display:flex;justify-content:space-between;align-items:center}
-.tc{text-align:center}.div{border:none;border-top:1px solid var(--border);margin:14px 0}
-.sel{padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13.5px;font-family:var(--font);background:var(--surface);box-shadow:var(--sh-xs)}
-/* Autocomplete */
-.ac-wrap{position:relative;}
-.ac-input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:var(--font);background:var(--surface);outline:none;box-sizing:border-box;}
-.ac-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1);}
-.ac-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1.5px solid var(--blue);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:9999;max-height:220px;overflow-y:auto;display:none;}
-.ac-dropdown.open{display:block;}
-.ac-item{padding:10px 14px;cursor:pointer;font-size:13.5px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid var(--border-lt);}
-.ac-item:last-child{border-bottom:none;}
-.ac-item:hover,.ac-item.active{background:var(--bg2);}
-.ac-item-name{font-weight:700;color:var(--text);}
-.ac-item-sub{font-size:11.5px;color:var(--muted);}
-/* Fuel toggle */
-.fuel-toggle{display:flex;gap:6px;}
-.fuel-btn{flex:1;padding:7px 6px;border:2px solid var(--border);border-radius:var(--r);background:var(--surface);font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;white-space:nowrap;}
-.fuel-btn.selected-gazoil{border-color:#1D4ED8;background:#EFF6FF;color:#1D4ED8;}
-.fuel-btn.selected-essence{border-color:#059669;background:#ECFDF5;color:#059669;}
-/* ── Modal top-slide (transition approach, works every open) ── */
-.overlay{display:flex!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;align-items:flex-start!important;justify-content:center!important;padding:0!important;transition:opacity .18s,visibility .18s!important;}
-.overlay.open{visibility:visible!important;opacity:1!important;pointer-events:all!important;}
-.modal{transform:translateY(-100%)!important;transition:transform .28s cubic-bezier(.22,1,.36,1)!important;border-radius:0 0 20px 20px!important;border-top:3px solid #2563EB!important;border-left:none!important;border-right:none!important;border-bottom:none!important;width:600px!important;max-width:100%!important;}
-.overlay.open .modal{transform:translateY(0)!important;}
-.modal-lg{width:800px!important;}.modal-xl{width:1000px!important;}
-.modal-hd{background:#0F172A!important;color:#fff!important;padding:13px 20px!important;border-bottom:none!important;}
-.modal-hd h3{font-size:14px!important;color:#fff!important;font-weight:800!important;}
-.modal-body{padding:18px 20px!important;gap:12px!important;}
-.modal-ft{padding:12px 20px!important;background:#F8FAFC!important;border-top:1px solid #E2E8F0!important;}
+.div{border:none;border-top:1px solid var(--border);margin:14px 0}
 </style>
 </head>
 <body>

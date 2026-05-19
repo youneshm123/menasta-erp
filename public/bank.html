@@ -1,17 +1,17 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MENASTA — Banque</title>
+<title>MENASTA â€” Banque</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=23"/>
-<script src="/js/shell-init.js?v=1" defer></script>
+<link rel="stylesheet" href="/css/fiori.css?v=24"/>
+<script src="/js/shell-init.js?v=2" defer></script>
 <script src="/js/modal-init.js?v=1" defer></script>
 <style>
 .ck-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -39,22 +39,22 @@
 
 <header class="fiori-shell">
   <a href="/home" class="fs-logo" style="text-decoration:none">
-    <div class="fs-mark">⛽</div>
+    <div class="fs-mark">â›½</div>
     <div class="fs-brand">MENASTA</div>
   </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
-    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
-    <a href="/bank"     class="fs-nav-item active"><span class="fn-icon">🏦</span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
-    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
-    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> IA</a>
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon">ðŸ </span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon">â›½</span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">â˜•</span> CafÃ©</a>
+    <a href="/bank"     class="fs-nav-item active"><span class="fn-icon">ðŸ¦</span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">ðŸš¬</span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">ðŸ›¢ï¸</span> Cuves</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon">ðŸ§¾</span> Factures</a>
+    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">ðŸ¤–</span> IA</a>
   </nav>
   <div class="fs-actions">
-    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
+    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">ðŸ¤–</button>
     <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
   </div>
 </header>
@@ -63,7 +63,7 @@
 <aside class="sidebar">
   <div class="sb-brand">
     <div class="sb-logo-row">
-      <div class="sb-mark">🏦</div>
+      <div class="sb-mark">ðŸ¦</div>
       <div>
         <div class="sb-name" id="sb-acct-name">Banque</div>
         <div class="sb-sub">Module MENASTA</div>
@@ -72,17 +72,17 @@
   </div>
   <div class="sb-nav">
     <div class="sb-section-label">Vue d'ensemble</div>
-    <div class="nav-item active" data-p="dashboard"><span class="ni">🏠</span> Tableau de Bord</div>
-    <div class="sb-section-label">Opérations</div>
-    <div class="nav-item" data-p="transactions"><span class="ni">💳</span> Transactions</div>
-    <div class="nav-item" data-p="cheques"><span class="ni">📝</span> Chèques</div>
+    <div class="nav-item active" data-p="dashboard"><span class="ni">ðŸ </span> Tableau de Bord</div>
+    <div class="sb-section-label">OpÃ©rations</div>
+    <div class="nav-item" data-p="transactions"><span class="ni">ðŸ’³</span> Transactions</div>
+    <div class="nav-item" data-p="cheques"><span class="ni">ðŸ“</span> ChÃ¨ques</div>
     <div class="sb-section-label">Analyses</div>
-    <div class="nav-item" data-p="rapport"><span class="ni">📊</span> Rapport Mensuel</div>
-    <div class="sb-section-label">Système</div>
-    <div class="nav-item" data-p="settings"><span class="ni">⚙️</span> Paramètres</div>
+    <div class="nav-item" data-p="rapport"><span class="ni">ðŸ“Š</span> Rapport Mensuel</div>
+    <div class="sb-section-label">SystÃ¨me</div>
+    <div class="nav-item" data-p="settings"><span class="ni">âš™ï¸</span> ParamÃ¨tres</div>
   </div>
   <div class="sb-foot">
-    <a href="/home" class="sb-back">← Retour Accueil</a>
+    <a href="/home" class="sb-back">â† Retour Accueil</a>
   </div>
 </aside>
 
@@ -90,74 +90,74 @@
 <div class="app-main">
   <div class="app-topbar">
     <div class="topbar-title" id="page-title">Tableau de Bord</div>
-    <div class="balance-pill" id="top-balance">Solde : —</div>
-    <div class="forecast-pill" id="top-forecast" title="Solde après encaissement de tous les chèques en attente">⏳ Prévisionnel : —</div>
-    <button class="btn btn-s btn-sm" onclick="openModal('m-add-txn')">＋ Transaction</button>
+    <div class="balance-pill" id="top-balance">Solde : â€”</div>
+    <div class="forecast-pill" id="top-forecast" title="Solde aprÃ¨s encaissement de tous les chÃ¨ques en attente">â³ PrÃ©visionnel : â€”</div>
+    <button class="btn btn-s btn-sm" onclick="openModal('m-add-txn')">ï¼‹ Transaction</button>
   </div>
   <div class="app-content" id="content">
 
-    <!-- ══ DASHBOARD ══ -->
+    <!-- â•â• DASHBOARD â•â• -->
     <div class="page active" id="p-dashboard">
       <div class="tiles" id="db-tiles"></div>
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:18px">
         <div class="section">
-          <div class="s-head"><div class="s-title">📈 Évolution du Solde (30 derniers jours)</div></div>
+          <div class="s-head"><div class="s-title">ðŸ“ˆ Ã‰volution du Solde (30 derniers jours)</div></div>
           <div class="s-body" style="height:200px"><canvas id="chart-balance"></canvas></div>
         </div>
         <div class="section">
-          <div class="s-head"><div class="s-title">⏳ Chèques en Attente</div></div>
+          <div class="s-head"><div class="s-title">â³ ChÃ¨ques en Attente</div></div>
           <div class="s-body" id="db-pending-list" style="max-height:220px;overflow-y:auto"></div>
         </div>
       </div>
       <div class="section">
         <div class="s-head">
-          <div class="s-title">🕐 Dernières Transactions</div>
-          <button class="btn btn-ghost btn-sm" onclick="navigate('transactions')">Tout voir →</button>
+          <div class="s-title">ðŸ• DerniÃ¨res Transactions</div>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('transactions')">Tout voir â†’</button>
         </div>
         <div style="overflow-x:auto"><table class="t" id="db-recent-table">
-          <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Catégorie</th><th class="num">Montant</th><th class="num">Solde après</th></tr></thead>
+          <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>CatÃ©gorie</th><th class="num">Montant</th><th class="num">Solde aprÃ¨s</th></tr></thead>
           <tbody id="db-recent"></tbody>
         </table></div>
       </div>
     </div>
 
-    <!-- ══ TRANSACTIONS ══ -->
+    <!-- â•â• TRANSACTIONS â•â• -->
     <div class="page" id="p-transactions">
       <div class="search-bar">
-        <input type="text" id="txn-search" placeholder="🔍 Rechercher description, bénéficiaire, n° chèque…" oninput="debounceSearch()"/>
+        <input type="text" id="txn-search" placeholder="ðŸ” Rechercher description, bÃ©nÃ©ficiaire, nÂ° chÃ¨queâ€¦" oninput="debounceSearch()"/>
         <input type="month" id="txn-month"/>
         <select id="txn-type-filter" onchange="loadTransactions()">
           <option value="">Tous les types</option>
-          <option value="depot">💰 Dépôt</option>
-          <option value="retrait">💸 Retrait</option>
-          <option value="virement_in">🏦 Virement reçu</option>
-          <option value="virement_out">📤 Virement émis</option>
-          <option value="cheque_in">✅ Chèque reçu</option>
-          <option value="cheque_out">📝 Chèque émis</option>
+          <option value="depot">ðŸ’° DÃ©pÃ´t</option>
+          <option value="retrait">ðŸ’¸ Retrait</option>
+          <option value="virement_in">ðŸ¦ Virement reÃ§u</option>
+          <option value="virement_out">ðŸ“¤ Virement Ã©mis</option>
+          <option value="cheque_in">âœ… ChÃ¨que reÃ§u</option>
+          <option value="cheque_out">ðŸ“ ChÃ¨que Ã©mis</option>
         </select>
         <select id="txn-cat-filter" onchange="loadTransactions()">
-          <option value="">Toutes catégories</option>
+          <option value="">Toutes catÃ©gories</option>
         </select>
         <button class="btn btn-p btn-sm" onclick="loadTransactions()">Actualiser</button>
-        <button class="btn btn-ghost btn-sm" id="btn-copy-txn" onclick="exportTableToExcel(document.querySelector('#txn-body').closest('table'),'Transactions_Banque',{skipLastCols:1,btnEl:this})">📊 Exporter Excel</button>
-        <button class="btn btn-ghost btn-sm" onclick="openModal('m-import-txn')">📥 Importer Excel</button>
-        <button class="btn btn-ghost btn-sm" onclick="printStatement()">🖨️ Imprimer</button>
+        <button class="btn btn-ghost btn-sm" id="btn-copy-txn" onclick="exportTableToExcel(document.querySelector('#txn-body').closest('table'),'Transactions_Banque',{skipLastCols:1,btnEl:this})">ðŸ“Š Exporter Excel</button>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('m-import-txn')">ðŸ“¥ Importer Excel</button>
+        <button class="btn btn-ghost btn-sm" onclick="printStatement()">ðŸ–¨ï¸ Imprimer</button>
       </div>
       <div class="section">
         <div class="s-head">
-          <div class="s-title">💳 Relevé de Compte</div>
+          <div class="s-title">ðŸ’³ RelevÃ© de Compte</div>
           <div style="display:flex;gap:14px;font-size:12px;font-weight:700">
-            <span>Entrées : <span class="c-g" id="txn-tot-in">—</span></span>
-            <span>Sorties : <span class="c-r" id="txn-tot-out">—</span></span>
+            <span>EntrÃ©es : <span class="c-g" id="txn-tot-in">â€”</span></span>
+            <span>Sorties : <span class="c-r" id="txn-tot-out">â€”</span></span>
           </div>
         </div>
         <div style="overflow-x:auto" id="txn-printable">
           <table class="t">
             <thead><tr>
-              <th>Date</th><th>Type</th><th>Catégorie</th><th>Description</th>
-              <th>Bénéficiaire</th><th>N° Chèque</th>
-              <th class="num">Débit</th><th class="num">Crédit</th><th class="num">Solde</th>
-              <th>Rapproché</th><th></th>
+              <th>Date</th><th>Type</th><th>CatÃ©gorie</th><th>Description</th>
+              <th>BÃ©nÃ©ficiaire</th><th>NÂ° ChÃ¨que</th>
+              <th class="num">DÃ©bit</th><th class="num">CrÃ©dit</th><th class="num">Solde</th>
+              <th>RapprochÃ©</th><th></th>
             </tr></thead>
             <tbody id="txn-body"></tbody>
           </table>
@@ -165,34 +165,34 @@
       </div>
     </div>
 
-    <!-- ══ CHÈQUES ══ -->
+    <!-- â•â• CHÃˆQUES â•â• -->
     <div class="page" id="p-cheques">
       <div class="search-bar" style="margin-bottom:16px">
-        <input type="text" id="ck-search" placeholder="🔍 Rechercher par N° chèque, bénéficiaire, montant…" oninput="filterCheques()" style="flex:1"/>
+        <input type="text" id="ck-search" placeholder="ðŸ” Rechercher par NÂ° chÃ¨que, bÃ©nÃ©ficiaire, montantâ€¦" oninput="filterCheques()" style="flex:1"/>
         <input type="date" id="ck-date-from" onchange="filterCheques()" placeholder="Du"/>
         <input type="date" id="ck-date-to" onchange="filterCheques()" placeholder="Au"/>
-        <button class="btn btn-g btn-sm" onclick="document.getElementById('ck-search').value='';document.getElementById('ck-date-from').value='';document.getElementById('ck-date-to').value='';filterCheques()">✕ Reset</button>
+        <button class="btn btn-g btn-sm" onclick="document.getElementById('ck-search').value='';document.getElementById('ck-date-from').value='';document.getElementById('ck-date-to').value='';filterCheques()">âœ• Reset</button>
       </div>
       <div class="tiles" id="ck-tiles"></div>
       <div class="ck-cols">
         <div class="section">
-          <div class="s-head"><div class="s-title">📤 Chèques Émis (sortants)</div></div>
+          <div class="s-head"><div class="s-title">ðŸ“¤ ChÃ¨ques Ã‰mis (sortants)</div></div>
           <div style="overflow-x:auto"><table class="t">
-            <thead><tr><th>Date</th><th>N° Chèque</th><th>Bénéficiaire</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>NÂ° ChÃ¨que</th><th>BÃ©nÃ©ficiaire</th><th>Ã‰chÃ©ance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
             <tbody id="ck-out-body"></tbody>
           </table></div>
         </div>
         <div class="section">
-          <div class="s-head"><div class="s-title">📥 Chèques Reçus (entrants)</div></div>
+          <div class="s-head"><div class="s-title">ðŸ“¥ ChÃ¨ques ReÃ§us (entrants)</div></div>
           <div style="overflow-x:auto"><table class="t">
-            <thead><tr><th>Date</th><th>N° Chèque</th><th>Émetteur</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>NÂ° ChÃ¨que</th><th>Ã‰metteur</th><th>Ã‰chÃ©ance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
             <tbody id="ck-in-body"></tbody>
           </table></div>
         </div>
       </div>
     </div>
 
-    <!-- ══ RAPPORT ══ -->
+    <!-- â•â• RAPPORT â•â• -->
     <div class="page" id="p-rapport">
       <div class="search-bar">
         <input type="month" id="rpt-month"/>
@@ -201,36 +201,36 @@
       <div class="tiles" id="rpt-tiles"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
         <div class="section">
-          <div class="s-head"><div class="s-title">📊 Flux Journaliers</div></div>
+          <div class="s-head"><div class="s-title">ðŸ“Š Flux Journaliers</div></div>
           <div class="s-body" style="height:200px"><canvas id="chart-daily"></canvas></div>
         </div>
         <div class="section">
-          <div class="s-head"><div class="s-title">🍕 Sorties par Catégorie</div></div>
+          <div class="s-head"><div class="s-title">ðŸ• Sorties par CatÃ©gorie</div></div>
           <div class="s-body" style="height:200px;display:flex;align-items:center;justify-content:center"><canvas id="chart-cat"></canvas></div>
         </div>
       </div>
       <div class="section">
-        <div class="s-head"><div class="s-title">📅 Détail par Jour</div></div>
+        <div class="s-head"><div class="s-title">ðŸ“… DÃ©tail par Jour</div></div>
         <div style="overflow-x:auto"><table class="t">
-          <thead><tr><th>Date</th><th class="num">Entrées</th><th class="num">Sorties</th><th class="num">Net du Jour</th></tr></thead>
+          <thead><tr><th>Date</th><th class="num">EntrÃ©es</th><th class="num">Sorties</th><th class="num">Net du Jour</th></tr></thead>
           <tbody id="rpt-body"></tbody>
           <tfoot id="rpt-foot"></tfoot>
         </table></div>
       </div>
     </div>
 
-    <!-- ══ PARAMÈTRES ══ -->
+    <!-- â•â• PARAMÃˆTRES â•â• -->
     <div class="page" id="p-settings">
       <div class="section" style="max-width:440px">
-        <div class="s-head"><div class="s-title">⚙️ Paramètres du Compte</div></div>
+        <div class="s-head"><div class="s-title">âš™ï¸ ParamÃ¨tres du Compte</div></div>
         <div class="s-body" style="display:flex;flex-direction:column;gap:16px">
           <div class="fg"><label>Nom du Compte</label><input id="cfg-name" placeholder="ex: CIH Compte Principal"/></div>
           <div class="fg">
             <label>Solde Initial (MAD)</label>
             <input type="number" id="cfg-balance" step="0.01" placeholder="0.00"/>
-            <span style="font-size:11px;color:var(--muted);margin-top:2px">Le solde au moment où vous avez commencé à utiliser ce module</span>
+            <span style="font-size:11px;color:var(--muted);margin-top:2px">Le solde au moment oÃ¹ vous avez commencÃ© Ã  utiliser ce module</span>
           </div>
-          <button class="btn btn-s" style="align-self:flex-start;padding:10px 24px" onclick="saveSettings()">✅ Enregistrer</button>
+          <button class="btn btn-s" style="align-self:flex-start;padding:10px 24px" onclick="saveSettings()">âœ… Enregistrer</button>
         </div>
       </div>
     </div>
@@ -240,46 +240,46 @@
 
 <div id="toasts"></div>
 
-<!-- ══ MODAL: Add Transaction ══ -->
+<!-- â•â• MODAL: Add Transaction â•â• -->
 <div class="overlay" id="m-add-txn">
   <div class="modal">
-    <div class="modal-hd"><div class="mh-ic">💳</div><h3>Nouvelle Transaction</h3><button class="x" onclick="closeModal('m-add-txn')">×</button></div>
+    <div class="modal-hd"><div class="mh-ic">ðŸ’³</div><h3>Nouvelle Transaction</h3><button class="x" onclick="closeModal('m-add-txn')">Ã—</button></div>
     <div class="modal-body">
       <div class="fgrid">
         <div class="fg" style="grid-column:1/-1">
           <label>Type *</label>
           <select id="at-type" onchange="toggleCheckFields()">
-            <option value="depot">💰 Dépôt espèces</option>
-            <option value="retrait">💸 Retrait espèces</option>
-            <option value="virement_in">🏦 Virement reçu</option>
-            <option value="virement_out">📤 Virement émis</option>
-            <option value="cheque_in">✅ Chèque reçu</option>
-            <option value="cheque_out">📝 Chèque émis</option>
+            <option value="depot">ðŸ’° DÃ©pÃ´t espÃ¨ces</option>
+            <option value="retrait">ðŸ’¸ Retrait espÃ¨ces</option>
+            <option value="virement_in">ðŸ¦ Virement reÃ§u</option>
+            <option value="virement_out">ðŸ“¤ Virement Ã©mis</option>
+            <option value="cheque_in">âœ… ChÃ¨que reÃ§u</option>
+            <option value="cheque_out">ðŸ“ ChÃ¨que Ã©mis</option>
           </select>
         </div>
         <div class="fg"><label>Date *</label><input type="date" id="at-date"/></div>
         <div class="fg"><label>Montant (MAD) *</label><input type="number" id="at-amount" placeholder="0.00" step="0.01" min="0" style="font-size:18px;font-weight:800;text-align:right"/></div>
         <div class="fg" style="grid-column:1/-1"><label>Description *</label><input id="at-desc" placeholder="ex: Paiement fournisseur Afriquia"/></div>
         <div class="fg">
-          <label>Catégorie</label>
+          <label>CatÃ©gorie</label>
           <select id="at-cat">
             <option>Carburant</option><option>Salaires</option><option>Loyer</option>
             <option>Maintenance</option><option>Fournisseur</option><option>Client</option>
-            <option>Banque</option><option>Impôts</option><option>Autre</option>
+            <option>Banque</option><option>ImpÃ´ts</option><option>Autre</option>
           </select>
         </div>
         <div class="fg"><label>Notes</label><input id="at-notes" placeholder="facultatif"/></div>
         <!-- Check fields -->
         <div id="txn-check-fields" style="display:none;grid-column:1/-1">
           <div class="fgrid">
-            <div class="fg"><label>N° Chèque</label><input id="at-chknum" placeholder="ex: 0012345"/></div>
-            <div class="fg"><label>Bénéficiaire / Émetteur</label><input id="at-benef" placeholder="Nom"/></div>
-            <div class="fg"><label>Date d'Échéance</label><input type="date" id="at-duedate"/></div>
+            <div class="fg"><label>NÂ° ChÃ¨que</label><input id="at-chknum" placeholder="ex: 0012345"/></div>
+            <div class="fg"><label>BÃ©nÃ©ficiaire / Ã‰metteur</label><input id="at-benef" placeholder="Nom"/></div>
+            <div class="fg"><label>Date d'Ã‰chÃ©ance</label><input type="date" id="at-duedate"/></div>
             <div class="fg">
               <label>Statut</label>
               <select id="at-chkstatus">
-                <option value="pending">⏳ En attente (pas encore encaissé)</option>
-                <option value="cashed">✅ Déjà encaissé</option>
+                <option value="pending">â³ En attente (pas encore encaissÃ©)</option>
+                <option value="cashed">âœ… DÃ©jÃ  encaissÃ©</option>
               </select>
             </div>
           </div>
@@ -288,7 +288,7 @@
     </div>
     <div class="modal-ft">
       <button class="btn btn-g" onclick="closeModal('m-add-txn')">Annuler</button>
-      <button class="btn btn-s" onclick="submitAddTxn()">✅ Enregistrer</button>
+      <button class="btn btn-s" onclick="submitAddTxn()">âœ… Enregistrer</button>
     </div>
   </div>
 </div>
@@ -297,7 +297,7 @@
 const TOKEN = localStorage.getItem('fm_token');
 if (!TOKEN) window.location.href = '/';
 
-// ── API ────────────────────────────────────────────────────────
+// â”€â”€ API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function api(method, path, body) {
   const r = await fetch('/api/bank' + path, {
     method,
@@ -309,30 +309,30 @@ async function api(method, path, body) {
   return data;
 }
 
-// ── UTILS ──────────────────────────────────────────────────────
+// â”€â”€ UTILS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const fmt    = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtAmt = n => fmt(Math.abs(n));
 const today  = () => new Date().toISOString().slice(0,10);
-const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : '—';
-const fmtDateShort = d => d ? new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '—';
+const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : 'â€”';
+const fmtDateShort = d => d ? new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : 'â€”';
 
 const IN_TYPES = ['depot','virement_in','cheque_in'];
 const TYPE_LABELS = {
-  depot:'💰 Dépôt', retrait:'💸 Retrait',
-  virement_in:'🏦 Virement reçu', virement_out:'📤 Virement émis',
-  cheque_in:'✅ Chèque reçu', cheque_out:'📝 Chèque émis'
+  depot:'ðŸ’° DÃ©pÃ´t', retrait:'ðŸ’¸ Retrait',
+  virement_in:'ðŸ¦ Virement reÃ§u', virement_out:'ðŸ“¤ Virement Ã©mis',
+  cheque_in:'âœ… ChÃ¨que reÃ§u', cheque_out:'ðŸ“ ChÃ¨que Ã©mis'
 };
 const CAT_COLORS = {
   Carburant:'#E65100',Salaires:'#1A3A5C',Loyer:'#7B3F9E',
   Maintenance:'#B8860B',Fournisseur:'#0070F2',Client:'#188918',
-  Banque:'#1D7EAA',Impôts:'#BB0000',Autre:'#6A6D70'
+  Banque:'#1D7EAA',ImpÃ´ts:'#BB0000',Autre:'#6A6D70'
 };
 
 function statusBadge(s) {
-  if (s==='pending')   return '<span class="ck-pending">⏳ En attente</span>';
-  if (s==='cashed')    return '<span class="ck-cashed">✅ Encaissé</span>';
-  if (s==='cancelled') return '<span class="ck-cancelled">❌ Annulé</span>';
-  return '—';
+  if (s==='pending')   return '<span class="ck-pending">â³ En attente</span>';
+  if (s==='cashed')    return '<span class="ck-cashed">âœ… EncaissÃ©</span>';
+  if (s==='cancelled') return '<span class="ck-cancelled">âŒ AnnulÃ©</span>';
+  return 'â€”';
 }
 
 function dueBadge(due) {
@@ -353,8 +353,8 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
 
-// ── NAV ────────────────────────────────────────────────────────
-const pageNames = { dashboard:'Tableau de Bord', transactions:'Transactions', cheques:'Chèques', rapport:'Rapport Mensuel', settings:'Paramètres' };
+// â”€â”€ NAV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const pageNames = { dashboard:'Tableau de Bord', transactions:'Transactions', cheques:'ChÃ¨ques', rapport:'Rapport Mensuel', settings:'ParamÃ¨tres' };
 function navigate(p) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.p===p));
   document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('active', pg.id==='p-'+p));
@@ -367,18 +367,18 @@ function navigate(p) {
 }
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => navigate(n.dataset.p)));
 
-// ── BALANCE BAR ────────────────────────────────────────────────
+// â”€â”€ BALANCE BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function refreshBalance() {
   const b = await api('GET','/balance');
   const c = b.balance >= 0 ? 'var(--nv)' : 'var(--red)';
   const fc = b.forecasted_balance >= 0 ? '#7B6000' : '#991B1B';
   document.getElementById('top-balance').innerHTML   = `Solde : <strong style="color:${c}">${fmt(b.balance)} MAD</strong>`;
-  document.getElementById('top-forecast').innerHTML  = `⏳ Prévisionnel : <strong style="color:${fc}">${fmt(b.forecasted_balance)} MAD</strong>`;
+  document.getElementById('top-forecast').innerHTML  = `â³ PrÃ©visionnel : <strong style="color:${fc}">${fmt(b.forecasted_balance)} MAD</strong>`;
   document.getElementById('sb-acct-name').textContent = b.account_name || 'Banque';
   return b;
 }
 
-// ── CHARTS ────────────────────────────────────────────────────
+// â”€â”€ CHARTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let chartBalance = null, chartDaily = null, chartCat = null;
 
 function destroyChart(c) { if (c) { c.destroy(); } return null; }
@@ -428,7 +428,7 @@ async function renderDailyChart(month) {
   chartDaily = new Chart(document.getElementById('chart-daily'), {
     type:'bar',
     data:{labels,datasets:[
-      {label:'Entrées',data:ins,backgroundColor:'rgba(24,137,24,.7)',borderRadius:4},
+      {label:'EntrÃ©es',data:ins,backgroundColor:'rgba(24,137,24,.7)',borderRadius:4},
       {label:'Sorties',data:outs,backgroundColor:'rgba(187,0,0,.65)',borderRadius:4}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
@@ -456,7 +456,7 @@ async function renderCatChart(month) {
   });
 }
 
-// ── DASHBOARD ──────────────────────────────────────────────────
+// â”€â”€ DASHBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadDashboard() {
   const [b, txnData, checks] = await Promise.all([
     api('GET','/balance'),
@@ -473,12 +473,12 @@ async function loadDashboard() {
   const frcCol = b.forecasted_balance >= 0 ? 'var(--blue)' : 'var(--red)';
 
   document.getElementById('db-tiles').innerHTML = [
-    { ic:'🏦', val:fmt(b.balance)+' MAD',            lbl:'Solde Actuel',             tc:balCol },
-    { ic:'🔮', val:fmt(b.forecasted_balance)+' MAD', lbl:'Solde Prévisionnel',        tc:frcCol },
-    { ic:'📥', val:fmt(b.total_in)+' MAD',           lbl:'Total Entrées (tout)',       tc:'var(--green)' },
-    { ic:'📤', val:fmt(b.total_out)+' MAD',          lbl:'Total Sorties (tout)',       tc:'var(--red)' },
-    { ic:'⏳', val:fmt(pendOutAmt)+' MAD',           lbl:`Chèques émis en attente (${pendingOut.length})`, tc:'var(--orange)' },
-    { ic:'📨', val:fmt(pendInAmt)+' MAD',            lbl:`Chèques reçus en attente (${pendingIn.length})`, tc:'var(--blue)' },
+    { ic:'ðŸ¦', val:fmt(b.balance)+' MAD',            lbl:'Solde Actuel',             tc:balCol },
+    { ic:'ðŸ”®', val:fmt(b.forecasted_balance)+' MAD', lbl:'Solde PrÃ©visionnel',        tc:frcCol },
+    { ic:'ðŸ“¥', val:fmt(b.total_in)+' MAD',           lbl:'Total EntrÃ©es (tout)',       tc:'var(--green)' },
+    { ic:'ðŸ“¤', val:fmt(b.total_out)+' MAD',          lbl:'Total Sorties (tout)',       tc:'var(--red)' },
+    { ic:'â³', val:fmt(pendOutAmt)+' MAD',           lbl:`ChÃ¨ques Ã©mis en attente (${pendingOut.length})`, tc:'var(--orange)' },
+    { ic:'ðŸ“¨', val:fmt(pendInAmt)+' MAD',            lbl:`ChÃ¨ques reÃ§us en attente (${pendingIn.length})`, tc:'var(--blue)' },
   ].map(t=>`<div class="tile" style="--tc:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
   // Pending checks list
@@ -487,31 +487,31 @@ async function loadDashboard() {
         const isIn = IN_TYPES.includes(c.type);
         return `<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span class="fw7" style="font-size:12px">${c.check_number||'#—'} · ${c.beneficiary||c.description}</span>
-            <span class="${isIn?'amt-in':'amt-out'}" style="font-size:12px">${isIn?'+':'−'}${fmt(c.amount)} MAD</span>
+            <span class="fw7" style="font-size:12px">${c.check_number||'#â€”'} Â· ${c.beneficiary||c.description}</span>
+            <span class="${isIn?'amt-in':'amt-out'}" style="font-size:12px">${isIn?'+':'âˆ’'}${fmt(c.amount)} MAD</span>
           </div>
           <div style="display:flex;gap:6px;align-items:center">
             ${dueBadge(c.due_date)}
             <div style="display:flex;gap:4px;margin-left:auto">
-              <button class="btn btn-xs" style="background:#D1FAE5;color:#065F46" onclick="quickStatus(${c.id},'cashed')">✅</button>
-              <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B" onclick="quickStatus(${c.id},'cancelled')">❌</button>
+              <button class="btn btn-xs" style="background:#D1FAE5;color:#065F46" onclick="quickStatus(${c.id},'cashed')">âœ…</button>
+              <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B" onclick="quickStatus(${c.id},'cancelled')">âŒ</button>
             </div>
           </div>
         </div>`;
       }).join('')
-    : '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">✅ Aucun chèque en attente</div>';
+    : '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">âœ… Aucun chÃ¨que en attente</div>';
 
   // Recent transactions
   const recent = txnData.rows.slice(0,8);
   document.getElementById('db-recent').innerHTML = recent.map(t => {
     const isIn = IN_TYPES.includes(t.type);
-    const bal  = t.running_balance != null ? `<span class="${t.running_balance>=0?'bal-positive':'bal-negative'}">${fmt(t.running_balance)} MAD</span>` : '—';
+    const bal  = t.running_balance != null ? `<span class="${t.running_balance>=0?'bal-positive':'bal-negative'}">${fmt(t.running_balance)} MAD</span>` : 'â€”';
     return `<tr class="${isIn?'row-in':'row-out'}${t.is_reconciled?' row-reconciled':''}">
       <td class="muted sm">${fmtDateShort(t.txn_date)}</td>
       <td><span class="type-pill ${isIn?'tp-in':'tp-out'}">${TYPE_LABELS[t.type]||t.type}</span></td>
       <td class="fw7" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.description}</td>
       <td><span class="cat-pill">${t.category||'Autre'}</span></td>
-      <td class="num ${isIn?'amt-in':'amt-out'}">${isIn?'+':'−'}${fmt(t.amount)} MAD</td>
+      <td class="num ${isIn?'amt-in':'amt-out'}">${isIn?'+':'âˆ’'}${fmt(t.amount)} MAD</td>
       <td class="num">${bal}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--muted)">Aucune transaction ce mois</td></tr>';
@@ -519,7 +519,7 @@ async function loadDashboard() {
   renderBalanceChart();
 }
 
-// ── TRANSACTIONS ───────────────────────────────────────────────
+// â”€â”€ TRANSACTIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let searchTimeout = null;
 function debounceSearch() {
   clearTimeout(searchTimeout);
@@ -542,38 +542,38 @@ async function loadTransactions() {
 
   document.getElementById('txn-body').innerHTML = data.rows.map(t => {
     const isIn = IN_TYPES.includes(t.type);
-    const bal  = t.running_balance != null ? `<span class="${t.running_balance>=0?'bal-positive':'bal-negative'}">${fmt(t.running_balance)}</span>` : '—';
+    const bal  = t.running_balance != null ? `<span class="${t.running_balance>=0?'bal-positive':'bal-negative'}">${fmt(t.running_balance)}</span>` : 'â€”';
     const ckBadge = t.check_status ? statusBadge(t.check_status) : '';
     return `<tr class="${isIn?'row-in':'row-out'}${t.is_reconciled?' row-reconciled':''}">
       <td class="muted sm" style="white-space:nowrap">${fmtDate(t.txn_date)}</td>
       <td><span class="type-pill ${isIn?'tp-in':'tp-out'}">${TYPE_LABELS[t.type]||t.type}</span>${ckBadge?'<br>'+ckBadge:''}</td>
       <td><span class="cat-pill">${t.category||'Autre'}</span></td>
       <td style="max-width:180px">${t.description}${t.notes?`<br><span class="muted sm">${t.notes}</span>`:''}</td>
-      <td class="muted sm">${t.beneficiary||'—'}</td>
-      <td class="muted sm">${t.check_number||'—'}</td>
-      <td class="num amt-out">${!isIn?fmt(t.amount)+' MAD':'—'}</td>
-      <td class="num amt-in">${isIn?fmt(t.amount)+' MAD':'—'}</td>
+      <td class="muted sm">${t.beneficiary||'â€”'}</td>
+      <td class="muted sm">${t.check_number||'â€”'}</td>
+      <td class="num amt-out">${!isIn?fmt(t.amount)+' MAD':'â€”'}</td>
+      <td class="num amt-in">${isIn?fmt(t.amount)+' MAD':'â€”'}</td>
       <td class="num">${bal}</td>
       <td style="text-align:center">
-        <button class="rc-btn" title="${t.is_reconciled?'Annuler rapprochement':'Marquer rapproché'}" onclick="toggleReconcile(${t.id}, this)">
-          ${t.is_reconciled?'🟢':'⭕'}
+        <button class="rc-btn" title="${t.is_reconciled?'Annuler rapprochement':'Marquer rapprochÃ©'}" onclick="toggleReconcile(${t.id}, this)">
+          ${t.is_reconciled?'ðŸŸ¢':'â­•'}
         </button>
       </td>
-      <td><button class="btn btn-d btn-xs" onclick="deleteTxn(${t.id})">✕</button></td>
+      <td><button class="btn btn-d btn-xs" onclick="deleteTxn(${t.id})">âœ•</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--muted)">Aucune transaction trouvée</td></tr>';
+  }).join('') || '<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--muted)">Aucune transaction trouvÃ©e</td></tr>';
 }
 
 async function toggleReconcile(id, btn) {
   const t = await api('PATCH', '/transactions/'+id+'/reconcile');
-  btn.textContent = t.is_reconciled ? '🟢' : '⭕';
+  btn.textContent = t.is_reconciled ? 'ðŸŸ¢' : 'â­•';
   btn.closest('tr').classList.toggle('row-reconciled', !!t.is_reconciled);
 }
 
 async function deleteTxn(id) {
   if (!confirm('Supprimer cette transaction ?')) return;
   await api('DELETE', '/transactions/'+id);
-  toast('Transaction supprimée');
+  toast('Transaction supprimÃ©e');
   refreshBalance();
   loadTransactions();
   if (document.querySelector('#p-dashboard.active')) loadDashboard();
@@ -584,7 +584,7 @@ function printStatement() {
   const month = document.getElementById('txn-month').value;
   const w = window.open('','_blank');
   const rows = document.getElementById('txn-body').innerHTML;
-  w.document.write(`<html><head><title>Relevé — ${title}</title>
+  w.document.write(`<html><head><title>RelevÃ© â€” ${title}</title>
   <style>body{font-family:Arial,sans-serif;padding:24px;font-size:11px}h2{margin-bottom:12px}
   table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:5px 8px;text-align:left}
   th{background:#f5f5f5;font-weight:700}.amt-in{color:green;font-weight:700}.amt-out{color:red;font-weight:700}
@@ -592,15 +592,15 @@ function printStatement() {
   .row-in{border-left:3px solid green}.row-out{border-left:3px solid red}
   .row-reconciled{opacity:.6}.type-pill,.cat-pill{font-size:10px}
   .btn,.rc-btn{display:none}</style></head><body>
-  <h2>🏦 Relevé Bancaire — ${title} — ${month}</h2>
-  <p>Imprimé le ${new Date().toLocaleDateString('fr-FR')}</p><br>
-  <table><thead><tr><th>Date</th><th>Type</th><th>Catégorie</th><th>Description</th><th>Bénéficiaire</th><th>N° Chèque</th><th>Débit</th><th>Crédit</th><th>Solde</th><th>Rapproché</th></tr></thead><tbody>${rows}</tbody></table>
+  <h2>ðŸ¦ RelevÃ© Bancaire â€” ${title} â€” ${month}</h2>
+  <p>ImprimÃ© le ${new Date().toLocaleDateString('fr-FR')}</p><br>
+  <table><thead><tr><th>Date</th><th>Type</th><th>CatÃ©gorie</th><th>Description</th><th>BÃ©nÃ©ficiaire</th><th>NÂ° ChÃ¨que</th><th>DÃ©bit</th><th>CrÃ©dit</th><th>Solde</th><th>RapprochÃ©</th></tr></thead><tbody>${rows}</tbody></table>
 </body></html>`);
   w.document.close();
   w.print();
 }
 
-// ── CHÈQUES ────────────────────────────────────────────────────
+// â”€â”€ CHÃˆQUES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadCheques() {
   const checks = await api('GET','/checks');
   _allCheques = checks;
@@ -610,10 +610,10 @@ async function loadCheques() {
   const inPendAmt  = inp.filter(c=>c.check_status==='pending').reduce((s,c)=>s+c.amount,0);
 
   document.getElementById('ck-tiles').innerHTML = [
-    { ic:'📝', val:out.length,          lbl:'Chèques Émis Total',        tc:'var(--red)' },
-    { ic:'✅', val:inp.length,          lbl:'Chèques Reçus Total',        tc:'var(--green)' },
-    { ic:'⏳', val:fmt(outPendAmt)+' MAD', lbl:'En attente sortant',     tc:'var(--orange)' },
-    { ic:'📨', val:fmt(inPendAmt)+' MAD',  lbl:'En attente entrant',     tc:'var(--blue)' },
+    { ic:'ðŸ“', val:out.length,          lbl:'ChÃ¨ques Ã‰mis Total',        tc:'var(--red)' },
+    { ic:'âœ…', val:inp.length,          lbl:'ChÃ¨ques ReÃ§us Total',        tc:'var(--green)' },
+    { ic:'â³', val:fmt(outPendAmt)+' MAD', lbl:'En attente sortant',     tc:'var(--orange)' },
+    { ic:'ðŸ“¨', val:fmt(inPendAmt)+' MAD',  lbl:'En attente entrant',     tc:'var(--blue)' },
   ].map(t=>`<div class="tile" style="--tc:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
   filterCheques();
@@ -637,31 +637,31 @@ function filterCheques() {
   const inp = _allCheques.filter(c => c.type==='cheque_in'  && match(c));
   const ckRow = (c, dir) => `<tr>
     <td class="muted sm">${fmtDate(c.txn_date)}</td>
-    <td class="fw7">${c.check_number||'—'}</td>
-    <td>${c.beneficiary||'—'}</td>
-    <td>${dueBadge(c.due_date)||'—'}</td>
-    <td class="num fw8 ${dir==='out'?'amt-out':'amt-in'}">${dir==='out'?'−':'+'}${fmt(c.amount)} MAD</td>
+    <td class="fw7">${c.check_number||'â€”'}</td>
+    <td>${c.beneficiary||'â€”'}</td>
+    <td>${dueBadge(c.due_date)||'â€”'}</td>
+    <td class="num fw8 ${dir==='out'?'amt-out':'amt-in'}">${dir==='out'?'âˆ’':'+'}${fmt(c.amount)} MAD</td>
     <td>${statusBadge(c.check_status)}</td>
     <td><div style="display:flex;gap:4px">
-      <button class="btn btn-xs" style="background:#D1FAE5;color:#065F46" onclick="quickStatus(${c.id},'cashed')">✅</button>
-      <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B" onclick="quickStatus(${c.id},'cancelled')">❌</button>
+      <button class="btn btn-xs" style="background:#D1FAE5;color:#065F46" onclick="quickStatus(${c.id},'cashed')">âœ…</button>
+      <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B" onclick="quickStatus(${c.id},'cancelled')">âŒ</button>
     </div></td>
   </tr>`;
   document.getElementById('ck-out-body').innerHTML = out.map(c=>ckRow(c,'out')).join('')
-    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun résultat</td></tr>';
+    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun rÃ©sultat</td></tr>';
   document.getElementById('ck-in-body').innerHTML = inp.map(c=>ckRow(c,'in')).join('')
-    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun résultat</td></tr>';
+    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun rÃ©sultat</td></tr>';
 }
 
 async function quickStatus(id, status) {
   await api('PATCH','/checks/'+id+'/status',{ check_status: status });
-  toast(status==='cashed' ? '✅ Chèque encaissé' : '❌ Chèque annulé');
+  toast(status==='cashed' ? 'âœ… ChÃ¨que encaissÃ©' : 'âŒ ChÃ¨que annulÃ©');
   refreshBalance();
   loadCheques();
   if (document.querySelector('#p-dashboard.active')) loadDashboard();
 }
 
-// ── RAPPORT ────────────────────────────────────────────────────
+// â”€â”€ RAPPORT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadRapport() {
   const month = document.getElementById('rpt-month').value || today().slice(0,7);
   const d = await api('GET','/report?month='+month);
@@ -669,10 +669,10 @@ async function loadRapport() {
   const nc  = net>=0 ? 'var(--green)' : 'var(--red)';
 
   document.getElementById('rpt-tiles').innerHTML = [
-    { ic:'📥', val:fmt(d.total_in)+' MAD',  lbl:'Total Entrées',     tc:'var(--green)' },
-    { ic:'📤', val:fmt(d.total_out)+' MAD', lbl:'Total Sorties',     tc:'var(--red)' },
-    { ic:'📊', val:fmt(net)+' MAD',         lbl:'Flux Net du Mois',  tc:nc },
-    { ic:'📅', val:d.rows.length,           lbl:'Jours avec mouvements', tc:'var(--nv)' },
+    { ic:'ðŸ“¥', val:fmt(d.total_in)+' MAD',  lbl:'Total EntrÃ©es',     tc:'var(--green)' },
+    { ic:'ðŸ“¤', val:fmt(d.total_out)+' MAD', lbl:'Total Sorties',     tc:'var(--red)' },
+    { ic:'ðŸ“Š', val:fmt(net)+' MAD',         lbl:'Flux Net du Mois',  tc:nc },
+    { ic:'ðŸ“…', val:d.rows.length,           lbl:'Jours avec mouvements', tc:'var(--nv)' },
   ].map(t=>`<div class="tile" style="--tc:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
   document.getElementById('rpt-body').innerHTML = d.rows.map(r => {
@@ -680,22 +680,22 @@ async function loadRapport() {
     return `<tr>
       <td class="fw7">${fmtDate(r.day)}</td>
       <td class="num amt-in">+${fmt(r.total_in)}</td>
-      <td class="num amt-out">−${fmt(r.total_out)}</td>
+      <td class="num amt-out">âˆ’${fmt(r.total_out)}</td>
       <td class="num fw8 ${rnet>=0?'c-g':'c-r'}">${rnet>=0?'+':''}${fmt(rnet)} MAD</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted)">Aucune donnée</td></tr>';
+  }).join('') || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted)">Aucune donnÃ©e</td></tr>';
 
   document.getElementById('rpt-foot').innerHTML = `<tr style="background:#f9f9f9;font-weight:800">
     <td>TOTAL</td>
     <td class="num amt-in">+${fmt(d.total_in)}</td>
-    <td class="num amt-out">−${fmt(d.total_out)}</td>
+    <td class="num amt-out">âˆ’${fmt(d.total_out)}</td>
     <td class="num fw8 ${net>=0?'c-g':'c-r'}">${net>=0?'+':''}${fmt(net)} MAD</td>
   </tr>`;
 
   await Promise.all([renderDailyChart(month), renderCatChart(month)]);
 }
 
-// ── SETTINGS ───────────────────────────────────────────────────
+// â”€â”€ SETTINGS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadSettings() {
   const s = await api('GET','/settings');
   document.getElementById('cfg-name').value    = s.account_name||'';
@@ -705,11 +705,11 @@ async function saveSettings() {
   const name = document.getElementById('cfg-name').value.trim();
   const bal  = parseFloat(document.getElementById('cfg-balance').value)||0;
   await api('PUT','/settings',{ account_name:name||'Compte Bancaire', initial_balance:bal });
-  toast('Paramètres enregistrés ✓');
+  toast('ParamÃ¨tres enregistrÃ©s âœ“');
   refreshBalance();
 }
 
-// ── ADD TRANSACTION ────────────────────────────────────────────
+// â”€â”€ ADD TRANSACTION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function toggleCheckFields() {
   const type = document.getElementById('at-type').value;
   const isCheck = type==='cheque_in'||type==='cheque_out';
@@ -735,7 +735,7 @@ async function submitAddTxn() {
     });
     closeModal('m-add-txn');
     ['at-amount','at-desc','at-chknum','at-benef','at-duedate','at-notes'].forEach(id => document.getElementById(id).value='');
-    toast('Transaction enregistrée ✓');
+    toast('Transaction enregistrÃ©e âœ“');
     refreshBalance();
     if (document.querySelector('#p-dashboard.active'))    loadDashboard();
     if (document.querySelector('#p-transactions.active')) loadTransactions();
@@ -743,7 +743,7 @@ async function submitAddTxn() {
   } catch(e) { toast(e.message,'er'); }
 }
 
-// ── INIT ───────────────────────────────────────────────────────
+// â”€â”€ INIT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.getElementById('at-date').value = today();
 refreshBalance();
 loadDashboard();
@@ -751,15 +751,15 @@ loadDashboard();
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="/js/excel-utils.js"></script>
 <script>
-// ── IMPORT FROM EXCEL ──────────────────────────────────────────
-// Expected columns (order flexible): Date | Type | Description | Montant | Catégorie | Bénéficiaire | N°Chèque
+// â”€â”€ IMPORT FROM EXCEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Expected columns (order flexible): Date | Type | Description | Montant | CatÃ©gorie | BÃ©nÃ©ficiaire | NÂ°ChÃ¨que
 const IMPORT_TYPE_MAP = {
-  'depot':'depot','dépôt':'depot','depôt':'depot',
+  'depot':'depot','dÃ©pÃ´t':'depot','depÃ´t':'depot',
   'retrait':'retrait',
-  'virement reçu':'virement_in','virement in':'virement_in','entrant':'virement_in',
-  'virement émis':'virement_out','virement out':'virement_out','sortant':'virement_out',
-  'chèque reçu':'cheque_in','cheque recu':'cheque_in','cheque in':'cheque_in',
-  'chèque émis':'cheque_out','cheque emis':'cheque_out','cheque out':'cheque_out',
+  'virement reÃ§u':'virement_in','virement in':'virement_in','entrant':'virement_in',
+  'virement Ã©mis':'virement_out','virement out':'virement_out','sortant':'virement_out',
+  'chÃ¨que reÃ§u':'cheque_in','cheque recu':'cheque_in','cheque in':'cheque_in',
+  'chÃ¨que Ã©mis':'cheque_out','cheque emis':'cheque_out','cheque out':'cheque_out',
 };
 
 let importRows = [];
@@ -775,7 +775,7 @@ function onImportPaste(e) {
 async function submitImport() {
   const rawText = document.getElementById('import-paste').value;
   if (rawText.trim()) importRows = parseExcelPaste(rawText);
-  if (importRows.length < 2) { alert('Pas de données à importer'); return; }
+  if (importRows.length < 2) { alert('Pas de donnÃ©es Ã  importer'); return; }
   const header = importRows[0].map(h => h.toLowerCase().trim());
   const rows   = importRows.slice(1).filter(r => r.some(c => c.trim()));
 
@@ -786,8 +786,8 @@ async function submitImport() {
     description: header.findIndex(h => h.includes('desc') || h.includes('libel') || h.includes('objet') || h.includes('motif')),
     amount:      header.findIndex(h => h.includes('mont') || h.includes('amount') || h.includes('somme')),
     category:    header.findIndex(h => h.includes('cat')),
-    beneficiary: header.findIndex(h => h.includes('bénéf') || h.includes('benef') || h.includes('tiers') || h.includes('nom')),
-    check_number:header.findIndex(h => h.includes('chèque') || h.includes('cheque') || h.includes('n°')),
+    beneficiary: header.findIndex(h => h.includes('bÃ©nÃ©f') || h.includes('benef') || h.includes('tiers') || h.includes('nom')),
+    check_number:header.findIndex(h => h.includes('chÃ¨que') || h.includes('cheque') || h.includes('nÂ°')),
   };
 
   let imported = 0, errors = 0;
@@ -818,7 +818,7 @@ async function submitImport() {
   document.getElementById('import-paste').value = '';
   document.getElementById('import-preview').innerHTML = '';
   importRows = [];
-  toast(`✅ ${imported} transactions importées${errors ? ` · ⚠️ ${errors} ignorées` : ''}`, imported>0?'g':'wn');
+  toast(`âœ… ${imported} transactions importÃ©es${errors ? ` Â· âš ï¸ ${errors} ignorÃ©es` : ''}`, imported>0?'g':'wn');
   refreshBalance();
   loadTransactions();
 }
@@ -834,7 +834,7 @@ function parseExcelDate(str) {
   return null;
 }
 
-// ── EXPORT ────────────────────────────────────────────────────
+// â”€â”€ EXPORT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function _expData(tbl) {
   if (!tbl) return { headers: [], rows: [] };
   const headers = [...tbl.querySelectorAll('thead th')].map(th => th.textContent.trim()).filter(h => h);
@@ -846,7 +846,7 @@ function _expData(tbl) {
 function expPDF(tbl, title) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape' });
-  doc.setFontSize(13); doc.text((title||'Export') + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
+  doc.setFontSize(13); doc.text((title||'Export') + ' â€” ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
   const { headers, rows } = _expData(tbl);
   doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [29, 45, 62] } });
   doc.save((title||'export').replace(/\s+/g,'_') + '.pdf');
@@ -859,7 +859,7 @@ function expXL(tbl, title) {
 }
 function expWord(tbl, title) {
   const clone = tbl.cloneNode(true); clone.querySelectorAll('input,button').forEach(el => el.remove());
-  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2><p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>${clone.outerHTML}</body></html>`;
+  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2><p style="color:#666;font-size:11px">ExportÃ© le ${new Date().toLocaleDateString('fr-FR')}</p>${clone.outerHTML}</body></html>`;
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html],{type:'application/msword'})); a.download = (title||'export').replace(/\s+/g,'_')+'.doc'; a.click();
 }
 (function wireExport() {
@@ -873,7 +873,7 @@ function expWord(tbl, title) {
       sec.setAttribute('data-ew', '1');
       const t = sh.querySelector('.s-title')?.textContent.trim().slice(0,30) || 'Export';
       const w = document.createElement('div'); w.className = 'exp-btns';
-      w.innerHTML = `<button class="exp-btn exp-pdf" onclick="expPDF(this.closest('.section,[data-ew]').querySelector('table'),'${t.replace(/'/g,"\\'")}')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL(this.closest('.section,[data-ew]').querySelector('table'),'${t.replace(/'/g,"\\'")}')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord(this.closest('.section,[data-ew]').querySelector('table'),'${t.replace(/'/g,"\\'")}')">📝 Word</button>`;
+      w.innerHTML = `<button class="exp-btn exp-pdf" onclick="expPDF(this.closest('.section,[data-ew]').querySelector('table'),'${t.replace(/'/g,"\\'")}')">ðŸ“„ PDF</button><button class="exp-btn exp-xl" onclick="expXL(this.closest('.section,[data-ew]').querySelector('table'),'${t.replace(/'/g,"\\'")}')">ðŸ“Š Excel</button><button class="exp-btn exp-word" onclick="expWord(this.closest('.section,[data-ew]').querySelector('table'),'${t.replace(/'/g,"\\'")}')">ðŸ“ Word</button>`;
       sh.appendChild(w);
     });
   }
@@ -885,29 +885,30 @@ function expWord(tbl, title) {
 <!-- MODAL: Import from Excel -->
 <div class="overlay" id="m-import-txn">
   <div class="modal" style="width:620px">
-    <div class="modal-hd"><div class="mh-ic">📥</div><h3>Importer depuis Excel</h3><button class="x" onclick="closeModal('m-import-txn')">×</button></div>
+    <div class="modal-hd"><div class="mh-ic">ðŸ“¥</div><h3>Importer depuis Excel</h3><button class="x" onclick="closeModal('m-import-txn')">Ã—</button></div>
     <div class="modal-body">
       <div style="background:#EBF2FA;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.6;color:#1A3A5C">
         <strong>Comment faire :</strong><br>
-        1. Dans Excel, sélectionnez vos colonnes et copiez (Ctrl+C)<br>
+        1. Dans Excel, sÃ©lectionnez vos colonnes et copiez (Ctrl+C)<br>
         2. Collez ici (Ctrl+V)<br>
-        3. La 1ère ligne doit être les en-têtes : <code>Date | Type | Description | Montant | Catégorie | Bénéficiaire | N°Chèque</code><br>
-        <strong>Types acceptés :</strong> Dépôt, Retrait, Virement reçu, Virement émis, Chèque reçu, Chèque émis
+        3. La 1Ã¨re ligne doit Ãªtre les en-tÃªtes : <code>Date | Type | Description | Montant | CatÃ©gorie | BÃ©nÃ©ficiaire | NÂ°ChÃ¨que</code><br>
+        <strong>Types acceptÃ©s :</strong> DÃ©pÃ´t, Retrait, Virement reÃ§u, Virement Ã©mis, ChÃ¨que reÃ§u, ChÃ¨que Ã©mis
       </div>
       <div class="fg">
-        <label>Coller les données Excel ici</label>
+        <label>Coller les donnÃ©es Excel ici</label>
         <textarea id="import-paste" rows="6" style="font-size:12px;font-family:monospace;resize:vertical"
-          placeholder="Date&#9;Type&#9;Description&#9;Montant&#9;Catégorie&#10;15/05/2026&#9;Dépôt&#9;Vente carburant&#9;12500&#9;Carburant&#10;16/05/2026&#9;Retrait&#9;Paiement Afriquia&#9;8000&#9;Fournisseur"
+          placeholder="Date&#9;Type&#9;Description&#9;Montant&#9;CatÃ©gorie&#10;15/05/2026&#9;DÃ©pÃ´t&#9;Vente carburant&#9;12500&#9;Carburant&#10;16/05/2026&#9;Retrait&#9;Paiement Afriquia&#9;8000&#9;Fournisseur"
           oninput="onImportPaste(event)"></textarea>
       </div>
       <div id="import-preview"></div>
     </div>
     <div class="modal-ft">
       <button class="btn btn-g" onclick="closeModal('m-import-txn')">Annuler</button>
-      <button class="btn btn-s" onclick="submitImport()">✅ Importer</button>
+      <button class="btn btn-s" onclick="submitImport()">âœ… Importer</button>
     </div>
   </div>
 </div>
 <script src="/js/ai-widget.js?v=3"></script>
 </body>
 </html>
+

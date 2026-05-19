@@ -5,574 +5,468 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA — Launchpad</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="/css/fiori.css?v=23"/>
-<script src="/js/modal-init.js?v=1" defer></script>
+<link rel="stylesheet" href="/css/fiori.css?v=24"/>
+<script src="/js/shell-init.js?v=2" defer></script>
 <style>
-/* ── Page scaffold ── */
-body { background: #f2f4f7; margin: 0; padding: 0; font-family: var(--font); }
-.lp-root { padding-top: var(--shell-h); min-height: 100vh; display: flex; flex-direction: column; }
+body { background: #eceef0; }
 
-/* ── Launchpad header strip ── */
-.lp-header {
-  background: #ffffff;
-  border-bottom: 1px solid var(--border);
-  padding: 0 28px;
-  height: 52px;
-  display: flex; align-items: center; gap: 16px;
-  box-shadow: var(--sh-xs);
+/* ── Notification strip ── */
+.lp-strip {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  height: 34px; display: flex; align-items: center;
+  padding: 0 32px; font-size: 11.5px; color: var(--muted);
+  justify-content: space-between; box-shadow: var(--sh-xs); flex-shrink: 0;
 }
-.lp-title   { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -.3px; flex: 1; }
-.lp-date    { font-size: 12.5px; color: var(--muted); }
-.lp-search  {
-  display: flex; align-items: center; gap: 8px;
-  background: var(--bg); border: 1px solid var(--border);
-  border-radius: 20px; padding: 6px 14px;
-  font-size: 13px; color: var(--muted);
-  cursor: pointer; transition: border-color .14s;
-  min-width: 200px;
-}
-.lp-search:hover { border-color: var(--blue); color: var(--text); }
+.strip-l { display: flex; align-items: center; gap: 18px; }
+.strip-r { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--subtle); }
+.s-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 5px; }
 
-/* ── KPI Overview bar ── */
-.lp-kpi-bar {
-  background: var(--shell-bg);
-  display: flex; align-items: center;
-  padding: 0 28px; gap: 0;
-  border-bottom: 1px solid rgba(255,255,255,.1);
-}
-.lp-kpi-item {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 12px 24px;
-  border-right: 1px solid rgba(255,255,255,.1);
-  cursor: default;
-  transition: background .14s;
-}
-.lp-kpi-item:first-child { padding-left: 0; }
-.lp-kpi-item:hover { background: rgba(255,255,255,.06); }
-.lp-kpi-lbl { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .6px; }
-.lp-kpi-val { font-size: 18px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: -.3px; }
-.lp-kpi-sub { font-size: 10.5px; font-weight: 500; }
-.lp-kpi-sub.up   { color: #4ade80; }
-.lp-kpi-sub.dn   { color: #fca5a5; }
-.lp-kpi-sub.warn { color: #fbbf24; }
-.lp-kpi-clock { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; padding: 12px 0; }
-.lp-kpi-clock .time { font-size: 20px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
-.lp-kpi-clock .day  { font-size: 10.5px; color: rgba(255,255,255,.5); }
+/* ── Page wrapper ── */
+.lp-wrap { padding-top: var(--shell-h); min-height: 100vh; display: flex; flex-direction: column; }
+.lp-inner { flex: 1; padding: 28px 36px; max-width: 1380px; margin: 0 auto; width: 100%; }
 
-/* ── Launchpad body ── */
-.lp-body { flex: 1; padding: 28px 28px 48px; max-width: 1400px; width: 100%; margin: 0 auto; }
-
-/* ── Group section ── */
-.lp-group { margin-bottom: 32px; }
-.lp-group-title {
-  font-size: 12px; font-weight: 700; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 1px;
-  margin-bottom: 14px;
-  display: flex; align-items: center; gap: 12px;
+/* ── Welcome Banner ── */
+.lp-banner {
+  background: linear-gradient(135deg, var(--shell-bg) 0%, #273d52 100%);
+  border-radius: 14px; padding: 22px 28px;
+  display: flex; align-items: center; gap: 22px;
+  margin-bottom: 24px; position: relative; overflow: hidden;
+  box-shadow: 0 6px 24px rgba(0,0,0,.18);
 }
-.lp-group-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-
-/* ── Tile grid ── */
-.tile-grid {
-  display: flex; flex-wrap: wrap; gap: 14px;
-}
-
-/* ── Base tile ── */
-.lp-tile {
-  width: 188px; min-height: 140px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px 18px 14px;
-  cursor: pointer;
-  transition: box-shadow .18s, border-color .18s, transform .18s;
-  box-shadow: var(--sh-xs);
-  display: flex; flex-direction: column;
-  text-decoration: none;
-  color: var(--text);
-  position: relative;
-  overflow: hidden;
-}
-.lp-tile:hover {
-  box-shadow: var(--sh-md);
-  border-color: var(--blue);
-  transform: translateY(-2px);
-}
-.lp-tile:active { transform: translateY(0); box-shadow: var(--sh-xs); }
-
-/* Tile color top bar */
-.lp-tile::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 4px;
-  background: var(--tc, var(--blue));
-  border-radius: 10px 10px 0 0;
-}
-
-/* ── Dynamic tile (shows KPI number) ── */
-.lt-icon { font-size: 26px; margin-bottom: 8px; line-height: 1; }
-.lt-kpi  { font-size: 28px; font-weight: 700; letter-spacing: -.5px; font-variant-numeric: tabular-nums; color: var(--text); line-height: 1; margin-bottom: 4px; }
-.lt-kpi-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
-.lt-title { font-size: 13px; font-weight: 600; color: var(--text); margin-top: auto; }
-.lt-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-/* Trend badge on tile */
-.lt-trend {
-  position: absolute; top: 12px; right: 12px;
-  font-size: 10.5px; font-weight: 700;
-  padding: 2px 7px; border-radius: 20px;
-}
-.lt-trend.up   { background: var(--green-lt); color: var(--green); }
-.lt-trend.dn   { background: var(--red-lt);   color: var(--red);   }
-.lt-trend.warn { background: var(--orange-lt);color: var(--orange);}
-
-/* ── Standard navigation tile ── */
-.lt-nav-icon { font-size: 32px; margin-bottom: 12px; }
-.lt-nav-title { font-size: 14px; font-weight: 600; color: var(--text); }
-.lt-nav-sub   { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
-.lt-arrow { position: absolute; bottom: 12px; right: 14px; font-size: 16px; color: var(--blue); opacity: .6; }
-.lp-tile:hover .lt-arrow { opacity: 1; }
-
-/* ── Wide tile (2 units wide) ── */
-.lp-tile-wide { width: 390px; }
-
-/* ── Activity tile ── */
-.lt-feed { display: flex; flex-direction: column; gap: 0; flex: 1; margin-top: 6px; }
-.lt-feed-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border-lt);
-  font-size: 11.5px;
-}
-.lt-feed-row:last-child { border-bottom: none; }
-.lt-feed-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.lt-feed-txt { flex: 1; color: var(--text-2); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lt-feed-time { color: var(--subtle); font-size: 10.5px; flex-shrink: 0; }
-
-/* ── Status indicator ── */
-.lp-status-row {
-  display: flex; align-items: center; gap: 8px;
-  margin-top: 8px; flex-wrap: wrap;
-}
-.lp-status-dot {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 11px; font-weight: 500; color: var(--muted);
-}
-.lp-status-dot::before {
-  content: '';
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--sc, var(--green));
-  display: block;
-}
-
-/* ── Section label in KPI bar ── */
-.lp-sep { width: 1px; height: 36px; background: rgba(255,255,255,.12); }
-
-/* ── Welcome message ── */
-.lp-welcome {
-  background: linear-gradient(135deg, var(--shell-bg) 0%, #2d4157 100%);
-  border-radius: 10px;
-  padding: 20px 24px;
-  color: #fff;
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 28px;
-  box-shadow: var(--sh-sm);
-  overflow: hidden;
-  position: relative;
-}
-.lp-welcome::after {
-  content: '⛽';
-  position: absolute; right: 24px; top: 50%;
-  transform: translateY(-50%);
-  font-size: 64px; opacity: .08;
+.lp-banner::after {
+  content: ''; position: absolute; right: -40px; top: -40px;
+  width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,112,242,.2), transparent 70%);
   pointer-events: none;
 }
-.lp-welcome-text h2 { font-size: 20px; font-weight: 700; letter-spacing: -.3px; margin-bottom: 4px; }
-.lp-welcome-text p  { font-size: 13px; opacity: .65; }
-.lp-welcome-actions { display: flex; gap: 8px; position: relative; z-index: 1; }
-.lp-wbtn {
-  padding: 8px 16px; border-radius: var(--r);
-  font-size: 13px; font-weight: 600; cursor: pointer;
-  border: none; font-family: var(--font); transition: all .14s;
-  text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
-}
-.lp-wbtn-p { background: #fff; color: var(--shell-bg); }
-.lp-wbtn-p:hover { background: #eff6ff; color: var(--blue); }
-.lp-wbtn-g { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25); }
-.lp-wbtn-g:hover { background: rgba(255,255,255,.2); }
+.banner-ic { font-size: 52px; flex-shrink: 0; }
+.banner-text { flex: 1; }
+.banner-title { font-size: 21px; font-weight: 800; color: #fff; letter-spacing: -.4px; margin-bottom: 4px; }
+.banner-sub { font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.4; }
+.banner-dt { text-align: right; color: rgba(255,255,255,.55); font-size: 12px; flex-shrink: 0; }
+.banner-dt strong { display: block; font-size: 19px; font-weight: 700; color: #fff; margin-bottom: 2px; }
 
-/* Responsive */
-@media(max-width:1100px) { .lp-tile { width: calc(25% - 11px); } .lp-tile-wide { width: calc(50% - 7px); } }
-@media(max-width:860px)  { .lp-tile { width: calc(33.33% - 10px); } .lp-tile-wide { width: calc(66.66% - 5px); } .lp-kpi-item { padding: 10px 14px; } }
-@media(max-width:640px)  { .lp-tile { width: calc(50% - 7px); } .lp-tile-wide { width: 100%; } .lp-kpi-item:nth-child(n+4) { display: none; } .lp-body { padding: 16px; } }
-@media(max-width:400px)  { .lp-tile { width: 100%; } }
+/* ── KPI Row ── */
+.lp-kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 28px; }
+.lp-kpi {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 18px;
+  box-shadow: var(--sh-xs); position: relative; overflow: hidden;
+  cursor: pointer; text-decoration: none; display: block;
+  transition: box-shadow .2s, transform .18s, border-color .18s;
+}
+.lp-kpi:hover { box-shadow: var(--sh-md); transform: translateY(-3px); border-color: var(--blue); }
+.lp-kpi::before {
+  content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 4px;
+  background: var(--kc, var(--blue)); border-radius: 12px 0 0 12px;
+}
+.kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.kpi-ic  { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--kb, var(--blue-lt)); }
+.kpi-trend { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.kpi-trend.up   { background: var(--green-lt); color: var(--green); }
+.kpi-trend.neutral { background: var(--blue-lt); color: var(--blue); }
+.kpi-trend.warn { background: var(--orange-lt); color: var(--orange); }
+.kpi-val { font-size: 23px; font-weight: 800; color: var(--text); letter-spacing: -.5px; line-height: 1; }
+.kpi-lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
+.kpi-sub { font-size: 11px; color: var(--subtle); margin-top: 3px; }
+
+/* ── Tile Groups ── */
+.lp-group { margin-bottom: 28px; }
+.grp-hd { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.grp-lbl { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); white-space: nowrap; }
+.grp-rule { flex: 1; height: 1px; background: var(--border-lt); }
+
+/* ── Tiles ── */
+.tiles-row { display: flex; flex-wrap: wrap; gap: 14px; }
+.lp-tile {
+  width: 178px; height: 182px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; box-shadow: var(--sh-xs);
+  display: flex; flex-direction: column; padding: 16px 15px 13px;
+  cursor: pointer; text-decoration: none; position: relative; overflow: hidden;
+  transition: box-shadow .22s, transform .22s, border-color .22s;
+}
+.lp-tile:hover {
+  box-shadow: 0 10px 32px rgba(0,0,0,.14);
+  transform: translateY(-4px);
+  border-color: rgba(0,112,242,.3);
+}
+.lp-tile:active { transform: translateY(-1px); }
+
+/* Tile top bar color accent */
+.lp-tile::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--tc, transparent); border-radius: 14px 14px 0 0;
+}
+.lp-tile-ic {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; margin-bottom: 12px;
+  background: var(--tib, var(--blue-lt));
+}
+.lp-tile-cnt {
+  position: absolute; top: 12px; right: 12px;
+  min-width: 22px; height: 22px; background: var(--red); color: #fff;
+  font-size: 10px; font-weight: 700; border-radius: 11px;
+  padding: 0 5px; display: flex; align-items: center; justify-content: center;
+}
+.lp-tile-title { font-size: 14.5px; font-weight: 700; color: var(--text); line-height: 1.2; margin-bottom: 3px; }
+.lp-tile-sub   { font-size: 11.5px; color: var(--muted); line-height: 1.45; flex: 1; }
+.lp-tile-foot  {
+  margin-top: 10px; font-size: 11.5px; font-weight: 600; color: var(--tfc, var(--blue));
+  display: flex; align-items: center; gap: 4px;
+  border-top: 1px solid var(--border-lt); padding-top: 8px;
+}
+.lp-tile-foot .arr { margin-left: auto; font-size: 13px; }
+
+/* Color themes for tiles */
+.tc-blue   { --tc:#0070f2; --tib:#e8f2ff; --tfc:#0070f2; }
+.tc-green  { --tc:#107e3e; --tib:#f1f8f5; --tfc:#107e3e; }
+.tc-orange { --tc:#e9730c; --tib:#fef4eb; --tfc:#e9730c; }
+.tc-red    { --tc:#bb0000; --tib:#fff0f0; --tfc:#bb0000; }
+.tc-purple { --tc:#6c32a0; --tib:#f5eeff; --tfc:#6c32a0; }
+.tc-teal   { --tc:#0e7490; --tib:#ecfeff; --tfc:#0e7490; }
+.tc-amber  { --tc:#92400e; --tib:#fffbeb; --tfc:#92400e; }
+
+/* ── Bottom stat strip ── */
+.lp-stats { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.lp-stat {
+  flex: 1; min-width: 140px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: var(--sh-xs);
+}
+.lp-stat-ic { font-size: 22px; flex-shrink: 0; }
+.lp-stat-val { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -.3px; line-height: 1; }
+.lp-stat-lbl { font-size: 10.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
+
+@media(max-width:1100px) { .lp-kpis { grid-template-columns: 1fr 1fr; } }
+@media(max-width:720px) {
+  .lp-inner { padding: 16px; }
+  .lp-kpis { grid-template-columns: 1fr 1fr; }
+  .lp-tile { width: calc(50% - 7px); height: auto; min-height: 155px; }
+  .lp-banner { flex-direction: column; text-align: center; }
+  .banner-dt { display: none; }
+}
 </style>
 </head>
-<body>
+<body class="lp-layout">
 
-<!-- ══ SAP FIORI SHELL BAR ══ -->
+<!-- SAP FIORI SHELL BAR -->
 <header class="fiori-shell">
-  <div class="fs-logo">
+  <a href="/home" class="fs-logo">
     <div class="fs-mark">⛽</div>
     <div class="fs-brand">MENASTA</div>
-  </div>
+  </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
     <a href="/home"     class="fs-nav-item active"><span class="fn-icon">🏠</span> Launchpad</a>
+    <a href="/patron"   class="fs-nav-item" id="nav-patron"><span class="fn-icon">👑</span> Patron</a>
     <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
     <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
-    <a href="/bank"     class="fs-nav-item" id="nav-bank" style="display:none"><span class="fn-icon">🏦</span> Banque</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">🏦</span> Banque</a>
     <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
     <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
-    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> Assistant IA</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
+    <a href="/logs"     class="fs-nav-item" id="nav-logs"><span class="fn-icon">📋</span> Journal</a>
   </nav>
   <div class="fs-actions">
-    <button class="fs-icon-btn" id="notif-btn" style="display:none" onclick="location.href='/logs'" title="Alertes">
-      🔔<div class="fs-notif-dot" id="notif-dot"></div>
-    </button>
-    <button class="fs-icon-btn" onclick="location.href='/ai'" title="Assistant IA">🤖</button>
-    <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
+    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
+    <button class="fs-icon-btn" onclick="logout()" title="Déconnexion">↪</button>
+    <div class="fs-avatar" id="fs-av">?</div>
   </div>
 </header>
 
-<!-- ══ LAUNCHPAD ROOT ══ -->
-<div class="lp-root">
-
-  <!-- ── Page header ── -->
-  <div class="lp-header">
-    <div class="lp-title">Launchpad</div>
-    <div class="lp-date" id="lp-date">—</div>
-  </div>
-
-  <!-- ── KPI bar ── -->
-  <div class="lp-kpi-bar">
-    <div class="lp-kpi-item">
-      <div class="lp-kpi-lbl">CA Aujourd'hui</div>
-      <div class="lp-kpi-val" id="kb-ca">—</div>
-      <div class="lp-kpi-sub" id="kb-ca-sub"> </div>
+<div class="lp-wrap">
+  <!-- Notification strip -->
+  <div class="lp-strip">
+    <div class="strip-l">
+      <span><span class="s-dot"></span>Système opérationnel</span>
+      <span style="color:var(--border-dk)">|</span>
+      <span>MENASTA ERP v2.0 · Station Hmimidi, Kénitra</span>
     </div>
-    <div class="lp-sep"></div>
-    <div class="lp-kpi-item">
-      <div class="lp-kpi-lbl">Litres Vendus</div>
-      <div class="lp-kpi-val" id="kb-liters">—</div>
-      <div class="lp-kpi-sub"> </div>
-    </div>
-    <div class="lp-sep"></div>
-    <div class="lp-kpi-item">
-      <div class="lp-kpi-lbl">Créances</div>
-      <div class="lp-kpi-val" id="kb-credits" style="color:#fca5a5">—</div>
-      <div class="lp-kpi-sub dn" id="kb-credits-sub"> </div>
-    </div>
-    <div class="lp-sep"></div>
-    <div class="lp-kpi-item" id="kb-bank-item" style="display:none">
-      <div class="lp-kpi-lbl">Solde Banque</div>
-      <div class="lp-kpi-val" id="kb-bank" style="color:#4ade80">—</div>
-      <div class="lp-kpi-sub up"> </div>
-    </div>
-    <div class="lp-kpi-clock">
-      <div class="time" id="kb-time">00:00</div>
-      <div class="day"  id="kb-day">—</div>
+    <div class="strip-r">
+      <span id="lp-clock">--:--</span>
+      <span>·</span>
+      <span id="lp-date">--</span>
     </div>
   </div>
 
-  <!-- ── Launchpad body ── -->
-  <div class="lp-body">
+  <!-- Main content -->
+  <div class="lp-inner">
 
-    <!-- Welcome card -->
-    <div class="lp-welcome" id="lp-welcome">
-      <div class="lp-welcome-text">
-        <h2 id="welcome-greeting">Bonjour 👋</h2>
-        <p>Station Hmimidi · Kénitra, Maroc — Système de gestion intégré MENASTA v2</p>
+    <!-- Welcome banner -->
+    <div class="lp-banner">
+      <div class="banner-ic">⛽</div>
+      <div class="banner-text">
+        <div class="banner-title" id="banner-greet">Bonjour !</div>
+        <div class="banner-sub">Bienvenue dans votre espace de travail MENASTA ERP · Gérez votre station en toute simplicité</div>
       </div>
-      <div class="lp-welcome-actions">
-        <a href="/app" class="lp-wbtn lp-wbtn-p">⛽ Nouveau poste</a>
-        <a href="/ai"  class="lp-wbtn lp-wbtn-g">🤖 Assistant IA</a>
-      </div>
-    </div>
-
-    <!-- ══ GROUP : OPÉRATIONS ══ -->
-    <div class="lp-group">
-      <div class="lp-group-title">Opérations</div>
-      <div class="tile-grid stagger">
-
-        <!-- Carburant — dynamic tile with KPI -->
-        <a href="/app" class="lp-tile" style="--tc:#0070f2">
-          <div class="lt-icon">⛽</div>
-          <div class="lt-kpi" id="t-fuel-ca">—</div>
-          <div class="lt-kpi-label">CA Carburant · MAD</div>
-          <div class="lt-title">Carburant</div>
-          <div class="lt-sub">Postes · Pompes · Crédits</div>
-          <div class="lt-trend up" id="t-fuel-liters">— L</div>
-        </a>
-
-        <!-- Cuves — dynamic tile -->
-        <a href="/cuves" class="lp-tile" style="--tc:#0e7490">
-          <div class="lt-icon">🛢️</div>
-          <div class="lt-kpi" id="t-cuves-pct">—</div>
-          <div class="lt-kpi-label">Niveaux cuves</div>
-          <div class="lt-title">Cuves</div>
-          <div class="lt-sub">Niveaux · Livraisons · Écarts</div>
-          <div class="lt-trend" id="t-cuves-badge">—</div>
-        </a>
-
-        <!-- Café — dynamic tile -->
-        <a href="/cafe" class="lp-tile" style="--tc:#d97706">
-          <div class="lt-icon">☕</div>
-          <div class="lt-kpi" id="t-cafe-ca">—</div>
-          <div class="lt-kpi-label">CA Café · MAD</div>
-          <div class="lt-title">Café</div>
-          <div class="lt-sub">Ventes · Stock · Bénéfice</div>
-        </a>
-
-        <!-- Tabac -->
-        <a href="/tabac" class="lp-tile" style="--tc:#78350f">
-          <div class="lt-icon">🚬</div>
-          <div class="lt-kpi" id="t-tabac-ca">—</div>
-          <div class="lt-kpi-label">CA Tabac · MAD</div>
-          <div class="lt-title">Tabac</div>
-          <div class="lt-sub">Ventes · Bénéfice · Remise</div>
-        </a>
-
-        <!-- Crédits — dynamic tile -->
-        <a href="/app" class="lp-tile" style="--tc:#dc2626">
-          <div class="lt-icon">🤝</div>
-          <div class="lt-kpi" style="color:var(--red)" id="t-credits">—</div>
-          <div class="lt-kpi-label">Créances clients · MAD</div>
-          <div class="lt-title">Crédits</div>
-          <div class="lt-sub">Clients · Soldes · Paiements</div>
-          <div class="lt-trend dn" id="t-credits-badge">—</div>
-        </a>
-
+      <div class="banner-dt">
+        <strong id="banner-day">--</strong>
+        <span id="banner-date">--</span>
       </div>
     </div>
 
-    <!-- ══ GROUP : FINANCE ══ (gérant+) -->
-    <div class="lp-group" id="group-finance" style="display:none">
-      <div class="lp-group-title">Finance & Administration</div>
-      <div class="tile-grid stagger">
-
-        <!-- Banque -->
-        <a href="/bank" class="lp-tile" style="--tc:#107e3e">
-          <div class="lt-icon">🏦</div>
-          <div class="lt-kpi" style="color:var(--green)" id="t-bank">—</div>
-          <div class="lt-kpi-label">Solde Banque · MAD</div>
-          <div class="lt-title">Banque</div>
-          <div class="lt-sub">Dépôts · Chèques · Transactions</div>
-        </a>
-
-        <!-- Factures -->
-        <a href="/factures" class="lp-tile" style="--tc:#6c32a0">
-          <div class="lt-icon">🧾</div>
-          <div class="lt-kpi" id="t-factures">—</div>
-          <div class="lt-kpi-label">Factures ce mois</div>
-          <div class="lt-title">Factures</div>
-          <div class="lt-sub">Créer · Imprimer · TVA</div>
-        </a>
-
-        <!-- Dépenses -->
-        <a href="/app" class="lp-tile" style="--tc:#e9730c">
-          <div class="lt-icon">💸</div>
-          <div class="lt-kpi" id="t-expenses">—</div>
-          <div class="lt-kpi-label">Dépenses du jour · MAD</div>
-          <div class="lt-title">Dépenses</div>
-          <div class="lt-sub">Charges · Frais · Sorties</div>
-        </a>
-
-        <!-- Rapports -->
-        <a href="/patron" class="lp-tile" style="--tc:#354a5e" id="tile-patron" style="display:none">
-          <div class="lt-nav-icon">👑</div>
-          <div class="lt-nav-title">Tableau Patron</div>
-          <div class="lt-nav-sub">Vue d'ensemble direction</div>
-          <div class="lt-arrow">→</div>
-        </a>
-
-      </div>
-    </div>
-
-    <!-- ══ GROUP : OUTILS ══ -->
-    <div class="lp-group">
-      <div class="lp-group-title">Outils & Paramètres</div>
-      <div class="tile-grid stagger">
-
-        <!-- AI Assistant — wide tile with feed -->
-        <a href="/ai" class="lp-tile lp-tile-wide" style="--tc:#4f46e5">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-            <span style="font-size:24px">🤖</span>
-            <div>
-              <div style="font-size:14px;font-weight:700;color:var(--text)">Assistant IA MENASTA</div>
-              <div style="font-size:11.5px;color:var(--muted)">Posez vos questions en langage naturel · Multilingue</div>
-            </div>
-          </div>
-          <div class="lt-feed" id="ai-preview">
-            <div class="lt-feed-row"><div class="lt-feed-dot" style="background:#4f46e5"></div><div class="lt-feed-txt">Quel est le CA d'aujourd'hui ?</div></div>
-            <div class="lt-feed-row"><div class="lt-feed-dot" style="background:#4f46e5"></div><div class="lt-feed-txt">Combien de litres vendus cette semaine ?</div></div>
-            <div class="lt-feed-row"><div class="lt-feed-dot" style="background:#4f46e5"></div><div class="lt-feed-txt">Liste des clients avec solde impayé</div></div>
-          </div>
-        </a>
-
-        <!-- Journal -->
-        <a href="/logs" class="lp-tile" style="--tc:#354a5e" id="tile-logs" style="display:none">
-          <div class="lt-nav-icon">📋</div>
-          <div class="lt-nav-title">Journal d'activité</div>
-          <div class="lt-nav-sub">Traçabilité toutes actions</div>
-          <div class="lt-arrow">→</div>
-        </a>
-
-        <!-- Logout -->
-        <div class="lp-tile" style="--tc:#dc2626;cursor:pointer" onclick="logout()">
-          <div class="lt-nav-icon">↪</div>
-          <div class="lt-nav-title">Déconnexion</div>
-          <div class="lt-nav-sub" id="logout-name">—</div>
+    <!-- KPIs -->
+    <div class="lp-kpis">
+      <a class="lp-kpi" href="/app" style="--kc:#0070f2;--kb:#e8f2ff">
+        <div class="kpi-top">
+          <div class="kpi-ic">⛽</div>
+          <span class="kpi-trend up" id="k-ventes-trend">Actif</span>
         </div>
+        <div class="kpi-val" id="k-ventes">—</div>
+        <div class="kpi-lbl">Ventes carburant</div>
+        <div class="kpi-sub">Dernier poste (DH)</div>
+      </a>
+      <a class="lp-kpi" href="/bank" style="--kc:#107e3e;--kb:#f1f8f5">
+        <div class="kpi-top">
+          <div class="kpi-ic">🏦</div>
+          <span class="kpi-trend neutral" id="k-bank-trend">Solde</span>
+        </div>
+        <div class="kpi-val" id="k-bank">—</div>
+        <div class="kpi-lbl">Solde bancaire</div>
+        <div class="kpi-sub">Total comptes (DH)</div>
+      </a>
+      <a class="lp-kpi" href="/cuves" style="--kc:#e9730c;--kb:#fef4eb">
+        <div class="kpi-top">
+          <div class="kpi-ic">🛢️</div>
+          <span class="kpi-trend neutral" id="k-cuves-trend">Stocks</span>
+        </div>
+        <div class="kpi-val" id="k-cuves">—</div>
+        <div class="kpi-lbl">Niveau cuves</div>
+        <div class="kpi-sub">Volume total (L)</div>
+      </a>
+      <a class="lp-kpi" href="/app" style="--kc:#6c32a0;--kb:#f5eeff">
+        <div class="kpi-top">
+          <div class="kpi-ic">🤝</div>
+          <span class="kpi-trend warn" id="k-credits-trend">Actif</span>
+        </div>
+        <div class="kpi-val" id="k-credits">—</div>
+        <div class="kpi-lbl">Créances clients</div>
+        <div class="kpi-sub">Impayé en cours (DH)</div>
+      </a>
+    </div>
 
+    <!-- Group: Opérations -->
+    <div class="lp-group">
+      <div class="grp-hd">
+        <span class="grp-lbl">⚡ Opérations</span>
+        <div class="grp-rule"></div>
+      </div>
+      <div class="tiles-row">
+        <a href="/app" class="lp-tile tc-blue">
+          <div class="lp-tile-ic">⛽</div>
+          <div class="lp-tile-title">Carburant</div>
+          <div class="lp-tile-sub">Postes de travail, pompes, créances, dépenses</div>
+          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
+        </a>
+        <a href="/cuves" class="lp-tile tc-orange">
+          <div class="lp-tile-ic">🛢️</div>
+          <div class="lp-tile-title">Cuves</div>
+          <div class="lp-tile-sub">Niveaux, livraisons, écarts de stock</div>
+          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
+        </a>
+        <a href="/cafe" class="lp-tile tc-teal">
+          <div class="lp-tile-ic">☕</div>
+          <div class="lp-tile-title">Café</div>
+          <div class="lp-tile-sub">Ventes, stock produits, recettes journalières</div>
+          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
+        </a>
+        <a href="/tabac" class="lp-tile tc-amber">
+          <div class="lp-tile-ic">🚬</div>
+          <div class="lp-tile-title">Tabac</div>
+          <div class="lp-tile-sub">Inventaire, ventes articles & cigarettes</div>
+          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
+        </a>
       </div>
     </div>
 
-  </div><!-- end lp-body -->
-</div><!-- end lp-root -->
+    <!-- Group: Finances -->
+    <div class="lp-group">
+      <div class="grp-hd">
+        <span class="grp-lbl">💳 Finances</span>
+        <div class="grp-rule"></div>
+      </div>
+      <div class="tiles-row">
+        <a href="/bank" class="lp-tile tc-green">
+          <div class="lp-tile-ic">🏦</div>
+          <div class="lp-tile-title">Banque</div>
+          <div class="lp-tile-sub">Comptes, dépôts, chèques, rapprochements</div>
+          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
+        </a>
+        <a href="/factures" class="lp-tile tc-blue">
+          <div class="lp-tile-ic">🧾</div>
+          <div class="lp-tile-title">Factures</div>
+          <div class="lp-tile-sub">Création, suivi et impression des factures</div>
+          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Group: Direction & Outils -->
+    <div class="lp-group" id="grp-direction">
+      <div class="grp-hd">
+        <span class="grp-lbl">👑 Direction & Outils</span>
+        <div class="grp-rule"></div>
+      </div>
+      <div class="tiles-row">
+        <a href="/patron" class="lp-tile tc-purple" id="tile-patron">
+          <div class="lp-tile-ic">👑</div>
+          <div class="lp-tile-title">Tableau Patron</div>
+          <div class="lp-tile-sub">KPIs consolidés, rapports multi-modules</div>
+          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
+        </a>
+        <a href="/ai" class="lp-tile tc-teal">
+          <div class="lp-tile-ic">🤖</div>
+          <div class="lp-tile-title">Assistant IA</div>
+          <div class="lp-tile-sub">Analyses et rapports en langage naturel</div>
+          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
+        </a>
+        <a href="/logs" class="lp-tile tc-blue" id="tile-logs">
+          <div class="lp-tile-ic">📋</div>
+          <div class="lp-tile-title">Journal</div>
+          <div class="lp-tile-sub">Historique complet des actions système</div>
+          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="lp-stats">
+      <div class="lp-stat"><span class="lp-stat-ic">📅</span><div><div class="lp-stat-val" id="st-shifts">—</div><div class="lp-stat-lbl">Postes ce mois</div></div></div>
+      <div class="lp-stat"><span class="lp-stat-ic">🤝</span><div><div class="lp-stat-val" id="st-clients">—</div><div class="lp-stat-lbl">Clients créances</div></div></div>
+      <div class="lp-stat"><span class="lp-stat-ic">📊</span><div><div class="lp-stat-val" id="st-logs">—</div><div class="lp-stat-lbl">Actions journal</div></div></div>
+      <div class="lp-stat"><span class="lp-stat-ic">🏦</span><div><div class="lp-stat-val" id="st-accounts">—</div><div class="lp-stat-lbl">Comptes bancaires</div></div></div>
+    </div>
+
+  </div><!-- /lp-inner -->
+</div><!-- /lp-wrap -->
 
 <div id="toasts"></div>
 
 <script>
-/* ── Auth check ── */
-const token = localStorage.getItem('fm_token');
-const user  = JSON.parse(localStorage.getItem('fm_user') || 'null');
-if (!token) { window.location.href = '/'; }
-
-const role    = user?.role || 'caissier';
-const lvl     = {caissier:1, gerant:2, patron:3}[role] || 0;
-const name    = user?.full_name || '';
-const first   = name.split(' ')[0] || name;
-const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
-
-/* ── Apply user info ── */
-document.getElementById('fs-av').textContent = initials;
-document.getElementById('welcome-greeting').textContent = 'Bonjour, ' + (first || 'utilisateur') + ' 👋';
-document.getElementById('logout-name').textContent = name || role;
-
-if (lvl >= 2) {
-  document.getElementById('group-finance').style.display = '';
-  document.getElementById('nav-bank').style.display = '';
-  document.getElementById('tile-logs').style.display = '';
-  document.getElementById('notif-btn').style.display = '';
-}
-if (lvl >= 3) {
-  document.getElementById('kb-bank-item').style.display = '';
-  document.getElementById('tile-patron').style.display = '';
-}
+const TOKEN = localStorage.getItem('fm_token');
+const USER  = JSON.parse(localStorage.getItem('fm_user') || 'null');
+if (!TOKEN) { window.location.href = '/'; }
 
 function logout() { localStorage.clear(); window.location.href = '/'; }
 
-/* ── Clock ── */
-const DAYS   = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
-const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-function updateClock() {
+// User setup
+if (USER) {
+  const n = USER.full_name || USER.username || '';
+  const ini = n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
+  document.getElementById('fs-av').textContent = ini;
+  const h = new Date().getHours();
+  const greet = h < 5 ? 'Bonne nuit' : h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir';
+  document.getElementById('banner-greet').textContent = greet + ', ' + (USER.full_name || USER.username) + ' !';
+}
+
+// Role-based visibility
+const role = USER?.role || '';
+if (role === 'caissier') {
+  ['tile-patron','tile-logs','nav-patron','nav-logs'].forEach(id => document.getElementById(id)?.remove());
+}
+
+// Clock
+function tick() {
   const now = new Date();
-  const h = String(now.getHours()).padStart(2,'0');
-  const m = String(now.getMinutes()).padStart(2,'0');
-  document.getElementById('kb-time').textContent = h + ':' + m;
-  document.getElementById('kb-day').textContent  = DAYS[now.getDay()] + ' ' + now.getDate() + ' ' + MONTHS[now.getMonth()];
-  document.getElementById('lp-date').textContent = DAYS[now.getDay()] + ' ' + now.getDate() + ' ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+  document.getElementById('lp-clock').textContent = now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('lp-date').textContent   = now.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+  document.getElementById('banner-day').textContent  = now.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  document.getElementById('banner-date').textContent = now.toLocaleDateString('fr-FR',{weekday:'long'});
 }
-updateClock(); setInterval(updateClock, 1000);
+tick(); setInterval(tick, 30000);
 
-/* ── Number formatting ── */
-const fmt = n => (parseFloat(n)||0).toLocaleString('fr-FR', {minimumFractionDigits:0, maximumFractionDigits:0});
-
-function countUp(el, target, suffix='', dur=900) {
-  if (!el) return;
-  const start = Date.now();
-  (function run() {
-    const p = Math.min((Date.now()-start)/dur, 1);
-    const e = 1-Math.pow(1-p, 3);
-    el.textContent = Math.round(e*target).toLocaleString('fr-FR') + suffix;
-    if (p < 1) requestAnimationFrame(run);
-  })();
-}
-
-/* ── Fetch helper ── */
-const api = url => fetch(url, { headers: { Authorization: 'Bearer ' + token } }).then(r=>r.ok?r.json():{}).catch(()=>({}));
-
-/* ── Load all tile data ── */
-async function loadData() {
-  const [dash, patronData] = await Promise.all([
-    api('/api/dashboard'),
-    lvl >= 2 ? api('/api/patron/summary') : Promise.resolve({}),
-  ]);
-
-  const fuelCA   = parseFloat(dash.today?.fuel_revenue || 0);
-  const liters   = parseFloat(dash.today?.liters_sold  || 0);
-  const debt     = parseFloat(dash.total_debt || 0);
-  const cafeCA   = parseFloat(patronData.cafe?.revenue   || 0);
-  const tabacCA  = parseFloat(patronData.tabac?.montant  || 0);
-  const bankBal  = parseFloat(patronData.banque?.balance || 0);
-  const expenses = parseFloat(patronData.depenses?.today || 0);
-  const totalCA  = fuelCA + cafeCA + tabacCA;
-
-  /* KPI bar */
-  countUp(document.getElementById('kb-ca'),      totalCA, ' MAD');
-  countUp(document.getElementById('kb-liters'),  liters,  ' L');
-  countUp(document.getElementById('kb-credits'), debt,    ' MAD');
-  if (lvl >= 3) countUp(document.getElementById('kb-bank'), bankBal, ' MAD');
-
-  /* Tiles */
-  countUp(document.getElementById('t-fuel-ca'),  fuelCA, '');
-  countUp(document.getElementById('t-cafe-ca'),  cafeCA, '');
-  countUp(document.getElementById('t-tabac-ca'), tabacCA,'');
-  countUp(document.getElementById('t-credits'),  debt,   '');
-  countUp(document.getElementById('t-bank'),     bankBal,'');
-  countUp(document.getElementById('t-expenses'), expenses,'');
-
-  /* Fuel liters badge */
-  const lEl = document.getElementById('t-fuel-liters');
-  if (lEl) { lEl.textContent = fmt(liters) + ' L'; }
-
-  /* Credits badge */
-  const cBadge = document.getElementById('t-credits-badge');
-  if (cBadge) { cBadge.textContent = (dash.debt_clients || 0) + ' clients'; }
-
-  /* Factures count from credits count (proxy) */
-  const fEl = document.getElementById('t-factures');
-  if (fEl) { fEl.textContent = '—'; }
-}
-
-/* ── Cuves levels ── */
-async function loadCuves() {
+// KPI loader
+async function loadKPIs() {
+  const H = { Authorization: 'Bearer ' + TOKEN };
   try {
-    const cuves = await api('/api/cuves');
-    if (!cuves?.length) return;
-    const avgPct = Math.round(cuves.reduce((s,c)=>s+(c.pct||0),0)/cuves.length);
-    const el = document.getElementById('t-cuves-pct');
-    if (el) countUp(el, avgPct, '%');
-    const badge = document.getElementById('t-cuves-badge');
-    if (badge) {
-      const low = cuves.filter(c=>(c.pct||0) < 20).length;
-      if (low > 0) {
-        badge.className = 'lt-trend warn';
-        badge.textContent = low + ' cuv. critique';
+    // Carburant
+    const sr = await fetch('/api/shifts?limit=1', { headers: H });
+    if (sr.ok) {
+      const shifts = await sr.json();
+      if (shifts.length) {
+        const s = shifts[0];
+        const tot = (parseFloat(s.gazoil_revenue)||0) + (parseFloat(s.essence_revenue)||0);
+        document.getElementById('k-ventes').textContent = tot.toLocaleString('fr-FR',{maximumFractionDigits:0}) + ' DH';
       } else {
-        badge.className = 'lt-trend up';
-        badge.textContent = 'Niveaux OK';
+        document.getElementById('k-ventes').textContent = '0 DH';
       }
     }
-  } catch(_) {}
-}
+  } catch {}
 
-/* ── Anomaly notifications ── */
-async function checkAnomalies() {
-  if (lvl < 3) return;
   try {
-    const r = await api('/api/anomaly/check');
-    if (r?.count > 0) {
-      document.getElementById('notif-btn').style.display = '';
-      document.getElementById('notif-dot').style.display = '';
+    // Banque
+    const br = await fetch('/api/bank/accounts', { headers: H });
+    if (br.ok) {
+      const accs = await br.json();
+      if (Array.isArray(accs)) {
+        const tot = accs.reduce((s,a) => s + parseFloat(a.balance||0), 0);
+        document.getElementById('k-bank').textContent = Math.round(tot).toLocaleString('fr-FR') + ' DH';
+        document.getElementById('st-accounts').textContent = accs.length;
+      }
     }
-  } catch(_) {}
+  } catch {}
+
+  try {
+    // Cuves
+    const cr = await fetch('/api/cuves', { headers: H });
+    if (cr.ok) {
+      const cuves = await cr.json();
+      if (Array.isArray(cuves)) {
+        const vol = cuves.reduce((s,c) => s + parseFloat(c.current_volume||0), 0);
+        document.getElementById('k-cuves').textContent = Math.round(vol).toLocaleString('fr-FR') + ' L';
+        const pct = cuves.length ? cuves.reduce((s,c) => {
+          const p = c.capacity > 0 ? c.current_volume/c.capacity*100 : 0; return s + p;
+        }, 0) / cuves.length : 0;
+        const tr = document.getElementById('k-cuves-trend');
+        tr.textContent = Math.round(pct) + '%';
+        tr.className = 'kpi-trend ' + (pct < 20 ? 'warn' : pct < 40 ? 'neutral' : 'up');
+      }
+    }
+  } catch {}
+
+  try {
+    // Créances
+    const credR = await fetch('/api/credits?limit=500', { headers: H });
+    if (credR.ok) {
+      const creds = await credR.json();
+      if (Array.isArray(creds)) {
+        const outstanding = creds.filter(c => c.status !== 'paid');
+        const total = outstanding.reduce((s,c) => s + parseFloat(c.amount||0) - parseFloat(c.paid_amount||0), 0);
+        document.getElementById('k-credits').textContent = Math.round(total).toLocaleString('fr-FR') + ' DH';
+        document.getElementById('st-clients').textContent = new Set(outstanding.map(c=>c.client_name)).size;
+      }
+    }
+  } catch {}
+
+  try {
+    // Shifts count
+    const sfR = await fetch('/api/shifts?limit=100', { headers: H });
+    if (sfR.ok) {
+      const sf = await sfR.json();
+      const now = new Date();
+      const thisMonth = sf.filter(s => {
+        const d = new Date(s.created_at || s.shift_date);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+      document.getElementById('st-shifts').textContent = thisMonth.length;
+    }
+  } catch {}
+
+  try {
+    // Logs count
+    const lgR = await fetch('/api/logs?limit=1', { headers: H });
+    if (lgR.ok) {
+      const lg = await lgR.json();
+      document.getElementById('st-logs').textContent = Array.isArray(lg) ? lg.length + '+' : '—';
+    }
+  } catch {}
 }
 
-/* ── Init ── */
-loadData();
-loadCuves();
-checkAnomalies();
+loadKPIs();
 </script>
 <script src="/js/ai-widget.js?v=3"></script>
 </body>

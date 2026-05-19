@@ -1,13 +1,13 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MENASTA — Café</title>
+<title>MENASTA â€” CafÃ©</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=23"/>
-<script src="/js/shell-init.js?v=1" defer></script>
+<link rel="stylesheet" href="/css/fiori.css?v=24"/>
+<script src="/js/shell-init.js?v=2" defer></script>
 <script src="/js/modal-init.js?v=1" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -17,21 +17,21 @@
 
 <header class="fiori-shell">
   <a href="/home" class="fs-logo" style="text-decoration:none">
-    <div class="fs-mark">⛽</div>
+    <div class="fs-mark">â›½</div>
     <div class="fs-brand">MENASTA</div>
   </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
-    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item active"><span class="fn-icon">☕</span> Café</a>
-    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">🏦</span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
-    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> IA</a>
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon">ðŸ </span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon">â›½</span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item active"><span class="fn-icon">â˜•</span> CafÃ©</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">ðŸ¦</span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">ðŸš¬</span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">ðŸ›¢ï¸</span> Cuves</a>
+    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">ðŸ¤–</span> IA</a>
   </nav>
   <div class="fs-actions">
-    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
+    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">ðŸ¤–</button>
     <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
   </div>
 </header>
@@ -39,22 +39,22 @@
 <aside class="sidebar">
   <div class="sb-brand">
     <div class="sb-logo-row">
-      <div class="sb-mark">☕</div>
+      <div class="sb-mark">â˜•</div>
       <div>
-        <div class="sb-name">Café</div>
+        <div class="sb-name">CafÃ©</div>
         <div class="sb-sub">Module MENASTA</div>
       </div>
     </div>
   </div>
   <div class="sb-nav">
-    <div class="nav-item active" data-p="ventes"><span class="ni">☕</span> Ventes du Jour</div>
-    <div class="nav-item" data-p="stock"><span class="ni">📦</span> Stock du Jour</div>
-    <div class="nav-item" data-p="rapport"><span class="ni">📊</span> Rapport Journalier</div>
-    <div class="nav-item" data-p="mensuel"><span class="ni">📅</span> Rapport Mensuel</div>
-    <div class="nav-item" data-p="settings"><span class="ni">⚙️</span> Paramètres</div>
+    <div class="nav-item active" data-p="ventes"><span class="ni">â˜•</span> Ventes du Jour</div>
+    <div class="nav-item" data-p="stock"><span class="ni">ðŸ“¦</span> Stock du Jour</div>
+    <div class="nav-item" data-p="rapport"><span class="ni">ðŸ“Š</span> Rapport Journalier</div>
+    <div class="nav-item" data-p="mensuel"><span class="ni">ðŸ“…</span> Rapport Mensuel</div>
+    <div class="nav-item" data-p="settings"><span class="ni">âš™ï¸</span> ParamÃ¨tres</div>
   </div>
   <div class="sb-foot">
-    <a href="/home" class="sb-back">← Retour Accueil</a>
+    <a href="/home" class="sb-back">â† Retour Accueil</a>
   </div>
 </aside>
 
@@ -65,33 +65,33 @@
   </div>
   <div class="app-content">
 
-    <!-- ══ VENTES ══ -->
+    <!-- â•â• VENTES â•â• -->
     <div class="page active" id="p-ventes">
       <div class="date-row">
         <input type="date" id="v-date"/>
         <button class="btn btn-p btn-sm" onclick="loadVentes()">Charger</button>
       </div>
       <div class="section">
-        <div class="s-head"><div class="s-title">☕ Articles vendus aujourd'hui</div></div>
+        <div class="s-head"><div class="s-title">â˜• Articles vendus aujourd'hui</div></div>
         <div class="s-body">
           <table class="t">
-            <thead><tr><th>Article</th><th>Prix</th><th class="num">Quantité vendue</th><th class="num">Total</th></tr></thead>
+            <thead><tr><th>Article</th><th>Prix</th><th class="num">QuantitÃ© vendue</th><th class="num">Total</th></tr></thead>
             <tbody id="v-body"></tbody>
             <tfoot>
               <tr style="background:#FFF8F3">
-                <td colspan="3" style="padding:12px 14px;font-weight:800;font-size:14px">💰 Recette du Jour</td>
+                <td colspan="3" style="padding:12px 14px;font-weight:800;font-size:14px">ðŸ’° Recette du Jour</td>
                 <td class="num fw8 c-g" style="font-size:18px;padding:12px 14px" id="v-total">0,00 MAD</td>
               </tr>
             </tfoot>
           </table>
           <div style="margin-top:16px;display:flex;justify-content:flex-end">
-            <button class="btn btn-s" style="padding:12px 32px;font-size:14px" onclick="saveVentes()">✅ Enregistrer les Ventes</button>
+            <button class="btn btn-s" style="padding:12px 32px;font-size:14px" onclick="saveVentes()">âœ… Enregistrer les Ventes</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ══ STOCK ══ -->
+    <!-- â•â• STOCK â•â• -->
     <div class="page" id="p-stock">
       <div class="date-row">
         <input type="date" id="s-date"/>
@@ -99,28 +99,28 @@
       </div>
       <div class="section">
         <div class="s-head">
-          <div class="s-title">📦 Stock consommé aujourd'hui</div>
+          <div class="s-title">ðŸ“¦ Stock consommÃ© aujourd'hui</div>
           <button class="btn btn-p btn-sm" onclick="openModal('m-add-stock-item')">+ Ajouter article</button>
         </div>
         <div class="s-body">
           <table class="t">
-            <thead><tr><th>Article</th><th>Unité</th><th class="num">Coût/unité</th><th class="num">Quantité utilisée</th><th class="num">Coût Total</th></tr></thead>
+            <thead><tr><th>Article</th><th>UnitÃ©</th><th class="num">CoÃ»t/unitÃ©</th><th class="num">QuantitÃ© utilisÃ©e</th><th class="num">CoÃ»t Total</th></tr></thead>
             <tbody id="s-body"></tbody>
             <tfoot>
               <tr style="background:#FFF8F3">
-                <td colspan="4" style="padding:12px 14px;font-weight:800;font-size:14px">📦 Coût Stock Total</td>
+                <td colspan="4" style="padding:12px 14px;font-weight:800;font-size:14px">ðŸ“¦ CoÃ»t Stock Total</td>
                 <td class="num fw8 c-r" style="font-size:18px;padding:12px 14px" id="s-total">0,00 MAD</td>
               </tr>
             </tfoot>
           </table>
           <div style="margin-top:16px;display:flex;justify-content:flex-end">
-            <button class="btn btn-s" style="padding:12px 32px;font-size:14px" onclick="saveStock()">✅ Enregistrer le Stock</button>
+            <button class="btn btn-s" style="padding:12px 32px;font-size:14px" onclick="saveStock()">âœ… Enregistrer le Stock</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ══ RAPPORT JOURNALIER ══ -->
+    <!-- â•â• RAPPORT JOURNALIER â•â• -->
     <div class="page" id="p-rapport">
       <div class="date-row">
         <input type="date" id="r-date"/>
@@ -130,7 +130,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="r-details"></div>
     </div>
 
-    <!-- ══ RAPPORT MENSUEL ══ -->
+    <!-- â•â• RAPPORT MENSUEL â•â• -->
     <div class="page" id="p-mensuel">
       <div class="date-row">
         <input type="month" id="m-month"/>
@@ -138,23 +138,23 @@
       </div>
       <div class="tiles" id="m-tiles"></div>
       <div class="section">
-        <div class="s-head"><div class="s-title">📅 Détail par Jour</div></div>
+        <div class="s-head"><div class="s-title">ðŸ“… DÃ©tail par Jour</div></div>
         <div style="overflow-x:auto">
           <table class="t">
-            <thead><tr><th>Date</th><th class="num">Recette</th><th class="num">Coût Stock</th><th class="num">Bénéfice Net</th></tr></thead>
+            <thead><tr><th>Date</th><th class="num">Recette</th><th class="num">CoÃ»t Stock</th><th class="num">BÃ©nÃ©fice Net</th></tr></thead>
             <tbody id="m-body"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- ══ PARAMÈTRES ══ -->
+    <!-- â•â• PARAMÃˆTRES â•â• -->
     <div class="page" id="p-settings">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
         <!-- Menu -->
         <div class="section">
           <div class="s-head">
-            <div class="s-title">☕ Menu</div>
+            <div class="s-title">â˜• Menu</div>
             <button class="btn btn-p btn-sm" onclick="openModal('m-add-menu')">+ Ajouter</button>
           </div>
           <div style="overflow-x:auto">
@@ -167,12 +167,12 @@
         <!-- Stock Items -->
         <div class="section">
           <div class="s-head">
-            <div class="s-title">📦 Articles Stock</div>
+            <div class="s-title">ðŸ“¦ Articles Stock</div>
             <button class="btn btn-p btn-sm" onclick="openModal('m-add-stock-item')">+ Ajouter</button>
           </div>
           <div style="overflow-x:auto">
             <table class="t">
-              <thead><tr><th>Article</th><th>Unité</th><th class="num">Coût/unité</th><th></th></tr></thead>
+              <thead><tr><th>Article</th><th>UnitÃ©</th><th class="num">CoÃ»t/unitÃ©</th><th></th></tr></thead>
               <tbody id="stock-items-body"></tbody>
             </table>
           </div>
@@ -188,11 +188,11 @@
 <!-- Modal: Add Menu Item -->
 <div class="overlay" id="m-add-menu">
   <div class="modal">
-    <div class="modal-hd"><span>☕</span><h3>Ajouter au Menu</h3><button class="x" onclick="closeModal('m-add-menu')">×</button></div>
+    <div class="modal-hd"><span>â˜•</span><h3>Ajouter au Menu</h3><button class="x" onclick="closeModal('m-add-menu')">Ã—</button></div>
     <div class="modal-body">
       <div class="fgrid">
-        <div class="fg" style="grid-column:1/-1"><label>Nom *</label><input id="am-name" placeholder="ex: Café Express"/></div>
-        <div class="fg"><label>Emoji</label><input id="am-emoji" placeholder="☕" maxlength="2"/></div>
+        <div class="fg" style="grid-column:1/-1"><label>Nom *</label><input id="am-name" placeholder="ex: CafÃ© Express"/></div>
+        <div class="fg"><label>Emoji</label><input id="am-emoji" placeholder="â˜•" maxlength="2"/></div>
         <div class="fg"><label>Prix (MAD)</label><input type="number" id="am-price" value="7" step="0.5" min="0"/></div>
       </div>
     </div>
@@ -206,7 +206,7 @@
 <!-- Modal: Edit Menu Item -->
 <div class="overlay" id="m-edit-menu">
   <div class="modal">
-    <div class="modal-hd"><span>✏️</span><h3>Modifier Article Menu</h3><button class="x" onclick="closeModal('m-edit-menu')">×</button></div>
+    <div class="modal-hd"><span>âœï¸</span><h3>Modifier Article Menu</h3><button class="x" onclick="closeModal('m-edit-menu')">Ã—</button></div>
     <div class="modal-body">
       <input type="hidden" id="em-id"/>
       <div class="fgrid">
@@ -225,12 +225,12 @@
 <!-- Modal: Add Stock Item -->
 <div class="overlay" id="m-add-stock-item">
   <div class="modal">
-    <div class="modal-hd"><span>📦</span><h3>Ajouter Article Stock</h3><button class="x" onclick="closeModal('m-add-stock-item')">×</button></div>
+    <div class="modal-hd"><span>ðŸ“¦</span><h3>Ajouter Article Stock</h3><button class="x" onclick="closeModal('m-add-stock-item')">Ã—</button></div>
     <div class="modal-body">
       <div class="fgrid">
-        <div class="fg" style="grid-column:1/-1"><label>Nom *</label><input id="asi-name" placeholder="ex: Café en grains"/></div>
-        <div class="fg"><label>Unité</label><input id="asi-unit" placeholder="kg / litre / unité"/></div>
-        <div class="fg"><label>Coût par unité (MAD)</label><input type="number" id="asi-cost" placeholder="0.00" step="0.01" min="0"/></div>
+        <div class="fg" style="grid-column:1/-1"><label>Nom *</label><input id="asi-name" placeholder="ex: CafÃ© en grains"/></div>
+        <div class="fg"><label>UnitÃ©</label><input id="asi-unit" placeholder="kg / litre / unitÃ©"/></div>
+        <div class="fg"><label>CoÃ»t par unitÃ© (MAD)</label><input type="number" id="asi-cost" placeholder="0.00" step="0.01" min="0"/></div>
       </div>
     </div>
     <div class="modal-ft">
@@ -243,13 +243,13 @@
 <!-- Modal: Edit Stock Item -->
 <div class="overlay" id="m-edit-stock-item">
   <div class="modal">
-    <div class="modal-hd"><span>✏️</span><h3>Modifier Article Stock</h3><button class="x" onclick="closeModal('m-edit-stock-item')">×</button></div>
+    <div class="modal-hd"><span>âœï¸</span><h3>Modifier Article Stock</h3><button class="x" onclick="closeModal('m-edit-stock-item')">Ã—</button></div>
     <div class="modal-body">
       <input type="hidden" id="esi-id"/>
       <div class="fgrid">
         <div class="fg" style="grid-column:1/-1"><label>Nom *</label><input id="esi-name"/></div>
-        <div class="fg"><label>Unité</label><input id="esi-unit"/></div>
-        <div class="fg"><label>Coût par unité (MAD)</label><input type="number" id="esi-cost" step="0.01" min="0"/></div>
+        <div class="fg"><label>UnitÃ©</label><input id="esi-unit"/></div>
+        <div class="fg"><label>CoÃ»t par unitÃ© (MAD)</label><input type="number" id="esi-cost" step="0.01" min="0"/></div>
       </div>
     </div>
     <div class="modal-ft">
@@ -290,7 +290,7 @@ const fmt  = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,m
 const today = () => new Date().toISOString().slice(0,10);
 const fmtDate = d => new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
 
-const pageNames = { ventes:'Ventes du Jour', stock:'Stock du Jour', rapport:'Rapport Journalier', mensuel:'Rapport Mensuel', settings:'Paramètres' };
+const pageNames = { ventes:'Ventes du Jour', stock:'Stock du Jour', rapport:'Rapport Journalier', mensuel:'Rapport Mensuel', settings:'ParamÃ¨tres' };
 function navigate(p) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.p===p));
   document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('active', pg.id==='p-'+p));
@@ -305,7 +305,7 @@ document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', 
 
 document.getElementById('top-date').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-// ── VENTES ───────────────────────────────────────────────────
+// â”€â”€ VENTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let ventesData = [];
 
 async function loadVentes() {
@@ -319,7 +319,7 @@ function renderVentes() {
   const tbody = document.getElementById('v-body');
   tbody.innerHTML = ventesData.map((it, i) => `
     <tr>
-      <td class="fw7">${it.emoji||'☕'} ${it.name}</td>
+      <td class="fw7">${it.emoji||'â˜•'} ${it.name}</td>
       <td class="c-br fw7">${fmt(it.default_price||it.unit_price||7)} MAD</td>
       <td class="num">
         <input type="number" class="qty-inp" data-idx="${i}" data-price="${it.default_price||it.unit_price||7}"
@@ -353,11 +353,11 @@ async function saveVentes() {
   }));
   try {
     await api('POST', '/sales', { date, entries });
-    toast('Ventes enregistrées ✓');
+    toast('Ventes enregistrÃ©es âœ“');
   } catch(e) { toast(e.message,'er'); }
 }
 
-// ── STOCK ─────────────────────────────────────────────────────
+// â”€â”€ STOCK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let stockData = [];
 
 async function loadStock() {
@@ -406,11 +406,11 @@ async function saveStock() {
   }));
   try {
     await api('POST', '/stock/usage', { date, entries });
-    toast('Stock enregistré ✓');
+    toast('Stock enregistrÃ© âœ“');
   } catch(e) { toast(e.message,'er'); }
 }
 
-// ── RAPPORT JOURNALIER ────────────────────────────────────────
+// â”€â”€ RAPPORT JOURNALIER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadRapport() {
   const date = document.getElementById('r-date').value || today();
   const d = await api('GET', '/report/day?date='+date);
@@ -423,45 +423,45 @@ async function loadRapport() {
       <div class="pbar-val" style="color:var(--blue)">${fmt(d.revenue)} MAD</div>
     </div>
     <div class="pbar-card" style="border-left:4px solid var(--red)">
-      <div class="pbar-label">Coût Stock</div>
+      <div class="pbar-label">CoÃ»t Stock</div>
       <div class="pbar-val" style="color:var(--red)">${fmt(d.stock_cost)} MAD</div>
     </div>
     <div class="pbar-card" style="border:2px solid ${nc}">
-      <div class="pbar-label">Bénéfice Net</div>
+      <div class="pbar-label">BÃ©nÃ©fice Net</div>
       <div class="pbar-val" style="color:${nc}">${fmt(d.net_profit)} MAD <span style="font-size:13px;font-weight:400">(${pc}%)</span></div>
     </div>`;
 
   document.getElementById('r-details').innerHTML = `
     <div class="section">
-      <div class="s-head"><div class="s-title">☕ Ventes</div></div>
+      <div class="s-head"><div class="s-title">â˜• Ventes</div></div>
       <table class="t">
-        <thead><tr><th>Article</th><th class="num">Qté</th><th class="num">Total</th></tr></thead>
+        <thead><tr><th>Article</th><th class="num">QtÃ©</th><th class="num">Total</th></tr></thead>
         <tbody>
-          ${d.sales.length ? d.sales.map(s=>`<tr><td>${s.emoji||'☕'} ${s.name}</td><td class="num">${s.quantity}</td><td class="num fw7 c-g">${fmt(s.total)} MAD</td></tr>`).join('') : '<tr><td colspan="3" class="muted sm" style="padding:14px;text-align:center">Aucune vente</td></tr>'}
+          ${d.sales.length ? d.sales.map(s=>`<tr><td>${s.emoji||'â˜•'} ${s.name}</td><td class="num">${s.quantity}</td><td class="num fw7 c-g">${fmt(s.total)} MAD</td></tr>`).join('') : '<tr><td colspan="3" class="muted sm" style="padding:14px;text-align:center">Aucune vente</td></tr>'}
         </tbody>
       </table>
     </div>
     <div class="section">
-      <div class="s-head"><div class="s-title">📦 Stock Consommé</div></div>
+      <div class="s-head"><div class="s-title">ðŸ“¦ Stock ConsommÃ©</div></div>
       <table class="t">
-        <thead><tr><th>Article</th><th class="num">Qté</th><th class="num">Coût</th></tr></thead>
+        <thead><tr><th>Article</th><th class="num">QtÃ©</th><th class="num">CoÃ»t</th></tr></thead>
         <tbody>
-          ${d.stock.length ? d.stock.map(s=>`<tr><td>${s.name} <span class="muted sm">(${s.unit})</span></td><td class="num">${s.quantity_used}</td><td class="num fw7 c-r">${fmt(s.total_cost)} MAD</td></tr>`).join('') : '<tr><td colspan="3" class="muted sm" style="padding:14px;text-align:center">Aucun stock enregistré</td></tr>'}
+          ${d.stock.length ? d.stock.map(s=>`<tr><td>${s.name} <span class="muted sm">(${s.unit})</span></td><td class="num">${s.quantity_used}</td><td class="num fw7 c-r">${fmt(s.total_cost)} MAD</td></tr>`).join('') : '<tr><td colspan="3" class="muted sm" style="padding:14px;text-align:center">Aucun stock enregistrÃ©</td></tr>'}
         </tbody>
       </table>
     </div>`;
 }
 
-// ── RAPPORT MENSUEL ───────────────────────────────────────────
+// â”€â”€ RAPPORT MENSUEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadMensuel() {
   const month = document.getElementById('m-month').value || today().slice(0,7);
   const d = await api('GET', '/report/month?month='+month);
   const avg = d.days.length ? d.total_profit/d.days.length : 0;
   document.getElementById('m-tiles').innerHTML = [
-    { ic:'💰', val: fmt(d.total_revenue)+' MAD',   lbl:'Recette du Mois',    tc:'var(--blue)' },
-    { ic:'📦', val: fmt(d.total_stock_cost)+' MAD', lbl:'Coût Stock Total',   tc:'var(--red)' },
-    { ic:'📈', val: fmt(d.total_profit)+' MAD',     lbl:'Bénéfice Net Mois',  tc: d.total_profit>=0?'var(--green)':'var(--red)' },
-    { ic:'📅', val: fmt(avg)+' MAD',                lbl:'Bénéfice Moy/Jour',  tc:'var(--br)' },
+    { ic:'ðŸ’°', val: fmt(d.total_revenue)+' MAD',   lbl:'Recette du Mois',    tc:'var(--blue)' },
+    { ic:'ðŸ“¦', val: fmt(d.total_stock_cost)+' MAD', lbl:'CoÃ»t Stock Total',   tc:'var(--red)' },
+    { ic:'ðŸ“ˆ', val: fmt(d.total_profit)+' MAD',     lbl:'BÃ©nÃ©fice Net Mois',  tc: d.total_profit>=0?'var(--green)':'var(--red)' },
+    { ic:'ðŸ“…', val: fmt(avg)+' MAD',                lbl:'BÃ©nÃ©fice Moy/Jour',  tc:'var(--br)' },
   ].map(t=>`<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
   document.getElementById('m-body').innerHTML = d.days.map(r => {
@@ -472,19 +472,19 @@ async function loadMensuel() {
       <td class="num c-r">-${fmt(r.stock_cost)} MAD</td>
       <td class="num fw8 ${c}">${fmt(r.net_profit)} MAD</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted)">Aucune donnée</td></tr>';
+  }).join('') || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted)">Aucune donnÃ©e</td></tr>';
 }
 
-// ── PARAMÈTRES — MENU ─────────────────────────────────────────
+// â”€â”€ PARAMÃˆTRES â€” MENU â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadMenuTable() {
   const items = await api('GET', '/menu');
   document.getElementById('menu-body').innerHTML = items.map(it=>`
     <tr>
-      <td class="fw7">${it.emoji||'☕'} ${it.name}</td>
+      <td class="fw7">${it.emoji||'â˜•'} ${it.name}</td>
       <td class="num fw8 c-br">${fmt(it.price)} MAD</td>
       <td style="text-align:right">
-        <button class="btn btn-g btn-xs" onclick="openEditMenu(${it.id},'${it.name.replace(/'/g,"\\'")}','${it.emoji||'☕'}',${it.price})">✏️</button>
-        <button class="btn btn-d btn-xs" onclick="deleteMenu(${it.id})">✕</button>
+        <button class="btn btn-g btn-xs" onclick="openEditMenu(${it.id},'${it.name.replace(/'/g,"\\'")}','${it.emoji||'â˜•'}',${it.price})">âœï¸</button>
+        <button class="btn btn-d btn-xs" onclick="deleteMenu(${it.id})">âœ•</button>
       </td>
     </tr>`).join('');
 }
@@ -492,12 +492,12 @@ async function loadMenuTable() {
 async function submitAddMenu() {
   const name=document.getElementById('am-name').value.trim();
   const price=parseFloat(document.getElementById('am-price').value)||7;
-  const emoji=document.getElementById('am-emoji').value||'☕';
+  const emoji=document.getElementById('am-emoji').value||'â˜•';
   if(!name){toast('Nom requis','er');return;}
   await api('POST','/menu',{name,emoji,price});
   closeModal('m-add-menu');
   document.getElementById('am-name').value='';
-  toast('Article ajouté');
+  toast('Article ajoutÃ©');
   loadMenuTable();
 }
 
@@ -513,21 +513,21 @@ async function submitEditMenu(){
   const id=document.getElementById('em-id').value;
   const name=document.getElementById('em-name').value.trim();
   const price=parseFloat(document.getElementById('em-price').value)||7;
-  const emoji=document.getElementById('em-emoji').value||'☕';
+  const emoji=document.getElementById('em-emoji').value||'â˜•';
   await api('PUT','/menu/'+id,{name,emoji,price});
   closeModal('m-edit-menu');
-  toast('Modifié');
+  toast('ModifiÃ©');
   loadMenuTable();
 }
 
 async function deleteMenu(id){
   if(!confirm('Supprimer cet article ?'))return;
   await api('DELETE','/menu/'+id);
-  toast('Supprimé');
+  toast('SupprimÃ©');
   loadMenuTable();
 }
 
-// ── PARAMÈTRES — STOCK ITEMS ──────────────────────────────────
+// â”€â”€ PARAMÃˆTRES â€” STOCK ITEMS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadStockItemsTable() {
   const items = await api('GET', '/stock/items');
   document.getElementById('stock-items-body').innerHTML = items.map(it=>`
@@ -536,22 +536,22 @@ async function loadStockItemsTable() {
       <td class="muted sm">${it.unit}</td>
       <td class="num fw8 c-br">${fmt(it.cost_per_unit)} MAD</td>
       <td style="text-align:right">
-        <button class="btn btn-g btn-xs" onclick="openEditStockItem(${it.id},'${it.name.replace(/'/g,"\\'")}','${it.unit}',${it.cost_per_unit})">✏️</button>
-        <button class="btn btn-d btn-xs" onclick="deleteStockItem(${it.id})">✕</button>
+        <button class="btn btn-g btn-xs" onclick="openEditStockItem(${it.id},'${it.name.replace(/'/g,"\\'")}','${it.unit}',${it.cost_per_unit})">âœï¸</button>
+        <button class="btn btn-d btn-xs" onclick="deleteStockItem(${it.id})">âœ•</button>
       </td>
     </tr>`).join('');
 }
 
 async function submitAddStockItem(){
   const name=document.getElementById('asi-name').value.trim();
-  const unit=document.getElementById('asi-unit').value||'unité';
+  const unit=document.getElementById('asi-unit').value||'unitÃ©';
   const cost=parseFloat(document.getElementById('asi-cost').value)||0;
   if(!name){toast('Nom requis','er');return;}
   await api('POST','/stock/items',{name,unit,cost_per_unit:cost});
   closeModal('m-add-stock-item');
   document.getElementById('asi-name').value='';
   document.getElementById('asi-cost').value='';
-  toast('Article stock ajouté');
+  toast('Article stock ajoutÃ©');
   loadStockItemsTable();
 }
 
@@ -570,25 +570,25 @@ async function submitEditStockItem(){
   const cost=parseFloat(document.getElementById('esi-cost').value)||0;
   await api('PUT','/stock/items/'+id,{name,unit,cost_per_unit:cost});
   closeModal('m-edit-stock-item');
-  toast('Modifié');
+  toast('ModifiÃ©');
   loadStockItemsTable();
 }
 
 async function deleteStockItem(id){
   if(!confirm('Supprimer ?'))return;
   await api('DELETE','/stock/items/'+id);
-  toast('Supprimé');
+  toast('SupprimÃ©');
   loadStockItemsTable();
 }
 
-// ── INIT ─────────────────────────────────────────────────────
+// â”€â”€ INIT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.getElementById('v-date').value = today();
 document.getElementById('s-date').value = today();
 document.getElementById('r-date').value = today();
 document.getElementById('m-month').value = today().slice(0,7);
 loadVentes();
 
-// ── EXPORT ────────────────────────────────────────────────────
+// â”€â”€ EXPORT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function _expData(tbl) {
   if (!tbl) return { headers: [], rows: [] };
   const headers = [...tbl.querySelectorAll('thead th')].map(th => th.textContent.trim()).filter(h => h);
@@ -600,7 +600,7 @@ function _expData(tbl) {
 function expPDF(tbl, title) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape' });
-  doc.setFontSize(13); doc.text((title||'Export') + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
+  doc.setFontSize(13); doc.text((title||'Export') + ' â€” ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
   const { headers, rows } = _expData(tbl);
   doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [29, 45, 62] } });
   doc.save((title||'export').replace(/\s+/g,'_') + '.pdf');
@@ -613,7 +613,7 @@ function expXL(tbl, title) {
 }
 function expWord(tbl, title) {
   const clone = tbl.cloneNode(true); clone.querySelectorAll('input,button').forEach(el => el.remove());
-  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2><p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>${clone.outerHTML}</body></html>`;
+  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2><p style="color:#666;font-size:11px">ExportÃ© le ${new Date().toLocaleDateString('fr-FR')}</p>${clone.outerHTML}</body></html>`;
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html],{type:'application/msword'})); a.download = (title||'export').replace(/\s+/g,'_')+'.doc'; a.click();
 }
 (function wireExport() {
@@ -627,7 +627,7 @@ function expWord(tbl, title) {
       sec.setAttribute('data-ew', '1');
       const t = sh.querySelector('.s-title')?.textContent.trim().slice(0,30) || 'Export';
       const w = document.createElement('div'); w.className = 'exp-btns';
-      w.innerHTML = `<button class="exp-btn exp-pdf" onclick="expPDF(this.closest('.section').querySelector('table'),'${t.replace(/'/g,"\\'")}')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL(this.closest('.section').querySelector('table'),'${t.replace(/'/g,"\\'")}')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord(this.closest('.section').querySelector('table'),'${t.replace(/'/g,"\\'")}')">📝 Word</button>`;
+      w.innerHTML = `<button class="exp-btn exp-pdf" onclick="expPDF(this.closest('.section').querySelector('table'),'${t.replace(/'/g,"\\'")}')">ðŸ“„ PDF</button><button class="exp-btn exp-xl" onclick="expXL(this.closest('.section').querySelector('table'),'${t.replace(/'/g,"\\'")}')">ðŸ“Š Excel</button><button class="exp-btn exp-word" onclick="expWord(this.closest('.section').querySelector('table'),'${t.replace(/'/g,"\\'")}')">ðŸ“ Word</button>`;
       sh.appendChild(w);
     });
   }
@@ -638,3 +638,4 @@ function expWord(tbl, title) {
 <script src="/js/ai-widget.js?v=3"></script>
 </body>
 </html>
+
