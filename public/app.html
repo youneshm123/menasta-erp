@@ -363,7 +363,7 @@
         <div class="fg" style="grid-column:1/-1">
           <label>Client</label>
           <div class="ac-wrap">
-            <input class="ac-input" id="cs-client-input" placeholder="Tapez le nom du client…" autocomplete="off" oninput="acFilter('cs',this.value)" onfocus="acOpen('cs')" onblur="setTimeout(()=>acClose('cs'),180)"/>
+            <input class="ac-input" id="cs-client-input" placeholder="Tapez le nom du client…" autocomplete="off" oninput="acFilter('cs',this.value)" onfocus="acOpen('cs')"/>
             <div class="ac-dropdown" id="cs-client-dropdown"></div>
             <input type="hidden" id="cs-client-id"/>
           </div>
@@ -447,7 +447,7 @@
       <div class="fg mb3">
         <label>Produit</label>
         <div class="ac-wrap">
-          <input class="ac-input" id="sp-product-input" placeholder="Tapez le nom du produit…" autocomplete="off" oninput="spFilter(this.value)" onfocus="spOpen()" onblur="setTimeout(()=>spClose(),180)"/>
+          <input class="ac-input" id="sp-product-input" placeholder="Tapez le nom du produit…" autocomplete="off" oninput="spFilter(this.value)" onfocus="spOpen()"/>
           <div class="ac-dropdown" id="sp-product-dropdown"></div>
           <input type="hidden" id="sp-product-id"/>
           <input type="hidden" id="sp-product-price"/>
@@ -1226,17 +1226,32 @@ function populateCreditSaleModal() {
 }
 
 // ─── AUTOCOMPLETE: CLIENTS ──────────────────────────────────
+// Uses position:fixed so the dropdown escapes overflow:hidden on modal
+function acPositionDD(ns) {
+  const inp = document.getElementById(ns + '-client-input');
+  const dd  = document.getElementById(ns + '-client-dropdown');
+  if (!inp || !dd) return;
+  const r = inp.getBoundingClientRect();
+  dd.style.position = 'fixed';
+  dd.style.top      = (r.bottom + 2) + 'px';
+  dd.style.left     = r.left + 'px';
+  dd.style.width    = r.width + 'px';
+  dd.style.zIndex   = '99999';
+}
+
 function acRender(ns, items) {
   const dd = document.getElementById(ns + '-client-dropdown');
   if (!dd) return;
-  dd.innerHTML = items.map(c => `
-    <div class="ac-item" onmousedown="event.preventDefault();acSelect('${ns}',${c.id},${JSON.stringify(c.name)})">
-      <span class="ac-item-name">${c.name}</span>
-      <span class="ac-item-sub">${c.company ? c.company + ' · ' : ''}${c.balance_due > 0 ? 'Solde: ' + fmt(c.balance_due) + ' MAD' : 'Aucune dette'}</span>
-    </div>`).join('') || '<div class="ac-item muted" style="pointer-events:none;padding:10px 14px;">Aucun client trouvé</div>';
+  dd.innerHTML = items.length
+    ? items.map(c => `<div class="ac-item" data-id="${c.id}" data-name="${(c.name||'').replace(/"/g,'&quot;')}" data-ns="${ns}">
+        <span class="ac-item-name">${c.name}</span>
+        <span class="ac-item-sub">${c.company ? c.company + ' · ' : ''}${c.balance_due > 0 ? 'Solde: ' + fmt(c.balance_due) + ' MAD' : ''}</span>
+      </div>`).join('')
+    : '<div style="padding:10px 14px;color:var(--muted);font-size:13px;">Aucun client trouvé</div>';
 }
+
 function acFilter(ns, val) {
-  const q = val.toLowerCase().trim();
+  const q = (val || '').toLowerCase().trim();
   const filtered = q
     ? S.clients.filter(c => c.name.toLowerCase().includes(q) || (c.company||'').toLowerCase().includes(q))
     : S.clients;
@@ -1244,26 +1259,55 @@ function acFilter(ns, val) {
   acOpen(ns);
   if (!val) document.getElementById(ns + '-client-id').value = '';
 }
+
 function acSelect(ns, id, name) {
-  document.getElementById(ns + '-client-input').value = name;
-  document.getElementById(ns + '-client-id').value = id;
+  const inp = document.getElementById(ns + '-client-input');
+  const hid = document.getElementById(ns + '-client-id');
+  if (inp) inp.value = name;
+  if (hid) hid.value = id;
   acClose(ns);
-  document.getElementById(ns + '-client-input').focus();
 }
+
 function acOpen(ns) {
-  const dd = document.getElementById(ns + '-client-dropdown');
+  const inp = document.getElementById(ns + '-client-input');
+  const dd  = document.getElementById(ns + '-client-dropdown');
   if (!dd) return;
-  const inputVal = (document.getElementById(ns + '-client-input').value || '').toLowerCase();
+  const inputVal = (inp ? inp.value : '').toLowerCase().trim();
   const filtered = inputVal
     ? S.clients.filter(c => c.name.toLowerCase().includes(inputVal) || (c.company||'').toLowerCase().includes(inputVal))
     : S.clients;
   acRender(ns, filtered);
+  acPositionDD(ns);
   dd.classList.add('open');
 }
+
 function acClose(ns) {
   const dd = document.getElementById(ns + '-client-dropdown');
   if (dd) dd.classList.remove('open');
 }
+
+// Global click delegation for ALL autocomplete dropdowns
+// Using mousedown + preventDefault keeps the input focused, so blur doesn't fire
+document.addEventListener('mousedown', function(e) {
+  const item = e.target.closest('.ac-item[data-id]');
+  if (item) {
+    e.preventDefault();
+    const ns    = item.dataset.ns;
+    const id    = item.dataset.id;
+    const name  = item.dataset.name;
+    const price = item.dataset.price;
+    if (ns === 'sp') {
+      spSelect(id, name, price);
+    } else {
+      acSelect(ns, id, name);
+    }
+    return;
+  }
+  // Close dropdowns when clicking outside
+  document.querySelectorAll('.ac-dropdown.open').forEach(dd => {
+    if (!dd.contains(e.target)) dd.classList.remove('open');
+  });
+});
 
 // ─── FUEL TOGGLE ────────────────────────────────────────────
 function csSelectFuel(type) {
@@ -1279,19 +1323,34 @@ function csSelectFuel(type) {
 }
 
 // ─── AUTOCOMPLETE: PRODUCTS ─────────────────────────────────
+function spPositionDD() {
+  const inp = document.getElementById('sp-product-input');
+  const dd  = document.getElementById('sp-product-dropdown');
+  if (!inp || !dd) return;
+  const r = inp.getBoundingClientRect();
+  dd.style.position = 'fixed';
+  dd.style.top      = (r.bottom + 2) + 'px';
+  dd.style.left     = r.left + 'px';
+  dd.style.width    = r.width + 'px';
+  dd.style.zIndex   = '99999';
+}
 function spFilter(val) {
-  const q = val.toLowerCase();
-  const filtered = S.products.filter(p => p.stock_qty > 0 && p.name.toLowerCase().includes(q));
+  const q = (val || '').toLowerCase();
+  const filtered = q
+    ? S.products.filter(p => p.stock_qty > 0 && p.name.toLowerCase().includes(q))
+    : S.products.filter(p => p.stock_qty > 0);
   spRenderDD(filtered);
+  spPositionDD();
   document.getElementById('sp-product-dropdown').classList.add('open');
   if (!val) { document.getElementById('sp-product-id').value = ''; document.getElementById('sp-product-price').value = ''; updateSellTotal(); }
 }
 function spRenderDD(items) {
-  document.getElementById('sp-product-dropdown').innerHTML = items.map(p => `
-    <div class="ac-item" onmousedown="event.preventDefault();spSelect(${p.id},${JSON.stringify(p.name)},${p.price})">
-      <span class="ac-item-name">${p.name}</span>
-      <span class="ac-item-sub">Stock: ${p.stock_qty} u. · Prix: ${(p.price||0).toFixed(2)} MAD</span>
-    </div>`).join('') || '<div class="ac-item muted" style="pointer-events:none;padding:10px 14px;">Aucun produit en stock</div>';
+  document.getElementById('sp-product-dropdown').innerHTML = items.length
+    ? items.map(p => `<div class="ac-item" data-id="${p.id}" data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-price="${p.price||0}" data-ns="sp">
+        <span class="ac-item-name">${p.name}</span>
+        <span class="ac-item-sub">Stock: ${p.stock_qty} u. · Prix: ${(p.price||0).toFixed(2)} MAD</span>
+      </div>`).join('')
+    : '<div style="padding:10px 14px;color:var(--muted);font-size:13px;">Aucun produit en stock</div>';
 }
 function spSelect(id, name, price) {
   document.getElementById('sp-product-input').value = name;
@@ -1302,6 +1361,7 @@ function spSelect(id, name, price) {
 }
 function spOpen() {
   spRenderDD(S.products.filter(p => p.stock_qty > 0));
+  spPositionDD();
   document.getElementById('sp-product-dropdown').classList.add('open');
 }
 function spClose() { document.getElementById('sp-product-dropdown').classList.remove('open'); }
