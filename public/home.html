@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA — Launchpad</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="/css/fiori.css?v=25"/>
-<script src="/js/shell-init.js?v=3" defer></script>
+<link rel="stylesheet" href="/css/fiori.css?v=26"/>
+<script src="/js/shell-init.js?v=4" defer></script>
 <style>
 body { background: #eceef0; }
 
@@ -142,6 +142,9 @@ body { background: #eceef0; }
 .lp-stat-lbl { font-size: 10.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
 
 @media(max-width:1100px) { .lp-kpis { grid-template-columns: 1fr 1fr; } }
+@media(max-width:900px) {
+  #bottom-grid { grid-template-columns: 1fr !important; }
+}
 @media(max-width:720px) {
   .lp-inner { padding: 16px; }
   .lp-kpis { grid-template-columns: 1fr 1fr; }
@@ -173,6 +176,7 @@ body { background: #eceef0; }
   </nav>
   <div class="fs-actions">
     <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
+    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre">🌙</button>
     <button class="fs-icon-btn" onclick="logout()" title="Déconnexion">↪</button>
     <div class="fs-avatar" id="fs-av">?</div>
   </div>
@@ -339,12 +343,41 @@ body { background: #eceef0; }
       </div>
     </div>
 
+    <!-- Weekly chart + recent activity -->
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;margin-bottom:28px" id="bottom-grid">
+
+      <!-- Chart -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;box-shadow:var(--sh-xs)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">Revenus Carburant — 7 derniers jours</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Postes fermés</div>
+          </div>
+          <div id="chart-total" style="font-size:18px;font-weight:800;color:var(--blue);font-variant-numeric:tabular-nums">—</div>
+        </div>
+        <canvas id="revenue-chart" height="130"></canvas>
+      </div>
+
+      <!-- Recent activity -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 22px;box-shadow:var(--sh-xs);display:flex;flex-direction:column">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px">
+          <span>📋</span> Activité récente
+        </div>
+        <div id="activity-list" style="display:flex;flex-direction:column;gap:9px;flex:1">
+          <div class="skeleton" style="height:48px;border-radius:8px"></div>
+          <div class="skeleton" style="height:48px;border-radius:8px"></div>
+          <div class="skeleton" style="height:48px;border-radius:8px"></div>
+        </div>
+        <a href="/logs" style="display:block;text-align:center;font-size:11.5px;color:var(--blue);font-weight:600;margin-top:14px;text-decoration:none;padding:7px;border:1px solid var(--blue-lt);border-radius:8px;transition:background .12s" onmouseover="this.style.background='var(--blue-lt)'" onmouseout="this.style.background=''">Voir tout le journal →</a>
+      </div>
+    </div>
+
     <!-- Stats bar -->
     <div class="lp-stats">
       <div class="lp-stat"><span class="lp-stat-ic">📅</span><div><div class="lp-stat-val" id="st-shifts">—</div><div class="lp-stat-lbl">Postes ce mois</div></div></div>
       <div class="lp-stat"><span class="lp-stat-ic">🤝</span><div><div class="lp-stat-val" id="st-clients">—</div><div class="lp-stat-lbl">Clients créances</div></div></div>
       <div class="lp-stat"><span class="lp-stat-ic">📊</span><div><div class="lp-stat-val" id="st-logs">—</div><div class="lp-stat-lbl">Actions journal</div></div></div>
-      <div class="lp-stat"><span class="lp-stat-ic">🏦</span><div><div class="lp-stat-val" id="st-accounts">—</div><div class="lp-stat-lbl">Comptes bancaires</div></div></div>
+      <div class="lp-stat"><span class="lp-stat-ic">🧾</span><div><div class="lp-stat-val" id="st-bank">—</div><div class="lp-stat-lbl">Solde banque (DH)</div></div></div>
     </div>
 
   </div><!-- /lp-inner -->
@@ -352,12 +385,15 @@ body { background: #eceef0; }
 
 <div id="toasts"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 const TOKEN = localStorage.getItem('fm_token');
 const USER  = JSON.parse(localStorage.getItem('fm_user') || 'null');
 if (!TOKEN) { window.location.href = '/'; }
 
 function logout() { localStorage.clear(); window.location.href = '/'; }
+
+const fmt = n => Math.round(parseFloat(n)||0).toLocaleString('fr-FR');
 
 // User setup
 if (USER) {
@@ -374,6 +410,10 @@ const role = USER?.role || '';
 if (role === 'caissier') {
   ['tile-patron','tile-logs','nav-patron','nav-logs'].forEach(id => document.getElementById(id)?.remove());
 }
+// Hide bottom-grid activity link for caissier (no logs access)
+if (role === 'caissier') {
+  document.querySelector('#bottom-grid a[href="/logs"]')?.remove();
+}
 
 // Clock
 function tick() {
@@ -385,94 +425,143 @@ function tick() {
 }
 tick(); setInterval(tick, 30000);
 
-// KPI loader
-async function loadKPIs() {
-  const H = { Authorization: 'Bearer ' + TOKEN };
-  try {
-    // Carburant
-    const sr = await fetch('/api/shifts?limit=1', { headers: H });
-    if (sr.ok) {
-      const shifts = await sr.json();
-      if (shifts.length) {
-        const s = shifts[0];
-        const tot = (parseFloat(s.gazoil_revenue)||0) + (parseFloat(s.essence_revenue)||0);
-        document.getElementById('k-ventes').textContent = tot.toLocaleString('fr-FR',{maximumFractionDigits:0}) + ' DH';
-      } else {
-        document.getElementById('k-ventes').textContent = '0 DH';
+// ── Revenue chart ──────────────────────────────────────────────
+let _chart = null;
+function buildChart(weekly) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gridColor  = isDark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.06)';
+  const labelColor = isDark ? '#7d8fa3' : '#89919a';
+  const ctx = document.getElementById('revenue-chart').getContext('2d');
+  const labels = weekly.map(d => {
+    const dt = new Date(d.day + 'T00:00:00');
+    return dt.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit'});
+  });
+  const data = weekly.map(d => parseFloat(d.revenue)||0);
+  const total = data.reduce((a,b)=>a+b,0);
+  document.getElementById('chart-total').textContent = fmt(total) + ' DH';
+  if (_chart) _chart.destroy();
+  _chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: data.map(v => v > 0 ? 'rgba(0,112,242,.75)' : 'rgba(0,112,242,.15)'),
+        borderColor:     data.map(v => v > 0 ? '#0070f2' : 'rgba(0,112,242,.2)'),
+        borderWidth: 1.5,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => fmt(ctx.raw) + ' DH' }
+      }},
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 11 } } },
+        y: { grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 11 },
+          callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v
+        }, beginAtZero: true }
       }
     }
-  } catch {}
-
-  try {
-    // Banque
-    const br = await fetch('/api/bank/accounts', { headers: H });
-    if (br.ok) {
-      const accs = await br.json();
-      if (Array.isArray(accs)) {
-        const tot = accs.reduce((s,a) => s + parseFloat(a.balance||0), 0);
-        document.getElementById('k-bank').textContent = Math.round(tot).toLocaleString('fr-FR') + ' DH';
-        document.getElementById('st-accounts').textContent = accs.length;
-      }
-    }
-  } catch {}
-
-  try {
-    // Cuves
-    const cr = await fetch('/api/cuves', { headers: H });
-    if (cr.ok) {
-      const cuves = await cr.json();
-      if (Array.isArray(cuves)) {
-        const vol = cuves.reduce((s,c) => s + parseFloat(c.current_volume||0), 0);
-        document.getElementById('k-cuves').textContent = Math.round(vol).toLocaleString('fr-FR') + ' L';
-        const pct = cuves.length ? cuves.reduce((s,c) => {
-          const p = c.capacity > 0 ? c.current_volume/c.capacity*100 : 0; return s + p;
-        }, 0) / cuves.length : 0;
-        const tr = document.getElementById('k-cuves-trend');
-        tr.textContent = Math.round(pct) + '%';
-        tr.className = 'kpi-trend ' + (pct < 20 ? 'warn' : pct < 40 ? 'neutral' : 'up');
-      }
-    }
-  } catch {}
-
-  try {
-    // Créances
-    const credR = await fetch('/api/credits?limit=500', { headers: H });
-    if (credR.ok) {
-      const creds = await credR.json();
-      if (Array.isArray(creds)) {
-        const outstanding = creds.filter(c => c.status !== 'paid');
-        const total = outstanding.reduce((s,c) => s + parseFloat(c.amount||0) - parseFloat(c.paid_amount||0), 0);
-        document.getElementById('k-credits').textContent = Math.round(total).toLocaleString('fr-FR') + ' DH';
-        document.getElementById('st-clients').textContent = new Set(outstanding.map(c=>c.client_name)).size;
-      }
-    }
-  } catch {}
-
-  try {
-    // Shifts count
-    const sfR = await fetch('/api/shifts?limit=100', { headers: H });
-    if (sfR.ok) {
-      const sf = await sfR.json();
-      const now = new Date();
-      const thisMonth = sf.filter(s => {
-        const d = new Date(s.created_at || s.shift_date);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      });
-      document.getElementById('st-shifts').textContent = thisMonth.length;
-    }
-  } catch {}
-
-  try {
-    // Logs count
-    const lgR = await fetch('/api/logs?limit=1', { headers: H });
-    if (lgR.ok) {
-      const lg = await lgR.json();
-      document.getElementById('st-logs').textContent = Array.isArray(lg) ? lg.length + '+' : '—';
-    }
-  } catch {}
+  });
 }
 
-loadKPIs();
+// ── Activity feed ──────────────────────────────────────────────
+function buildActivity(logs) {
+  const el = document.getElementById('activity-list');
+  if (!logs.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px 0">Aucune activité récente</div>';
+    return;
+  }
+  const MODULE_ICONS = {
+    Carburant:'⛽', Créances:'🤝', Banque:'🏦', Tabac:'🚬',
+    Cuves:'🛢️', Factures:'🧾', Café:'☕', Produits:'📦',
+    Dépenses:'💸', Stock:'📥', Pompes:'⚙️', Admin:'🔐', API:'🔧'
+  };
+  el.innerHTML = logs.slice(0,6).map(l => {
+    const ic = MODULE_ICONS[l.module] || '🔧';
+    const dt = new Date(l.created_at);
+    const ago = (() => {
+      const s = Math.round((Date.now()-dt)/1000);
+      if (s < 60) return 'à l\'instant';
+      if (s < 3600) return Math.round(s/60) + 'min';
+      if (s < 86400) return Math.round(s/3600) + 'h';
+      return dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+    })();
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg2);border:1px solid var(--border-lt)">
+      <span style="font-size:18px;flex-shrink:0">${ic}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.action}</div>
+        <div style="font-size:10.5px;color:var(--muted)">${l.username} · ${l.module}</div>
+      </div>
+      <div style="font-size:10px;color:var(--subtle);flex-shrink:0">${ago}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Main loader — single request ──────────────────────────────
+async function loadDashboard() {
+  const H = { Authorization: 'Bearer ' + TOKEN };
+
+  // Summary (1 request for all KPIs)
+  try {
+    const r = await fetch('/api/dashboard/summary', { headers: H });
+    if (r.ok) {
+      const d = await r.json();
+
+      document.getElementById('k-ventes').textContent  = fmt(d.last_shift_revenue) + ' DH';
+      document.getElementById('k-bank').textContent    = fmt(d.bank_balance) + ' DH';
+      document.getElementById('k-cuves').textContent   = fmt(d.cuves_volume) + ' L';
+      document.getElementById('k-credits').textContent = fmt(d.credits_outstanding) + ' DH';
+
+      document.getElementById('st-clients').textContent = d.credits_clients || '0';
+      document.getElementById('st-logs').textContent    = d.logs_total ? d.logs_total.toLocaleString('fr-FR') : '0';
+      document.getElementById('st-bank').textContent    = fmt(d.bank_balance) + ' DH';
+
+      // Cuves fill percentage
+      const pct = d.cuves_capacity > 0 ? d.cuves_volume / d.cuves_capacity * 100 : 0;
+      const tr = document.getElementById('k-cuves-trend');
+      tr.textContent = Math.round(pct) + '%';
+      tr.className   = 'kpi-trend ' + (pct < 20 ? 'warn' : pct < 40 ? 'neutral' : 'up');
+
+      if (d.weekly_revenue) buildChart(d.weekly_revenue);
+    }
+  } catch(e) { console.warn('Summary error:', e); }
+
+  // Shifts this month (lightweight)
+  try {
+    const r = await fetch('/api/shifts?limit=50', { headers: H });
+    if (r.ok) {
+      const shifts = await r.json();
+      const now = new Date();
+      const count = shifts.filter(s => {
+        const d2 = new Date(s.opened_at || s.created_at);
+        return d2.getMonth() === now.getMonth() && d2.getFullYear() === now.getFullYear();
+      }).length;
+      document.getElementById('st-shifts').textContent = count;
+    }
+  } catch {}
+
+  // Recent activity (for gerant+)
+  if (role !== 'caissier') {
+    try {
+      const r = await fetch('/api/logs?limit=6', { headers: H });
+      if (r.ok) {
+        const logs = await r.json();
+        buildActivity(Array.isArray(logs) ? logs : []);
+      }
+    } catch {
+      document.getElementById('activity-list').innerHTML =
+        '<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px 0">Accès restreint</div>';
+    }
+  } else {
+    document.getElementById('activity-list').innerHTML =
+      '<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px 0">Non disponible</div>';
+  }
+}
+
+loadDashboard();
 </script>
 <script src="/js/ai-widget.js?v=3"></script>
 </body>

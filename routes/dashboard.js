@@ -67,4 +67,51 @@ router.get('/fuel-split', requireAuth, wrap(async (_req, res) => {
   res.json(rows);
 }));
 
+// All-in-one home page summary — single DB round-trip bundle
+router.get('/summary', requireAuth, wrap(async (_req, res) => {
+  const [shifts, bank, cuves, credits, logs, weeklyRaw] = await Promise.all([
+    pool.query('SELECT total_fuel_revenue, created_at FROM shifts ORDER BY created_at DESC LIMIT 1'),
+    pool.query(`
+      SELECT
+        (SELECT COALESCE(initial_balance,0) FROM bank_settings WHERE id=1) +
+        COALESCE(SUM(CASE WHEN type IN ('depot','virement_in','cheque_in')  THEN amount ELSE -amount END),0)
+        AS total
+      FROM bank_transactions
+    `),
+    pool.query('SELECT COALESCE(SUM(niveau_litres),0) as vol, COALESCE(SUM(capacite_max),0) as cap FROM (SELECT DISTINCT ON (cuve_id) cuve_id, niveau_litres FROM cuve_lectures ORDER BY cuve_id, lecture_date DESC) latest JOIN cuves c ON c.id=latest.cuve_id WHERE c.is_active=1'),
+    pool.query("SELECT COALESCE(SUM(balance_due),0) as total, COUNT(*) as clients FROM credit_clients WHERE is_active=1 AND balance_due > 0"),
+    pool.query('SELECT COUNT(*) as total FROM activity_logs'),
+    pool.query(`
+      SELECT (opened_at::date)::text as day,
+             COALESCE(SUM(COALESCE(total_fuel_revenue,0)),0) as revenue
+      FROM shifts
+      WHERE opened_at >= CURRENT_DATE - INTERVAL '6 days'
+      GROUP BY day ORDER BY day
+    `),
+  ]);
+
+  const lastShift = shifts.rows[0];
+  const lastShiftRevenue = lastShift ? (parseFloat(lastShift.total_fuel_revenue)||0) : 0;
+
+  // Build 7-day array with zeros for missing days
+  const weekly = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0,10);
+    const found = weeklyRaw.rows.find(r => r.day === key);
+    weekly.push({ day: key, revenue: found ? parseFloat(found.revenue) : 0 });
+  }
+
+  res.json({
+    last_shift_revenue:  lastShiftRevenue,
+    bank_balance:        parseFloat(bank.rows[0]?.total || 0),
+    cuves_volume:        parseFloat(cuves.rows[0]?.vol  || 0),
+    cuves_capacity:      parseFloat(cuves.rows[0]?.cap  || 0),
+    credits_outstanding: parseFloat(credits.rows[0]?.total   || 0),
+    credits_clients:     parseInt(credits.rows[0]?.clients   || 0),
+    logs_total:          parseInt(logs.rows[0]?.total        || 0),
+    weekly_revenue:      weekly,
+  });
+}));
+
 module.exports = router;

@@ -91,6 +91,25 @@
     });
   }
 
+  // ── Dark mode toggle ──
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.querySelectorAll('.dm-toggle').forEach(btn => {
+      btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+      btn.title = theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre';
+    });
+  }
+
+  const savedTheme = localStorage.getItem('fm_theme') || 'light';
+  applyTheme(savedTheme);
+
+  window.toggleDarkMode = function () {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const next = current === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('fm_theme', next);
+    applyTheme(next);
+  };
+
   // ── Global logout ──
   window.logout = function () {
     localStorage.removeItem('fm_token');

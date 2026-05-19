@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MENASTA â€” Banque</title>
+<title>MENASTA — Banque</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=25"/>
-<script src="/js/shell-init.js?v=3" defer></script>
+<link rel="stylesheet" href="/css/fiori.css?v=26"/>
+<script src="/js/shell-init.js?v=4" defer></script>
 <script src="/js/modal-init.js?v=1" defer></script>
 <style>
 .ck-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -55,7 +55,8 @@
     <a href="/ai"       class="fs-nav-item"><span class="fn-icon">ðŸ¤–</span> IA</a>
   </nav>
   <div class="fs-actions">
-    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">ðŸ¤–</button>
+    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
+    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre">🌙</button>
     <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
   </div>
 </header>

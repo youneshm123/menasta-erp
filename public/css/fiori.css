@@ -1018,6 +1018,15 @@ body.lp-layout {
 /* ══════════════════════════════════════════════════
    UTILITY
 ══════════════════════════════════════════════════ */
+
+/* Alias tokens for cross-file compatibility */
+:root {
+  --radius:    var(--r-lg);
+  --shadow-sm: var(--sh-sm);
+  --shadow:    var(--sh);
+  --shadow-md: var(--sh-md);
+}
+
 .green  { color: var(--green); }  .red    { color: var(--red); }
 .blue   { color: var(--blue); }   .orange { color: var(--orange); }
 .amt-in  { color: var(--green); font-weight: 700; }
@@ -1026,6 +1035,7 @@ body.lp-layout {
 .bal-negative { color: var(--red);   font-weight: 700; }
 .c-g { color: var(--green); } .c-r { color: var(--red); }
 .c-b { color: var(--blue); }  .c-o { color: var(--orange); }
+.c-br { color: var(--orange); }
 .fw5{font-weight:500} .fw6{font-weight:600} .fw7{font-weight:700} .fw8{font-weight:800} .fw9{font-weight:900}
 .muted{color:var(--muted)} .subtle{color:var(--subtle)}
 .sm{font-size:12.5px} .xs{font-size:11.5px}
@@ -1136,6 +1146,41 @@ body.sb-open .sidebar {
 /* ══════════════════════════════════════════════════
    DARK MODE
 ══════════════════════════════════════════════════ */
+
+/* Dark mode toggle button */
+.dm-toggle {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer;
+  background: none; border: none;
+  color: rgba(255,255,255,.7);
+  transition: background .12s, color .12s, transform .22s;
+}
+.dm-toggle:hover { background: rgba(255,255,255,.12); color: #fff; transform: rotate(18deg); }
+
+/* Shared dark-mode rules — applied both via media query and [data-theme="dark"] */
+@mixin dark-mode {
+  --bg:       #13171c;
+  --bg2:      #1a1f26;
+  --surface:  #1e2530;
+  --surface2: #252d39;
+  --border:    #2e3740;
+  --border-lt: #252c38;
+  --border-dk: #3d4a58;
+  --text:     #e2e8f0;
+  --text-2:   #b8c5d3;
+  --muted:    #7d8fa3;
+  --subtle:   #4f6070;
+  --disabled: #3d4a58;
+  --shell-bg: #0f1318;
+  --blue-lt:   rgba(0,112,242,.15);
+  --blue-ring: rgba(0,112,242,.3);
+  --green-lt:  rgba(16,126,62,.18);
+  --red-lt:    rgba(187,0,0,.18);
+  --orange-lt: rgba(233,115,12,.18);
+  --purple-lt: rgba(108,50,160,.18);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --bg:       #13171c;
@@ -1211,4 +1256,85 @@ body.sb-open .sidebar {
   /* Login page */
   .login-card { background: #1e2530; border-color: var(--border); }
   .brand-panel { background: linear-gradient(160deg,#0f1318 0%,#161d28 100%); }
+}
+
+/* Manual toggle — [data-theme="dark"] on <html> overrides both light and media query */
+[data-theme="dark"] {
+  --bg:       #13171c;
+  --bg2:      #1a1f26;
+  --surface:  #1e2530;
+  --surface2: #252d39;
+  --border:    #2e3740;
+  --border-lt: #252c38;
+  --border-dk: #3d4a58;
+  --text:     #e2e8f0;
+  --text-2:   #b8c5d3;
+  --muted:    #7d8fa3;
+  --subtle:   #4f6070;
+  --disabled: #3d4a58;
+  --shell-bg: #0f1318;
+  --blue-lt:   rgba(0,112,242,.15);
+  --blue-ring: rgba(0,112,242,.3);
+  --green-lt:  rgba(16,126,62,.18);
+  --red-lt:    rgba(187,0,0,.18);
+  --orange-lt: rgba(233,115,12,.18);
+  --purple-lt: rgba(108,50,160,.18);
+}
+[data-theme="dark"] .fiori-shell,
+[data-theme="dark"] #shell { background: #0f1318; box-shadow: 0 2px 10px rgba(0,0,0,.5); }
+[data-theme="dark"] .fs-avatar { border-color: rgba(255,255,255,.15); }
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] #nav { background: #191f29; border-color: var(--border); }
+[data-theme="dark"] .sb-brand { background: #0f1318; }
+[data-theme="dark"] .modal-hd { background: #191f29; }
+[data-theme="dark"] .modal-body { background: var(--bg); }
+[data-theme="dark"] .t thead { background: #191f29; }
+[data-theme="dark"] .t tbody tr:hover { background: rgba(0,112,242,.08); }
+[data-theme="dark"] .app-topbar,
+[data-theme="dark"] #topbar,
+[data-theme="dark"] #sub-header { background: #1e2530; border-color: var(--border); }
+[data-theme="dark"] .t-ok,
+[data-theme="dark"] .t-g { background: #0f5e2f; }
+[data-theme="dark"] .t-er { background: #8a0000; }
+[data-theme="dark"] .fg input,
+[data-theme="dark"] .fg select,
+[data-theme="dark"] .fg textarea { background: #252d39; color: var(--text); border-color: var(--border); }
+[data-theme="dark"] .fg input::placeholder,
+[data-theme="dark"] .fg textarea::placeholder { color: var(--subtle); }
+[data-theme="dark"] .search-bar input { background: #252d39; color: var(--text); }
+[data-theme="dark"] .section,
+[data-theme="dark"] .panel { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .s-head,
+[data-theme="dark"] .panel-head { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .lp-kpi,
+[data-theme="dark"] .lp-tile,
+[data-theme="dark"] .tile,
+[data-theme="dark"] .kpi-card { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .login-card { background: #1e2530; border-color: var(--border); }
+[data-theme="dark"] .brand-panel { background: linear-gradient(160deg,#0f1318 0%,#161d28 100%); }
+[data-theme="dark"] ::-webkit-scrollbar-track { background: var(--bg); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: var(--border-dk); }
+[data-theme="dark"] .lp-banner { background: linear-gradient(135deg,#0f1318 0%,#1a2535 100%); }
+
+/* Light override when OS is dark but user chose light */
+[data-theme="light"] {
+  --bg:       #f5f6f7;
+  --bg2:      #eceef0;
+  --surface:  #ffffff;
+  --surface2: #f8f9fa;
+  --border:    #d1d5da;
+  --border-lt: #e8eaed;
+  --border-dk: #a8adb4;
+  --text:     #32363a;
+  --text-2:   #515457;
+  --muted:    #6a6d70;
+  --subtle:   #89919a;
+  --disabled: #bdc0c2;
+  --shell-bg: #354a5e;
+  --blue-lt:   #e8f2ff;
+  --blue-ring: rgba(0,112,242,.22);
+  --green-lt:  #f1f8f5;
+  --red-lt:    #fff0f0;
+  --orange-lt: #fef4eb;
+  --purple-lt: #f5eeff;
 }
