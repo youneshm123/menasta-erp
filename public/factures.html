@@ -204,19 +204,24 @@
 </div>
 
 <!-- PRINT OVERLAY -->
-<div id="print-overlay">
+<div id="print-overlay" onclick="if(event.target===this)closePrint()">
   <div style="display:flex;flex-direction:column;gap:12px;align-items:center;width:794px;max-width:100%">
     <div style="display:flex;gap:10px">
       <button class="btn btn-g" onclick="closePrint()">✕ Fermer</button>
       <button class="btn btn-p" onclick="window.print()">🖨️ Imprimer</button>
     </div>
-    <div id="print-frame"></div>
+    <div id="print-frame" style="background:#fff;width:100%"></div>
   </div>
 </div>
 
 <div id="toasts"></div>
 
 <script>
+window.onerror = (msg, src, line) => {
+  const t = document.getElementById('toasts');
+  if (t) { const d = document.createElement('div'); d.className = 'toast t-er'; d.textContent = 'JS Error: ' + msg + ' (line ' + line + ')'; t.appendChild(d); setTimeout(() => d.remove(), 6000); }
+};
+
 const token = localStorage.getItem('fm_token');
 const user = JSON.parse(localStorage.getItem('fm_user') || 'null');
 if (!token) location.href = '/';

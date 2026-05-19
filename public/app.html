@@ -1048,10 +1048,10 @@ async function submitOpenShift() {
   });
   if (!valid || !readings.length) { toast('Veuillez saisir tous les compteurs', 'er'); return; }
   try {
-    const avance    = parseFloat(document.getElementById('os-avance').value) || 0;
-    const pompiste  = document.getElementById('os-pompiste').value.trim();
-    const heure_debut = document.getElementById('os-heure-debut').value;
-    const heure_fin   = document.getElementById('os-heure-fin').value;
+    const avance    = parseFloat(document.getElementById('os-avance')?.value) || 0;
+    const pompiste  = (document.getElementById('os-pompiste')?.value || '').trim();
+    const heure_debut = document.getElementById('os-heure-debut')?.value || '';
+    const heure_fin   = document.getElementById('os-heure-fin')?.value || '';
     const shift = await api('POST', '/shifts', { readings, notes: document.getElementById('os-notes').value, avance, pompiste, heure_debut, heure_fin });
     S.activeShift = shift;
     closeModal('m-open-shift');
@@ -1162,7 +1162,7 @@ async function viewShift(id) {
 async function reopenShift(id) {
   if (!confirm('Réouvrir le poste #' + id + ' ? Il redeviendra le poste actif.')) return;
   const r = await api('POST', '/shifts/' + id + '/reopen');
-  if (r && r.id) { toast('Poste #' + id + ' réouvert ✓', 'g'); loadHistory(); navigate('shift'); }
+  if (r && r.id) { toast('Poste #' + id + ' réouvert ✓', 'g'); loadHistory(); goTo('shift'); }
 }
 
 // ─── CREDITS ───────────────────────────────────────────────
@@ -1438,7 +1438,7 @@ function acClose(ns) { _acPortalHide(); }
 function csSelectFuel(type) {
   document.getElementById('cs-btn-gazoil').className     = 'fuel-btn' + (type==='gazoil'     ? ' selected-gazoil'     : '');
   document.getElementById('cs-btn-essence').className    = 'fuel-btn' + (type==='essence'    ? ' selected-essence'    : '');
-  document.getElementById('cs-btn-lubrifiant').className = 'fuel-btn' + (type==='lubrifiant' ? ' selected-gazoil'     : '');
+  document.getElementById('cs-btn-lubrifiant').className = 'fuel-btn' + (type==='lubrifiant' ? ' selected-lubrifiant' : '');
   document.getElementById('cs-pump-id').value = '';
   _csFuelType = type;
   if (type === 'lubrifiant') return;
