@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/fiori.css?v=27"/>
-<script src="/js/shell-init.js?v=5" defer></script>
+<script src="/js/sidebar.js?v=1" defer></script>
 <script src="/js/modal-init.js?v=1" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -26,6 +26,8 @@
 .badge-low { background:#fef9c3; color:#92400e; }
 .badge-out { background:#fee2e2; color:#b91c1c; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/css/dashboard.css?v=1"/>
 </head>
 <body class="app-layout">
 
@@ -628,7 +630,9 @@ function exportWord(tableId, title) {
     th{background:#6b21a8;color:#fff;padding:6px 10px;text-align:left}
     td{border:1px solid #ddd;padding:5px 10px}
     tr:nth-child(even)td{background:#f9f9f9}
-  </style></head><body>
+  </style><script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/css/dashboard.css?v=1"/>
+</head><body>
   <h2>${title}</h2>
   <p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>
   ${clone.outerHTML}

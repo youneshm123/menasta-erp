@@ -1,0 +1,281 @@
+/* MENASTA DS Shell v1 — sidebar + topbar for all module pages
+   Uses .ds-* prefix to avoid conflicts with fiori.css */
+
+/* ── Hide old FIORI shell immediately (synchronous CSS) ── */
+.fiori-shell, #shell { display: none !important; }
+
+/* ── DS CSS variables ── */
+:root {
+  --ds-primary: #5b4fcf;
+  --ds-primary-dk: #4a3fb8;
+  --ds-primary-lt: #f0eeff;
+  --ds-primary-ring: rgba(91,79,207,.18);
+  --ds-w: 242px;
+  --ds-col: 64px;
+  --ds-th: 56px;
+  --ds-bg: #f4f5f9;
+  --ds-surface: #fff;
+  --ds-border: #e5e7eb;
+  --ds-border-dk: #d1d5db;
+  --ds-text: #111827;
+  --ds-muted: #6b7280;
+  --ds-subtle: #9ca3af;
+  --ds-font: 'Inter', system-ui, sans-serif;
+  --ds-r: 8px;
+}
+
+/* ── Body layout when DS shell is active ── */
+body.ds-active {
+  margin-left: var(--ds-w) !important;
+  transition: margin-left .22s ease;
+}
+body.ds-active.ds-col {
+  margin-left: var(--ds-col) !important;
+}
+/* Override old fiori padding-top */
+body.app-layout.ds-active {
+  padding-top: var(--ds-th) !important;
+  overflow: auto;
+  height: auto;
+}
+/* app.html uses #layout with its own padding-top — zero it out */
+body.ds-active #layout {
+  padding-top: 0 !important;
+  height: calc(100vh - var(--ds-th));
+}
+
+/* ─────────────────────────────────────────
+   DS SIDEBAR
+───────────────────────────────────────── */
+.ds-sidebar {
+  width: var(--ds-w);
+  background: var(--ds-surface);
+  border-right: 1px solid var(--ds-border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 300;
+  overflow: hidden;
+  transition: width .22s ease;
+}
+.ds-sidebar.ds-col { width: var(--ds-col); }
+
+/* Sidebar header */
+.ds-sb-hd {
+  height: var(--ds-th);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--ds-border);
+  flex-shrink: 0;
+}
+.ds-sb-logo {
+  display: flex; align-items: center; gap: 9px;
+  text-decoration: none; color: var(--ds-text);
+  overflow: hidden; white-space: nowrap;
+}
+.ds-sb-mark {
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--ds-primary), #7c6ee0);
+  display: flex; align-items: center; justify-content: center; color: #fff;
+}
+.ds-sb-mark svg { width: 14px; height: 14px; }
+.ds-sb-brand { font-size: 14.5px; font-weight: 800; letter-spacing: -.3px; }
+.ds-sb-col-btn {
+  width: 26px; height: 26px; border-radius: 6px;
+  border: 1px solid var(--ds-border);
+  background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ds-muted); font-size: 11px;
+  flex-shrink: 0; transition: all .12s;
+}
+.ds-sb-col-btn:hover { background: var(--ds-bg); color: var(--ds-text); }
+.ds-sidebar.ds-col .ds-sb-col-btn { transform: rotate(180deg); }
+
+/* Store picker */
+.ds-sb-store { padding: 12px 12px 6px; flex-shrink: 0; }
+.ds-sb-store-lbl {
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--ds-subtle); margin-bottom: 5px; white-space: nowrap; overflow: hidden;
+}
+.ds-sb-store-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+  border-radius: var(--ds-r); background: var(--ds-primary-lt); cursor: pointer; overflow: hidden;
+}
+.ds-sb-store-ic {
+  width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0;
+  background: var(--ds-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800;
+}
+.ds-sb-store-nm {
+  font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ds-sb-store-ch { margin-left: auto; flex-shrink: 0; color: var(--ds-muted); }
+.ds-sb-store-ch svg { width: 12px; height: 12px; }
+
+/* Nav */
+.ds-sb-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 6px 0; }
+.ds-sb-nav::-webkit-scrollbar { width: 3px; }
+.ds-sb-nav::-webkit-scrollbar-thumb { background: var(--ds-border-dk); border-radius: 2px; }
+.ds-nav-grp { padding: 8px 0 2px; }
+.ds-nav-grp-lbl {
+  padding: 0 14px 4px;
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--ds-subtle); white-space: nowrap; overflow: hidden;
+}
+/* Rule 4: full 44px row as tap target */
+.ds-nav-item {
+  display: flex; align-items: center; gap: 9px;
+  height: 44px; padding: 0 12px;
+  border-radius: var(--ds-r); margin: 1px 8px; width: calc(100% - 16px);
+  font-size: 13px; font-weight: 500; color: var(--ds-muted);
+  text-decoration: none; cursor: pointer;
+  background: none; border: none; font-family: var(--ds-font);
+  text-align: left; white-space: nowrap; overflow: hidden; position: relative;
+  transition: background .12s, color .12s;
+}
+.ds-nav-item:hover { background: var(--ds-bg); color: var(--ds-text); }
+.ds-nav-item.ds-active-link { background: var(--ds-primary-lt); color: var(--ds-primary); font-weight: 600; }
+.ds-ni-ic { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ds-ni-ic svg { width: 15px; height: 15px; }
+.ds-ni-lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* Sidebar bottom */
+.ds-sb-bot { border-top: 1px solid var(--ds-border); padding: 6px 0 2px; flex-shrink: 0; }
+
+/* User strip */
+.ds-sb-user {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  border-top: 1px solid var(--ds-border); cursor: pointer; overflow: hidden; flex-shrink: 0;
+}
+.ds-sb-av {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: var(--ds-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+}
+.ds-sb-user-info { flex: 1; overflow: hidden; }
+.ds-sb-user-nm { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-sb-user-rl { font-size: 10.5px; color: var(--ds-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-sb-user-ch { color: var(--ds-muted); flex-shrink: 0; }
+.ds-sb-user-ch svg { width: 13px; height: 13px; }
+
+/* Collapsed — hide text labels */
+.ds-sidebar.ds-col .ds-sb-store-lbl,
+.ds-sidebar.ds-col .ds-sb-store-nm,
+.ds-sidebar.ds-col .ds-sb-store-ch,
+.ds-sidebar.ds-col .ds-sb-brand,
+.ds-sidebar.ds-col .ds-nav-grp-lbl,
+.ds-sidebar.ds-col .ds-ni-lbl,
+.ds-sidebar.ds-col .ds-sb-user-info,
+.ds-sidebar.ds-col .ds-sb-user-ch { display: none; }
+.ds-sidebar.ds-col .ds-sb-store-item { justify-content: center; }
+.ds-sidebar.ds-col .ds-nav-item { justify-content: center; padding: 0; margin: 1px 6px; width: calc(100% - 12px); }
+.ds-sidebar.ds-col .ds-sb-user { justify-content: center; }
+
+/* ─────────────────────────────────────────
+   DS TOPBAR
+───────────────────────────────────────── */
+.ds-topbar {
+  height: var(--ds-th);
+  background: var(--ds-surface);
+  border-bottom: 1px solid var(--ds-border);
+  display: flex; align-items: center; padding: 0 20px 0 16px; gap: 10px;
+  position: fixed; top: 0; left: var(--ds-w); right: 0;
+  z-index: 200;
+  transition: left .22s ease;
+}
+body.ds-col .ds-topbar { left: var(--ds-col); }
+
+/* LEFT: back/close always on left (Rule 1) */
+.ds-tb-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.ds-tb-ham {
+  display: none; width: 36px; height: 36px; background: none;
+  border: 1px solid var(--ds-border); border-radius: var(--ds-r);
+  cursor: pointer; align-items: center; justify-content: center;
+  color: var(--ds-text); flex-shrink: 0;
+}
+.ds-tb-ham svg { width: 17px; height: 17px; }
+.ds-tb-nav-btn {
+  width: 30px; height: 30px; background: none;
+  border: 1px solid var(--ds-border); border-radius: var(--ds-r);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--ds-muted); transition: all .12s; flex-shrink: 0;
+}
+.ds-tb-nav-btn:hover { background: var(--ds-bg); color: var(--ds-text); }
+.ds-tb-nav-btn svg { width: 14px; height: 14px; }
+.ds-breadcrumb { font-size: 13px; color: var(--ds-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-breadcrumb strong { color: var(--ds-text); font-weight: 600; }
+.ds-breadcrumb span { margin: 0 5px; }
+
+/* RIGHT: action buttons on right (Rule 2) */
+.ds-tb-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.ds-tb-icon-btn {
+  width: 36px; height: 36px; background: none;
+  border: 1px solid var(--ds-border); border-radius: var(--ds-r);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--ds-muted); position: relative; transition: all .12s;
+}
+.ds-tb-icon-btn:hover { background: var(--ds-bg); color: var(--ds-text); }
+.ds-tb-icon-btn svg { width: 15px; height: 15px; }
+/* Rule 2: dot badge */
+.ds-badge-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #dc2626; border: 2px solid var(--ds-surface);
+  position: absolute; top: 4px; right: 4px;
+}
+.ds-tb-av-wrap {
+  display: flex; align-items: center; gap: 7px;
+  cursor: pointer; padding: 4px 6px; border-radius: var(--ds-r); transition: background .12s;
+}
+.ds-tb-av-wrap:hover { background: var(--ds-bg); }
+.ds-tb-av {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--ds-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.ds-tb-av-name { font-size: 13px; font-weight: 600; }
+.ds-tb-av-ch svg { width: 13px; height: 13px; color: var(--ds-muted); }
+
+/* ── Mobile overlay ── */
+.ds-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.5); z-index: 290;
+  opacity: 0; pointer-events: none; transition: opacity .25s;
+}
+
+/* ── Dark mode ── */
+[data-theme="dark"] .ds-sidebar,
+[data-theme="dark"] .ds-topbar {
+  background: #1f2937;
+  border-color: #374151;
+}
+[data-theme="dark"] .ds-nav-item:hover { background: #111827; color: #f9fafb; }
+[data-theme="dark"] .ds-nav-item.ds-active-link { background: rgba(91,79,207,.15); }
+[data-theme="dark"] .ds-sb-store-item { background: rgba(91,79,207,.15); }
+[data-theme="dark"] .ds-tb-icon-btn:hover,
+[data-theme="dark"] .ds-tb-nav-btn:hover,
+[data-theme="dark"] .ds-tb-av-wrap:hover { background: #111827; }
+[data-theme="dark"] .ds-sb-user:hover { background: #111827; }
+[data-theme="dark"] .ds-badge-dot { border-color: #1f2937; }
+
+/* ── Responsive — Rule 3: collapse to hamburger ── */
+@media (max-width: 768px) {
+  .ds-sidebar {
+    left: calc(-1 * var(--ds-w)) !important;
+    width: var(--ds-w) !important;
+    transition: left .25s ease;
+  }
+  .ds-sidebar.ds-mob-open {
+    left: 0 !important;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  }
+  .ds-overlay { display: block; }
+  body.ds-active { margin-left: 0 !important; }
+  body.app-layout.ds-active { padding-top: var(--ds-th) !important; }
+  .ds-topbar { left: 0 !important; }
+  .ds-tb-ham { display: flex !important; }
+}

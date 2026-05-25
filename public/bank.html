@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/fiori.css?v=26"/>
-<script src="/js/shell-init.js?v=4" defer></script>
+<script src="/js/sidebar.js?v=1" defer></script>
 <script src="/js/modal-init.js?v=1" defer></script>
 <style>
 .ck-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -48,6 +48,8 @@
 .badge.depot,.badge.virement_in,.badge.cheque_in{background:#DCFCE7;color:#15803D}
 .badge.retrait,.badge.virement_out,.badge.cheque_out{background:#FEE2E2;color:#B91C1C}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/css/dashboard.css?v=1"/>
 </head>
 <body class="app-layout">
 
@@ -518,7 +520,9 @@ async function deleteTxn(id) {
 function printStatement() {
   const el = document.getElementById('txn-printable');
   const w = window.open('','_blank');
-  w.document.write('<html><head><title>Relevé de Compte</title><style>table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #ccc;padding:5px 8px}th{background:#f5f5f5;font-weight:700}</style></head><body>');
+  w.document.write('<html><head><title>Relevé de Compte</title><style>table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #ccc;padding:5px 8px}th{background:#f5f5f5;font-weight:700}</style><script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/css/dashboard.css?v=1"/>
+</head><body>');
   w.document.write(el.innerHTML);
   w.document.write('<script>lucide.createIcons();</script>
 </body></html>');

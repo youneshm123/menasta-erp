@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/fiori.css?v=27"/>
-<script src="/js/shell-init.js?v=5" defer></script>
+<script src="/js/sidebar.js?v=1" defer></script>
 <script src="/js/modal-init.js?v=1" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -27,6 +27,8 @@ body.app-layout{overflow:auto}
 .sb-logout:hover{background:rgba(239,68,68,.15);color:#f87171;border-color:rgba(239,68,68,.3)}
 @media(max-width:900px){.panels{grid-template-columns:1fr 1fr}.kpi-row{grid-template-columns:1fr 1fr}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/css/dashboard.css?v=1"/>
 </head>
 <body class="app-layout">
 
@@ -442,7 +444,9 @@ function expXL(tbl, title) {
 }
 function expWord(tbl, title) {
   const clone = tbl.cloneNode(true); clone.querySelectorAll('input,button').forEach(el => el.remove());
-  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2>${clone.outerHTML}<script>lucide.createIcons();</script>
+  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style><script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/css/dashboard.css?v=1"/>
+</head><body><h2>${title||'Export'}</h2>${clone.outerHTML}<script>lucide.createIcons();</script>
 </body></html>`;
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html],{type:'application/msword'})); a.download = (title||'export').replace(/\s+/g,'_')+'.doc'; a.click();
 }
