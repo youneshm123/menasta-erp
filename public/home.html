@@ -1,569 +1,894 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA — Launchpad</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="/css/fiori.css?v=27"/>
-<script src="/js/shell-init.js?v=5" defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
 <style>
-body { background: #eceef0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#5b4fcf; --primary-dk:#4a3fb8; --primary-lt:#f0eeff;
+  --primary-ring:rgba(91,79,207,.18);
+  --sidebar-w:242px; --sidebar-col:64px; --topbar-h:56px;
+  --bg:#f4f5f9; --surface:#fff;
+  --border:#e5e7eb; --border-dk:#d1d5db;
+  --text:#111827; --muted:#6b7280; --subtle:#9ca3af; --disabled:#d1d5db;
+  --green:#059669; --green-lt:#ecfdf5;
+  --red:#dc2626;   --red-lt:#fef2f2;
+  --orange:#d97706;--orange-lt:#fffbeb;
+  --blue:#2563eb;  --blue-lt:#eff6ff;
+  --font:'Inter',system-ui,sans-serif;
+  --sh-xs:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --sh-sm:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.05);
+  --r:8px; --r-lg:12px;
+}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
 
-/* ── Notification strip ── */
-.lp-strip {
-  background: var(--surface); border-bottom: 1px solid var(--border);
-  height: 34px; display: flex; align-items: center;
-  padding: 0 32px; font-size: 11.5px; color: var(--muted);
-  justify-content: space-between; box-shadow: var(--sh-xs); flex-shrink: 0;
-}
-.strip-l { display: flex; align-items: center; gap: 18px; }
-.strip-r { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--subtle); }
-.s-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 5px; }
+/* ── App shell ── */
+.app{display:flex;min-height:100vh}
 
-/* ── Page wrapper ── */
-.lp-wrap { padding-top: var(--shell-h); min-height: 100vh; display: flex; flex-direction: column; }
-.lp-inner { flex: 1; padding: 28px 36px; max-width: 1380px; margin: 0 auto; width: 100%; }
+/* ──────────── SIDEBAR ──────────── */
+.sidebar{
+  width:var(--sidebar-w);flex-shrink:0;
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;bottom:0;z-index:200;
+  overflow:hidden;transition:width .22s ease;
+}
+.sidebar.col{width:var(--sidebar-col)}
 
-/* ── Welcome Banner ── */
-.lp-banner {
-  background: linear-gradient(135deg, var(--shell-bg) 0%, #273d52 100%);
-  border-radius: 14px; padding: 22px 28px;
-  display: flex; align-items: center; gap: 22px;
-  margin-bottom: 24px; position: relative; overflow: hidden;
-  box-shadow: 0 6px 24px rgba(0,0,0,.18);
+/* Sidebar header */
+.sb-hd{
+  height:var(--topbar-h);display:flex;align-items:center;
+  justify-content:space-between;padding:0 14px;
+  border-bottom:1px solid var(--border);flex-shrink:0;
 }
-.lp-banner::after {
-  content: ''; position: absolute; right: -40px; top: -40px;
-  width: 200px; height: 200px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(0,112,242,.2), transparent 70%);
-  pointer-events: none;
+.sb-logo{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--text);overflow:hidden;white-space:nowrap}
+.sb-mark{
+  width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--primary),#7c6ee0);
+  display:flex;align-items:center;justify-content:center;color:#fff;
 }
-.banner-ic { font-size: 52px; flex-shrink: 0; }
-.banner-text { flex: 1; }
-.banner-title { font-size: 21px; font-weight: 800; color: #fff; letter-spacing: -.4px; margin-bottom: 4px; }
-.banner-sub { font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.4; }
-.banner-dt { text-align: right; color: rgba(255,255,255,.55); font-size: 12px; flex-shrink: 0; }
-.banner-dt strong { display: block; font-size: 19px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+.sb-mark svg{width:14px;height:14px}
+.sb-brand{font-size:14.5px;font-weight:800;letter-spacing:-.3px}
+.sb-col-btn{
+  width:26px;height:26px;border-radius:6px;border:1px solid var(--border);
+  background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:11px;flex-shrink:0;transition:all .12s;
+}
+.sb-col-btn:hover{background:var(--bg);color:var(--text)}
+.sidebar.col .sb-col-btn{transform:rotate(180deg)}
 
-/* ── KPI Row ── */
-.lp-kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 28px; }
-.lp-kpi {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; padding: 16px 18px;
-  box-shadow: var(--sh-xs); position: relative; overflow: hidden;
-  cursor: pointer; text-decoration: none; display: block;
-  transition: box-shadow .2s, transform .18s, border-color .18s;
+/* Store picker */
+.sb-store{padding:12px 12px 6px;flex-shrink:0}
+.sb-store-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--subtle);margin-bottom:5px;white-space:nowrap;overflow:hidden}
+.sb-store-item{
+  display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);
+  background:var(--primary-lt);cursor:pointer;overflow:hidden;
 }
-.lp-kpi:hover { box-shadow: var(--sh-md); transform: translateY(-3px); border-color: var(--blue); }
-.lp-kpi::before {
-  content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 4px;
-  background: var(--kc, var(--blue)); border-radius: 12px 0 0 12px;
+.sb-store-ic{
+  width:26px;height:26px;border-radius:6px;flex-shrink:0;
+  background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:800;
 }
-.kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.kpi-ic  { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--kb, var(--blue-lt)); }
-.kpi-trend { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
-.kpi-trend.up   { background: var(--green-lt); color: var(--green); }
-.kpi-trend.neutral { background: var(--blue-lt); color: var(--blue); }
-.kpi-trend.warn { background: var(--orange-lt); color: var(--orange); }
-.kpi-val { font-size: 23px; font-weight: 800; color: var(--text); letter-spacing: -.5px; line-height: 1; }
-.kpi-lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
-.kpi-sub { font-size: 11px; color: var(--subtle); margin-top: 3px; }
+.sb-store-nm{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-store-ch{margin-left:auto;flex-shrink:0;color:var(--muted)}
+.sb-store-ch svg{width:12px;height:12px}
 
-/* ── Tile Groups ── */
-.lp-group { margin-bottom: 28px; }
-.grp-hd { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.grp-lbl { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); white-space: nowrap; }
-.grp-rule { flex: 1; height: 1px; background: var(--border-lt); }
+/* Nav */
+.sb-nav{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 0}
+.sb-nav::-webkit-scrollbar{width:3px}
+.sb-nav::-webkit-scrollbar-thumb{background:var(--border-dk);border-radius:2px}
+.nav-grp{padding:8px 0 2px}
+.nav-grp-lbl{
+  padding:0 14px 4px;
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;
+  color:var(--subtle);white-space:nowrap;overflow:hidden;
+}
+/* nav-item — full row is the tap target (44px) */
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  height:44px;padding:0 12px;
+  border-radius:var(--r);margin:1px 8px;width:calc(100% - 16px);
+  font-size:13px;font-weight:500;color:var(--muted);
+  text-decoration:none;cursor:pointer;
+  background:none;border:none;font-family:var(--font);text-align:left;
+  white-space:nowrap;overflow:hidden;position:relative;
+  transition:background .12s,color .12s;
+}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:var(--primary-lt);color:var(--primary);font-weight:600}
+.ni-ic{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ni-ic svg{width:15px;height:15px}
+.ni-lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{
+  min-width:18px;height:18px;border-radius:9px;
+  background:var(--primary);color:#fff;
+  font-size:10px;font-weight:700;padding:0 4px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
 
-/* ── Tiles ── */
-.tiles-row { display: flex; flex-wrap: wrap; gap: 14px; }
-.lp-tile {
-  width: 178px; height: 182px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; box-shadow: var(--sh-xs);
-  display: flex; flex-direction: column; padding: 16px 15px 13px;
-  cursor: pointer; text-decoration: none; position: relative; overflow: hidden;
-  transition: box-shadow .22s, transform .22s, border-color .22s;
-}
-.lp-tile:hover {
-  box-shadow: 0 10px 32px rgba(0,0,0,.14);
-  transform: translateY(-4px);
-  border-color: rgba(0,112,242,.3);
-}
-.lp-tile:active { transform: translateY(-1px); }
+/* Sidebar bottom */
+.sb-bot{border-top:1px solid var(--border);padding:6px 0 2px;flex-shrink:0}
 
-/* Tile top bar color accent */
-.lp-tile::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  background: var(--tc, transparent); border-radius: 14px 14px 0 0;
+/* User strip */
+.sb-user{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border-top:1px solid var(--border);cursor:pointer;overflow:hidden;flex-shrink:0;
 }
-.lp-tile-ic {
-  width: 52px; height: 52px; border-radius: 14px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 26px; margin-bottom: 12px;
-  background: var(--tib, var(--blue-lt));
+.sb-user-av{
+  width:32px;height:32px;border-radius:50%;flex-shrink:0;
+  background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;
 }
-.lp-tile-cnt {
-  position: absolute; top: 12px; right: 12px;
-  min-width: 22px; height: 22px; background: var(--red); color: #fff;
-  font-size: 10px; font-weight: 700; border-radius: 11px;
-  padding: 0 5px; display: flex; align-items: center; justify-content: center;
-}
-.lp-tile-title { font-size: 14.5px; font-weight: 700; color: var(--text); line-height: 1.2; margin-bottom: 3px; }
-.lp-tile-sub   { font-size: 11.5px; color: var(--muted); line-height: 1.45; flex: 1; }
-.lp-tile-foot  {
-  margin-top: 10px; font-size: 11.5px; font-weight: 600; color: var(--tfc, var(--blue));
-  display: flex; align-items: center; gap: 4px;
-  border-top: 1px solid var(--border-lt); padding-top: 8px;
-}
-.lp-tile-foot .arr { margin-left: auto; font-size: 13px; }
+.sb-user-info{flex:1;overflow:hidden}
+.sb-user-nm{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-user-rl{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-user-ch{color:var(--muted);flex-shrink:0}
+.sb-user-ch svg{width:13px;height:13px}
 
-/* Color themes for tiles */
-.tc-blue   { --tc:#0070f2; --tib:#e8f2ff; --tfc:#0070f2; }
-.tc-green  { --tc:#107e3e; --tib:#f1f8f5; --tfc:#107e3e; }
-.tc-orange { --tc:#e9730c; --tib:#fef4eb; --tfc:#e9730c; }
-.tc-red    { --tc:#bb0000; --tib:#fff0f0; --tfc:#bb0000; }
-.tc-purple { --tc:#6c32a0; --tib:#f5eeff; --tfc:#6c32a0; }
-.tc-teal   { --tc:#0e7490; --tib:#ecfeff; --tfc:#0e7490; }
-.tc-amber  { --tc:#92400e; --tib:#fffbeb; --tfc:#92400e; }
+/* Collapsed — hide text */
+.sidebar.col .sb-store-lbl,.sidebar.col .sb-store-nm,.sidebar.col .sb-store-ch,
+.sidebar.col .sb-brand,.sidebar.col .nav-grp-lbl,.sidebar.col .ni-lbl,
+.sidebar.col .nav-badge,.sidebar.col .sb-user-info,.sidebar.col .sb-user-ch{display:none}
+.sidebar.col .sb-store-item{justify-content:center}
+.sidebar.col .nav-item{justify-content:center;padding:0;margin:1px 6px;width:calc(100% - 12px)}
+.sidebar.col .sb-user{justify-content:center}
 
-/* ── Bottom stat strip ── */
-.lp-stats { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
-.lp-stat {
-  flex: 1; min-width: 140px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; padding: 12px 16px;
-  display: flex; align-items: center; gap: 12px;
-  box-shadow: var(--sh-xs);
-}
-.lp-stat-ic { font-size: 22px; flex-shrink: 0; }
-.lp-stat-val { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -.3px; line-height: 1; }
-.lp-stat-lbl { font-size: 10.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
+/* ──────────── MAIN ──────────── */
+.main{flex:1;margin-left:var(--sidebar-w);display:flex;flex-direction:column;min-height:100vh;transition:margin-left .22s ease}
+.sidebar.col~.main{margin-left:var(--sidebar-col)}
 
-@media(max-width:1100px) { .lp-kpis { grid-template-columns: 1fr 1fr; } }
-@media(max-width:900px) {
-  #bottom-grid { grid-template-columns: 1fr !important; }
+/* ──────────── TOPBAR ──────────── */
+.topbar{
+  height:var(--topbar-h);background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px 0 16px;gap:10px;
+  position:sticky;top:0;z-index:100;flex-shrink:0;
 }
-@media(max-width:720px) {
-  .lp-inner { padding: 16px; }
-  .lp-kpis { grid-template-columns: 1fr 1fr; }
-  .lp-tile { width: calc(50% - 7px); height: auto; min-height: 155px; }
-  .lp-banner { flex-direction: column; text-align: center; }
-  .banner-dt { display: none; }
+/* LEFT — Rule 1: back/close on left */
+.tb-left{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.tb-hamburger{
+  display:none;width:36px;height:36px;background:none;
+  border:1px solid var(--border);border-radius:var(--r);cursor:pointer;
+  align-items:center;justify-content:center;color:var(--text);flex-shrink:0;
 }
+.tb-hamburger svg{width:17px;height:17px}
+.tb-nav-btn{
+  width:30px;height:30px;background:none;
+  border:1px solid var(--border);border-radius:var(--r);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:var(--muted);
+  transition:all .12s;flex-shrink:0;
+}
+.tb-nav-btn:hover{background:var(--bg);color:var(--text)}
+.tb-nav-btn svg{width:14px;height:14px}
+.breadcrumb{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.breadcrumb strong{color:var(--text);font-weight:600}
+.breadcrumb span{margin:0 5px}
+/* RIGHT — Rule 2: action buttons on right */
+.tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.tb-search{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--r);
+  padding:0 12px;height:36px;min-width:220px;
+  transition:border-color .14s,box-shadow .14s;
+}
+.tb-search:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-ring)}
+.tb-search svg{width:14px;height:14px;color:var(--subtle);flex-shrink:0}
+.tb-search input{background:none;border:none;outline:none;font-size:13px;color:var(--text);font-family:var(--font);width:100%}
+.tb-search input::placeholder{color:var(--subtle)}
+.tb-icon-btn{
+  width:36px;height:36px;background:none;border:1px solid var(--border);
+  border-radius:var(--r);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);position:relative;transition:all .12s;
+}
+.tb-icon-btn:hover{background:var(--bg);color:var(--text)}
+.tb-icon-btn svg{width:15px;height:15px}
+/* Rule 2 — dot badge for notifications */
+.badge-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--red);border:2px solid var(--surface);
+  position:absolute;top:4px;right:4px;
+}
+.tb-av-wrap{display:flex;align-items:center;gap:7px;cursor:pointer;padding:4px 6px;border-radius:var(--r);transition:background .12s}
+.tb-av-wrap:hover{background:var(--bg)}
+.tb-av{
+  width:32px;height:32px;border-radius:50%;
+  background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;flex-shrink:0;
+}
+.tb-av-name{font-size:13px;font-weight:600}
+.tb-av-ch svg{width:13px;height:13px;color:var(--muted)}
+
+/* ──────────── PAGE BODY ──────────── */
+.page-body{flex:1;padding:24px;overflow-x:hidden}
+
+/* Promo banner */
+.promo{
+  background:linear-gradient(135deg,#5b4fcf 0%,#7c6ee0 60%,#9d8bf4 100%);
+  border-radius:14px;padding:16px 22px;
+  display:flex;align-items:center;gap:14px;
+  margin-bottom:26px;color:#fff;position:relative;overflow:hidden;
+}
+.promo::after{content:'';position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none}
+.promo-spark{font-size:17px;flex-shrink:0;opacity:.9}
+.promo-txt{flex:1}
+.promo-tag{font-size:11px;font-weight:600;opacity:.75;margin-bottom:3px}
+.promo-body{font-size:13.5px;font-weight:500;line-height:1.45}
+.promo-cta{
+  background:#fff;color:var(--primary);border:none;
+  border-radius:8px;padding:8px 18px;
+  font-size:13px;font-weight:700;cursor:pointer;
+  white-space:nowrap;flex-shrink:0;font-family:var(--font);
+  transition:opacity .12s;
+}
+.promo-cta:hover{opacity:.88}
+
+/* Section header */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.sec-hd h2{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.sec-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill-btn{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:6px 12px;font-size:12px;font-weight:500;color:var(--text);
+  cursor:pointer;font-family:var(--font);transition:all .12s;white-space:nowrap;
+}
+.pill-btn:hover{border-color:var(--border-dk);background:var(--bg)}
+.pill-btn svg{width:13px;height:13px;color:var(--muted)}
+.exp-btn{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:6px 14px;font-size:12px;font-weight:600;color:var(--text);
+  cursor:pointer;font-family:var(--font);transition:all .12s;white-space:nowrap;
+}
+.exp-btn:hover{border-color:var(--primary);color:var(--primary)}
+.exp-btn svg{width:13px;height:13px}
+
+/* KPI grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;box-shadow:var(--sh-xs)}
+.kpi-card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.kpi-ic-wrap{display:flex;align-items:center;gap:10px}
+.kpi-ic{
+  width:36px;height:36px;border-radius:9px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.kpi-ic svg{width:16px;height:16px}
+.kpi-lbl{font-size:12px;font-weight:600;color:var(--muted)}
+.kpi-info{
+  width:22px;height:22px;border-radius:50%;
+  background:none;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--subtle);
+}
+.kpi-info svg{width:11px;height:11px}
+.kpi-val{font-size:26px;font-weight:800;letter-spacing:-.5px;line-height:1;color:var(--text);margin-bottom:8px}
+.kpi-ch{font-size:11.5px;font-weight:600;display:inline-flex;align-items:center;gap:3px}
+.kpi-ch.up{color:var(--green)} .kpi-ch.dn{color:var(--red)} .kpi-ch.nt{color:var(--muted)}
+.kpi-ch-sub{font-size:11px;color:var(--muted);margin-left:4px}
+/* icon colors per card */
+.kpi-grid .kpi-card:nth-child(1) .kpi-ic{background:#fef3c7;color:#d97706}
+.kpi-grid .kpi-card:nth-child(2) .kpi-ic{background:#ffe4e6;color:#e11d48}
+.kpi-grid .kpi-card:nth-child(3) .kpi-ic{background:#dbeafe;color:#2563eb}
+.kpi-grid .kpi-card:nth-child(4) .kpi-ic{background:#dcfce7;color:#16a34a}
+
+/* Charts */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:26px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px;box-shadow:var(--sh-xs)}
+.chart-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
+.chart-total-val{font-size:21px;font-weight:800;letter-spacing:-.3px;margin-bottom:4px}
+.chart-sub{font-size:11.5px;font-weight:600;color:var(--green)}
+.chart-wrap{position:relative;height:165px}
+
+/* Table card */
+.tbl-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-xs);overflow:hidden;margin-bottom:16px}
+.tbl-hd{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;gap:10px;flex-wrap:wrap}
+.tbl-hd h3{font-size:15px;font-weight:700}
+.tbl-acts{display:flex;align-items:center;gap:8px}
+.link-btn{
+  display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;
+  font-size:12px;font-weight:600;color:var(--muted);font-family:var(--font);transition:color .12s;
+}
+.link-btn:hover{color:var(--primary)}
+.link-btn svg{width:13px;height:13px}
+
+/* Tab bar */
+.tab-bar{display:flex;align-items:center;gap:0;padding:10px 18px 0;border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-bar::-webkit-scrollbar{height:0}
+.tab-btn{
+  display:flex;align-items:center;gap:6px;
+  height:44px;padding:0 14px;
+  font-size:13px;font-weight:500;color:var(--muted);
+  background:none;border:none;border-bottom:2px solid transparent;
+  cursor:pointer;font-family:var(--font);white-space:nowrap;
+  margin-bottom:-1px;transition:color .12s,border-color .12s;
+}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+.tab-cnt{
+  min-width:18px;height:18px;border-radius:9px;
+  background:var(--primary);color:#fff;
+  font-size:10px;font-weight:700;padding:0 4px;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* Data table */
+.data-tbl{width:100%;border-collapse:collapse}
+.data-tbl thead th{
+  padding:11px 16px;font-size:11px;font-weight:600;
+  color:var(--muted);text-transform:uppercase;letter-spacing:.4px;
+  text-align:left;background:var(--bg);border-bottom:1px solid var(--border);
+}
+/* Rule 4 — full row is the clickable target */
+.data-tbl tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+.data-tbl tbody tr:last-child{border-bottom:none}
+.data-tbl tbody tr:hover{background:#fafbff}
+.data-tbl tbody td{padding:13px 16px;font-size:13px;vertical-align:middle}
+.user-cell{display:flex;align-items:center;gap:9px}
+.user-av{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;
+  background:var(--primary-lt);color:var(--primary);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;
+}
+.user-nm{font-weight:600;font-size:13px}
+
+/* Status badges */
+.bdg{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.bdg::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.bdg-green{background:var(--green-lt);color:var(--green)}
+.bdg-blue{background:var(--blue-lt);color:var(--blue)}
+.bdg-orange{background:var(--orange-lt);color:var(--orange)}
+
+.row-act-btn{
+  background:none;border:none;cursor:pointer;
+  width:30px;height:30px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:18px;font-weight:700;
+  transition:all .12s;
+}
+.row-act-btn:hover{background:var(--bg);color:var(--text)}
+
+/* Pagination */
+.pagination{display:flex;align-items:center;justify-content:flex-end;padding:11px 16px;gap:4px;border-top:1px solid var(--border)}
+.pg-btn{
+  width:32px;height:32px;border-radius:6px;
+  background:none;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--muted);font-size:13px;transition:all .12s;
+}
+.pg-btn:hover{background:var(--bg);color:var(--text)}
+.pg-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700}
+.pg-btn svg{width:13px;height:13px}
+
+/* ── Dark mode ── */
+[data-theme="dark"]{
+  --bg:#111827;--surface:#1f2937;
+  --border:#374151;--border-dk:#4b5563;
+  --text:#f9fafb;--muted:#9ca3af;--subtle:#6b7280;
+  --primary-lt:rgba(91,79,207,.15);
+  --blue-lt:rgba(37,99,235,.15);
+  --green-lt:rgba(5,150,105,.15);
+  --orange-lt:rgba(217,119,6,.15);
+  --red-lt:rgba(220,38,38,.15);
+}
+[data-theme="dark"] .data-tbl tbody tr:hover{background:#263144}
+[data-theme="dark"] .data-tbl thead th{background:#111827}
+[data-theme="dark"] .promo::after{background:rgba(255,255,255,.04)}
+
+/* ── Mobile overlay ── */
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:190;opacity:0;pointer-events:none;transition:opacity .25s}
+
+/* ── Responsive ── Rule 3: collapse to hamburger on small screens */
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.charts-row{grid-template-columns:1fr}}
+@media(max-width:768px){
+  .sidebar{left:calc(-1 * var(--sidebar-w));width:var(--sidebar-w)!important;transition:left .25s ease}
+  .sidebar.mob-open{left:0;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .sb-overlay{display:block}
+  .main{margin-left:0!important}
+  .tb-hamburger{display:flex}
+  .tb-search{min-width:150px}
+  .page-body{padding:16px}
+  .sec-acts .pill-btn:nth-child(2){display:none}
+  .promo-cta{display:none}
+}
+@media(max-width:520px){
+  .kpi-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .tb-search{display:none}
+  .tb-icon-btn:not(#tb-notif){display:none}
+  .tbl-acts .pill-btn{display:none}
+}
+.skeleton{background:linear-gradient(90deg,var(--border) 25%,var(--bg) 50%,var(--border) 75%);background-size:200% 100%;animation:sk 1.4s infinite;border-radius:6px}
+@keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
 </style>
 </head>
-<body class="lp-layout">
+<body>
+<div class="app">
 
-<!-- SAP FIORI SHELL BAR -->
-<header class="fiori-shell">
-  <a href="/home" class="fs-logo">
-    <div class="fs-mark"><i data-lucide="fuel"></i></div>
-    <div class="fs-brand">MENASTA</div>
-  </a>
-  <div class="fs-divider"></div>
-  <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item active"><span class="fn-icon"><i data-lucide="home"></i></span> Launchpad</a>
-    <a href="/patron"   class="fs-nav-item" id="nav-patron"><span class="fn-icon"><i data-lucide="crown"></i></span> Patron</a>
-    <a href="/app"      class="fs-nav-item"><span class="fn-icon"><i data-lucide="fuel"></i></span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="coffee"></i></span> Café</a>
-    <a href="/bank"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="landmark"></i></span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="cigarette"></i></span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="gauge"></i></span> Cuves</a>
-    <a href="/factures" class="fs-nav-item"><span class="fn-icon"><i data-lucide="receipt-text"></i></span> Factures</a>
-    <a href="/logs"     class="fs-nav-item" id="nav-logs"><span class="fn-icon"><i data-lucide="clipboard-list"></i></span> Journal</a>
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-hd">
+    <a href="/home" class="sb-logo">
+      <div class="sb-mark"><i data-lucide="fuel"></i></div>
+      <span class="sb-brand">MENASTA</span>
+    </a>
+    <button class="sb-col-btn" id="sb-col-btn" title="Réduire">«</button>
+  </div>
+
+  <div class="sb-store">
+    <div class="sb-store-lbl">Ma station</div>
+    <div class="sb-store-item">
+      <div class="sb-store-ic">SH</div>
+      <span class="sb-store-nm">Station Hmimidi</span>
+      <span class="sb-store-ch"><i data-lucide="chevron-down"></i></span>
+    </div>
+  </div>
+
+  <nav class="sb-nav">
+    <div class="nav-grp">
+      <div class="nav-grp-lbl">Général</div>
+      <a href="/home" class="nav-item active">
+        <span class="ni-ic"><i data-lucide="layout-dashboard"></i></span>
+        <span class="ni-lbl">Launchpad</span>
+      </a>
+      <a href="/app" class="nav-item">
+        <span class="ni-ic"><i data-lucide="fuel"></i></span>
+        <span class="ni-lbl">Carburant</span>
+      </a>
+      <a href="/cafe" class="nav-item">
+        <span class="ni-ic"><i data-lucide="coffee"></i></span>
+        <span class="ni-lbl">Café</span>
+      </a>
+      <a href="/tabac" class="nav-item">
+        <span class="ni-ic"><i data-lucide="cigarette"></i></span>
+        <span class="ni-lbl">Tabac</span>
+      </a>
+      <a href="/cuves" class="nav-item">
+        <span class="ni-ic"><i data-lucide="gauge"></i></span>
+        <span class="ni-lbl">Cuves</span>
+      </a>
+    </div>
+
+    <div class="nav-grp">
+      <div class="nav-grp-lbl">Finances</div>
+      <a href="/bank" class="nav-item">
+        <span class="ni-ic"><i data-lucide="landmark"></i></span>
+        <span class="ni-lbl">Banque</span>
+      </a>
+      <a href="/factures" class="nav-item">
+        <span class="ni-ic"><i data-lucide="receipt-text"></i></span>
+        <span class="ni-lbl">Factures</span>
+      </a>
+    </div>
+
+    <div class="nav-grp" id="nav-direction">
+      <div class="nav-grp-lbl">Direction</div>
+      <a href="/patron" class="nav-item" id="sb-patron">
+        <span class="ni-ic"><i data-lucide="crown"></i></span>
+        <span class="ni-lbl">Patron</span>
+      </a>
+      <a href="/admin" class="nav-item" id="sb-admin">
+        <span class="ni-ic"><i data-lucide="settings-2"></i></span>
+        <span class="ni-lbl">Administration</span>
+      </a>
+      <a href="/ai" class="nav-item">
+        <span class="ni-ic"><i data-lucide="bot"></i></span>
+        <span class="ni-lbl">Assistant IA</span>
+      </a>
+      <a href="/logs" class="nav-item" id="sb-logs">
+        <span class="ni-ic"><i data-lucide="clipboard-list"></i></span>
+        <span class="ni-lbl">Journal</span>
+      </a>
+    </div>
   </nav>
-  <div class="fs-actions">
-    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA"><i data-lucide="bot"></i></button>
-    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre"><i data-lucide="moon"></i></button>
-    <button class="fs-icon-btn" onclick="logout()" title="Déconnexion"><i data-lucide="log-out"></i></button>
-    <div class="fs-avatar" id="fs-av">?</div>
-  </div>
-</header>
 
-<div class="lp-wrap">
-  <!-- Notification strip -->
-  <div class="lp-strip">
-    <div class="strip-l">
-      <span><span class="s-dot"></span>Système opérationnel</span>
-      <span style="color:var(--border-dk)">|</span>
-      <span>MENASTA ERP v2.0 · Station Hmimidi, Kénitra</span>
-    </div>
-    <div class="strip-r">
-      <span id="lp-clock">--:--</span>
-      <span>·</span>
-      <span id="lp-date">--</span>
-    </div>
+  <div class="sb-bot">
+    <button class="nav-item" id="dm-sb-btn" onclick="toggleDarkMode()">
+      <span class="ni-ic" id="dm-sb-ic"><i data-lucide="moon"></i></span>
+      <span class="ni-lbl" id="dm-sb-lbl">Mode sombre</span>
+    </button>
+    <button class="nav-item" onclick="logout()">
+      <span class="ni-ic"><i data-lucide="log-out"></i></span>
+      <span class="ni-lbl">Déconnexion</span>
+    </button>
   </div>
 
-  <!-- Main content -->
-  <div class="lp-inner">
+  <div class="sb-user">
+    <div class="sb-user-av" id="sb-av">?</div>
+    <div class="sb-user-info">
+      <div class="sb-user-nm" id="sb-nm">—</div>
+      <div class="sb-user-rl" id="sb-rl">—</div>
+    </div>
+    <span class="sb-user-ch"><i data-lucide="chevrons-up-down"></i></span>
+  </div>
+</aside>
 
-    <!-- Welcome banner -->
-    <div class="lp-banner">
-      <div class="banner-ic"><i data-lucide="fuel"></i></div>
-      <div class="banner-text">
-        <div class="banner-title" id="banner-greet">Bonjour !</div>
-        <div class="banner-sub">Bienvenue dans votre espace de travail MENASTA ERP · Gérez votre station en toute simplicité</div>
+<div class="sb-overlay" id="sb-overlay"></div>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<div class="main">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <!-- LEFT: Rule 1 — back on left, hamburger on mobile -->
+    <div class="tb-left">
+      <button class="tb-hamburger" id="tb-ham"><i data-lucide="menu"></i></button>
+      <button class="tb-nav-btn" onclick="history.back()" title="Retour"><i data-lucide="chevron-left"></i></button>
+      <button class="tb-nav-btn" onclick="history.forward()" title="Suivant"><i data-lucide="chevron-right"></i></button>
+      <span class="breadcrumb">Accueil <span>/</span> <strong>Launchpad</strong></span>
+    </div>
+
+    <!-- RIGHT: Rule 2 — utility actions on right with badges -->
+    <div class="tb-right">
+      <div class="tb-search">
+        <i data-lucide="search"></i>
+        <input type="text" placeholder="Rechercher modules, données..."/>
       </div>
-      <div class="banner-dt">
-        <strong id="banner-day">--</strong>
-        <span id="banner-date">--</span>
+      <button class="tb-icon-btn" title="Aide"><i data-lucide="circle-help"></i></button>
+      <button class="tb-icon-btn" id="tb-notif" title="Notifications"><i data-lucide="bell"></i></button>
+      <button class="tb-icon-btn" id="dm-tb-btn" onclick="toggleDarkMode()" title="Mode sombre"><i data-lucide="moon"></i></button>
+      <div class="tb-av-wrap">
+        <div class="tb-av" id="tb-av">?</div>
+        <span class="tb-av-name" id="tb-nm"></span>
+        <span class="tb-av-ch"><i data-lucide="chevron-down"></i></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page body -->
+  <div class="page-body">
+
+    <!-- Promo banner -->
+    <div class="promo">
+      <span class="promo-spark">✦</span>
+      <div class="promo-txt">
+        <div class="promo-tag">Station Hmimidi · Kénitra, Maroc</div>
+        <div class="promo-body" id="promo-msg">Bienvenue dans MENASTA ERP — Gérez votre station en temps réel.</div>
+      </div>
+      <button class="promo-cta" onclick="window.location='/ai'">Explorer l'IA →</button>
+    </div>
+
+    <!-- Overview header -->
+    <div class="sec-hd">
+      <h2>Vue d'ensemble</h2>
+      <div class="sec-acts">
+        <button class="pill-btn"><i data-lucide="calendar"></i><span id="hd-date">—</span></button>
+        <button class="pill-btn"><i data-lucide="calendar-days"></i>30 derniers jours</button>
+        <button class="exp-btn"><i data-lucide="download"></i>Exporter</button>
       </div>
     </div>
 
-    <!-- KPIs -->
-    <div class="lp-kpis">
-      <a class="lp-kpi" href="/app" style="--kc:#0070f2;--kb:#e8f2ff">
-        <div class="kpi-top">
-          <div class="kpi-ic"><i data-lucide="fuel"></i></div>
-          <span class="kpi-trend up" id="k-ventes-trend">Actif</span>
-        </div>
-        <div class="kpi-val" id="k-ventes">—</div>
-        <div class="kpi-lbl">Ventes carburant</div>
-        <div class="kpi-sub">Dernier poste (DH)</div>
-      </a>
-      <a class="lp-kpi" href="/bank" style="--kc:#107e3e;--kb:#f1f8f5">
-        <div class="kpi-top">
-          <div class="kpi-ic"><i data-lucide="landmark"></i></div>
-          <span class="kpi-trend neutral" id="k-bank-trend">Solde</span>
-        </div>
-        <div class="kpi-val" id="k-bank">—</div>
-        <div class="kpi-lbl">Solde bancaire</div>
-        <div class="kpi-sub">Total comptes (DH)</div>
-      </a>
-      <a class="lp-kpi" href="/cuves" style="--kc:#e9730c;--kb:#fef4eb">
-        <div class="kpi-top">
-          <div class="kpi-ic"><i data-lucide="gauge"></i></div>
-          <span class="kpi-trend neutral" id="k-cuves-trend">Stocks</span>
-        </div>
-        <div class="kpi-val" id="k-cuves">—</div>
-        <div class="kpi-lbl">Niveau cuves</div>
-        <div class="kpi-sub">Volume total (L)</div>
-      </a>
-      <a class="lp-kpi" href="/app" style="--kc:#6c32a0;--kb:#f5eeff">
-        <div class="kpi-top">
-          <div class="kpi-ic"><i data-lucide="handshake"></i></div>
-          <span class="kpi-trend warn" id="k-credits-trend">Actif</span>
-        </div>
-        <div class="kpi-val" id="k-credits">—</div>
-        <div class="kpi-lbl">Créances clients</div>
-        <div class="kpi-sub">Impayé en cours (DH)</div>
-      </a>
-    </div>
-
-    <!-- Group: Opérations -->
-    <div class="lp-group">
-      <div class="grp-hd">
-        <span class="grp-lbl">⚡ Opérations</span>
-        <div class="grp-rule"></div>
-      </div>
-      <div class="tiles-row">
-        <a href="/app" class="lp-tile tc-blue">
-          <div class="lp-tile-ic"><i data-lucide="fuel"></i></div>
-          <div class="lp-tile-title">Carburant</div>
-          <div class="lp-tile-sub">Postes de travail, pompes, créances, dépenses</div>
-          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
-        </a>
-        <a href="/cuves" class="lp-tile tc-orange">
-          <div class="lp-tile-ic"><i data-lucide="gauge"></i></div>
-          <div class="lp-tile-title">Cuves</div>
-          <div class="lp-tile-sub">Niveaux, livraisons, écarts de stock</div>
-          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
-        </a>
-        <a href="/cafe" class="lp-tile tc-teal">
-          <div class="lp-tile-ic"><i data-lucide="coffee"></i></div>
-          <div class="lp-tile-title">Café</div>
-          <div class="lp-tile-sub">Ventes, stock produits, recettes journalières</div>
-          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
-        </a>
-        <a href="/tabac" class="lp-tile tc-amber">
-          <div class="lp-tile-ic"><i data-lucide="cigarette"></i></div>
-          <div class="lp-tile-title">Tabac</div>
-          <div class="lp-tile-sub">Inventaire, ventes articles & cigarettes</div>
-          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
-        </a>
-      </div>
-    </div>
-
-    <!-- Group: Finances -->
-    <div class="lp-group">
-      <div class="grp-hd">
-        <span class="grp-lbl">💳 Finances</span>
-        <div class="grp-rule"></div>
-      </div>
-      <div class="tiles-row">
-        <a href="/bank" class="lp-tile tc-green">
-          <div class="lp-tile-ic"><i data-lucide="landmark"></i></div>
-          <div class="lp-tile-title">Banque</div>
-          <div class="lp-tile-sub">Comptes, dépôts, chèques, rapprochements</div>
-          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
-        </a>
-        <a href="/factures" class="lp-tile tc-blue">
-          <div class="lp-tile-ic"><i data-lucide="receipt-text"></i></div>
-          <div class="lp-tile-title">Factures</div>
-          <div class="lp-tile-sub">Création, suivi et impression des factures</div>
-          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
-        </a>
-      </div>
-    </div>
-
-    <!-- Group: Direction & Outils -->
-    <div class="lp-group" id="grp-direction">
-      <div class="grp-hd">
-        <span class="grp-lbl">👑 Direction & Outils</span>
-        <div class="grp-rule"></div>
-      </div>
-      <div class="tiles-row">
-        <a href="/patron" class="lp-tile tc-purple" id="tile-patron">
-          <div class="lp-tile-ic"><i data-lucide="crown"></i></div>
-          <div class="lp-tile-title">Tableau Patron</div>
-          <div class="lp-tile-sub">KPIs consolidés, rapports multi-modules</div>
-          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
-        </a>
-        <a href="/admin" class="lp-tile tc-purple" id="tile-admin">
-          <div class="lp-tile-ic"><i data-lucide="settings"></i></div>
-          <div class="lp-tile-title">Administration</div>
-          <div class="lp-tile-sub">Gestion utilisateurs, paramètres système</div>
-          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
-        </a>
-        <a href="/ai" class="lp-tile tc-teal">
-          <div class="lp-tile-ic"><i data-lucide="bot"></i></div>
-          <div class="lp-tile-title">Assistant IA</div>
-          <div class="lp-tile-sub">Analyses et rapports en langage naturel</div>
-          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
-        </a>
-        <a href="/logs" class="lp-tile tc-blue" id="tile-logs">
-          <div class="lp-tile-ic"><i data-lucide="clipboard-list"></i></div>
-          <div class="lp-tile-title">Journal</div>
-          <div class="lp-tile-sub">Historique complet des actions système</div>
-          <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
-        </a>
-      </div>
-    </div>
-
-    <!-- Weekly chart + recent activity -->
-    <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;margin-bottom:28px" id="bottom-grid">
-
-      <!-- Chart -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;box-shadow:var(--sh-xs)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--text)">Revenus Carburant — 7 derniers jours</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">Postes fermés</div>
+    <!-- KPI cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-card-hd">
+          <div class="kpi-ic-wrap">
+            <div class="kpi-ic"><i data-lucide="banknote"></i></div>
+            <span class="kpi-lbl">Chiffre d'affaires</span>
           </div>
-          <div id="chart-total" style="font-size:18px;font-weight:800;color:var(--blue);font-variant-numeric:tabular-nums">—</div>
+          <button class="kpi-info"><i data-lucide="info"></i></button>
         </div>
-        <canvas id="revenue-chart" height="130"></canvas>
+        <div class="kpi-val" id="kpi-rev">—</div>
+        <span class="kpi-ch nt">Dernier poste</span><span class="kpi-ch-sub">DH</span>
       </div>
-
-      <!-- Recent activity -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 22px;box-shadow:var(--sh-xs);display:flex;flex-direction:column">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px">
-          <span><i data-lucide="clipboard-list"></i></span> Activité récente
+      <div class="kpi-card">
+        <div class="kpi-card-hd">
+          <div class="kpi-ic-wrap">
+            <div class="kpi-ic"><i data-lucide="fuel"></i></div>
+            <span class="kpi-lbl">Ventes carburant</span>
+          </div>
+          <button class="kpi-info"><i data-lucide="info"></i></button>
         </div>
-        <div id="activity-list" style="display:flex;flex-direction:column;gap:9px;flex:1">
-          <div class="skeleton" style="height:48px;border-radius:8px"></div>
-          <div class="skeleton" style="height:48px;border-radius:8px"></div>
-          <div class="skeleton" style="height:48px;border-radius:8px"></div>
+        <div class="kpi-val" id="kpi-sales">—</div>
+        <span class="kpi-ch nt" id="kpi-sales-ch">7 derniers jours</span><span class="kpi-ch-sub">DH</span>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card-hd">
+          <div class="kpi-ic-wrap">
+            <div class="kpi-ic"><i data-lucide="gauge"></i></div>
+            <span class="kpi-lbl">Niveau cuves</span>
+          </div>
+          <button class="kpi-info"><i data-lucide="info"></i></button>
         </div>
-        <a href="/logs" style="display:block;text-align:center;font-size:11.5px;color:var(--blue);font-weight:600;margin-top:14px;text-decoration:none;padding:7px;border:1px solid var(--blue-lt);border-radius:8px;transition:background .12s" onmouseover="this.style.background='var(--blue-lt)'" onmouseout="this.style.background=''">Voir tout le journal →</a>
+        <div class="kpi-val" id="kpi-cuves">—</div>
+        <span class="kpi-ch nt" id="kpi-cuves-ch">Capacité</span><span class="kpi-ch-sub">Litres</span>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card-hd">
+          <div class="kpi-ic-wrap">
+            <div class="kpi-ic"><i data-lucide="landmark"></i></div>
+            <span class="kpi-lbl">Solde bancaire</span>
+          </div>
+          <button class="kpi-info"><i data-lucide="info"></i></button>
+        </div>
+        <div class="kpi-val" id="kpi-bank">—</div>
+        <span class="kpi-ch nt">Total comptes</span><span class="kpi-ch-sub">DH</span>
       </div>
     </div>
 
-    <!-- Stats bar -->
-    <div class="lp-stats">
-      <div class="lp-stat"><span class="lp-stat-ic"><i data-lucide="calendar-days"></i></span><div><div class="lp-stat-val" id="st-shifts">—</div><div class="lp-stat-lbl">Postes ce mois</div></div></div>
-      <div class="lp-stat"><span class="lp-stat-ic"><i data-lucide="handshake"></i></span><div><div class="lp-stat-val" id="st-clients">—</div><div class="lp-stat-lbl">Clients créances</div></div></div>
-      <div class="lp-stat"><span class="lp-stat-ic"><i data-lucide="bar-chart-2"></i></span><div><div class="lp-stat-val" id="st-logs">—</div><div class="lp-stat-lbl">Actions journal</div></div></div>
-      <div class="lp-stat"><span class="lp-stat-ic"><i data-lucide="receipt-text"></i></span><div><div class="lp-stat-val" id="st-bank">—</div><div class="lp-stat-lbl">Solde banque (DH)</div></div></div>
+    <!-- Charts -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-hd">
+          <div>
+            <div class="chart-total-val" id="chart-bar-val">—</div>
+            <div class="chart-sub">Ventes carburant · 7 derniers jours</div>
+          </div>
+          <button class="pill-btn"><i data-lucide="calendar-days"></i>7 jours</button>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-bar"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-hd">
+          <div>
+            <div class="chart-total-val" id="chart-line-val">—</div>
+            <div class="chart-sub">Revenu total cumulé</div>
+          </div>
+          <button class="pill-btn"><i data-lucide="calendar-days"></i>7 jours</button>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-line"></canvas></div>
+      </div>
     </div>
 
-  </div><!-- /lp-inner -->
-</div><!-- /lp-wrap -->
+    <!-- Derniers postes table -->
+    <div class="tbl-card">
+      <div class="tbl-hd">
+        <h3>Derniers postes</h3>
+        <div class="tbl-acts">
+          <button class="link-btn" onclick="window.location='/app'"><i data-lucide="eye"></i> Voir tout</button>
+          <button class="pill-btn"><i data-lucide="calendar-days"></i>30 derniers jours</button>
+          <button class="exp-btn"><i data-lucide="download"></i>Exporter</button>
+        </div>
+      </div>
 
-<div id="toasts"></div>
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="all">Tous les postes</button>
+        <button class="tab-btn" data-tab="closed">Fermés</button>
+        <button class="tab-btn" data-tab="open">Ouverts</button>
+        <button class="tab-btn" data-tab="pending">
+          En cours <span class="tab-cnt" id="tab-open-cnt" style="display:none">0</span>
+        </button>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="data-tbl">
+          <thead>
+            <tr>
+              <th>Caissier</th>
+              <th>Date ouverture</th>
+              <th>Fermeture</th>
+              <th>Carburant (DH)</th>
+              <th>Créances</th>
+              <th>Statut</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="shifts-tbody">
+            <tr><td colspan="7" style="padding:36px;text-align:center">
+              <div class="skeleton" style="height:14px;width:60%;margin:0 auto"></div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <button class="pg-btn" title="Première"><i data-lucide="chevrons-left"></i></button>
+        <button class="pg-btn" title="Précédente"><i data-lucide="chevron-left"></i></button>
+        <button class="pg-btn active">1</button>
+        <button class="pg-btn">2</button>
+        <button class="pg-btn">3</button>
+        <button class="pg-btn" title="Suivante"><i data-lucide="chevron-right"></i></button>
+        <button class="pg-btn" title="Dernière"><i data-lucide="chevrons-right"></i></button>
+      </div>
+    </div>
+
+  </div><!-- /page-body -->
+</div><!-- /main -->
+</div><!-- /app -->
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 const TOKEN = localStorage.getItem('fm_token');
-const USER  = JSON.parse(localStorage.getItem('fm_user') || 'null');
-if (!TOKEN) { window.location.href = '/'; }
+const USER  = (() => { try { return JSON.parse(localStorage.getItem('fm_user') || 'null'); } catch { return null; } })();
+if (!TOKEN || !USER) { location.href = '/'; }
 
-function logout() { localStorage.clear(); window.location.href = '/'; }
+const fmt     = n => Math.round(parseFloat(n)||0).toLocaleString('fr-FR');
+const fmtDate = s => s ? new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+const fmtTime = s => s ? new Date(s).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '—';
 
-const fmt = n => Math.round(parseFloat(n)||0).toLocaleString('fr-FR');
+// ── User display ──────────────────────────────────────
+const uname = USER.full_name || USER.username || '';
+const ini   = uname.split(' ').map(w=>w[0]).filter(Boolean).join('').slice(0,2).toUpperCase() || '?';
+document.getElementById('sb-av').textContent = ini;
+document.getElementById('tb-av').textContent = ini;
+document.getElementById('sb-nm').textContent = uname;
+document.getElementById('tb-nm').textContent = uname;
+document.getElementById('sb-rl').textContent = USER.role || '';
+const h = new Date().getHours();
+const greet = h<5?'Bonne nuit':h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
+document.getElementById('promo-msg').textContent = greet+', '+uname+' — Bienvenue dans MENASTA ERP.';
+document.getElementById('hd-date').textContent = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
 
-// User setup
-if (USER) {
-  const n = USER.full_name || USER.username || '';
-  const ini = n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
-  document.getElementById('fs-av').textContent = ini;
-  const h = new Date().getHours();
-  const greet = h < 5 ? 'Bonne nuit' : h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir';
-  document.getElementById('banner-greet').textContent = greet + ', ' + (USER.full_name || USER.username) + ' !';
+// ── Role visibility ───────────────────────────────────
+const LEVELS = { caissier:1, gerant:2, patron:3, admin:99 };
+const lvl = LEVELS[USER.role] || 1;
+if (lvl < 3) { document.getElementById('sb-patron')?.remove(); document.getElementById('sb-logs')?.remove(); }
+if (USER.role !== 'admin') document.getElementById('sb-admin')?.remove();
+
+// ── Dark mode ─────────────────────────────────────────
+const SUN  = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
+const MOON = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>';
+
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  const isDark = t === 'dark';
+  document.getElementById('dm-tb-btn').innerHTML = isDark ? SUN : MOON;
+  document.getElementById('dm-sb-ic').innerHTML  = isDark ? SUN : MOON;
+  document.getElementById('dm-sb-lbl').textContent = isDark ? 'Mode clair' : 'Mode sombre';
+  document.getElementById('dm-tb-btn').title = isDark ? 'Mode clair' : 'Mode sombre';
 }
+window.toggleDarkMode = () => {
+  const next = (document.documentElement.getAttribute('data-theme')||'light') === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('fm_theme', next);
+  applyTheme(next);
+};
+window.logout = () => { localStorage.removeItem('fm_token'); localStorage.removeItem('fm_user'); location.href = '/'; };
+applyTheme(localStorage.getItem('fm_theme') || 'light');
 
-// Role-based visibility
-const role = USER?.role || '';
-if (role === 'caissier') {
-  ['tile-patron','tile-logs','nav-patron','nav-logs'].forEach(id => document.getElementById(id)?.remove());
-}
-// Hide bottom-grid activity link for caissier (no logs access)
-if (role === 'caissier') {
-  document.querySelector('#bottom-grid a[href="/logs"]')?.remove();
-}
+// ── Sidebar collapse ──────────────────────────────────
+const sidebar = document.getElementById('sidebar');
+document.getElementById('sb-col-btn').addEventListener('click', () => {
+  sidebar.classList.toggle('col');
+  localStorage.setItem('sb_col', sidebar.classList.contains('col') ? '1' : '0');
+});
+if (localStorage.getItem('sb_col') === '1') sidebar.classList.add('col');
 
-// Clock
-function tick() {
-  const now = new Date();
-  document.getElementById('lp-clock').textContent = now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-  document.getElementById('lp-date').textContent   = now.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
-  document.getElementById('banner-day').textContent  = now.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
-  document.getElementById('banner-date').textContent = now.toLocaleDateString('fr-FR',{weekday:'long'});
-}
-tick(); setInterval(tick, 30000);
+// ── Mobile sidebar (Rule 3) ───────────────────────────
+const overlay = document.getElementById('sb-overlay');
+function openSb()  { sidebar.classList.add('mob-open'); overlay.style.opacity='1'; overlay.style.pointerEvents='all'; }
+function closeSb() { sidebar.classList.remove('mob-open'); overlay.style.opacity=''; overlay.style.pointerEvents=''; }
+document.getElementById('tb-ham').addEventListener('click', openSb);
+overlay.addEventListener('click', closeSb);
+window.addEventListener('resize', () => { if (window.innerWidth > 768) closeSb(); });
 
-// ── Revenue chart ──────────────────────────────────────────────
-let _chart = null;
-function buildChart(weekly) {
+// ── Charts ────────────────────────────────────────────
+let barChart = null, lineChart = null;
+
+function buildCharts(weekly) {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const gridColor  = isDark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.06)';
-  const labelColor = isDark ? '#7d8fa3' : '#89919a';
-  const ctx = document.getElementById('revenue-chart').getContext('2d');
-  const labels = weekly.map(d => {
-    const dt = new Date(d.day + 'T00:00:00');
-    return dt.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit'});
-  });
-  const data = weekly.map(d => parseFloat(d.revenue)||0);
-  const total = data.reduce((a,b)=>a+b,0);
-  document.getElementById('chart-total').textContent = fmt(total) + ' DH';
-  if (_chart) _chart.destroy();
-  _chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: data.map(v => v > 0 ? 'rgba(0,112,242,.75)' : 'rgba(0,112,242,.15)'),
-        borderColor:     data.map(v => v > 0 ? '#0070f2' : 'rgba(0,112,242,.2)'),
-        borderWidth: 1.5,
-        borderRadius: 6,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: ctx => fmt(ctx.raw) + ' DH' }
-      }},
-      scales: {
-        x: { grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 11 } } },
-        y: { grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 11 },
-          callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v
-        }, beginAtZero: true }
-      }
+  const grid   = isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.04)';
+  const lbl    = isDark ? '#6b7280' : '#9ca3af';
+  const labels = weekly.map(d => new Date(d.day+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit'}));
+  const data   = weekly.map(d => parseFloat(d.revenue)||0);
+  const total  = data.reduce((a,b)=>a+b,0);
+  document.getElementById('chart-bar-val').textContent = fmt(total)+' DH';
+
+  const sharedOpts = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>fmt(c.raw)+' DH' } } },
+    scales:{
+      x:{ grid:{color:grid}, ticks:{color:lbl,font:{size:11}} },
+      y:{ grid:{color:grid}, ticks:{color:lbl,font:{size:11}, callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}, beginAtZero:true }
     }
+  };
+
+  if (barChart) barChart.destroy();
+  barChart = new Chart(document.getElementById('chart-bar'), {
+    type:'bar',
+    data:{ labels, datasets:[{
+      data,
+      backgroundColor: data.map(v=>v>0?'rgba(91,79,207,.72)':'rgba(91,79,207,.15)'),
+      borderColor:     data.map(v=>v>0?'#5b4fcf':'rgba(91,79,207,.2)'),
+      borderWidth:1.5, borderRadius:6
+    }] },
+    options: sharedOpts
+  });
+
+  const cum = data.map((v,i,a)=>a.slice(0,i+1).reduce((x,y)=>x+y,0));
+  document.getElementById('chart-line-val').textContent = fmt(cum[cum.length-1]||0)+' DH';
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(document.getElementById('chart-line'), {
+    type:'line',
+    data:{ labels, datasets:[{
+      data:cum,
+      borderColor:'#5b4fcf', backgroundColor:'rgba(91,79,207,.08)',
+      fill:true, tension:0.4,
+      pointBackgroundColor:'#5b4fcf', pointRadius:4, pointHoverRadius:6,
+      borderWidth:2
+    }] },
+    options: sharedOpts
   });
 }
 
-// ── Activity feed ──────────────────────────────────────────────
-function buildActivity(logs) {
-  const el = document.getElementById('activity-list');
-  if (!logs.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px 0">Aucune activité récente</div>';
+// ── Shifts table ──────────────────────────────────────
+let allShifts = [], activeTab = 'all';
+
+function badge(status) {
+  if (status==='closed') return '<span class="bdg bdg-green">Fermé</span>';
+  if (status==='open')   return '<span class="bdg bdg-blue">Ouvert</span>';
+  return '<span class="bdg bdg-orange">En cours</span>';
+}
+
+function renderShifts(list) {
+  const tbody = document.getElementById('shifts-tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:36px;text-align:center;color:var(--muted);font-size:13px">Aucun poste trouvé</td></tr>';
     return;
   }
-  const MODULE_ICONS = {
-    Carburant:'⛽', Créances:'🤝', Banque:'🏦', Tabac:'🚬',
-    Cuves:'🛢️', Factures:'🧾', Café:'☕', Produits:'📦',
-    Dépenses:'💸', Stock:'📥', Pompes:'⚙️', Admin:'🔐', API:'🔧'
-  };
-  el.innerHTML = logs.slice(0,6).map(l => {
-    const ic = MODULE_ICONS[l.module] || '🔧';
-    const dt = new Date(l.created_at);
-    const ago = (() => {
-      const s = Math.round((Date.now()-dt)/1000);
-      if (s < 60) return 'à l\'instant';
-      if (s < 3600) return Math.round(s/60) + 'min';
-      if (s < 86400) return Math.round(s/3600) + 'h';
-      return dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
-    })();
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg2);border:1px solid var(--border-lt)">
-      <span style="font-size:18px;flex-shrink:0">${ic}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.action}</div>
-        <div style="font-size:10.5px;color:var(--muted)">${l.username} · ${l.module}</div>
-      </div>
-      <div style="font-size:10px;color:var(--subtle);flex-shrink:0">${ago}</div>
-    </div>`;
+  tbody.innerHTML = list.slice(0,12).map(s => {
+    const name = s.opened_by_name || '—';
+    const ini2 = name.split(' ').map(w=>w[0]).filter(Boolean).join('').slice(0,2).toUpperCase() || '?';
+    return `<tr>
+      <td><div class="user-cell"><div class="user-av">${ini2}</div><span class="user-nm">${name}</span></div></td>
+      <td>${fmtDate(s.opened_at)}<br><span style="font-size:11px;color:var(--muted)">${fmtTime(s.opened_at)}</span></td>
+      <td>${s.closed_at ? fmtDate(s.closed_at)+'<br><span style="font-size:11px;color:var(--muted)">'+fmtTime(s.closed_at)+'</span>' : '<span style="color:var(--muted)">—</span>'}</td>
+      <td style="font-weight:700">${fmt(s.total_fuel_revenue||0)} DH</td>
+      <td style="color:var(--muted)">${s.total_credit_deducted ? fmt(s.total_credit_deducted)+' DH' : '—'}</td>
+      <td>${badge(s.status)}</td>
+      <td><button class="row-act-btn" onclick="event.stopPropagation()">⋯</button></td>
+    </tr>`;
   }).join('');
 }
 
-// ── Main loader — single request ──────────────────────────────
-async function loadDashboard() {
-  const H = { Authorization: 'Bearer ' + TOKEN };
+function applyTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.toggle('active', t.dataset.tab===tab));
+  const map = { all:()=>allShifts, closed:()=>allShifts.filter(s=>s.status==='closed'), open:()=>allShifts.filter(s=>s.status==='open'), pending:()=>allShifts.filter(s=>s.status!=='closed') };
+  renderShifts((map[tab]||map.all)());
+}
+document.querySelectorAll('.tab-btn').forEach(t => t.addEventListener('click', ()=>applyTab(t.dataset.tab)));
 
-  // Summary (1 request for all KPIs)
+// ── Main data load ────────────────────────────────────
+async function load() {
+  const H = { Authorization:'Bearer '+TOKEN };
+
   try {
-    const r = await fetch('/api/dashboard/summary', { headers: H });
+    const r = await fetch('/api/dashboard/summary', { headers:H });
     if (r.ok) {
       const d = await r.json();
+      document.getElementById('kpi-rev').textContent   = fmt(d.last_shift_revenue)+' DH';
+      document.getElementById('kpi-bank').textContent  = fmt(d.bank_balance)+' DH';
+      document.getElementById('kpi-cuves').textContent = fmt(d.cuves_volume)+' L';
+      const w7 = (d.weekly_revenue||[]).reduce((a,x)=>a+(parseFloat(x.revenue)||0),0);
+      document.getElementById('kpi-sales').textContent = fmt(w7)+' DH';
 
-      document.getElementById('k-ventes').textContent  = fmt(d.last_shift_revenue) + ' DH';
-      document.getElementById('k-bank').textContent    = fmt(d.bank_balance) + ' DH';
-      document.getElementById('k-cuves').textContent   = fmt(d.cuves_volume) + ' L';
-      document.getElementById('k-credits').textContent = fmt(d.credits_outstanding) + ' DH';
+      const pct = d.cuves_capacity>0 ? Math.round(d.cuves_volume/d.cuves_capacity*100) : 0;
+      const el = document.getElementById('kpi-cuves-ch');
+      el.textContent = pct+'% capacité';
+      el.className = 'kpi-ch '+(pct<20?'dn':pct<40?'nt':'up');
 
-      document.getElementById('st-clients').textContent = d.credits_clients || '0';
-      document.getElementById('st-logs').textContent    = d.logs_total ? d.logs_total.toLocaleString('fr-FR') : '0';
-      document.getElementById('st-bank').textContent    = fmt(d.bank_balance) + ' DH';
-
-      // Cuves fill percentage
-      const pct = d.cuves_capacity > 0 ? d.cuves_volume / d.cuves_capacity * 100 : 0;
-      const tr = document.getElementById('k-cuves-trend');
-      tr.textContent = Math.round(pct) + '%';
-      tr.className   = 'kpi-trend ' + (pct < 20 ? 'warn' : pct < 40 ? 'neutral' : 'up');
-
-      if (d.weekly_revenue) buildChart(d.weekly_revenue);
-    }
-  } catch(e) { console.warn('Summary error:', e); }
-
-  // Shifts this month (lightweight)
-  try {
-    const r = await fetch('/api/shifts?limit=50', { headers: H });
-    if (r.ok) {
-      const shifts = await r.json();
-      const now = new Date();
-      const count = shifts.filter(s => {
-        const d2 = new Date(s.opened_at || s.created_at);
-        return d2.getMonth() === now.getMonth() && d2.getFullYear() === now.getFullYear();
-      }).length;
-      document.getElementById('st-shifts').textContent = count;
-    }
-  } catch {}
-
-  // Recent activity (for gerant+)
-  if (role !== 'caissier') {
-    try {
-      const r = await fetch('/api/logs?limit=6', { headers: H });
-      if (r.ok) {
-        const logs = await r.json();
-        buildActivity(Array.isArray(logs) ? logs : []);
+      // Rule 2 — notification dot if credits outstanding
+      if (d.credits_outstanding > 0) {
+        const dot = document.createElement('span');
+        dot.className = 'badge-dot';
+        document.getElementById('tb-notif').appendChild(dot);
       }
-    } catch {
-      document.getElementById('activity-list').innerHTML =
-        '<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px 0">Accès restreint</div>';
+
+      if (d.weekly_revenue?.length) buildCharts(d.weekly_revenue);
     }
-  } else {
-    document.getElementById('activity-list').innerHTML =
-      '<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px 0">Non disponible</div>';
-  }
+  } catch(e) { console.warn('summary', e); }
+
+  try {
+    const r = await fetch('/api/shifts?limit=50', { headers:H });
+    if (r.ok) {
+      allShifts = await r.json();
+      const openN = allShifts.filter(s=>s.status!=='closed').length;
+      if (openN) { const el=document.getElementById('tab-open-cnt'); el.textContent=openN; el.style.display=''; }
+      applyTab('all');
+    }
+  } catch(e) { console.warn('shifts', e); }
 }
 
-loadDashboard();
+load();
 </script>
-<script src="/js/ai-widget.js?v=3"></script>
 <script>lucide.createIcons();</script>
 </body>
 </html>
