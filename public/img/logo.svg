@@ -1,29 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 60" width="280" height="60">
-  <defs>
-    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0070f2"/>
-      <stop offset="100%" style="stop-color:#4fa3e0"/>
-    </linearGradient>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 158" width="640" height="158">
 
-  <!-- Icon square -->
-  <rect x="0" y="0" width="60" height="60" rx="12" fill="url(#logoGrad)"/>
+  <!-- ═══════════════════════════════════════
+       ICON MARK  (fits 0,0 → 178,158)
+  ═══════════════════════════════════════ -->
 
-  <!-- Fuel pump icon (lucide-style, scaled to 60×60 canvas, centered) -->
-  <g transform="translate(11, 9) scale(1.58)" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <!-- pump body -->
-    <rect x="2" y="3" width="12" height="18" rx="2"/>
-    <!-- fuel nozzle arm -->
-    <path d="M14 7h2a2 2 0 0 1 2 2v3a2 2 0 0 0 2 2h0"/>
-    <!-- nozzle tip -->
-    <path d="M18 14v3a1 1 0 0 1-1 1h-1"/>
-    <!-- fuel fill cap -->
-    <path d="M6 8h4"/>
-  </g>
+  <!-- Dark-navy M letterform
+       Two arched "legs" sharing a center valley at ≈(78,80) -->
+  <path fill="#17284a" d="
+    M 12,152
+    C 11,90  16,50  30,30
+    C 40,16  52,5   64,4
+    C 56,9   48,25  48,48
+    C 48,66  58,78  78,82
+    C 98,78 108,66 108,48
+    C 108,25 100,9  92,4
+    C 104,5  116,16 126,30
+    C 140,50 145,90 144,152
+    Z
+  "/>
 
-  <!-- Brand name -->
-  <text x="74" y="36" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="800" letter-spacing="-0.5" fill="#1a2a3a">MENASTA</text>
+  <!-- Gold / tan ribbon — sweeps lower-left → upper-right
+       Tapered strip, ~18 px wide at mid-point -->
+  <path fill="#b8902a" d="
+    M 22,150
+    C 42,118  64,90   82,74
+    C 100,58  122,34  146,8
+    C 150,12  156,18  160,26
+    C 136,50  112,76  96,90
+    C 76,108  54,132  38,156
+    Z
+  "/>
 
-  <!-- Tagline -->
-  <text x="76" y="52" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="500" letter-spacing="1.2" fill="#6a6d70">STATION SERVICE ERP</text>
+  <!-- Sky-blue ribbon — sweeps lower-left → upper-right
+       Positioned ~30 px to the right of gold, tail extends further -->
+  <path fill="#2dabd4" d="
+    M 52,150
+    C 72,118  94,90  112,74
+    C 130,58  152,32  174,6
+    C 178,10  184,16  188,24
+    C 164,48  140,74  124,90
+    C 104,108  82,132  68,156
+    Z
+  "/>
+
+  <!-- ═══════════════════════════════════════
+       WORDMARK  — bold navy "MENASTA"
+  ═══════════════════════════════════════ -->
+  <text
+    x="206" y="114"
+    font-family="'Inter','Helvetica Neue','Arial Black',Arial,sans-serif"
+    font-size="80"
+    font-weight="900"
+    letter-spacing="2"
+    fill="#17284a">MENASTA</text>
 </svg>
