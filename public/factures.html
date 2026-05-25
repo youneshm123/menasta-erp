@@ -49,24 +49,24 @@
 
 <header class="fiori-shell">
   <a href="/home" class="fs-logo" style="text-decoration:none">
-    <div class="fs-mark">⛽</div>
+    <div class="fs-mark"><i data-lucide="fuel"></i></div>
     <div class="fs-brand">MENASTA</div>
   </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
-    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
-    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">🏦</span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
-    <a href="/factures" class="fs-nav-item active"><span class="fn-icon">🧾</span> Factures</a>
-    <a href="/admin"    class="fs-nav-item"><span class="fn-icon">⚙️</span> Admin</a>
-    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> IA</a>
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="home"></i></span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon"><i data-lucide="fuel"></i></span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="coffee"></i></span> Café</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="landmark"></i></span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="cigarette"></i></span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="gauge"></i></span> Cuves</a>
+    <a href="/factures" class="fs-nav-item active"><span class="fn-icon"><i data-lucide="receipt-text"></i></span> Factures</a>
+    <a href="/admin"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="settings"></i></span> Admin</a>
+    <a href="/ai"       class="fs-nav-item"><span class="fn-icon"><i data-lucide="bot"></i></span> IA</a>
   </nav>
   <div class="fs-actions">
-    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
-    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre">🌙</button>
+    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA"><i data-lucide="bot"></i></button>
+    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre"><i data-lucide="moon"></i></button>
     <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
   </div>
 </header>
@@ -74,7 +74,7 @@
 <aside class="sidebar">
   <div class="sb-brand">
     <div class="sb-logo-row">
-      <div class="sb-mark">🧾</div>
+      <div class="sb-mark"><i data-lucide="receipt-text"></i></div>
       <div>
         <div class="sb-name">Factures</div>
         <div class="sb-sub">Module MENASTA</div>
@@ -82,9 +82,9 @@
     </div>
   </div>
   <div class="sb-nav">
-    <div class="nav-item active" onclick="showTab('liste',this)"><span class="ni">📋</span> Liste Factures</div>
-    <div class="nav-item" onclick="showTab('nouvelle',this)"><span class="ni">➕</span> Nouvelle Facture</div>
-    <div class="nav-item" onclick="showTab('tabac',this)"><span class="ni">🚬</span> Ventes Tabac</div>
+    <div class="nav-item active" onclick="showTab('liste',this)"><span class="ni"><i data-lucide="clipboard-list"></i></span> Liste Factures</div>
+    <div class="nav-item" onclick="showTab('nouvelle',this)"><span class="ni"><i data-lucide="plus-circle"></i></span> Nouvelle Facture</div>
+    <div class="nav-item" onclick="showTab('tabac',this)"><span class="ni"><i data-lucide="cigarette"></i></span> Ventes Tabac</div>
   </div>
   <div class="sb-foot">
     <a href="/home" class="sb-back">← Accueil</a>
@@ -816,6 +816,7 @@ async function printTabacReport() {
 loadListe();
 </script>
 <script src="/js/ai-widget.js?v=3"></script>
+<script>lucide.createIcons();</script>
 </body>
 </html>
 

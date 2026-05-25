@@ -1338,3 +1338,20 @@ body.sb-open .sidebar {
   --orange-lt: #fef4eb;
   --purple-lt: #f5eeff;
 }
+
+/* ── Lucide SVG sizing ── */
+.fs-mark { color: #fff; }
+.fs-mark svg { width: 18px; height: 18px; }
+.sb-mark { color: #fff; }
+.sb-mark svg { width: 18px; height: 18px; }
+.fn-icon svg { width: 15px; height: 15px; }
+.fs-icon-btn svg { width: 16px; height: 16px; }
+.nav-item .ni svg, .sb-ic svg { width: 16px; height: 16px; }
+.kpi-icon svg { width: 20px; height: 20px; }
+.panel-icon svg { width: 17px; height: 17px; }
+.confirm-icon svg { width: 26px; height: 26px; }
+.bp-logo { color: #fff; }
+.bp-logo svg { width: 30px; height: 30px; }
+.bp-feat-ic { color: rgba(255,255,255,.7); }
+.bp-feat-ic svg { width: 16px; height: 16px; }
+.dm-toggle svg { width: 16px; height: 16px; }

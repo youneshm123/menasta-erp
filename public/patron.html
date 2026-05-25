@@ -32,24 +32,24 @@ body.app-layout{overflow:auto}
 
 <header class="fiori-shell">
   <a href="/home" class="fs-logo" style="text-decoration:none">
-    <div class="fs-mark">⛽</div>
+    <div class="fs-mark"><i data-lucide="fuel"></i></div>
     <div class="fs-brand">MENASTA</div>
   </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
-    <a href="/patron"   class="fs-nav-item active"><span class="fn-icon">👑</span> Patron</a>
-    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
-    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">🏦</span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
-    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
-    <a href="/logs"     class="fs-nav-item"><span class="fn-icon">📋</span> Journal</a>
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="home"></i></span> Launchpad</a>
+    <a href="/patron"   class="fs-nav-item active"><span class="fn-icon"><i data-lucide="crown"></i></span> Patron</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon"><i data-lucide="fuel"></i></span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="coffee"></i></span> Café</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="landmark"></i></span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="cigarette"></i></span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="gauge"></i></span> Cuves</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon"><i data-lucide="receipt-text"></i></span> Factures</a>
+    <a href="/logs"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="clipboard-list"></i></span> Journal</a>
   </nav>
   <div class="fs-actions">
-    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
-    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre">🌙</button>
+    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA"><i data-lucide="bot"></i></button>
+    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre"><i data-lucide="moon"></i></button>
     <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
   </div>
 </header>
@@ -57,7 +57,7 @@ body.app-layout{overflow:auto}
 <aside class="sidebar">
   <div class="sb-brand">
     <div class="sb-logo-row">
-      <div class="sb-mark">👑</div>
+      <div class="sb-mark"><i data-lucide="crown"></i></div>
       <div>
         <div class="sb-name">Patron</div>
         <div class="sb-sub">Tableau de Bord</div>
@@ -66,12 +66,12 @@ body.app-layout{overflow:auto}
   </div>
   <div class="sb-nav">
     <div class="sb-section-label">Navigation</div>
-    <a href="/patron" class="sb-item active"><span class="ni">📊</span> Vue d'ensemble</a>
-    <a href="/app" class="sb-item"><span class="ni">⛽</span> Carburant</a>
-    <a href="/cafe" class="sb-item"><span class="ni">☕</span> Café</a>
-    <a href="/tabac" class="sb-item"><span class="ni">🚬</span> Tabac</a>
-    <a href="/bank" class="sb-item"><span class="ni">🏦</span> Banque</a>
-    <a href="/factures" class="sb-item"><span class="ni">🧾</span> Factures</a>
+    <a href="/patron" class="sb-item active"><span class="ni"><i data-lucide="bar-chart-2"></i></span> Vue d'ensemble</a>
+    <a href="/app" class="sb-item"><span class="ni"><i data-lucide="fuel"></i></span> Carburant</a>
+    <a href="/cafe" class="sb-item"><span class="ni"><i data-lucide="coffee"></i></span> Café</a>
+    <a href="/tabac" class="sb-item"><span class="ni"><i data-lucide="cigarette"></i></span> Tabac</a>
+    <a href="/bank" class="sb-item"><span class="ni"><i data-lucide="landmark"></i></span> Banque</a>
+    <a href="/factures" class="sb-item"><span class="ni"><i data-lucide="receipt-text"></i></span> Factures</a>
   </div>
   <div class="sb-foot">
     <div class="sb-user">
@@ -97,9 +97,9 @@ body.app-layout{overflow:auto}
   <!-- KPI ROW -->
   <div class="kpi-row" id="kpi-row">
     <div class="kpi-card"><div class="kpi-icon" style="background:#FEF3C7">💰</div><div class="kpi-val" id="kpi-total">—</div><div class="kpi-lbl">CA Total Aujourd'hui</div><div class="kpi-sub" id="kpi-total-sub">Tous modules</div></div>
-    <div class="kpi-card"><div class="kpi-icon" style="background:#F0FDF4">🏦</div><div class="kpi-val" id="kpi-bank">—</div><div class="kpi-lbl">Solde Banque</div><div class="kpi-sub">Compte courant</div></div>
-    <div class="kpi-card"><div class="kpi-icon" style="background:#FFF7ED">🤝</div><div class="kpi-val red" id="kpi-credits">—</div><div class="kpi-lbl">Total Créances</div><div class="kpi-sub" id="kpi-credits-sub">—</div></div>
-    <div class="kpi-card"><div class="kpi-icon" style="background:#EFF6FF">⛽</div><div class="kpi-val blue" id="kpi-liters">—</div><div class="kpi-lbl">Litres Vendus Auj.</div><div class="kpi-sub" id="kpi-shift-status">—</div></div>
+    <div class="kpi-card"><div class="kpi-icon" style="background:#F0FDF4"><i data-lucide="landmark"></i></div><div class="kpi-val" id="kpi-bank">—</div><div class="kpi-lbl">Solde Banque</div><div class="kpi-sub">Compte courant</div></div>
+    <div class="kpi-card"><div class="kpi-icon" style="background:#FFF7ED"><i data-lucide="handshake"></i></div><div class="kpi-val red" id="kpi-credits">—</div><div class="kpi-lbl">Total Créances</div><div class="kpi-sub" id="kpi-credits-sub">—</div></div>
+    <div class="kpi-card"><div class="kpi-icon" style="background:#EFF6FF"><i data-lucide="fuel"></i></div><div class="kpi-val blue" id="kpi-liters">—</div><div class="kpi-lbl">Litres Vendus Auj.</div><div class="kpi-sub" id="kpi-shift-status">—</div></div>
   </div>
 
   <!-- MODULE PANELS -->
@@ -108,7 +108,7 @@ body.app-layout{overflow:auto}
     <!-- Carburant -->
     <div class="panel">
       <div class="panel-head">
-        <div class="panel-icon" style="background:#EFF6FF">⛽</div>
+        <div class="panel-icon" style="background:#EFF6FF"><i data-lucide="fuel"></i></div>
         <div>
           <div class="panel-title">Carburant</div>
           <div class="panel-sub" id="car-shift-badge"></div>
@@ -127,7 +127,7 @@ body.app-layout{overflow:auto}
     <!-- Café -->
     <div class="panel">
       <div class="panel-head">
-        <div class="panel-icon" style="background:#FFFBEB">☕</div>
+        <div class="panel-icon" style="background:#FFFBEB"><i data-lucide="coffee"></i></div>
         <div>
           <div class="panel-title">Café</div>
           <div class="panel-sub">Ventes aujourd'hui</div>
@@ -142,7 +142,7 @@ body.app-layout{overflow:auto}
     <!-- Tabac -->
     <div class="panel">
       <div class="panel-head">
-        <div class="panel-icon" style="background:#FDF4EC">🚬</div>
+        <div class="panel-icon" style="background:#FDF4EC"><i data-lucide="cigarette"></i></div>
         <div>
           <div class="panel-title">Tabac</div>
           <div class="panel-sub">Ventes aujourd'hui</div>
@@ -158,7 +158,7 @@ body.app-layout{overflow:auto}
     <!-- Banque -->
     <div class="panel">
       <div class="panel-head">
-        <div class="panel-icon" style="background:#F0FDFA">🏦</div>
+        <div class="panel-icon" style="background:#F0FDFA"><i data-lucide="landmark"></i></div>
         <div>
           <div class="panel-title">Banque</div>
           <div class="panel-sub">Dernières opérations</div>
@@ -170,7 +170,7 @@ body.app-layout{overflow:auto}
     <!-- Factures -->
     <div class="panel">
       <div class="panel-head">
-        <div class="panel-icon" style="background:#EEF2FF">🧾</div>
+        <div class="panel-icon" style="background:#EEF2FF"><i data-lucide="receipt-text"></i></div>
         <div>
           <div class="panel-title">Factures</div>
           <div class="panel-sub" id="fac-sub">Ce mois</div>
@@ -185,7 +185,7 @@ body.app-layout{overflow:auto}
     <!-- Créances -->
     <div class="panel">
       <div class="panel-head">
-        <div class="panel-icon" style="background:#FFF7ED">🤝</div>
+        <div class="panel-icon" style="background:#FFF7ED"><i data-lucide="handshake"></i></div>
         <div>
           <div class="panel-title">Créances Clients</div>
           <div class="panel-sub">Soldes impayés</div>
@@ -442,7 +442,8 @@ function expXL(tbl, title) {
 }
 function expWord(tbl, title) {
   const clone = tbl.cloneNode(true); clone.querySelectorAll('input,button').forEach(el => el.remove());
-  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2>${clone.outerHTML}</body></html>`;
+  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2>${clone.outerHTML}<script>lucide.createIcons();</script>
+</body></html>`;
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html],{type:'application/msword'})); a.download = (title||'export').replace(/\s+/g,'_')+'.doc'; a.click();
 }
 (function wireExport() {
@@ -461,6 +462,7 @@ function expWord(tbl, title) {
 })();
 </script>
 <script src="/js/ai-widget.js?v=3"></script>
+<script>lucide.createIcons();</script>
 </body>
 </html>
 

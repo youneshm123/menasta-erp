@@ -62,23 +62,23 @@
 
 <header class="fiori-shell">
   <a href="/home" class="fs-logo" style="text-decoration:none">
-    <div class="fs-mark">⛽</div>
+    <div class="fs-mark"><i data-lucide="fuel"></i></div>
     <div class="fs-brand">MENASTA</div>
   </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
-    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
-    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">🏦</span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
-    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
-    <a href="/admin"    class="fs-nav-item active"><span class="fn-icon">⚙️</span> Admin</a>
-    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> IA</a>
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="home"></i></span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon"><i data-lucide="fuel"></i></span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="coffee"></i></span> Café</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="landmark"></i></span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="cigarette"></i></span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="gauge"></i></span> Cuves</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon"><i data-lucide="receipt-text"></i></span> Factures</a>
+    <a href="/admin"    class="fs-nav-item active"><span class="fn-icon"><i data-lucide="settings"></i></span> Admin</a>
+    <a href="/ai"       class="fs-nav-item"><span class="fn-icon"><i data-lucide="bot"></i></span> IA</a>
   </nav>
   <div class="fs-actions">
-    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre">🌙</button>
+    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre"><i data-lucide="moon"></i></button>
     <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
   </div>
 </header>
@@ -86,7 +86,7 @@
 <aside class="sidebar">
   <div class="sb-brand">
     <div class="sb-logo-row">
-      <div class="sb-mark">⚙️</div>
+      <div class="sb-mark"><i data-lucide="settings"></i></div>
       <div>
         <div class="sb-name">Administration</div>
         <div class="sb-sub">Module MENASTA</div>
@@ -94,8 +94,8 @@
     </div>
   </div>
   <div class="sb-nav">
-    <div class="nav-item active" onclick="showTab('users',this)"><span class="ni">👥</span> Utilisateurs & Rôles</div>
-    <div class="nav-item" onclick="showTab('access',this)"><span class="ni">🔐</span> Niveaux d'Accès</div>
+    <div class="nav-item active" onclick="showTab('users',this)"><span class="ni"><i data-lucide="users"></i></span> Utilisateurs & Rôles</div>
+    <div class="nav-item" onclick="showTab('access',this)"><span class="ni"><i data-lucide="shield-check"></i></span> Niveaux d'Accès</div>
   </div>
   <div class="sb-foot">
     <a href="/home" class="sb-back">← Accueil</a>
@@ -389,5 +389,6 @@ async function savePassword() {
 
 loadUsers();
 </script>
+<script>lucide.createIcons();</script>
 </body>
 </html>

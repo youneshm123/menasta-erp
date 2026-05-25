@@ -6,7 +6,7 @@
 <meta name="description" content="MENASTA ERP — Connexion au système de gestion de la station service"/>
 <meta name="theme-color" content="#354a5e"/>
 <title>MENASTA — Connexion</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23354a5e'/><text y='23' x='6' font-size='20'>⛽</text></svg>"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23354a5e'/><text y='23' x='6' font-size='20'><i data-lucide="fuel"></i></text></svg>"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -170,7 +170,7 @@ body{display:flex;flex-direction:column;min-height:100vh}
 <!-- SAP Fiori Shell Bar -->
 <header class="fs">
   <div class="fs-logo">
-    <div class="fs-mark">⛽</div>
+    <div class="fs-mark"><i data-lucide="fuel"></i></div>
     <div class="fs-brand">MENASTA</div>
   </div>
   <div class="fs-spacer"></div>
@@ -182,26 +182,25 @@ body{display:flex;flex-direction:column;min-height:100vh}
   <!-- Brand panel (left) -->
   <div class="brand-panel">
     <div class="bp-top">
-      <div class="bp-logo">⛽</div>
-      <div class="bp-title">MENASTA</div>
+      <img src="/img/logo.svg" alt="MENASTA" class="bp-svg-logo" style="width:220px;margin-bottom:20px;filter:brightness(0) invert(1)"/>
       <div class="bp-tagline">Système ERP intégré de gestion pour stations-service · Conçu pour la Station Hmimidi</div>
     </div>
 
     <div class="bp-features">
       <div class="bp-feat">
-        <div class="bp-feat-ic">⛽</div>
+        <div class="bp-feat-ic"><i data-lucide="fuel"></i></div>
         <div class="bp-feat-txt"><b>Carburant & Cuves</b>Postes, pompes, niveaux, livraisons</div>
       </div>
       <div class="bp-feat">
-        <div class="bp-feat-ic">🏦</div>
+        <div class="bp-feat-ic"><i data-lucide="landmark"></i></div>
         <div class="bp-feat-txt"><b>Banque & Finances</b>Comptes, chèques, transactions</div>
       </div>
       <div class="bp-feat">
-        <div class="bp-feat-ic">🤖</div>
+        <div class="bp-feat-ic"><i data-lucide="bot"></i></div>
         <div class="bp-feat-txt"><b>Assistant IA</b>Analyses & rapports en langage naturel</div>
       </div>
       <div class="bp-feat">
-        <div class="bp-feat-ic">🔐</div>
+        <div class="bp-feat-ic"><i data-lucide="shield-check"></i></div>
         <div class="bp-feat-txt"><b>Sécurité RBAC</b>Caissier · Gérant · Patron — rôles définis</div>
       </div>
     </div>
@@ -227,7 +226,7 @@ body{display:flex;flex-direction:column;min-height:100vh}
         <label for="pwd">Mot de passe</label>
         <div class="pwd-wrap">
           <input id="pwd" type="password" placeholder="••••••••" autocomplete="current-password"/>
-          <button type="button" class="pwd-toggle" id="pwd-toggle" aria-label="Afficher le mot de passe">👁</button>
+          <button type="button" class="pwd-toggle" id="pwd-toggle" aria-label="Afficher le mot de passe"><i data-lucide="eye"></i></button>
         </div>
       </div>
 
@@ -251,8 +250,9 @@ const pwdToggle = document.getElementById('pwd-toggle');
 pwdToggle.addEventListener('click', () => {
   const show = pwdInput.type === 'password';
   pwdInput.type = show ? 'text' : 'password';
-  pwdToggle.textContent = show ? '🙈' : '👁';
+  pwdToggle.innerHTML = show ? '<i data-lucide="eye-off"></i>' : '<i data-lucide="eye"></i>';
   pwdToggle.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+  lucide.createIcons();
 });
 
 function showErr(msg) { errMsg.textContent = msg; errBox.classList.add('show'); }
@@ -286,5 +286,6 @@ btn.addEventListener('click', login);
 document.addEventListener('keydown', e => e.key === 'Enter' && login());
 if (localStorage.getItem('fm_token')) window.location.href = '/home';
 </script>
+<script>lucide.createIcons();</script>
 </body>
 </html>

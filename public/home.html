@@ -159,25 +159,25 @@ body { background: #eceef0; }
 <!-- SAP FIORI SHELL BAR -->
 <header class="fiori-shell">
   <a href="/home" class="fs-logo">
-    <div class="fs-mark">⛽</div>
+    <div class="fs-mark"><i data-lucide="fuel"></i></div>
     <div class="fs-brand">MENASTA</div>
   </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item active"><span class="fn-icon">🏠</span> Launchpad</a>
-    <a href="/patron"   class="fs-nav-item" id="nav-patron"><span class="fn-icon">👑</span> Patron</a>
-    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
-    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">🏦</span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
-    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
-    <a href="/logs"     class="fs-nav-item" id="nav-logs"><span class="fn-icon">📋</span> Journal</a>
+    <a href="/home"     class="fs-nav-item active"><span class="fn-icon"><i data-lucide="home"></i></span> Launchpad</a>
+    <a href="/patron"   class="fs-nav-item" id="nav-patron"><span class="fn-icon"><i data-lucide="crown"></i></span> Patron</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon"><i data-lucide="fuel"></i></span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="coffee"></i></span> Café</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="landmark"></i></span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="cigarette"></i></span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="gauge"></i></span> Cuves</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon"><i data-lucide="receipt-text"></i></span> Factures</a>
+    <a href="/logs"     class="fs-nav-item" id="nav-logs"><span class="fn-icon"><i data-lucide="clipboard-list"></i></span> Journal</a>
   </nav>
   <div class="fs-actions">
-    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
-    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre">🌙</button>
-    <button class="fs-icon-btn" onclick="logout()" title="Déconnexion">↪</button>
+    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA"><i data-lucide="bot"></i></button>
+    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre"><i data-lucide="moon"></i></button>
+    <button class="fs-icon-btn" onclick="logout()" title="Déconnexion"><i data-lucide="log-out"></i></button>
     <div class="fs-avatar" id="fs-av">?</div>
   </div>
 </header>
@@ -202,7 +202,7 @@ body { background: #eceef0; }
 
     <!-- Welcome banner -->
     <div class="lp-banner">
-      <div class="banner-ic">⛽</div>
+      <div class="banner-ic"><i data-lucide="fuel"></i></div>
       <div class="banner-text">
         <div class="banner-title" id="banner-greet">Bonjour !</div>
         <div class="banner-sub">Bienvenue dans votre espace de travail MENASTA ERP · Gérez votre station en toute simplicité</div>
@@ -217,7 +217,7 @@ body { background: #eceef0; }
     <div class="lp-kpis">
       <a class="lp-kpi" href="/app" style="--kc:#0070f2;--kb:#e8f2ff">
         <div class="kpi-top">
-          <div class="kpi-ic">⛽</div>
+          <div class="kpi-ic"><i data-lucide="fuel"></i></div>
           <span class="kpi-trend up" id="k-ventes-trend">Actif</span>
         </div>
         <div class="kpi-val" id="k-ventes">—</div>
@@ -226,7 +226,7 @@ body { background: #eceef0; }
       </a>
       <a class="lp-kpi" href="/bank" style="--kc:#107e3e;--kb:#f1f8f5">
         <div class="kpi-top">
-          <div class="kpi-ic">🏦</div>
+          <div class="kpi-ic"><i data-lucide="landmark"></i></div>
           <span class="kpi-trend neutral" id="k-bank-trend">Solde</span>
         </div>
         <div class="kpi-val" id="k-bank">—</div>
@@ -235,7 +235,7 @@ body { background: #eceef0; }
       </a>
       <a class="lp-kpi" href="/cuves" style="--kc:#e9730c;--kb:#fef4eb">
         <div class="kpi-top">
-          <div class="kpi-ic">🛢️</div>
+          <div class="kpi-ic"><i data-lucide="gauge"></i></div>
           <span class="kpi-trend neutral" id="k-cuves-trend">Stocks</span>
         </div>
         <div class="kpi-val" id="k-cuves">—</div>
@@ -244,7 +244,7 @@ body { background: #eceef0; }
       </a>
       <a class="lp-kpi" href="/app" style="--kc:#6c32a0;--kb:#f5eeff">
         <div class="kpi-top">
-          <div class="kpi-ic">🤝</div>
+          <div class="kpi-ic"><i data-lucide="handshake"></i></div>
           <span class="kpi-trend warn" id="k-credits-trend">Actif</span>
         </div>
         <div class="kpi-val" id="k-credits">—</div>
@@ -261,25 +261,25 @@ body { background: #eceef0; }
       </div>
       <div class="tiles-row">
         <a href="/app" class="lp-tile tc-blue">
-          <div class="lp-tile-ic">⛽</div>
+          <div class="lp-tile-ic"><i data-lucide="fuel"></i></div>
           <div class="lp-tile-title">Carburant</div>
           <div class="lp-tile-sub">Postes de travail, pompes, créances, dépenses</div>
           <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
         </a>
         <a href="/cuves" class="lp-tile tc-orange">
-          <div class="lp-tile-ic">🛢️</div>
+          <div class="lp-tile-ic"><i data-lucide="gauge"></i></div>
           <div class="lp-tile-title">Cuves</div>
           <div class="lp-tile-sub">Niveaux, livraisons, écarts de stock</div>
           <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
         </a>
         <a href="/cafe" class="lp-tile tc-teal">
-          <div class="lp-tile-ic">☕</div>
+          <div class="lp-tile-ic"><i data-lucide="coffee"></i></div>
           <div class="lp-tile-title">Café</div>
           <div class="lp-tile-sub">Ventes, stock produits, recettes journalières</div>
           <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
         </a>
         <a href="/tabac" class="lp-tile tc-amber">
-          <div class="lp-tile-ic">🚬</div>
+          <div class="lp-tile-ic"><i data-lucide="cigarette"></i></div>
           <div class="lp-tile-title">Tabac</div>
           <div class="lp-tile-sub">Inventaire, ventes articles & cigarettes</div>
           <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
@@ -295,13 +295,13 @@ body { background: #eceef0; }
       </div>
       <div class="tiles-row">
         <a href="/bank" class="lp-tile tc-green">
-          <div class="lp-tile-ic">🏦</div>
+          <div class="lp-tile-ic"><i data-lucide="landmark"></i></div>
           <div class="lp-tile-title">Banque</div>
           <div class="lp-tile-sub">Comptes, dépôts, chèques, rapprochements</div>
           <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
         </a>
         <a href="/factures" class="lp-tile tc-blue">
-          <div class="lp-tile-ic">🧾</div>
+          <div class="lp-tile-ic"><i data-lucide="receipt-text"></i></div>
           <div class="lp-tile-title">Factures</div>
           <div class="lp-tile-sub">Création, suivi et impression des factures</div>
           <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
@@ -317,25 +317,25 @@ body { background: #eceef0; }
       </div>
       <div class="tiles-row">
         <a href="/patron" class="lp-tile tc-purple" id="tile-patron">
-          <div class="lp-tile-ic">👑</div>
+          <div class="lp-tile-ic"><i data-lucide="crown"></i></div>
           <div class="lp-tile-title">Tableau Patron</div>
           <div class="lp-tile-sub">KPIs consolidés, rapports multi-modules</div>
           <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
         </a>
         <a href="/admin" class="lp-tile tc-purple" id="tile-admin">
-          <div class="lp-tile-ic">⚙️</div>
+          <div class="lp-tile-ic"><i data-lucide="settings"></i></div>
           <div class="lp-tile-title">Administration</div>
           <div class="lp-tile-sub">Gestion utilisateurs, paramètres système</div>
           <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
         </a>
         <a href="/ai" class="lp-tile tc-teal">
-          <div class="lp-tile-ic">🤖</div>
+          <div class="lp-tile-ic"><i data-lucide="bot"></i></div>
           <div class="lp-tile-title">Assistant IA</div>
           <div class="lp-tile-sub">Analyses et rapports en langage naturel</div>
           <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
         </a>
         <a href="/logs" class="lp-tile tc-blue" id="tile-logs">
-          <div class="lp-tile-ic">📋</div>
+          <div class="lp-tile-ic"><i data-lucide="clipboard-list"></i></div>
           <div class="lp-tile-title">Journal</div>
           <div class="lp-tile-sub">Historique complet des actions système</div>
           <div class="lp-tile-foot">Ouvrir <span class="arr">→</span></div>
@@ -361,7 +361,7 @@ body { background: #eceef0; }
       <!-- Recent activity -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 22px;box-shadow:var(--sh-xs);display:flex;flex-direction:column">
         <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px">
-          <span>📋</span> Activité récente
+          <span><i data-lucide="clipboard-list"></i></span> Activité récente
         </div>
         <div id="activity-list" style="display:flex;flex-direction:column;gap:9px;flex:1">
           <div class="skeleton" style="height:48px;border-radius:8px"></div>
@@ -374,10 +374,10 @@ body { background: #eceef0; }
 
     <!-- Stats bar -->
     <div class="lp-stats">
-      <div class="lp-stat"><span class="lp-stat-ic">📅</span><div><div class="lp-stat-val" id="st-shifts">—</div><div class="lp-stat-lbl">Postes ce mois</div></div></div>
-      <div class="lp-stat"><span class="lp-stat-ic">🤝</span><div><div class="lp-stat-val" id="st-clients">—</div><div class="lp-stat-lbl">Clients créances</div></div></div>
-      <div class="lp-stat"><span class="lp-stat-ic">📊</span><div><div class="lp-stat-val" id="st-logs">—</div><div class="lp-stat-lbl">Actions journal</div></div></div>
-      <div class="lp-stat"><span class="lp-stat-ic">🧾</span><div><div class="lp-stat-val" id="st-bank">—</div><div class="lp-stat-lbl">Solde banque (DH)</div></div></div>
+      <div class="lp-stat"><span class="lp-stat-ic"><i data-lucide="calendar-days"></i></span><div><div class="lp-stat-val" id="st-shifts">—</div><div class="lp-stat-lbl">Postes ce mois</div></div></div>
+      <div class="lp-stat"><span class="lp-stat-ic"><i data-lucide="handshake"></i></span><div><div class="lp-stat-val" id="st-clients">—</div><div class="lp-stat-lbl">Clients créances</div></div></div>
+      <div class="lp-stat"><span class="lp-stat-ic"><i data-lucide="bar-chart-2"></i></span><div><div class="lp-stat-val" id="st-logs">—</div><div class="lp-stat-lbl">Actions journal</div></div></div>
+      <div class="lp-stat"><span class="lp-stat-ic"><i data-lucide="receipt-text"></i></span><div><div class="lp-stat-val" id="st-bank">—</div><div class="lp-stat-lbl">Solde banque (DH)</div></div></div>
     </div>
 
   </div><!-- /lp-inner -->
@@ -564,5 +564,6 @@ async function loadDashboard() {
 loadDashboard();
 </script>
 <script src="/js/ai-widget.js?v=3"></script>
+<script>lucide.createIcons();</script>
 </body>
 </html>

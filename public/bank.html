@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
@@ -53,24 +53,24 @@
 
 <header class="fiori-shell">
   <a href="/home" class="fs-logo" style="text-decoration:none">
-    <div class="fs-mark">⛽</div>
+    <div class="fs-mark"><i data-lucide="fuel"></i></div>
     <div class="fs-brand">MENASTA</div>
   </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
-    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
-    <a href="/bank"     class="fs-nav-item active"><span class="fn-icon">🏦</span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
-    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
-    <a href="/admin"    class="fs-nav-item"><span class="fn-icon">👑</span> Admin</a>
-    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> IA</a>
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="home"></i></span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon"><i data-lucide="fuel"></i></span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="coffee"></i></span> Café</a>
+    <a href="/bank"     class="fs-nav-item active"><span class="fn-icon"><i data-lucide="landmark"></i></span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="cigarette"></i></span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="gauge"></i></span> Cuves</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon"><i data-lucide="receipt-text"></i></span> Factures</a>
+    <a href="/admin"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="crown"></i></span> Admin</a>
+    <a href="/ai"       class="fs-nav-item"><span class="fn-icon"><i data-lucide="bot"></i></span> IA</a>
   </nav>
   <div class="fs-actions">
-    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
-    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre">🌙</button>
+    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA"><i data-lucide="bot"></i></button>
+    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre"><i data-lucide="moon"></i></button>
     <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
   </div>
 </header>
@@ -79,7 +79,7 @@
 <aside class="sidebar">
   <div class="sb-brand">
     <div class="sb-logo-row">
-      <div class="sb-mark">🏦</div>
+      <div class="sb-mark"><i data-lucide="landmark"></i></div>
       <div>
         <div class="sb-name" id="sb-acct-name">Banque</div>
         <div class="sb-sub">Module MENASTA</div>
@@ -88,14 +88,14 @@
   </div>
   <div class="sb-nav">
     <div class="sb-section-label">Vue d'ensemble</div>
-    <div class="nav-item active" data-p="dashboard"><span class="ni">📊</span> Tableau de Bord</div>
+    <div class="nav-item active" data-p="dashboard"><span class="ni"><i data-lucide="bar-chart-2"></i></span> Tableau de Bord</div>
     <div class="sb-section-label">Opérations</div>
-    <div class="nav-item" data-p="transactions"><span class="ni">💳</span> Transactions</div>
-    <div class="nav-item" data-p="cheques"><span class="ni">📋</span> Chèques</div>
+    <div class="nav-item" data-p="transactions"><span class="ni"><i data-lucide="credit-card"></i></span> Transactions</div>
+    <div class="nav-item" data-p="cheques"><span class="ni"><i data-lucide="clipboard-list"></i></span> Chèques</div>
     <div class="sb-section-label">Analyses</div>
-    <div class="nav-item" data-p="rapport"><span class="ni">📈</span> Rapport Mensuel</div>
+    <div class="nav-item" data-p="rapport"><span class="ni"><i data-lucide="trending-up"></i></span> Rapport Mensuel</div>
     <div class="sb-section-label">Système</div>
-    <div class="nav-item" data-p="settings"><span class="ni">⚙️</span> Paramètres</div>
+    <div class="nav-item" data-p="settings"><span class="ni"><i data-lucide="settings"></i></span> Paramètres</div>
   </div>
   <div class="sb-foot">
     <a href="/home" class="sb-back">← Retour Accueil</a>
@@ -287,7 +287,7 @@
 <!-- ── MODAL: Add Transaction ── -->
 <div class="overlay" id="m-add-txn">
   <div class="modal">
-    <div class="modal-hd"><div class="mh-ic">💳</div><h3>Nouvelle Transaction</h3><button class="x" onclick="closeModal('m-add-txn')">✕</button></div>
+    <div class="modal-hd"><div class="mh-ic"><i data-lucide="credit-card"></i></div><h3>Nouvelle Transaction</h3><button class="x" onclick="closeModal('m-add-txn')">✕</button></div>
     <div class="modal-body">
       <div class="fgrid">
         <div class="fg" style="grid-column:1/-1">
@@ -520,7 +520,8 @@ function printStatement() {
   const w = window.open('','_blank');
   w.document.write('<html><head><title>Relevé de Compte</title><style>table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #ccc;padding:5px 8px}th{background:#f5f5f5;font-weight:700}</style></head><body>');
   w.document.write(el.innerHTML);
-  w.document.write('</body></html>');
+  w.document.write('<script>lucide.createIcons();</script>
+</body></html>');
   w.document.close();
   w.print();
 }
@@ -820,5 +821,6 @@ document.getElementById('txn-month').value  = thisMonth();
 refreshBalance();
 loadDashboard();
 </script>
+<script>lucide.createIcons();</script>
 </body>
 </html>

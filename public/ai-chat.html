@@ -160,22 +160,22 @@
 
 <header class="fiori-shell">
   <a href="/home" class="fs-logo" style="text-decoration:none">
-    <div class="fs-mark">⛽</div>
+    <div class="fs-mark"><i data-lucide="fuel"></i></div>
     <div class="fs-brand">MENASTA</div>
   </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
-    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
-    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">🏦</span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
-    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
-    <a href="/ai"       class="fs-nav-item active"><span class="fn-icon">🤖</span> Assistant IA</a>
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="home"></i></span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon"><i data-lucide="fuel"></i></span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="coffee"></i></span> Café</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="landmark"></i></span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="cigarette"></i></span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="gauge"></i></span> Cuves</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon"><i data-lucide="receipt-text"></i></span> Factures</a>
+    <a href="/ai"       class="fs-nav-item active"><span class="fn-icon"><i data-lucide="bot"></i></span> Assistant IA</a>
   </nav>
   <div class="fs-actions">
-    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre">🌙</button>
+    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre"><i data-lucide="moon"></i></button>
     <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
   </div>
 </header>
@@ -183,23 +183,23 @@
 <aside class="sidebar">
   <div class="sb-brand">
     <div class="sb-logo-row">
-      <div class="sb-mark">⛽</div>
+      <div class="sb-mark"><i data-lucide="fuel"></i></div>
       <div><div class="sb-name">MENASTA</div><div class="sb-sub">Station Service</div></div>
     </div>
   </div>
   <div class="sb-nav">
     <div class="sb-section-label">Modules</div>
-    <a href="/app"      class="nav-item"><span class="ni">⛽</span> Carburant</a>
-    <a href="/cafe"     class="nav-item"><span class="ni">☕</span> Café</a>
-    <a href="/bank"     class="nav-item"><span class="ni">🏦</span> Banque</a>
-    <a href="/tabac"    class="nav-item"><span class="ni">🚬</span> Tabac</a>
-    <a href="/factures" class="nav-item"><span class="ni">🧾</span> Factures</a>
-    <a href="/cuves"    class="nav-item"><span class="ni">🛢️</span> Cuves</a>
+    <a href="/app"      class="nav-item"><span class="ni"><i data-lucide="fuel"></i></span> Carburant</a>
+    <a href="/cafe"     class="nav-item"><span class="ni"><i data-lucide="coffee"></i></span> Café</a>
+    <a href="/bank"     class="nav-item"><span class="ni"><i data-lucide="landmark"></i></span> Banque</a>
+    <a href="/tabac"    class="nav-item"><span class="ni"><i data-lucide="cigarette"></i></span> Tabac</a>
+    <a href="/factures" class="nav-item"><span class="ni"><i data-lucide="receipt-text"></i></span> Factures</a>
+    <a href="/cuves"    class="nav-item"><span class="ni"><i data-lucide="gauge"></i></span> Cuves</a>
     <div class="sb-section-label">Direction</div>
-    <a href="/patron"   class="nav-item"><span class="ni">👑</span> Tableau Patron</a>
-    <a href="/ai"       class="nav-item active"><span class="ni">🤖</span> Assistant IA</a>
-    <a href="/logs"     class="nav-item"><span class="ni">📋</span> Journal</a>
-    <a href="/home"     class="nav-item"><span class="ni">🏠</span> Accueil</a>
+    <a href="/patron"   class="nav-item"><span class="ni"><i data-lucide="crown"></i></span> Tableau Patron</a>
+    <a href="/ai"       class="nav-item active"><span class="ni"><i data-lucide="bot"></i></span> Assistant IA</a>
+    <a href="/logs"     class="nav-item"><span class="ni"><i data-lucide="clipboard-list"></i></span> Journal</a>
+    <a href="/home"     class="nav-item"><span class="ni"><i data-lucide="home"></i></span> Accueil</a>
   </div>
   <div class="sb-foot">
     <div class="sb-user">
@@ -235,7 +235,7 @@
   <div class="chat-wrap">
     <div class="chat-messages" id="messages">
       <div class="chat-welcome" id="welcome-screen">
-        <div class="welcome-icon">🤖</div>
+        <div class="welcome-icon"><i data-lucide="bot"></i></div>
         <div class="welcome-title" id="lbl-welcome-title">Assistant IA MENASTA</div>
         <div class="welcome-sub" id="lbl-welcome-sub">Je connais toutes vos données en temps réel. Posez-moi n'importe quelle question.</div>
         <div id="chip-grid" class="chip-grid"></div>
@@ -629,7 +629,7 @@ function showTyping() {
   const msgs = document.getElementById('messages');
   const div = document.createElement('div');
   div.className = 'msg ai'; div.id = 'typing-el';
-  div.innerHTML = `<div class="msg-av">🤖</div>
+  div.innerHTML = `<div class="msg-av"><i data-lucide="bot"></i></div>
     <div class="msg-col">
       <div class="msg-meta">${fmtTime()}</div>
       <div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>
@@ -794,7 +794,7 @@ function clearChat() {
   const isRTL = L.dir === 'rtl';
   document.getElementById('messages').innerHTML = `
     <div class="chat-welcome" id="welcome-screen">
-      <div class="welcome-icon">🤖</div>
+      <div class="welcome-icon"><i data-lucide="bot"></i></div>
       <div class="welcome-title" id="lbl-welcome-title">${L.welcomeTitle}</div>
       <div class="welcome-sub" id="lbl-welcome-sub">${L.welcomeSub}</div>
       <div class="chip-grid" id="chip-grid">${L.chips.map(c=>`<div class="chip" onclick="ask(${JSON.stringify(c.t)})">${c.e} ${c.t.length>36?c.t.slice(0,36)+'…':c.t}</div>`).join('')}</div>
@@ -803,6 +803,7 @@ function clearChat() {
 
 document.getElementById('chat-input').focus();
 </script>
+<script>lucide.createIcons();</script>
 </body>
 </html>
 

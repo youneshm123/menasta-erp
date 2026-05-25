@@ -28,25 +28,25 @@
 <!-- SAP FIORI SHELL BAR -->
 <header id="shell" class="fiori-shell" style="position:fixed">
   <a href="/home" class="fs-logo" style="text-decoration:none">
-    <div class="fs-mark">⛽</div>
+    <div class="fs-mark"><i data-lucide="fuel"></i></div>
     <div class="fs-brand">MENASTA</div>
   </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
-    <a href="/app"      class="fs-nav-item active"><span class="fn-icon">⛽</span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
-    <a href="/bank"     class="fs-nav-item"><span class="fn-icon">🏦</span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
-    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
-    <a href="/admin"    class="fs-nav-item"><span class="fn-icon">⚙️</span> Admin</a>
-    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> IA</a>
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="home"></i></span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item active"><span class="fn-icon"><i data-lucide="fuel"></i></span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="coffee"></i></span> Café</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="landmark"></i></span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="cigarette"></i></span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="gauge"></i></span> Cuves</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon"><i data-lucide="receipt-text"></i></span> Factures</a>
+    <a href="/admin"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="settings"></i></span> Admin</a>
+    <a href="/ai"       class="fs-nav-item"><span class="fn-icon"><i data-lucide="bot"></i></span> IA</a>
   </nav>
   <div class="fs-actions">
-    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
-    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre">🌙</button>
-    <button class="fs-icon-btn" onclick="logout()" title="Déconnexion">↪</button>
+    <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA"><i data-lucide="bot"></i></button>
+    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre"><i data-lucide="moon"></i></button>
+    <button class="fs-icon-btn" onclick="logout()" title="Déconnexion"><i data-lucide="log-out"></i></button>
     <div class="fs-avatar" id="sh-av" title="Mon compte">?</div>
   </div>
 </header>
@@ -57,25 +57,25 @@
   <!-- SIDE NAV -->
   <nav id="nav">
     <div class="nav-section">Opérations</div>
-    <div class="nav-item active" data-p="dashboard"><span class="ni">📊</span>Tableau de Bord</div>
-    <div class="nav-item" data-p="shift"><span class="ni">🕐</span>Poste en Cours</div>
-    <div class="nav-item" data-p="shifts-history"><span class="ni">📋</span>Historique Postes</div>
+    <div class="nav-item active" data-p="dashboard"><span class="ni"><i data-lucide="bar-chart-2"></i></span>Tableau de Bord</div>
+    <div class="nav-item" data-p="shift"><span class="ni"><i data-lucide="clock"></i></span>Poste en Cours</div>
+    <div class="nav-item" data-p="shifts-history"><span class="ni"><i data-lucide="clipboard-list"></i></span>Historique Postes</div>
 
     <div class="nav-divider"></div>
     <div class="nav-section">Finances</div>
-    <div class="nav-item" data-p="credits"><span class="ni">🤝</span>Créances Clients <span class="nav-badge" id="nb-credits">0</span></div>
-    <div class="nav-item" data-p="products"><span class="ni">🛢️</span>Produits & Huiles</div>
+    <div class="nav-item" data-p="credits"><span class="ni"><i data-lucide="handshake"></i></span>Créances Clients <span class="nav-badge" id="nb-credits">0</span></div>
+    <div class="nav-item" data-p="products"><span class="ni"><i data-lucide="gauge"></i></span>Produits & Huiles</div>
 
     <div class="nav-divider"></div>
     <div class="nav-section">Analyses</div>
-    <div class="nav-item" data-p="reports"><span class="ni">📊</span>Rapports Mensuels</div>
-    <div class="nav-item" data-p="expenses"><span class="ni">💸</span>Dépenses</div>
-    <div class="nav-item" data-p="stock"><span class="ni">🛢️</span>Stock Carburant</div>
+    <div class="nav-item" data-p="reports"><span class="ni"><i data-lucide="bar-chart-2"></i></span>Rapports Mensuels</div>
+    <div class="nav-item" data-p="expenses"><span class="ni"><i data-lucide="wallet"></i></span>Dépenses</div>
+    <div class="nav-item" data-p="stock"><span class="ni"><i data-lucide="gauge"></i></span>Stock Carburant</div>
 
     <div class="nav-divider"></div>
     <div class="nav-section">Administration</div>
-    <div class="nav-item" data-p="pumps"><span class="ni">⛽</span>Pompes & Prix</div>
-    <div class="nav-item" data-p="settings"><span class="ni">⚙️</span>Paramètres</div>
+    <div class="nav-item" data-p="pumps"><span class="ni"><i data-lucide="fuel"></i></span>Pompes & Prix</div>
+    <div class="nav-item" data-p="settings"><span class="ni"><i data-lucide="settings"></i></span>Paramètres</div>
 
     <a href="/home" style="display:block;padding:10px 18px;color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;border-top:1px solid rgba(255,255,255,.08)">← Accueil</a>
     <div class="nav-footer">v1.0 · MENASTA</div>
@@ -333,7 +333,7 @@
 <!-- OPEN SHIFT -->
 <div class="overlay" id="m-open-shift">
   <div class="modal modal-lg">
-    <div class="modal-hd"><span>🕐</span><h3>Ouvrir un Nouveau Poste</h3><button class="x" onclick="closeModal('m-open-shift')">×</button></div>
+    <div class="modal-hd"><span><i data-lucide="clock"></i></span><h3>Ouvrir un Nouveau Poste</h3><button class="x" onclick="closeModal('m-open-shift')">×</button></div>
     <div class="modal-body">
       <div class="msg msg-i mb3">Saisissez les relevés des compteurs au début du poste pour chaque pompe active.</div>
       <div id="open-shift-form"></div>
@@ -370,7 +370,7 @@
 <!-- CREDIT SALE BATCH -->
 <div class="overlay" id="m-credit-sale">
   <div class="modal modal-lg">
-    <div class="modal-hd"><span>🤝</span><h3>Ventes Crédit</h3><button class="x" onclick="csCancel()">×</button></div>
+    <div class="modal-hd"><span><i data-lucide="handshake"></i></span><h3>Ventes Crédit</h3><button class="x" onclick="csCancel()">×</button></div>
     <div class="modal-body">
       <div class="fgrid mb2">
         <div class="fg" style="grid-column:1/-1">
@@ -454,7 +454,7 @@
 <!-- SELL PRODUCT -->
 <div class="overlay" id="m-sell-product">
   <div class="modal">
-    <div class="modal-hd"><span>🛢️</span><h3>Vente Huile / Produit</h3><button class="x" onclick="closeModal('m-sell-product')">×</button></div>
+    <div class="modal-hd"><span><i data-lucide="gauge"></i></span><h3>Vente Huile / Produit</h3><button class="x" onclick="closeModal('m-sell-product')">×</button></div>
     <div class="modal-body">
       <div class="fg mb3">
         <label>Produit</label>
@@ -479,7 +479,7 @@
 <!-- ADD PRODUCT -->
 <div class="overlay" id="m-add-product">
   <div class="modal">
-    <div class="modal-hd"><span>📦</span><h3>Ajouter un Produit</h3><button class="x" onclick="closeModal('m-add-product')">×</button></div>
+    <div class="modal-hd"><span><i data-lucide="package"></i></span><h3>Ajouter un Produit</h3><button class="x" onclick="closeModal('m-add-product')">×</button></div>
     <div class="modal-body">
       <div class="fgrid">
         <div class="fg"><label>Référence *</label><input id="ap-ref" placeholder="HUI-001"/></div>
@@ -503,7 +503,7 @@
 <!-- ADD PUMP -->
 <div class="overlay" id="m-add-pump">
   <div class="modal">
-    <div class="modal-hd"><span>⛽</span><h3>Ajouter une Pompe</h3><button class="x" onclick="closeModal('m-add-pump')">×</button></div>
+    <div class="modal-hd"><span><i data-lucide="fuel"></i></span><h3>Ajouter une Pompe</h3><button class="x" onclick="closeModal('m-add-pump')">×</button></div>
     <div class="modal-body">
       <div class="fgrid">
         <div class="fg"><label>Nom *</label><input id="np-name" placeholder="Pompe 5"/></div>
@@ -553,7 +553,7 @@
 <!-- SHIFT DETAIL -->
 <div class="overlay" id="m-shift-detail">
   <div class="modal modal-lg">
-    <div class="modal-hd"><span>📋</span><h3>Détail du Poste</h3><button class="x" onclick="closeModal('m-shift-detail')">×</button></div>
+    <div class="modal-hd"><span><i data-lucide="clipboard-list"></i></span><h3>Détail du Poste</h3><button class="x" onclick="closeModal('m-shift-detail')">×</button></div>
     <div class="modal-body" id="shift-detail-body" style="max-height:70vh;overflow-y:auto;"></div>
     <div class="modal-ft"><button class="btn btn-p" onclick="closeModal('m-shift-detail')">Fermer</button></div>
   </div>
@@ -562,7 +562,7 @@
 <!-- ADD EXPENSE -->
 <div class="overlay" id="m-add-expense">
   <div class="modal">
-    <div class="modal-hd"><span>💸</span><h3>Ajouter une Dépense</h3><button class="x" onclick="closeModal('m-add-expense')">×</button></div>
+    <div class="modal-hd"><span><i data-lucide="wallet"></i></span><h3>Ajouter une Dépense</h3><button class="x" onclick="closeModal('m-add-expense')">×</button></div>
     <div class="modal-body">
       <div class="fgrid">
         <div class="fg"><label>Catégorie</label>
@@ -852,7 +852,7 @@ async function loadShiftPage() {
 
   el.innerHTML = `
     <div style="background:var(--sb-bg);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-      <div style="font-size:20px;">🕐</div>
+      <div style="font-size:20px;"><i data-lucide="clock"></i></div>
       <div style="flex:1;">
         <div style="font-size:15px;font-weight:800;color:#fff;">Poste N° ${shift.id} <span style="font-weight:400;opacity:.5;font-size:13px;">— En Cours</span></div>
         <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:2px;">Ouvert par <strong style="color:rgba(255,255,255,.8);">${shift.opened_by_name}</strong> · ${fmtDT(shift.opened_at)}${shift.pompiste?` · <strong style="color:rgba(255,255,255,.8);">Pompiste: ${shift.pompiste}</strong>`:''}${shift.heure_debut?' · '+shift.heure_debut+(shift.heure_fin?' → '+shift.heure_fin:''):''}</div>
@@ -863,13 +863,13 @@ async function loadShiftPage() {
     <div class="tiles" style="margin-bottom:18px;">
       <div class="tile" style="--tile-color:var(--orange);">
         <div class="tile-accent"></div>
-        <div class="tile-ic-wrap" style="background:#FFFBEB;">🤝</div>
+        <div class="tile-ic-wrap" style="background:#FFFBEB;"><i data-lucide="handshake"></i></div>
         <div class="tile-val" style="color:var(--orange);">${fmt(totalCredit)} MAD</div>
         <div class="tile-lbl">Crédits Accordés</div>
       </div>
       <div class="tile" style="--tile-color:var(--green);">
         <div class="tile-accent"></div>
-        <div class="tile-ic-wrap" style="background:#ECFDF5;">🛢️</div>
+        <div class="tile-ic-wrap" style="background:#ECFDF5;"><i data-lucide="gauge"></i></div>
         <div class="tile-val" style="color:var(--green);">${fmt(totalProduct)} MAD</div>
         <div class="tile-lbl">Ventes Produits</div>
       </div>
@@ -2079,6 +2079,7 @@ function printShift(id) {
       <div class="row"><span class="big">CAISSE NETTE</span><span class="big">${fmt(s.net_cash||0)} MAD</span></div>
     </div>
     <p style="margin-top:20px;color:#999;font-size:11px">Imprimé le ${new Date().toLocaleString('fr-MA')} — MENASTA</p>
+<script>lucide.createIcons();</script>
 </body></html>`);
     w.document.close(); w.print();
   });
@@ -2164,7 +2165,8 @@ function expWord(tableId, title, tblEl) {
   if (!tbl) return;
   const clone = tbl.cloneNode(true);
   clone.querySelectorAll('input,button').forEach(el => el.remove());
-  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px;text-align:left}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2><p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>${clone.outerHTML}</body></html>`;
+  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px;text-align:left}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2><p style="color:#666;font-size:11px">Exporté le ${new Date().toLocaleDateString('fr-FR')}</p>${clone.outerHTML}<script>lucide.createIcons();</script>
+</body></html>`;
   const blob = new Blob([html], { type: 'application/msword' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (title||'export').replace(/\s+/g,'_') + '.doc'; a.click();
 }
@@ -2180,5 +2182,6 @@ window.navigate = function(p) {
 attachExportBtns();
 </script>
 <script src="/js/ai-widget.js?v=3"></script>
+<script>lucide.createIcons();</script>
 </body>
 </html>
