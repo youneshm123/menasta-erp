@@ -68,6 +68,29 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
   res.json(result);
 }));
 
+// ── POST new cuve ─────────────────────────────────────────────
+router.post('/', requireAuth, wrap(async (req, res) => {
+  const { name, fuel_type_id, capacite_max, niveau_alerte } = req.body || {};
+  if (!name || !fuel_type_id) return res.status(400).json({ error: 'name et fuel_type_id requis' });
+  const { rows: [{ id }] } = await pool.query(
+    'INSERT INTO cuves (name, fuel_type_id, capacite_max, niveau_alerte) VALUES ($1,$2,$3,$4) RETURNING id',
+    [name, fuel_type_id, capacite_max || 20000, niveau_alerte || 3000]
+  );
+  res.status(201).json({ ok: true, id });
+}));
+
+// ── DELETE cuve ───────────────────────────────────────────────
+router.delete('/:id', requireAuth, wrap(async (req, res) => {
+  await pool.query('UPDATE cuves SET is_active=0 WHERE id=$1', [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ── GET all fuel types ────────────────────────────────────────
+router.get('/fuel-types', requireAuth, wrap(async (_req, res) => {
+  const { rows } = await pool.query('SELECT id, name FROM fuel_types ORDER BY id');
+  res.json(rows);
+}));
+
 // ── GET lecture history for a cuve ────────────────────────────
 router.get('/:id/historique', requireAuth, wrap(async (req, res) => {
   const { rows } = await pool.query(`

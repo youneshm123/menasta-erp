@@ -1,17 +1,17 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MENASTA — Banque</title>
+<title>MENASTA  Banque</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=27"/>
-<script src="/js/shell-init.js?v=5" defer></script>
+<link rel="stylesheet" href="/css/fiori.css?v=26"/>
+<script src="/js/shell-init.js?v=4" defer></script>
 <script src="/js/modal-init.js?v=1" defer></script>
 <style>
 .ck-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -33,26 +33,40 @@
   body{font-size:11px}
   .t td,.t th{padding:5px 8px}
 }
+
+.quick-bar{background:linear-gradient(135deg,#F0F9FF,#EEF2FF);border:1.5px solid #BFDBFE;border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.qbar-types{display:flex;gap:6px;flex-wrap:wrap}
+.qtype-btn{padding:6px 11px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-family:var(--font);transition:all .15s;white-space:nowrap}
+.qtype-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.qtype-btn.active.out{background:#DC2626;border-color:#DC2626}
+.qtype-btn.active.ck{background:#7C3AED;border-color:#7C3AED}
+.qa-input{padding:8px 11px;border:1.5px solid #BFDBFE;border-radius:8px;font-size:13px;font-family:var(--font);background:#fff;outline:none}
+.qa-input:focus{border-color:var(--blue)}
+.balance-pill{background:var(--blue);color:#fff;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700}
+.forecast-pill{background:var(--orange,#F59E0B);color:#fff;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700}
+.badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:600;background:var(--bg2)}
+.badge.depot,.badge.virement_in,.badge.cheque_in{background:#DCFCE7;color:#15803D}
+.badge.retrait,.badge.virement_out,.badge.cheque_out{background:#FEE2E2;color:#B91C1C}
 </style>
 </head>
 <body class="app-layout">
 
 <header class="fiori-shell">
   <a href="/home" class="fs-logo" style="text-decoration:none">
-    <div class="fs-mark">â›½</div>
+    <div class="fs-mark">⛽</div>
     <div class="fs-brand">MENASTA</div>
   </a>
   <div class="fs-divider"></div>
   <nav class="fs-nav">
-    <a href="/home"     class="fs-nav-item"><span class="fn-icon">ðŸ </span> Launchpad</a>
-    <a href="/app"      class="fs-nav-item"><span class="fn-icon">â›½</span> Carburant</a>
-    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">â˜•</span> CafÃ©</a>
-    <a href="/bank"     class="fs-nav-item active"><span class="fn-icon">ðŸ¦</span> Banque</a>
-    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">ðŸš¬</span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">ðŸ›¢ï¸</span> Cuves</a>
-    <a href="/factures" class="fs-nav-item"><span class="fn-icon">ðŸ§¾</span> Factures</a>
-    <a href="/admin"    class="fs-nav-item"><span class="fn-icon">⚙️</span> Admin</a>
-    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">ðŸ¤–</span> IA</a>
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon">🏠</span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon">⛽</span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon">☕</span> Café</a>
+    <a href="/bank"     class="fs-nav-item active"><span class="fn-icon">🏦</span> Banque</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon">🚬</span> Tabac</a>
+    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon">🛢️</span> Cuves</a>
+    <a href="/factures" class="fs-nav-item"><span class="fn-icon">🧾</span> Factures</a>
+    <a href="/admin"    class="fs-nav-item"><span class="fn-icon">👑</span> Admin</a>
+    <a href="/ai"       class="fs-nav-item"><span class="fn-icon">🤖</span> IA</a>
   </nav>
   <div class="fs-actions">
     <button class="fs-icon-btn" onclick="window.location='/ai'" title="Assistant IA">🤖</button>
@@ -65,7 +79,7 @@
 <aside class="sidebar">
   <div class="sb-brand">
     <div class="sb-logo-row">
-      <div class="sb-mark">ðŸ¦</div>
+      <div class="sb-mark">🏦</div>
       <div>
         <div class="sb-name" id="sb-acct-name">Banque</div>
         <div class="sb-sub">Module MENASTA</div>
@@ -74,17 +88,17 @@
   </div>
   <div class="sb-nav">
     <div class="sb-section-label">Vue d'ensemble</div>
-    <div class="nav-item active" data-p="dashboard"><span class="ni">ðŸ </span> Tableau de Bord</div>
-    <div class="sb-section-label">OpÃ©rations</div>
-    <div class="nav-item" data-p="transactions"><span class="ni">ðŸ’³</span> Transactions</div>
-    <div class="nav-item" data-p="cheques"><span class="ni">ðŸ“</span> ChÃ¨ques</div>
+    <div class="nav-item active" data-p="dashboard"><span class="ni">📊</span> Tableau de Bord</div>
+    <div class="sb-section-label">Opérations</div>
+    <div class="nav-item" data-p="transactions"><span class="ni">💳</span> Transactions</div>
+    <div class="nav-item" data-p="cheques"><span class="ni">📋</span> Chèques</div>
     <div class="sb-section-label">Analyses</div>
-    <div class="nav-item" data-p="rapport"><span class="ni">ðŸ“Š</span> Rapport Mensuel</div>
-    <div class="sb-section-label">SystÃ¨me</div>
-    <div class="nav-item" data-p="settings"><span class="ni">âš™ï¸</span> ParamÃ¨tres</div>
+    <div class="nav-item" data-p="rapport"><span class="ni">📈</span> Rapport Mensuel</div>
+    <div class="sb-section-label">Système</div>
+    <div class="nav-item" data-p="settings"><span class="ni">⚙️</span> Paramètres</div>
   </div>
   <div class="sb-foot">
-    <a href="/home" class="sb-back">â† Retour Accueil</a>
+    <a href="/home" class="sb-back">← Retour Accueil</a>
   </div>
 </aside>
 
@@ -92,74 +106,102 @@
 <div class="app-main">
   <div class="app-topbar">
     <div class="topbar-title" id="page-title">Tableau de Bord</div>
-    <div class="balance-pill" id="top-balance">Solde : â€”</div>
-    <div class="forecast-pill" id="top-forecast" title="Solde aprÃ¨s encaissement de tous les chÃ¨ques en attente">â³ PrÃ©visionnel : â€”</div>
-    <button class="btn btn-s btn-sm" onclick="openModal('m-add-txn')">ï¼‹ Transaction</button>
+    <div class="balance-pill" id="top-balance">Solde : —</div>
+    <div class="forecast-pill" id="top-forecast" title="Solde après encaissement de tous les chèques en attente">⏳ Prévisionnel : —</div>
+    <button class="btn btn-s btn-sm" onclick="openModal('m-add-txn')">+ Transaction</button>
   </div>
   <div class="app-content" id="content">
 
-    <!-- â•â• DASHBOARD â•â• -->
+    <!-- ── DASHBOARD ── -->
     <div class="page active" id="p-dashboard">
       <div class="tiles" id="db-tiles"></div>
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:18px">
         <div class="section">
-          <div class="s-head"><div class="s-title">ðŸ“ˆ Ã‰volution du Solde (30 derniers jours)</div></div>
+          <div class="s-head"><div class="s-title">📈 Évolution du Solde (30 derniers jours)</div></div>
           <div class="s-body" style="height:200px"><canvas id="chart-balance"></canvas></div>
         </div>
         <div class="section">
-          <div class="s-head"><div class="s-title">â³ ChÃ¨ques en Attente</div></div>
+          <div class="s-head"><div class="s-title">❳ Chèques en Attente</div></div>
           <div class="s-body" id="db-pending-list" style="max-height:220px;overflow-y:auto"></div>
         </div>
       </div>
       <div class="section">
         <div class="s-head">
-          <div class="s-title">ðŸ• DerniÃ¨res Transactions</div>
-          <button class="btn btn-ghost btn-sm" onclick="navigate('transactions')">Tout voir â†’</button>
+          <div class="s-title">📋 Dernières Transactions</div>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('transactions')">Tout voir →</button>
         </div>
         <div style="overflow-x:auto"><table class="t" id="db-recent-table">
-          <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>CatÃ©gorie</th><th class="num">Montant</th><th class="num">Solde aprÃ¨s</th></tr></thead>
+          <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Catégorie</th><th class="num">Montant</th><th class="num">Solde après</th></tr></thead>
           <tbody id="db-recent"></tbody>
         </table></div>
       </div>
     </div>
 
-    <!-- â•â• TRANSACTIONS â•â• -->
+    <!-- ── TRANSACTIONS ── -->
     <div class="page" id="p-transactions">
       <div class="search-bar">
-        <input type="text" id="txn-search" placeholder="ðŸ” Rechercher description, bÃ©nÃ©ficiaire, nÂ° chÃ¨queâ€¦" oninput="debounceSearch()"/>
+        <input type="text" id="txn-search" placeholder="🔍 Rechercher description, bénéficiaire, n° chèque⬦" oninput="debounceSearch()"/>
         <input type="month" id="txn-month"/>
         <select id="txn-type-filter" onchange="loadTransactions()">
           <option value="">Tous les types</option>
-          <option value="depot">ðŸ’° DÃ©pÃ´t</option>
-          <option value="retrait">ðŸ’¸ Retrait</option>
-          <option value="virement_in">ðŸ¦ Virement reÃ§u</option>
-          <option value="virement_out">ðŸ“¤ Virement Ã©mis</option>
-          <option value="cheque_in">âœ… ChÃ¨que reÃ§u</option>
-          <option value="cheque_out">ðŸ“ ChÃ¨que Ã©mis</option>
+          <option value="depot">💰 Dépôt</option>
+          <option value="retrait">💸 Retrait</option>
+          <option value="virement_in">📥 Virement reçu</option>
+          <option value="virement_out">📤 Virement émis</option>
+          <option value="cheque_in">✅ Chèque reçu</option>
+          <option value="cheque_out">💳 Chèque émis</option>
         </select>
         <select id="txn-cat-filter" onchange="loadTransactions()">
-          <option value="">Toutes catÃ©gories</option>
+          <option value="">Toutes catégories</option>
         </select>
         <button class="btn btn-p btn-sm" onclick="loadTransactions()">Actualiser</button>
-        <button class="btn btn-ghost btn-sm" id="btn-copy-txn" onclick="exportTableToExcel(document.querySelector('#txn-body').closest('table'),'Transactions_Banque',{skipLastCols:1,btnEl:this})">ðŸ“Š Exporter Excel</button>
-        <button class="btn btn-ghost btn-sm" onclick="openModal('m-import-txn')">ðŸ“¥ Importer Excel</button>
-        <button class="btn btn-ghost btn-sm" onclick="printStatement()">ðŸ–¨ï¸ Imprimer</button>
+        <button class="btn btn-ghost btn-sm" id="btn-copy-txn" onclick="exportTableToExcel(document.querySelector('#txn-body').closest('table'),'Transactions_Banque',{skipLastCols:1,btnEl:this})">📊 Exporter Excel</button>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('m-import-txn')">📥 Importer Excel</button>
+        <button class="btn btn-ghost btn-sm" onclick="printStatement()">🖨️ Imprimer</button>
+      </div>
+      <!-- Quick-add bar -->
+      <div class="quick-bar" id="quick-add-bar">
+        <div class="qbar-types">
+          <button class="qtype-btn active" onclick="setQType('depot',this)">💰 Dépôt</button>
+          <button class="qtype-btn out" onclick="setQType('retrait',this)">💸 Retrait</button>
+          <button class="qtype-btn" onclick="setQType('virement_in',this)">📥 Vir+</button>
+          <button class="qtype-btn out" onclick="setQType('virement_out',this)">📤 Vir-</button>
+          <button class="qtype-btn ck" onclick="setQType('cheque_in',this)">✅ Chèque+</button>
+          <button class="qtype-btn ck out" onclick="setQType('cheque_out',this)">💳 Chèque-</button>
+        </div>
+        <input class="qa-input" type="number" id="qa-amount" placeholder="Montant MAD" step="0.01" min="0"/>
+        <input class="qa-input" type="date" id="qa-date"/>
+        <input class="qa-input" type="text" id="qa-desc" placeholder="Description *" style="flex:2"/>
+        <select class="qa-input" id="qa-cat">
+          <option value="Carburant">Carburant</option><option value="Salaires">Salaires</option>
+          <option value="Loyer">Loyer</option><option value="Maintenance">Maintenance</option>
+          <option value="Fournisseur">Fournisseur</option><option value="Client">Client</option>
+          <option value="Banque">Banque</option><option value="Impôts">Impôts</option>
+          <option value="Autre">Autre</option>
+        </select>
+        <!-- Chèque extra fields -->
+        <div id="qa-ck-fields" style="display:none;display:contents;gap:8px">
+          <input class="qa-input" type="text" id="qa-chknum" placeholder="N° Chèque"/>
+          <input class="qa-input" type="text" id="qa-benef" placeholder="Bénéficiaire"/>
+          <input class="qa-input" type="date" id="qa-duedate" title="Date d'échéance"/>
+        </div>
+        <button class="btn btn-s btn-sm" onclick="quickAddTxn()">+ Ajouter</button>
       </div>
       <div class="section">
         <div class="s-head">
-          <div class="s-title">ðŸ’³ RelevÃ© de Compte</div>
+          <div class="s-title">📋 Relevé de Compte</div>
           <div style="display:flex;gap:14px;font-size:12px;font-weight:700">
-            <span>EntrÃ©es : <span class="c-g" id="txn-tot-in">â€”</span></span>
-            <span>Sorties : <span class="c-r" id="txn-tot-out">â€”</span></span>
+            <span>Entrées : <span class="c-g" id="txn-tot-in">—</span></span>
+            <span>Sorties : <span class="c-r" id="txn-tot-out">—</span></span>
           </div>
         </div>
         <div style="overflow-x:auto" id="txn-printable">
           <table class="t">
             <thead><tr>
-              <th>Date</th><th>Type</th><th>CatÃ©gorie</th><th>Description</th>
-              <th>BÃ©nÃ©ficiaire</th><th>NÂ° ChÃ¨que</th>
-              <th class="num">DÃ©bit</th><th class="num">CrÃ©dit</th><th class="num">Solde</th>
-              <th>RapprochÃ©</th><th></th>
+              <th>Date</th><th>Type</th><th>Catégorie</th><th>Description</th>
+              <th>Bénéficiaire</th><th>N° Chèque</th>
+              <th class="num">Débit</th><th class="num">Crédit</th><th class="num">Solde</th>
+              <th>Rapproché</th><th></th>
             </tr></thead>
             <tbody id="txn-body"></tbody>
           </table>
@@ -167,34 +209,34 @@
       </div>
     </div>
 
-    <!-- â•â• CHÃˆQUES â•â• -->
+    <!-- ── CHÈQUES ── -->
     <div class="page" id="p-cheques">
       <div class="search-bar" style="margin-bottom:16px">
-        <input type="text" id="ck-search" placeholder="ðŸ” Rechercher par NÂ° chÃ¨que, bÃ©nÃ©ficiaire, montantâ€¦" oninput="filterCheques()" style="flex:1"/>
+        <input type="text" id="ck-search" placeholder="🔍 Rechercher par N° chèque, bénéficiaire, montant⬦" oninput="filterCheques()" style="flex:1"/>
         <input type="date" id="ck-date-from" onchange="filterCheques()" placeholder="Du"/>
         <input type="date" id="ck-date-to" onchange="filterCheques()" placeholder="Au"/>
-        <button class="btn btn-g btn-sm" onclick="document.getElementById('ck-search').value='';document.getElementById('ck-date-from').value='';document.getElementById('ck-date-to').value='';filterCheques()">âœ• Reset</button>
+        <button class="btn btn-g btn-sm" onclick="document.getElementById('ck-search').value='';document.getElementById('ck-date-from').value='';document.getElementById('ck-date-to').value='';filterCheques()"↺ Reset</button>
       </div>
       <div class="tiles" id="ck-tiles"></div>
       <div class="ck-cols">
         <div class="section">
-          <div class="s-head"><div class="s-title">ðŸ“¤ ChÃ¨ques Ã‰mis (sortants)</div></div>
+          <div class="s-head"><div class="s-title">📤 Chèques Émis (sortants)</div></div>
           <div style="overflow-x:auto"><table class="t">
-            <thead><tr><th>Date</th><th>NÂ° ChÃ¨que</th><th>BÃ©nÃ©ficiaire</th><th>Ã‰chÃ©ance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>N° Chèque</th><th>Bénéficiaire</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
             <tbody id="ck-out-body"></tbody>
           </table></div>
         </div>
         <div class="section">
-          <div class="s-head"><div class="s-title">ðŸ“¥ ChÃ¨ques ReÃ§us (entrants)</div></div>
+          <div class="s-head"><div class="s-title">📥 Chèques Reçus (entrants)</div></div>
           <div style="overflow-x:auto"><table class="t">
-            <thead><tr><th>Date</th><th>NÂ° ChÃ¨que</th><th>Ã‰metteur</th><th>Ã‰chÃ©ance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>N° Chèque</th><th>Émetteur</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
             <tbody id="ck-in-body"></tbody>
           </table></div>
         </div>
       </div>
     </div>
 
-    <!-- â•â• RAPPORT â•â• -->
+    <!-- ── RAPPORT ── -->
     <div class="page" id="p-rapport">
       <div class="search-bar">
         <input type="month" id="rpt-month"/>
@@ -203,36 +245,36 @@
       <div class="tiles" id="rpt-tiles"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
         <div class="section">
-          <div class="s-head"><div class="s-title">ðŸ“Š Flux Journaliers</div></div>
+          <div class="s-head"><div class="s-title">📊 Flux Journaliers</div></div>
           <div class="s-body" style="height:200px"><canvas id="chart-daily"></canvas></div>
         </div>
         <div class="section">
-          <div class="s-head"><div class="s-title">ðŸ• Sorties par CatÃ©gorie</div></div>
+          <div class="s-head"><div class="s-title">🍩 Sorties par Catégorie</div></div>
           <div class="s-body" style="height:200px;display:flex;align-items:center;justify-content:center"><canvas id="chart-cat"></canvas></div>
         </div>
       </div>
       <div class="section">
-        <div class="s-head"><div class="s-title">ðŸ“… DÃ©tail par Jour</div></div>
+        <div class="s-head"><div class="s-title">📋 Détail par Jour</div></div>
         <div style="overflow-x:auto"><table class="t">
-          <thead><tr><th>Date</th><th class="num">EntrÃ©es</th><th class="num">Sorties</th><th class="num">Net du Jour</th></tr></thead>
+          <thead><tr><th>Date</th><th class="num">Entrées</th><th class="num">Sorties</th><th class="num">Net du Jour</th></tr></thead>
           <tbody id="rpt-body"></tbody>
           <tfoot id="rpt-foot"></tfoot>
         </table></div>
       </div>
     </div>
 
-    <!-- â•â• PARAMÃˆTRES â•â• -->
+    <!-- ── PARAMÈTRES ── -->
     <div class="page" id="p-settings">
       <div class="section" style="max-width:440px">
-        <div class="s-head"><div class="s-title">âš™ï¸ ParamÃ¨tres du Compte</div></div>
+        <div class="s-head"><div class="s-title">⚙️ Paramètres du Compte</div></div>
         <div class="s-body" style="display:flex;flex-direction:column;gap:16px">
           <div class="fg"><label>Nom du Compte</label><input id="cfg-name" placeholder="ex: CIH Compte Principal"/></div>
           <div class="fg">
             <label>Solde Initial (MAD)</label>
             <input type="number" id="cfg-balance" step="0.01" placeholder="0.00"/>
-            <span style="font-size:11px;color:var(--muted);margin-top:2px">Le solde au moment oÃ¹ vous avez commencÃ© Ã  utiliser ce module</span>
+            <span style="font-size:11px;color:var(--muted);margin-top:2px">Le solde au moment où vous avez commencé à utiliser ce module</span>
           </div>
-          <button class="btn btn-s" style="align-self:flex-start;padding:10px 24px" onclick="saveSettings()">âœ… Enregistrer</button>
+          <button class="btn btn-s" style="align-self:flex-start;padding:10px 24px" onclick="saveSettings()">✅ Enregistrer</button>
         </div>
       </div>
     </div>
@@ -242,46 +284,47 @@
 
 <div id="toasts"></div>
 
-<!-- â•â• MODAL: Add Transaction â•â• -->
+<!-- ── MODAL: Add Transaction ── -->
 <div class="overlay" id="m-add-txn">
   <div class="modal">
-    <div class="modal-hd"><div class="mh-ic">ðŸ’³</div><h3>Nouvelle Transaction</h3><button class="x" onclick="closeModal('m-add-txn')">Ã—</button></div>
+    <div class="modal-hd"><div class="mh-ic">💳</div><h3>Nouvelle Transaction</h3><button class="x" onclick="closeModal('m-add-txn')">✕</button></div>
     <div class="modal-body">
       <div class="fgrid">
         <div class="fg" style="grid-column:1/-1">
           <label>Type *</label>
           <select id="at-type" onchange="toggleCheckFields()">
-            <option value="depot">ðŸ’° DÃ©pÃ´t espÃ¨ces</option>
-            <option value="retrait">ðŸ’¸ Retrait espÃ¨ces</option>
-            <option value="virement_in">ðŸ¦ Virement reÃ§u</option>
-            <option value="virement_out">ðŸ“¤ Virement Ã©mis</option>
-            <option value="cheque_in">âœ… ChÃ¨que reÃ§u</option>
-            <option value="cheque_out">ðŸ“ ChÃ¨que Ã©mis</option>
+            <option value="depot">💰 Dépôt espèces</option>
+            <option value="retrait">💸 Retrait espèces</option>
+            <option value="virement_in">📥 Virement reçu</option>
+            <option value="virement_out">📤 Virement émis</option>
+            <option value="cheque_in">✅ Chèque reçu</option>
+            <option value="cheque_out">💳 Chèque émis</option>
           </select>
         </div>
         <div class="fg"><label>Date *</label><input type="date" id="at-date"/></div>
         <div class="fg"><label>Montant (MAD) *</label><input type="number" id="at-amount" placeholder="0.00" step="0.01" min="0" style="font-size:18px;font-weight:800;text-align:right"/></div>
         <div class="fg" style="grid-column:1/-1"><label>Description *</label><input id="at-desc" placeholder="ex: Paiement fournisseur Afriquia"/></div>
         <div class="fg">
-          <label>CatÃ©gorie</label>
+          <label>Catégorie</label>
           <select id="at-cat">
             <option>Carburant</option><option>Salaires</option><option>Loyer</option>
             <option>Maintenance</option><option>Fournisseur</option><option>Client</option>
-            <option>Banque</option><option>ImpÃ´ts</option><option>Autre</option>
+            <option>Banque</option><option>Impôts</option><option>Autre</option>
           </select>
         </div>
         <div class="fg"><label>Notes</label><input id="at-notes" placeholder="facultatif"/></div>
         <!-- Check fields -->
         <div id="txn-check-fields" style="display:none;grid-column:1/-1">
           <div class="fgrid">
-            <div class="fg"><label>NÂ° ChÃ¨que</label><input id="at-chknum" placeholder="ex: 0012345"/></div>
-            <div class="fg"><label>BÃ©nÃ©ficiaire / Ã‰metteur</label><input id="at-benef" placeholder="Nom"/></div>
-            <div class="fg"><label>Date d'Ã‰chÃ©ance</label><input type="date" id="at-duedate"/></div>
-            <div class="fg">
-              <label>Statut</label>
+            <div class="fg"><label>N° Chèque</label><input id="at-chknum" placeholder="ex: 0012345"/></div>
+            <div class="fg"><label>Bénéficiaire / Émetteur</label><input id="at-benef" placeholder="Nom"/></div>
+            <div class="fg"><label>Date d'Échéance</label><input type="date" id="at-duedate"/></div>
+            <div class="fg"><label>Statut Chèque</label>
               <select id="at-chkstatus">
-                <option value="pending">â³ En attente (pas encore encaissÃ©)</option>
-                <option value="cashed">âœ… DÃ©jÃ  encaissÃ©</option>
+                <option value="pending">⏳ En attente</option>
+                <option value="encaissé">✅ Encaissé</option>
+                <option value="cancelled">❌ Annulé</option>
+                <option value="returned">↩️ Retourné</option>
               </select>
             </div>
           </div>
@@ -289,339 +332,264 @@
       </div>
     </div>
     <div class="modal-ft">
-      <button class="btn btn-g" onclick="closeModal('m-add-txn')">Annuler</button>
-      <button class="btn btn-s" onclick="submitAddTxn()">âœ… Enregistrer</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('m-add-txn')">Annuler</button>
+      <button class="btn btn-s btn-sm" onclick="submitAddTxn()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Import Excel ══ -->
+<div class="overlay" id="m-import-txn">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-hd"><div class="mh-ic">📥</div><h3>Importer depuis Excel</h3><button class="x" onclick="closeModal('m-import-txn')">×</button></div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Collez le contenu de votre fichier Excel (colonnes : Date | Type | Description | Montant | Catégorie | Bénéficiaire | N°Chèque)</p>
+      <textarea id="import-paste" rows="8" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:monospace;resize:vertical" placeholder="Collez ici..." oninput="onImportPaste(event)"></textarea>
+      <div id="import-preview" style="margin-top:12px;max-height:200px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('m-import-txn')">Annuler</button>
+      <button class="btn btn-s btn-sm" onclick="submitImport()">📥 Importer</button>
     </div>
   </div>
 </div>
 
 <script>
-const TOKEN = localStorage.getItem('fm_token');
-if (!TOKEN) window.location.href = '/';
-
-// â”€â”€ API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-async function api(method, path, body) {
-  const r = await fetch('/api/bank' + path, {
-    method,
-    headers: { 'Content-Type':'application/json','Authorization':'Bearer '+TOKEN },
-    body: body ? JSON.stringify(body) : undefined
-  });
+// ── UTILS ──────────────────────────────────────────────────────────────────
+const token = localStorage.getItem('fm_token') || '';
+async function api(method, url, body) {
+  const opt = { method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } };
+  if (body) opt.body = JSON.stringify(body);
+  const r = await fetch('/api' + url, opt);
   const data = await r.json();
-  if (!r.ok) throw new Error(data.error || 'Erreur');
+  if (!r.ok) throw new Error(data.error || 'Erreur serveur');
   return data;
 }
-
-// â”€â”€ UTILS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const fmt    = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtAmt = n => fmt(Math.abs(n));
-const today  = () => new Date().toISOString().slice(0,10);
-const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : 'â€”';
-const fmtDateShort = d => d ? new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : 'â€”';
-
-const IN_TYPES = ['depot','virement_in','cheque_in'];
-const TYPE_LABELS = {
-  depot:'ðŸ’° DÃ©pÃ´t', retrait:'ðŸ’¸ Retrait',
-  virement_in:'ðŸ¦ Virement reÃ§u', virement_out:'ðŸ“¤ Virement Ã©mis',
-  cheque_in:'âœ… ChÃ¨que reÃ§u', cheque_out:'ðŸ“ ChÃ¨que Ã©mis'
-};
-const CAT_COLORS = {
-  Carburant:'#E65100',Salaires:'#1A3A5C',Loyer:'#7B3F9E',
-  Maintenance:'#B8860B',Fournisseur:'#0070F2',Client:'#188918',
-  Banque:'#1D7EAA',ImpÃ´ts:'#BB0000',Autre:'#6A6D70'
-};
-
-function statusBadge(s) {
-  if (s==='pending')   return '<span class="ck-pending">â³ En attente</span>';
-  if (s==='cashed')    return '<span class="ck-cashed">âœ… EncaissÃ©</span>';
-  if (s==='cancelled') return '<span class="ck-cancelled">âŒ AnnulÃ©</span>';
-  return 'â€”';
+function fmt(n, d=0) { return (parseFloat(n)||0).toLocaleString('fr-FR', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+function today() { return new Date().toISOString().slice(0,10); }
+function thisMonth() { return new Date().toISOString().slice(0,7); }
+function toast(msg, t='g') {
+  const d = document.createElement('div'); d.className = 'toast t-'+t; d.textContent = msg;
+  document.getElementById('toasts').appendChild(d); setTimeout(()=>d.remove(), 3500);
 }
 
-function dueBadge(due) {
-  if (!due) return '';
-  const days = Math.ceil((new Date(due) - new Date()) / 86400000);
-  if (days < 0)  return `<span class="due-late">En retard ${Math.abs(days)}j</span>`;
-  if (days <= 7) return `<span class="due-soon">Dans ${days}j</span>`;
-  return `<span class="muted sm">${fmtDate(due)}</span>`;
+// ── NAVIGATION ────────────────────────────────────────────────────────────
+const PAGES = { dashboard:'🏦 Trésorerie', transactions:'💳 Transactions', cheques:'📋 Chèques', rapport:'📊 Rapport', settings:'⚙️ Paramètres' };
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById('p-' + page);
+  if (pg) pg.classList.add('active');
+  const ni = document.querySelector('.nav-item[data-p="' + page + '"]');
+  if (ni) ni.classList.add('active');
+  document.getElementById('page-title').textContent = PAGES[page] || page;
+  if (page === 'dashboard')    loadDashboard();
+  if (page === 'transactions') loadTransactions();
+  if (page === 'cheques')      loadCheques();
+  if (page === 'rapport')      loadRapport();
+  if (page === 'settings')     loadSettings();
 }
+document.querySelectorAll('.nav-item[data-p]').forEach(el => {
+  el.addEventListener('click', () => navigate(el.dataset.p));
+});
 
-function toast(msg, type='g') {
-  const el = document.createElement('div');
-  el.className = 'toast t-'+type; el.textContent = msg;
-  document.getElementById('toasts').appendChild(el);
-  setTimeout(() => el.remove(), 3000);
-}
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
-
-// â”€â”€ NAV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const pageNames = { dashboard:'Tableau de Bord', transactions:'Transactions', cheques:'ChÃ¨ques', rapport:'Rapport Mensuel', settings:'ParamÃ¨tres' };
-function navigate(p) {
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.p===p));
-  document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('active', pg.id==='p-'+p));
-  document.getElementById('page-title').textContent = pageNames[p]||p;
-  if (p==='dashboard')    loadDashboard();
-  if (p==='transactions') { document.getElementById('txn-month').value=today().slice(0,7); loadTransactions(); }
-  if (p==='cheques')      loadCheques();
-  if (p==='rapport')      { document.getElementById('rpt-month').value=today().slice(0,7); loadRapport(); }
-  if (p==='settings')     loadSettings();
-}
-document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => navigate(n.dataset.p)));
-
-// â”€â”€ BALANCE BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── BALANCE ───────────────────────────────────────────────────────────────
 async function refreshBalance() {
-  const b = await api('GET','/balance');
-  const c = b.balance >= 0 ? 'var(--nv)' : 'var(--red)';
-  const fc = b.forecasted_balance >= 0 ? '#7B6000' : '#991B1B';
-  document.getElementById('top-balance').innerHTML   = `Solde : <strong style="color:${c}">${fmt(b.balance)} MAD</strong>`;
-  document.getElementById('top-forecast').innerHTML  = `â³ PrÃ©visionnel : <strong style="color:${fc}">${fmt(b.forecasted_balance)} MAD</strong>`;
-  document.getElementById('sb-acct-name').textContent = b.account_name || 'Banque';
-  return b;
+  try {
+    const b = await api('GET', '/bank/balance');
+    document.getElementById('top-balance').textContent = 'Solde : ' + fmt(b.balance, 2) + ' MAD';
+    const fc = b.forecast ?? b.balance;
+    document.getElementById('top-forecast').textContent = '⏳ Prévisionnel : ' + fmt(fc, 2) + ' MAD';
+  } catch(e) {}
 }
 
-// â”€â”€ CHARTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-let chartBalance = null, chartDaily = null, chartCat = null;
-
-function destroyChart(c) { if (c) { c.destroy(); } return null; }
-
-async function renderBalanceChart() {
-  const history = await api('GET', '/history?days=30');
-  const labels  = history.map(h => new Date(h.day+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}));
-  const values  = history.map(h => h.balance);
-  const minVal  = Math.min(...values);
-  const positiveColor = 'rgba(24,137,24,.15)';
-  const negativeColor = 'rgba(187,0,0,.12)';
-
-  chartBalance = destroyChart(chartBalance);
-  chartBalance = new Chart(document.getElementById('chart-balance'), {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        borderColor: '#1A3A5C',
-        backgroundColor: ctx => {
-          const gradient = ctx.chart.ctx.createLinearGradient(0,0,0,200);
-          gradient.addColorStop(0,'rgba(26,58,92,.25)');
-          gradient.addColorStop(1,'rgba(26,58,92,.02)');
-          return gradient;
-        },
-        borderWidth: 2, pointRadius: 2, tension: 0.4, fill: true
-      }]
-    },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>`${fmt(v.raw)} MAD`}}},
-      scales:{
-        y:{ticks:{callback:v=>`${fmt(v)} MAD`,font:{size:10}},grid:{color:'#F0F0F0'}},
-        x:{ticks:{font:{size:10},maxTicksLimit:8},grid:{display:false}}
-      }
-    }
-  });
-}
-
-async function renderDailyChart(month) {
-  const d = await api('GET', '/report?month='+month);
-  const labels = d.rows.map(r=>fmtDateShort(r.day)).reverse();
-  const ins    = d.rows.map(r=>r.total_in).reverse();
-  const outs   = d.rows.map(r=>r.total_out).reverse();
-  chartDaily = destroyChart(chartDaily);
-  chartDaily = new Chart(document.getElementById('chart-daily'), {
-    type:'bar',
-    data:{labels,datasets:[
-      {label:'EntrÃ©es',data:ins,backgroundColor:'rgba(24,137,24,.7)',borderRadius:4},
-      {label:'Sorties',data:outs,backgroundColor:'rgba(187,0,0,.65)',borderRadius:4}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}}},
-      scales:{x:{ticks:{font:{size:10},maxTicksLimit:12},grid:{display:false}},
-              y:{ticks:{callback:v=>`${fmt(v)}`,font:{size:10}},grid:{color:'#F0F0F0'}}}
-    }
-  });
-}
-
-async function renderCatChart(month) {
-  const stats = await api('GET', '/stats/categories?month='+month);
-  if (!stats.out.length) return;
-  const labels = stats.out.map(c=>c.category);
-  const values = stats.out.map(c=>c.total);
-  const colors = labels.map(l => CAT_COLORS[l] || '#6A6D70');
-  chartCat = destroyChart(chartCat);
-  chartCat = new Chart(document.getElementById('chart-cat'), {
-    type:'doughnut',
-    data:{labels,datasets:[{data:values,backgroundColor:colors,borderWidth:2,borderColor:'#fff'}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:12}},
-               tooltip:{callbacks:{label:v=>`${v.label}: ${fmt(v.raw)} MAD`}}}
-    }
-  });
-}
-
-// â”€â”€ DASHBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── DASHBOARD ─────────────────────────────────────────────────────────────
+let _balChart = null;
 async function loadDashboard() {
-  const [b, txnData, checks] = await Promise.all([
-    api('GET','/balance'),
-    api('GET','/transactions?month='+today().slice(0,7)),
-    api('GET','/checks')
+  const [bal, txns] = await Promise.all([
+    api('GET', '/bank/balance'),
+    api('GET', '/transactions?limit=10')
   ]);
-
-  const pending    = checks.filter(c=>c.check_status==='pending');
-  const pendingOut = pending.filter(c=>c.type==='cheque_out');
-  const pendingIn  = pending.filter(c=>c.type==='cheque_in');
-  const pendOutAmt = pendingOut.reduce((s,c)=>s+c.amount,0);
-  const pendInAmt  = pendingIn.reduce((s,c)=>s+c.amount,0);
-  const balCol = b.balance >= 0 ? 'var(--green)' : 'var(--red)';
-  const frcCol = b.forecasted_balance >= 0 ? 'var(--blue)' : 'var(--red)';
-
+  const b = bal.balance;
+  const forecast = bal.forecast ?? b;
   document.getElementById('db-tiles').innerHTML = [
-    { ic:'ðŸ¦', val:fmt(b.balance)+' MAD',            lbl:'Solde Actuel',             tc:balCol },
-    { ic:'ðŸ”®', val:fmt(b.forecasted_balance)+' MAD', lbl:'Solde PrÃ©visionnel',        tc:frcCol },
-    { ic:'ðŸ“¥', val:fmt(b.total_in)+' MAD',           lbl:'Total EntrÃ©es (tout)',       tc:'var(--green)' },
-    { ic:'ðŸ“¤', val:fmt(b.total_out)+' MAD',          lbl:'Total Sorties (tout)',       tc:'var(--red)' },
-    { ic:'â³', val:fmt(pendOutAmt)+' MAD',           lbl:`ChÃ¨ques Ã©mis en attente (${pendingOut.length})`, tc:'var(--orange)' },
-    { ic:'ðŸ“¨', val:fmt(pendInAmt)+' MAD',            lbl:`ChÃ¨ques reÃ§us en attente (${pendingIn.length})`, tc:'var(--blue)' },
+    { ic:'💰', val: fmt(b,2)+' MAD', lbl:'Solde Actuel',      tc:'var(--blue)' },
+    { ic:'⏳', val: fmt(forecast,2)+' MAD', lbl:'Prévisionnel',tc:'var(--orange)' },
+    { ic:'📈', val: fmt(bal.total_in||0,2)+' MAD', lbl:'Entrées ce mois', tc:'var(--green)' },
+    { ic:'📉', val: fmt(bal.total_out||0,2)+' MAD', lbl:'Sorties ce mois', tc:'var(--red)' },
   ].map(t=>`<div class="tile" style="--tc:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
-  // Pending checks list
-  document.getElementById('db-pending-list').innerHTML = pending.length
-    ? pending.map(c => {
-        const isIn = IN_TYPES.includes(c.type);
-        return `<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span class="fw7" style="font-size:12px">${c.check_number||'#â€”'} Â· ${c.beneficiary||c.description}</span>
-            <span class="${isIn?'amt-in':'amt-out'}" style="font-size:12px">${isIn?'+':'âˆ’'}${fmt(c.amount)} MAD</span>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center">
-            ${dueBadge(c.due_date)}
-            <div style="display:flex;gap:4px;margin-left:auto">
-              <button class="btn btn-xs" style="background:#D1FAE5;color:#065F46" onclick="quickStatus(${c.id},'cashed')">âœ…</button>
-              <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B" onclick="quickStatus(${c.id},'cancelled')">âŒ</button>
-            </div>
-          </div>
-        </div>`;
-      }).join('')
-    : '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">âœ… Aucun chÃ¨que en attente</div>';
-
   // Recent transactions
-  const recent = txnData.rows.slice(0,8);
-  document.getElementById('db-recent').innerHTML = recent.map(t => {
-    const isIn = IN_TYPES.includes(t.type);
-    const bal  = t.running_balance != null ? `<span class="${t.running_balance>=0?'bal-positive':'bal-negative'}">${fmt(t.running_balance)} MAD</span>` : 'â€”';
-    return `<tr class="${isIn?'row-in':'row-out'}${t.is_reconciled?' row-reconciled':''}">
-      <td class="muted sm">${fmtDateShort(t.txn_date)}</td>
-      <td><span class="type-pill ${isIn?'tp-in':'tp-out'}">${TYPE_LABELS[t.type]||t.type}</span></td>
-      <td class="fw7" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.description}</td>
-      <td><span class="cat-pill">${t.category||'Autre'}</span></td>
-      <td class="num ${isIn?'amt-in':'amt-out'}">${isIn?'+':'âˆ’'}${fmt(t.amount)} MAD</td>
-      <td class="num">${bal}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--muted)">Aucune transaction ce mois</td></tr>';
+  document.getElementById('db-recent').innerHTML = (txns.items||txns||[]).slice(0,8).map(t => `
+    <tr>
+      <td>${t.txn_date||''}</td>
+      <td><span class="badge ${t.type}">${txnLabel(t.type)}</span></td>
+      <td>${t.description||''}</td>
+      <td style="color:var(--muted);font-size:12px">${t.category||''}</td>
+      <td class="num ${['depot','virement_in','cheque_in'].includes(t.type)?'c-g':'c-r'}">${fmt(t.amount,2)}</td>
+      <td class="num">${t.balance_after!=null?fmt(t.balance_after,2):'—'}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Aucune transaction</td></tr>';
 
-  renderBalanceChart();
+  // Pending cheques
+  try {
+    const checks = await api('GET', '/checks?status=pending');
+    document.getElementById('db-pending-list').innerHTML = (checks||[]).slice(0,6).map(c => `
+      <div style="padding:8px 0;border-bottom:1px solid var(--border-lt);font-size:12px">
+        <div style="font-weight:700">${c.type==='cheque_out'?'📤':'📥'} ${c.check_number||'—'} · ${fmt(c.amount,2)} MAD</div>
+        <div style="color:var(--muted)">${c.beneficiary||''} · Éch. ${c.due_date||'—'}</div>
+      </div>`).join('') || '<div style="padding:12px;color:var(--muted);font-size:12px">Aucun chèque en attente</div>';
+  } catch(e) {}
+
+  // Balance chart
+  if (bal.daily_balances && bal.daily_balances.length) {
+    const ctx = document.getElementById('chart-balance').getContext('2d');
+    if (_balChart) _balChart.destroy();
+    _balChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: bal.daily_balances.map(d=>d.date),
+        datasets: [{ label:'Solde MAD', data: bal.daily_balances.map(d=>d.balance),
+          borderColor:'#0070F2', backgroundColor:'rgba(0,112,242,.08)', fill:true,
+          tension:.3, pointRadius:2 }]
+      },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+        scales:{ y:{ ticks:{callback:v=>fmt(v)+' MAD'} } } }
+    });
+  }
 }
 
-// â”€â”€ TRANSACTIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-let searchTimeout = null;
-function debounceSearch() {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(loadTransactions, 350);
-}
-
+// ── TRANSACTIONS ──────────────────────────────────────────────────────────
+let _debounceTimer = null;
+function debounceSearch() { clearTimeout(_debounceTimer); _debounceTimer = setTimeout(loadTransactions, 350); }
 async function loadTransactions() {
-  const month    = document.getElementById('txn-month').value || today().slice(0,7);
-  const search   = document.getElementById('txn-search').value;
-  const typef    = document.getElementById('txn-type-filter').value;
-  const catf     = document.getElementById('txn-cat-filter').value;
-  let url = `/transactions?month=${month}`;
-  if (search) url += `&search=${encodeURIComponent(search)}`;
-  if (typef)  url += `&type=${typef}`;
-  if (catf)   url += `&category=${encodeURIComponent(catf)}`;
+  const q    = document.getElementById('txn-search').value.trim();
+  const mon  = document.getElementById('txn-month').value || thisMonth();
+  const type = document.getElementById('txn-type-filter').value;
+  const cat  = document.getElementById('txn-cat-filter').value;
+  const params = new URLSearchParams({ month: mon });
+  if (q) params.set('q', q);
+  if (type) params.set('type', type);
+  if (cat) params.set('category', cat);
 
-  const data = await api('GET', url);
-  document.getElementById('txn-tot-in').textContent  = fmt(data.total_in)  + ' MAD';
-  document.getElementById('txn-tot-out').textContent = fmt(data.total_out) + ' MAD';
+  const data = await api('GET', '/transactions?' + params);
+  const items = data.items || data || [];
+  let runBal = data.opening_balance ?? 0;
+  let totIn = 0, totOut = 0;
 
-  document.getElementById('txn-body').innerHTML = data.rows.map(t => {
-    const isIn = IN_TYPES.includes(t.type);
-    const bal  = t.running_balance != null ? `<span class="${t.running_balance>=0?'bal-positive':'bal-negative'}">${fmt(t.running_balance)}</span>` : 'â€”';
-    const ckBadge = t.check_status ? statusBadge(t.check_status) : '';
-    return `<tr class="${isIn?'row-in':'row-out'}${t.is_reconciled?' row-reconciled':''}">
-      <td class="muted sm" style="white-space:nowrap">${fmtDate(t.txn_date)}</td>
-      <td><span class="type-pill ${isIn?'tp-in':'tp-out'}">${TYPE_LABELS[t.type]||t.type}</span>${ckBadge?'<br>'+ckBadge:''}</td>
-      <td><span class="cat-pill">${t.category||'Autre'}</span></td>
-      <td style="max-width:180px">${t.description}${t.notes?`<br><span class="muted sm">${t.notes}</span>`:''}</td>
-      <td class="muted sm">${t.beneficiary||'â€”'}</td>
-      <td class="muted sm">${t.check_number||'â€”'}</td>
-      <td class="num amt-out">${!isIn?fmt(t.amount)+' MAD':'â€”'}</td>
-      <td class="num amt-in">${isIn?fmt(t.amount)+' MAD':'â€”'}</td>
-      <td class="num">${bal}</td>
-      <td style="text-align:center">
-        <button class="rc-btn" title="${t.is_reconciled?'Annuler rapprochement':'Marquer rapprochÃ©'}" onclick="toggleReconcile(${t.id}, this)">
-          ${t.is_reconciled?'ðŸŸ¢':'â­•'}
-        </button>
-      </td>
-      <td><button class="btn btn-d btn-xs" onclick="deleteTxn(${t.id})">âœ•</button></td>
+  document.getElementById('txn-body').innerHTML = items.map(t => {
+    const isIn = ['depot','virement_in','cheque_in'].includes(t.type);
+    if (isIn) totIn += parseFloat(t.amount||0);
+    else totOut += parseFloat(t.amount||0);
+    runBal = t.balance_after ?? runBal;
+    return `<tr>
+      <td>${t.txn_date||''}</td>
+      <td><span class="badge ${t.type}">${txnLabel(t.type)}</span></td>
+      <td style="color:var(--muted);font-size:11px">${t.category||''}</td>
+      <td>${t.description||''}</td>
+      <td style="font-size:12px">${t.beneficiary||''}</td>
+      <td style="font-size:12px">${t.check_number||''}</td>
+      <td class="num ${isIn?'':'c-r'}">${isIn?'':fmt(t.amount,2)}</td>
+      <td class="num ${isIn?'c-g':''}">${isIn?fmt(t.amount,2):''}</td>
+      <td class="num" style="font-weight:700">${fmt(runBal,2)}</td>
+      <td style="font-size:11px;text-align:center">${t.is_reconciled?'✅':''}</td>
+      <td><button class="btn btn-ghost btn-sm" style="color:var(--red);padding:3px 8px" onclick="deleteTxn(${t.id})">🗑</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--muted)">Aucune transaction trouvÃ©e</td></tr>';
-}
+  }).join('') || '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--muted)">Aucune transaction ce mois</td></tr>';
 
-async function toggleReconcile(id, btn) {
-  const t = await api('PATCH', '/transactions/'+id+'/reconcile');
-  btn.textContent = t.is_reconciled ? 'ðŸŸ¢' : 'â­•';
-  btn.closest('tr').classList.toggle('row-reconciled', !!t.is_reconciled);
+  document.getElementById('txn-tot-in').textContent  = fmt(totIn,2) + ' MAD';
+  document.getElementById('txn-tot-out').textContent = fmt(totOut,2) + ' MAD';
+
+  // Populate category filter
+  const cats = [...new Set(items.map(t=>t.category).filter(Boolean))];
+  const sel = document.getElementById('txn-cat-filter');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Toutes catégories</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.value = prev;
 }
 
 async function deleteTxn(id) {
   if (!confirm('Supprimer cette transaction ?')) return;
-  await api('DELETE', '/transactions/'+id);
-  toast('Transaction supprimÃ©e');
+  await api('DELETE', '/transactions/' + id);
+  toast('Transaction supprimée');
   refreshBalance();
   loadTransactions();
-  if (document.querySelector('#p-dashboard.active')) loadDashboard();
 }
 
 function printStatement() {
-  const title = document.getElementById('sb-acct-name').textContent;
-  const month = document.getElementById('txn-month').value;
+  const el = document.getElementById('txn-printable');
   const w = window.open('','_blank');
-  const rows = document.getElementById('txn-body').innerHTML;
-  w.document.write(`<html><head><title>RelevÃ© â€” ${title}</title>
-  <style>body{font-family:Arial,sans-serif;padding:24px;font-size:11px}h2{margin-bottom:12px}
-  table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:5px 8px;text-align:left}
-  th{background:#f5f5f5;font-weight:700}.amt-in{color:green;font-weight:700}.amt-out{color:red;font-weight:700}
-  .bal-positive{color:#1A3A5C;font-weight:700}.bal-negative{color:red;font-weight:700}
-  .row-in{border-left:3px solid green}.row-out{border-left:3px solid red}
-  .row-reconciled{opacity:.6}.type-pill,.cat-pill{font-size:10px}
-  .btn,.rc-btn{display:none}</style></head><body>
-  <h2>ðŸ¦ RelevÃ© Bancaire â€” ${title} â€” ${month}</h2>
-  <p>ImprimÃ© le ${new Date().toLocaleDateString('fr-FR')}</p><br>
-  <table><thead><tr><th>Date</th><th>Type</th><th>CatÃ©gorie</th><th>Description</th><th>BÃ©nÃ©ficiaire</th><th>NÂ° ChÃ¨que</th><th>DÃ©bit</th><th>CrÃ©dit</th><th>Solde</th><th>RapprochÃ©</th></tr></thead><tbody>${rows}</tbody></table>
-</body></html>`);
+  w.document.write('<html><head><title>Relevé de Compte</title><style>table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #ccc;padding:5px 8px}th{background:#f5f5f5;font-weight:700}</style></head><body>');
+  w.document.write(el.innerHTML);
+  w.document.write('</body></html>');
   w.document.close();
   w.print();
 }
 
-// â”€â”€ CHÃˆQUES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── QUICK-ADD BAR ─────────────────────────────────────────────────────────
+let _qtype = 'depot';
+function setQType(type, btn) {
+  _qtype = type;
+  document.querySelectorAll('.qtype-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const isCk = type === 'cheque_in' || type === 'cheque_out';
+  const ckFields = document.getElementById('qa-ck-fields');
+  if (ckFields) ckFields.style.display = isCk ? 'contents' : 'none';
+}
+// Init quick-add date
+document.addEventListener('DOMContentLoaded', () => {
+  const qd = document.getElementById('qa-date');
+  if (qd) qd.value = today();
+  setQType('depot', document.querySelector('.qtype-btn'));
+});
+
+async function quickAddTxn() {
+  const amount = parseFloat(document.getElementById('qa-amount').value);
+  const desc   = document.getElementById('qa-desc').value.trim();
+  const date   = document.getElementById('qa-date').value || today();
+  const cat    = document.getElementById('qa-cat').value;
+  if (!desc)   { toast('Description requise', 'er'); return; }
+  if (!amount || amount <= 0) { toast('Montant invalide', 'er'); return; }
+  const isCk = _qtype === 'cheque_in' || _qtype === 'cheque_out';
+  const body = {
+    type: _qtype, txn_date: date, amount, description: desc, category: cat,
+    check_number: isCk ? (document.getElementById('qa-chknum').value || null) : null,
+    beneficiary:  isCk ? (document.getElementById('qa-benef').value || null)  : null,
+    due_date:     isCk ? (document.getElementById('qa-duedate').value || null) : null,
+    check_status: isCk ? 'pending' : null,
+  };
+  try {
+    await api('POST', '/transactions', body);
+    document.getElementById('qa-amount').value = '';
+    document.getElementById('qa-desc').value   = '';
+    if (isCk) {
+      document.getElementById('qa-chknum').value  = '';
+      document.getElementById('qa-benef').value   = '';
+      document.getElementById('qa-duedate').value = '';
+    }
+    toast('✓ Transaction ajoutée');
+    refreshBalance();
+    loadTransactions();
+  } catch(e) { toast(e.message, 'er'); }
+}
+
+// ── CHEQUES ───────────────────────────────────────────────────────────────
+let _allCheques = [];
 async function loadCheques() {
-  const checks = await api('GET','/checks');
+  const checks = await api('GET', '/checks');
   _allCheques = checks;
-  const out = checks.filter(c=>c.type==='cheque_out');
-  const inp = checks.filter(c=>c.type==='cheque_in');
-  const outPendAmt = out.filter(c=>c.check_status==='pending').reduce((s,c)=>s+c.amount,0);
-  const inPendAmt  = inp.filter(c=>c.check_status==='pending').reduce((s,c)=>s+c.amount,0);
-
+  const out = checks.filter(c => c.type === 'cheque_out');
+  const inp = checks.filter(c => c.type === 'cheque_in');
+  const outPend = out.filter(c => c.check_status === 'pending').reduce((s,c)=>s+parseFloat(c.amount||0),0);
+  const inPend  = inp.filter(c => c.check_status === 'pending').reduce((s,c)=>s+parseFloat(c.amount||0),0);
   document.getElementById('ck-tiles').innerHTML = [
-    { ic:'ðŸ“', val:out.length,          lbl:'ChÃ¨ques Ã‰mis Total',        tc:'var(--red)' },
-    { ic:'âœ…', val:inp.length,          lbl:'ChÃ¨ques ReÃ§us Total',        tc:'var(--green)' },
-    { ic:'â³', val:fmt(outPendAmt)+' MAD', lbl:'En attente sortant',     tc:'var(--orange)' },
-    { ic:'ðŸ“¨', val:fmt(inPendAmt)+' MAD',  lbl:'En attente entrant',     tc:'var(--blue)' },
+    { ic:'💳', val:out.length,          lbl:'Chèques Émis Total',    tc:'var(--red)' },
+    { ic:'✅', val:inp.length,          lbl:'Chèques Reçus Total',   tc:'var(--green)' },
+    { ic:'⏳', val:fmt(outPend,2)+' MAD', lbl:'En attente sortant',  tc:'var(--orange)' },
+    { ic:'💰', val:fmt(inPend,2)+' MAD',  lbl:'En attente entrant',  tc:'var(--blue)' },
   ].map(t=>`<div class="tile" style="--tc:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
-
   filterCheques();
 }
 
-let _allCheques = [];
 function filterCheques() {
   const q    = (document.getElementById('ck-search').value || '').toLowerCase();
   const from = document.getElementById('ck-date-from').value;
@@ -635,88 +603,122 @@ function filterCheques() {
     if (to   && c.txn_date > to)   return false;
     return true;
   };
-  const out = _allCheques.filter(c => c.type==='cheque_out' && match(c));
-  const inp = _allCheques.filter(c => c.type==='cheque_in'  && match(c));
-  const ckRow = (c, dir) => `<tr>
-    <td class="muted sm">${fmtDate(c.txn_date)}</td>
-    <td class="fw7">${c.check_number||'â€”'}</td>
-    <td>${c.beneficiary||'â€”'}</td>
-    <td>${dueBadge(c.due_date)||'â€”'}</td>
-    <td class="num fw8 ${dir==='out'?'amt-out':'amt-in'}">${dir==='out'?'âˆ’':'+'}${fmt(c.amount)} MAD</td>
-    <td>${statusBadge(c.check_status)}</td>
-    <td><div style="display:flex;gap:4px">
-      <button class="btn btn-xs" style="background:#D1FAE5;color:#065F46" onclick="quickStatus(${c.id},'cashed')">âœ…</button>
-      <button class="btn btn-xs" style="background:#FEE2E2;color:#991B1B" onclick="quickStatus(${c.id},'cancelled')">âŒ</button>
-    </div></td>
-  </tr>`;
+  const out = _allCheques.filter(c => c.type === 'cheque_out' && match(c));
+  const inp = _allCheques.filter(c => c.type === 'cheque_in'  && match(c));
   document.getElementById('ck-out-body').innerHTML = out.map(c=>ckRow(c,'out')).join('')
-    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun rÃ©sultat</td></tr>';
-  document.getElementById('ck-in-body').innerHTML = inp.map(c=>ckRow(c,'in')).join('')
-    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun rÃ©sultat</td></tr>';
+    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun résultat</td></tr>';
+  document.getElementById('ck-in-body').innerHTML  = inp.map(c=>ckRow(c,'in')).join('')
+    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun résultat</td></tr>';
 }
 
+const STATUS_LABELS = { pending:'⏳ En attente', 'encaissé':'✅ Encaissé', cancelled:'❌ Annulé', returned:'↩️ Retourné' };
+function ckRow(c, dir) {
+  const st = STATUS_LABELS[c.check_status] || c.check_status || '—';
+  const stColor = c.check_status==='pending'?'var(--orange)':c.check_status==='encaissé'?'var(--green)':'var(--red)';
+  return `<tr>
+    <td>${c.txn_date||''}</td>
+    <td style="font-weight:700">${c.check_number||'—'}</td>
+    <td>${c.beneficiary||'—'}</td>
+    <td>${c.due_date||'—'}</td>
+    <td class="num" style="font-weight:700">${fmt(c.amount,2)} MAD</td>
+    <td><span style="font-size:11px;color:${stColor}">${st}</span></td>
+    <td style="white-space:nowrap">
+      ${c.check_status==='pending'?`
+        <button class="btn btn-ghost btn-sm" onclick="quickStatus(${c.id},'encaissé')">✅</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickStatus(${c.id},'returned')">↩️</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickStatus(${c.id},'cancelled')">❌</button>`:''}
+    </td></tr>`;
+}
 async function quickStatus(id, status) {
-  await api('PATCH','/checks/'+id+'/status',{ check_status: status });
-  toast(status==='cashed' ? 'âœ… ChÃ¨que encaissÃ©' : 'âŒ ChÃ¨que annulÃ©');
-  refreshBalance();
+  await api('PATCH', '/checks/' + id, { check_status: status });
+  toast('Statut mis à jour');
   loadCheques();
-  if (document.querySelector('#p-dashboard.active')) loadDashboard();
+  refreshBalance();
 }
 
-// â”€â”€ RAPPORT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── RAPPORT ───────────────────────────────────────────────────────────────
+let _dailyChart = null, _catChart = null;
 async function loadRapport() {
-  const month = document.getElementById('rpt-month').value || today().slice(0,7);
-  const d = await api('GET','/report?month='+month);
-  const net = d.total_in - d.total_out;
-  const nc  = net>=0 ? 'var(--green)' : 'var(--red)';
-
+  const mon = document.getElementById('rpt-month').value || thisMonth();
+  const data = await api('GET', '/bank/rapport?month=' + mon);
   document.getElementById('rpt-tiles').innerHTML = [
-    { ic:'ðŸ“¥', val:fmt(d.total_in)+' MAD',  lbl:'Total EntrÃ©es',     tc:'var(--green)' },
-    { ic:'ðŸ“¤', val:fmt(d.total_out)+' MAD', lbl:'Total Sorties',     tc:'var(--red)' },
-    { ic:'ðŸ“Š', val:fmt(net)+' MAD',         lbl:'Flux Net du Mois',  tc:nc },
-    { ic:'ðŸ“…', val:d.rows.length,           lbl:'Jours avec mouvements', tc:'var(--nv)' },
+    { ic:'📈', val:fmt(data.total_in||0,2)+' MAD',  lbl:'Entrées',   tc:'var(--green)' },
+    { ic:'📉', val:fmt(data.total_out||0,2)+' MAD', lbl:'Sorties',   tc:'var(--red)' },
+    { ic:'💰', val:fmt((data.total_in||0)-(data.total_out||0),2)+' MAD', lbl:'Net du Mois', tc:'var(--blue)' },
+    { ic:'📋', val:data.count||0,                   lbl:'Transactions', tc:'var(--muted)' },
   ].map(t=>`<div class="tile" style="--tc:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
-  document.getElementById('rpt-body').innerHTML = d.rows.map(r => {
-    const rnet = r.total_in - r.total_out;
-    return `<tr>
-      <td class="fw7">${fmtDate(r.day)}</td>
-      <td class="num amt-in">+${fmt(r.total_in)}</td>
-      <td class="num amt-out">âˆ’${fmt(r.total_out)}</td>
-      <td class="num fw8 ${rnet>=0?'c-g':'c-r'}">${rnet>=0?'+':''}${fmt(rnet)} MAD</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted)">Aucune donnÃ©e</td></tr>';
-
-  document.getElementById('rpt-foot').innerHTML = `<tr style="background:#f9f9f9;font-weight:800">
-    <td>TOTAL</td>
-    <td class="num amt-in">+${fmt(d.total_in)}</td>
-    <td class="num amt-out">âˆ’${fmt(d.total_out)}</td>
-    <td class="num fw8 ${net>=0?'c-g':'c-r'}">${net>=0?'+':''}${fmt(net)} MAD</td>
+  if (data.daily) {
+    const ctx1 = document.getElementById('chart-daily').getContext('2d');
+    if (_dailyChart) _dailyChart.destroy();
+    _dailyChart = new Chart(ctx1, {
+      type:'bar',
+      data:{ labels:data.daily.map(d=>d.date), datasets:[
+        {label:'Entrées',data:data.daily.map(d=>d.total_in),backgroundColor:'rgba(34,197,94,.7)'},
+        {label:'Sorties',data:data.daily.map(d=>d.total_out),backgroundColor:'rgba(239,68,68,.7)'}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
+    });
+  }
+  if (data.by_category) {
+    const ctx2 = document.getElementById('chart-cat').getContext('2d');
+    if (_catChart) _catChart.destroy();
+    const cats = data.by_category.filter(c=>c.total_out>0);
+    _catChart = new Chart(ctx2, {
+      type:'doughnut',
+      data:{ labels:cats.map(c=>c.category||'Autre'), datasets:[{
+        data:cats.map(c=>c.total_out),
+        backgroundColor:['#0070F2','#F59E0B','#10B981','#EF4444','#8B5CF6','#EC4899','#06B6D4']
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}
+    });
+  }
+  document.getElementById('rpt-body').innerHTML = (data.daily||[]).map(d => `<tr>
+    <td>${d.date}</td><td class="num c-g">${fmt(d.total_in,2)}</td>
+    <td class="num c-r">${fmt(d.total_out,2)}</td>
+    <td class="num" style="font-weight:700">${fmt((d.total_in||0)-(d.total_out||0),2)}</td>
+  </tr>`).join('');
+  document.getElementById('rpt-foot').innerHTML = `<tr style="font-weight:900;background:var(--bg2)">
+    <td>Total</td>
+    <td class="num c-g">${fmt(data.total_in||0,2)} MAD</td>
+    <td class="num c-r">${fmt(data.total_out||0,2)} MAD</td>
+    <td class="num">${fmt((data.total_in||0)-(data.total_out||0),2)} MAD</td>
   </tr>`;
-
-  await Promise.all([renderDailyChart(month), renderCatChart(month)]);
 }
 
-// â”€â”€ SETTINGS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SETTINGS ──────────────────────────────────────────────────────────────
 async function loadSettings() {
-  const s = await api('GET','/settings');
-  document.getElementById('cfg-name').value    = s.account_name||'';
-  document.getElementById('cfg-balance').value = s.initial_balance||0;
+  try {
+    const s = await api('GET', '/bank/settings');
+    if (s.account_name) document.getElementById('cfg-name').value = s.account_name;
+    if (s.opening_balance != null) document.getElementById('cfg-balance').value = s.opening_balance;
+  } catch(e) {}
 }
 async function saveSettings() {
-  const name = document.getElementById('cfg-name').value.trim();
-  const bal  = parseFloat(document.getElementById('cfg-balance').value)||0;
-  await api('PUT','/settings',{ account_name:name||'Compte Bancaire', initial_balance:bal });
-  toast('ParamÃ¨tres enregistrÃ©s âœ“');
+  const account_name = document.getElementById('cfg-name').value.trim();
+  const opening_balance = parseFloat(document.getElementById('cfg-balance').value) || 0;
+  await api('POST', '/bank/settings', { account_name, opening_balance });
+  toast('Paramètres enregistrés ✓');
   refreshBalance();
 }
 
-// â”€â”€ ADD TRANSACTION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MODAL HELPERS ─────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function toggleCheckFields() {
-  const type = document.getElementById('at-type').value;
-  const isCheck = type==='cheque_in'||type==='cheque_out';
-  document.getElementById('txn-check-fields').style.display = isCheck ? 'block' : 'none';
+  const t = document.getElementById('at-type').value;
+  const isCk = t === 'cheque_in' || t === 'cheque_out';
+  const f = document.getElementById('txn-check-fields');
+  f.style.display = isCk ? '' : 'none';
 }
+
+// ── TYPE LABELS ────────────────────────────────────────────────────────────
+function txnLabel(type) {
+  const MAP = { depot:'💰 Dépôt', retrait:'💸 Retrait', virement_in:'📥 Vir+', virement_out:'📤 Vir-',
+    cheque_in:'✅ Chèque+', cheque_out:'💳 Chèque-' };
+  return MAP[type] || type;
+}
+
 
 async function submitAddTxn() {
   const type   = document.getElementById('at-type').value;
@@ -737,7 +739,7 @@ async function submitAddTxn() {
     });
     closeModal('m-add-txn');
     ['at-amount','at-desc','at-chknum','at-benef','at-duedate','at-notes'].forEach(id => document.getElementById(id).value='');
-    toast('Transaction enregistrÃ©e âœ“');
+    toast('Transaction enregistrée ✓');
     refreshBalance();
     if (document.querySelector('#p-dashboard.active'))    loadDashboard();
     if (document.querySelector('#p-transactions.active')) loadTransactions();
@@ -745,7 +747,7 @@ async function submitAddTxn() {
   } catch(e) { toast(e.message,'er'); }
 }
 
-// â”€â”€ INIT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── INIT ───────────────────────────────────────────────────────
 document.getElementById('at-date').value = today();
 refreshBalance();
 loadDashboard();
@@ -753,15 +755,15 @@ loadDashboard();
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="/js/excel-utils.js"></script>
 <script>
-// â”€â”€ IMPORT FROM EXCEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Expected columns (order flexible): Date | Type | Description | Montant | CatÃ©gorie | BÃ©nÃ©ficiaire | NÂ°ChÃ¨que
+// ── IMPORT FROM EXCEL ──────────────────────────────────────────
+// Expected columns (order flexible): Date | Type | Description | Montant | Catégorie | Bénéficiaire | N°Chèque
 const IMPORT_TYPE_MAP = {
-  'depot':'depot','dÃ©pÃ´t':'depot','depÃ´t':'depot',
+  'depot':'depot','dépôt':'depot','depôt':'depot',
   'retrait':'retrait',
-  'virement reÃ§u':'virement_in','virement in':'virement_in','entrant':'virement_in',
-  'virement Ã©mis':'virement_out','virement out':'virement_out','sortant':'virement_out',
-  'chÃ¨que reÃ§u':'cheque_in','cheque recu':'cheque_in','cheque in':'cheque_in',
-  'chÃ¨que Ã©mis':'cheque_out','cheque emis':'cheque_out','cheque out':'cheque_out',
+  'virement reçu':'virement_in','virement in':'virement_in','entrant':'virement_in',
+  'virement émis':'virement_out','virement out':'virement_out','sortant':'virement_out',
+  'chèque reçu':'cheque_in','cheque recu':'cheque_in','cheque in':'cheque_in',
+  'chèque émis':'cheque_out','cheque emis':'cheque_out','cheque out':'cheque_out',
 };
 
 let importRows = [];
@@ -773,144 +775,50 @@ function onImportPaste(e) {
   importRows = parsed;
   renderPastePreview(parsed, document.getElementById('import-preview'));
 }
-
+document.getElementById('at-date').value = today();
 async function submitImport() {
   const rawText = document.getElementById('import-paste').value;
   if (rawText.trim()) importRows = parseExcelPaste(rawText);
-  if (importRows.length < 2) { alert('Pas de donnÃ©es Ã  importer'); return; }
-  const header = importRows[0].map(h => h.toLowerCase().trim());
-  const rows   = importRows.slice(1).filter(r => r.some(c => c.trim()));
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="/js/excel-utils.js"></script>
+<script>
 
-  // Detect column positions
-  const colIdx = {
-    date:        header.findIndex(h => h.includes('date')),
-    type:        header.findIndex(h => h.includes('type')),
-    description: header.findIndex(h => h.includes('desc') || h.includes('libel') || h.includes('objet') || h.includes('motif')),
-    amount:      header.findIndex(h => h.includes('mont') || h.includes('amount') || h.includes('somme')),
-    category:    header.findIndex(h => h.includes('cat')),
-    beneficiary: header.findIndex(h => h.includes('bÃ©nÃ©f') || h.includes('benef') || h.includes('tiers') || h.includes('nom')),
-    check_number:header.findIndex(h => h.includes('chÃ¨que') || h.includes('cheque') || h.includes('nÂ°')),
-  };
-
-  let imported = 0, errors = 0;
-  for (const row of rows) {
-    const get = (i) => (i >= 0 && row[i]) ? row[i].trim() : '';
-    const rawType   = get(colIdx.type).toLowerCase();
-    const type      = IMPORT_TYPE_MAP[rawType] || 'depot';
-    const rawAmount = get(colIdx.amount).replace(/[^\d.,\-]/g,'').replace(',','.');
-    const amount    = Math.abs(parseFloat(rawAmount));
-    const desc      = get(colIdx.description) || get(colIdx.beneficiary) || 'Import Excel';
-    const date      = parseExcelDate(get(colIdx.date));
-    if (!amount || !date) { errors++; continue; }
+// ── SUBMIT IMPORT ──────────────────────────────────────────────────────────
+async function submitImport() {
+  const rawText = document.getElementById('import-paste').value;
+  if (rawText.trim()) importRows = parseExcelPaste(rawText);
+  if (!importRows.length) { toast('Aucune ligne à importer', 'er'); return; }
+  let ok = 0, err = 0;
+  for (const row of importRows) {
     try {
+      const typeRaw = (row.type || row.Type || '').toLowerCase().trim();
+      const type = IMPORT_TYPE_MAP[typeRaw] || 'depot';
       await api('POST', '/transactions', {
-        txn_date:     date,
-        type,
-        description:  desc,
-        amount,
-        category:     get(colIdx.category) || 'Autre',
-        beneficiary:  get(colIdx.beneficiary),
-        check_number: get(colIdx.check_number),
+        type, txn_date: row.date||row.Date||today(),
+        amount: parseFloat(row.montant||row.Montant||0),
+        description: row.description||row.Description||'Import',
+        category: row.categorie||row.Catégorie||row.categorie||'Autre',
+        beneficiary: row.beneficiaire||row.Bénéficiaire||null,
+        check_number: row['n°cheque']||row['N°Chèque']||null,
       });
-      imported++;
-    } catch { errors++; }
+      ok++;
+    } catch(e) { err++; }
   }
-
+  toast(`Importé : ${ok} OK${err?' · '+err+' erreurs':''}`, err?'er':'g');
   closeModal('m-import-txn');
+  importRows = [];
   document.getElementById('import-paste').value = '';
   document.getElementById('import-preview').innerHTML = '';
-  importRows = [];
-  toast(`âœ… ${imported} transactions importÃ©es${errors ? ` Â· âš ï¸ ${errors} ignorÃ©es` : ''}`, imported>0?'g':'wn');
   refreshBalance();
   loadTransactions();
 }
 
-function parseExcelDate(str) {
-  if (!str) return null;
-  // Try DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD
-  const clean = str.trim();
-  const m1 = clean.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
-  if (m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
-  const m2 = clean.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
-  if (m2) return `${m2[1]}-${m2[2].padStart(2,'0')}-${m2[3].padStart(2,'0')}`;
-  return null;
-}
-
-// â”€â”€ EXPORT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function _expData(tbl) {
-  if (!tbl) return { headers: [], rows: [] };
-  const headers = [...tbl.querySelectorAll('thead th')].map(th => th.textContent.trim()).filter(h => h);
-  const rows = [...tbl.querySelectorAll('tbody tr')].map(tr =>
-    [...tr.querySelectorAll('td')].slice(0, headers.length).map(td => td.textContent.trim())
-  );
-  return { headers, rows };
-}
-function expPDF(tbl, title) {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'landscape' });
-  doc.setFontSize(13); doc.text((title||'Export') + ' â€” ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
-  const { headers, rows } = _expData(tbl);
-  doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [29, 45, 62] } });
-  doc.save((title||'export').replace(/\s+/g,'_') + '.pdf');
-}
-function expXL(tbl, title) {
-  const { headers, rows } = _expData(tbl);
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, (title||'export').slice(0,31));
-  XLSX.writeFile(wb, (title||'export').replace(/\s+/g,'_') + '.xlsx');
-}
-function expWord(tbl, title) {
-  const clone = tbl.cloneNode(true); clone.querySelectorAll('input,button').forEach(el => el.remove());
-  const html = `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}</style></head><body><h2>${title||'Export'}</h2><p style="color:#666;font-size:11px">ExportÃ© le ${new Date().toLocaleDateString('fr-FR')}</p>${clone.outerHTML}</body></html>`;
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html],{type:'application/msword'})); a.download = (title||'export').replace(/\s+/g,'_')+'.doc'; a.click();
-}
-(function wireExport() {
-  const style = `.exp-btns{display:flex;gap:5px;align-items:center;flex-shrink:0}.exp-btn{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:none;transition:background .15s}.exp-pdf{background:#fee2e2;color:#b91c1c}.exp-pdf:hover{background:#fca5a5}.exp-xl{background:#dcfce7;color:#15803d}.exp-xl:hover{background:#86efac}.exp-word{background:#dbeafe;color:#1d4ed8}.exp-word:hover{background:#93c5fd}`;
-  const s = document.createElement('style'); s.textContent = style; document.head.appendChild(s);
-  function wire() {
-    document.querySelectorAll('.section:not([data-ew]),.s-head:not([data-ew])').forEach(sec => {
-      const sh = sec.classList.contains('s-head') ? sec : sec.querySelector('.s-head');
-      const tbl = sec.classList.contains('s-head') ? sec.closest('.section,.s-body,div')?.querySelector('table') : sec.querySelector('table');
-      if (!tbl || !sh || sh.querySelector('.exp-btns')) return;
-      sec.setAttribute('data-ew', '1');
-      const t = sh.querySelector('.s-title')?.textContent.trim().slice(0,30) || 'Export';
-      const w = document.createElement('div'); w.className = 'exp-btns';
-      w.innerHTML = `<button class="exp-btn exp-pdf" onclick="expPDF(this.closest('.section,[data-ew]').querySelector('table'),'${t.replace(/'/g,"\\'")}')">ðŸ“„ PDF</button><button class="exp-btn exp-xl" onclick="expXL(this.closest('.section,[data-ew]').querySelector('table'),'${t.replace(/'/g,"\\'")}')">ðŸ“Š Excel</button><button class="exp-btn exp-word" onclick="expWord(this.closest('.section,[data-ew]').querySelector('table'),'${t.replace(/'/g,"\\'")}')">ðŸ“ Word</button>`;
-      sh.appendChild(w);
-    });
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(wire, 500));
-  else setTimeout(wire, 500);
-})();
+// ── INIT ───────────────────────────────────────────────────────────────────
+document.getElementById('at-date').value = today();
+document.getElementById('rpt-month').value = thisMonth();
+document.getElementById('txn-month').value  = thisMonth();
+refreshBalance();
+loadDashboard();
 </script>
-
-<!-- MODAL: Import from Excel -->
-<div class="overlay" id="m-import-txn">
-  <div class="modal" style="width:620px">
-    <div class="modal-hd"><div class="mh-ic">ðŸ“¥</div><h3>Importer depuis Excel</h3><button class="x" onclick="closeModal('m-import-txn')">Ã—</button></div>
-    <div class="modal-body">
-      <div style="background:#EBF2FA;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.6;color:#1A3A5C">
-        <strong>Comment faire :</strong><br>
-        1. Dans Excel, sÃ©lectionnez vos colonnes et copiez (Ctrl+C)<br>
-        2. Collez ici (Ctrl+V)<br>
-        3. La 1Ã¨re ligne doit Ãªtre les en-tÃªtes : <code>Date | Type | Description | Montant | CatÃ©gorie | BÃ©nÃ©ficiaire | NÂ°ChÃ¨que</code><br>
-        <strong>Types acceptÃ©s :</strong> DÃ©pÃ´t, Retrait, Virement reÃ§u, Virement Ã©mis, ChÃ¨que reÃ§u, ChÃ¨que Ã©mis
-      </div>
-      <div class="fg">
-        <label>Coller les donnÃ©es Excel ici</label>
-        <textarea id="import-paste" rows="6" style="font-size:12px;font-family:monospace;resize:vertical"
-          placeholder="Date&#9;Type&#9;Description&#9;Montant&#9;CatÃ©gorie&#10;15/05/2026&#9;DÃ©pÃ´t&#9;Vente carburant&#9;12500&#9;Carburant&#10;16/05/2026&#9;Retrait&#9;Paiement Afriquia&#9;8000&#9;Fournisseur"
-          oninput="onImportPaste(event)"></textarea>
-      </div>
-      <div id="import-preview"></div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn btn-g" onclick="closeModal('m-import-txn')">Annuler</button>
-      <button class="btn btn-s" onclick="submitImport()">âœ… Importer</button>
-    </div>
-  </div>
-</div>
-<script src="/js/ai-widget.js?v=3"></script>
 </body>
 </html>
-

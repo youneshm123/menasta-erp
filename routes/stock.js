@@ -37,10 +37,11 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
 
 router.post('/delivery', requireAuth, wrap(async (req, res) => {
   const { fuel_type_id, quantity, unit, delivery_date, supplier, notes, cost_per_liter, numero_cheque } = req.body || {};
-  if (!fuel_type_id || !quantity) return res.status(400).json({ error: 'Carburant et quantité requis' });
+  const qty = parseFloat(quantity);
+  if (!fuel_type_id || !qty || qty <= 0) return res.status(400).json({ error: 'Carburant et quantité valide requis' });
   const { rows: ftr } = await pool.query('SELECT * FROM fuel_types WHERE id=$1', [Number(fuel_type_id)]);
   if (!ftr.length) return res.status(404).json({ error: 'Carburant introuvable' });
-  const litres = unit === 'tonnes' ? parseFloat(quantity) * DENSITY : parseFloat(quantity);
+  const litres = unit === 'tonnes' ? qty * DENSITY : qty;
   const cost   = cost_per_liter ? parseFloat(cost_per_liter) : null;
   const delivDate = delivery_date || new Date().toISOString().slice(0,10);
   const { rows: [{ id }] } = await pool.query(`

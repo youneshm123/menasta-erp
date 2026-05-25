@@ -8,3 +8,19 @@ server_err.txt
 *.bat
 .env
 backups/
+# Debug/recovery scripts (never commit these)
+recover-*.js
+patch-*.js
+fix-*.js
+debug-*.js
+check-*.js
+extract-*.js
+scan-*.js
+build-*.js
+inspect-*.js
+verify-*.js
+write-*.js
+get-*.js
+find-*.js
+assemble-*.js
+deep-scan.js

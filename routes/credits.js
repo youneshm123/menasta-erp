@@ -154,8 +154,9 @@ router.post('/clients/:id/remind', requireAuth, wrap(async (req, res) => {
 
 // ── Payments ──────────────────────────────────────────────────
 router.post('/payments', requireAuth, wrap(async (req, res) => {
-  const { credit_client_id, amount, shift_id, notes } = req.body || {};
-  if (!credit_client_id || !amount) return res.status(400).json({ error: 'Client et montant requis' });
+  const { credit_client_id, shift_id, notes } = req.body || {};
+  const amount = parseFloat(req.body.amount);
+  if (!credit_client_id || !amount || amount <= 0) return res.status(400).json({ error: 'Client et montant valide requis' });
 
   const { rows: cr } = await pool.query('SELECT * FROM credit_clients WHERE id=$1', [credit_client_id]);
   if (!cr.length) return res.status(404).json({ error: 'Client introuvable' });

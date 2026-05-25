@@ -20,6 +20,202 @@ const pool = {
 };
 
 async function initDB() {
+  // ── Core schema (safe to run on existing DB — all IF NOT EXISTS) ──
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id            SERIAL PRIMARY KEY,
+      username      TEXT NOT NULL UNIQUE,
+      full_name     TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      role          TEXT NOT NULL DEFAULT 'caissier',
+      is_active     INTEGER NOT NULL DEFAULT 1,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS fuel_types (
+      id              SERIAL PRIMARY KEY,
+      name            TEXT NOT NULL,
+      price_per_liter REAL NOT NULL DEFAULT 0,
+      color_hex       TEXT NOT NULL DEFAULT '#0070F2',
+      is_active       INTEGER NOT NULL DEFAULT 1
+    );
+    CREATE TABLE IF NOT EXISTS pumps (
+      id           SERIAL PRIMARY KEY,
+      name         TEXT NOT NULL,
+      fuel_type_id INTEGER NOT NULL REFERENCES fuel_types(id),
+      status       TEXT NOT NULL DEFAULT 'active'
+    );
+    CREATE TABLE IF NOT EXISTS shifts (
+      id                    SERIAL PRIMARY KEY,
+      opened_by             INTEGER REFERENCES users(id),
+      status                TEXT NOT NULL DEFAULT 'open',
+      opened_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      closed_at             TIMESTAMPTZ,
+      total_liters_sold     REAL,
+      total_fuel_revenue    REAL,
+      total_credit_deducted REAL,
+      total_product_sales   REAL,
+      net_cash              REAL,
+      notes                 TEXT,
+      avance                REAL NOT NULL DEFAULT 0,
+      pompiste              TEXT,
+      heure_debut           TEXT,
+      heure_fin             TEXT
+    );
+    CREATE TABLE IF NOT EXISTS pump_readings (
+      id           SERIAL PRIMARY KEY,
+      shift_id     INTEGER NOT NULL REFERENCES shifts(id),
+      pump_id      INTEGER NOT NULL REFERENCES pumps(id),
+      reading_type TEXT NOT NULL,
+      meter_value  REAL NOT NULL,
+      recorded_by  INTEGER REFERENCES users(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(shift_id, pump_id, reading_type)
+    );
+    CREATE TABLE IF NOT EXISTS credit_clients (
+      id           SERIAL PRIMARY KEY,
+      name         TEXT NOT NULL,
+      phone        TEXT,
+      company      TEXT,
+      notes        TEXT,
+      credit_limit REAL,
+      balance_due  REAL NOT NULL DEFAULT 0,
+      is_active    INTEGER NOT NULL DEFAULT 1,
+      ice          TEXT,
+      adresse      TEXT,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS credit_sales (
+      id                SERIAL PRIMARY KEY,
+      shift_id          INTEGER NOT NULL REFERENCES shifts(id),
+      credit_client_id  INTEGER NOT NULL REFERENCES credit_clients(id),
+      pump_id           INTEGER REFERENCES pumps(id),
+      liters            REAL NOT NULL DEFAULT 0,
+      price_per_liter   REAL NOT NULL DEFAULT 0,
+      amount            REAL NOT NULL,
+      recorded_by       INTEGER REFERENCES users(id),
+      notes             TEXT,
+      product_type      TEXT NOT NULL DEFAULT 'carburant',
+      sale_time         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS credit_payments (
+      id               SERIAL PRIMARY KEY,
+      credit_client_id INTEGER NOT NULL REFERENCES credit_clients(id),
+      shift_id         INTEGER REFERENCES shifts(id),
+      amount           REAL NOT NULL,
+      recorded_by      INTEGER REFERENCES users(id),
+      notes            TEXT,
+      payment_time     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS products (
+      id        SERIAL PRIMARY KEY,
+      reference TEXT NOT NULL,
+      name      TEXT NOT NULL,
+      category  TEXT NOT NULL DEFAULT 'Huiles',
+      unit      TEXT NOT NULL DEFAULT 'unité',
+      price     REAL NOT NULL,
+      stock_qty REAL NOT NULL DEFAULT 0,
+      stock_min REAL NOT NULL DEFAULT 5,
+      is_active INTEGER NOT NULL DEFAULT 1
+    );
+    CREATE TABLE IF NOT EXISTS product_sales (
+      id           SERIAL PRIMARY KEY,
+      shift_id     INTEGER NOT NULL REFERENCES shifts(id),
+      product_id   INTEGER NOT NULL REFERENCES products(id),
+      quantity     REAL NOT NULL,
+      unit_price   REAL NOT NULL,
+      total_amount REAL NOT NULL,
+      recorded_by  INTEGER REFERENCES users(id),
+      sale_time    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS expenses (
+      id           SERIAL PRIMARY KEY,
+      category     TEXT NOT NULL DEFAULT 'Autre',
+      description  TEXT NOT NULL,
+      amount       REAL NOT NULL,
+      expense_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      notes        TEXT,
+      recorded_by  INTEGER REFERENCES users(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS fuel_deliveries (
+      id               SERIAL PRIMARY KEY,
+      fuel_type_id     INTEGER NOT NULL REFERENCES fuel_types(id),
+      delivery_date    DATE NOT NULL DEFAULT CURRENT_DATE,
+      liters_delivered REAL NOT NULL,
+      price_per_liter  REAL NOT NULL DEFAULT 0,
+      cost             REAL NOT NULL DEFAULT 0,
+      notes            TEXT,
+      recorded_by      INTEGER REFERENCES users(id),
+      numero_cheque    TEXT,
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS bank_settings (
+      id              SERIAL PRIMARY KEY,
+      account_name    TEXT NOT NULL DEFAULT 'Compte Principal',
+      initial_balance REAL NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS bank_transactions (
+      id            SERIAL PRIMARY KEY,
+      txn_date      DATE NOT NULL DEFAULT CURRENT_DATE,
+      type          TEXT NOT NULL,
+      category      TEXT NOT NULL DEFAULT 'Autre',
+      description   TEXT NOT NULL,
+      amount        REAL NOT NULL,
+      check_number  TEXT,
+      beneficiary   TEXT,
+      due_date      DATE,
+      check_status  TEXT,
+      notes         TEXT,
+      recorded_by   INTEGER REFERENCES users(id),
+      is_reconciled INTEGER NOT NULL DEFAULT 0,
+      reconciled_at DATE,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS cafe_menu (
+      id        SERIAL PRIMARY KEY,
+      name      TEXT NOT NULL,
+      emoji     TEXT NOT NULL DEFAULT '☕',
+      price     REAL NOT NULL DEFAULT 7,
+      is_active INTEGER NOT NULL DEFAULT 1
+    );
+    CREATE TABLE IF NOT EXISTS cafe_sales (
+      id           SERIAL PRIMARY KEY,
+      sale_date    DATE NOT NULL DEFAULT CURRENT_DATE,
+      menu_item_id INTEGER NOT NULL REFERENCES cafe_menu(id),
+      quantity     REAL NOT NULL DEFAULT 0,
+      unit_price   REAL NOT NULL DEFAULT 0,
+      total        REAL NOT NULL DEFAULT 0,
+      recorded_by  INTEGER REFERENCES users(id),
+      UNIQUE(sale_date, menu_item_id)
+    );
+    CREATE TABLE IF NOT EXISTS cafe_stock_items (
+      id            SERIAL PRIMARY KEY,
+      name          TEXT NOT NULL,
+      unit          TEXT NOT NULL DEFAULT 'unité',
+      cost_per_unit REAL NOT NULL DEFAULT 0,
+      is_active     INTEGER NOT NULL DEFAULT 1
+    );
+    CREATE TABLE IF NOT EXISTS cafe_stock_usage (
+      id            SERIAL PRIMARY KEY,
+      usage_date    DATE NOT NULL DEFAULT CURRENT_DATE,
+      stock_item_id INTEGER NOT NULL REFERENCES cafe_stock_items(id),
+      quantity_used REAL NOT NULL DEFAULT 0,
+      cost_per_unit REAL NOT NULL DEFAULT 0,
+      total_cost    REAL NOT NULL DEFAULT 0,
+      recorded_by   INTEGER REFERENCES users(id),
+      UNIQUE(usage_date, stock_item_id)
+    );
+  `);
+
+  // ── Seed fuel types ──
+  const { rows: [{ c: ftc }] } = await pgPool.query('SELECT COUNT(*) as c FROM fuel_types');
+  if (parseInt(ftc) === 0) {
+    await pgPool.query(`INSERT INTO fuel_types (name,price_per_liter,color_hex) VALUES ('Gazoil',11.00,'#0070F2'),('Essence',12.50,'#E84C3D')`);
+  }
+
+  // ── Ensure bank_settings has a row ──
+  await pgPool.query(`INSERT INTO bank_settings (id,account_name,initial_balance) VALUES (1,'Compte Principal',0) ON CONFLICT (id) DO NOTHING`);
+
   await pgPool.query(`
     CREATE TABLE IF NOT EXISTS cuves (
       id             SERIAL PRIMARY KEY,

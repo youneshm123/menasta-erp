@@ -93,7 +93,10 @@ body.app-layout{overflow:auto}
       <div class="topbar-title">🛢️ Suivi des Cuves</div>
       <div class="topbar-sub">Niveaux, livraisons et écarts — détection des pertes</div>
     </div>
-    <button class="btn btn-p" onclick="showTab('lecture')">+ Saisir Lecture</button>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-s" onclick="openAddCuveModal()">➕ Ajouter Citerne</button>
+      <button class="btn btn-p" onclick="showTab('lecture')">+ Saisir Lecture</button>
+    </div>
   </div>
 
   <div class="tabs-pill">
@@ -166,6 +169,29 @@ body.app-layout{overflow:auto}
   <!-- TAB: HISTORIQUE & ÉCARTS -->
   <div id="tab-historique" class="tab-pane">
     <div id="ecarts-container"></div>
+  </div>
+</div>
+
+<!-- Modal: Ajouter Citerne -->
+<div id="modal-add-cuve" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:var(--radius-lg);padding:28px;width:420px;max-width:95vw;box-shadow:var(--shadow-lg)">
+    <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:20px">➕ Ajouter une Citerne</div>
+    <div class="fgrid" style="margin-bottom:14px">
+      <div class="fg"><label>Nom de la citerne</label><input type="text" id="nc-name" placeholder="Cuve Gazoil 2"/></div>
+    </div>
+    <div class="fgrid" style="margin-bottom:14px">
+      <div class="fg"><label>Type de carburant</label>
+        <select id="nc-fuel"></select>
+      </div>
+    </div>
+    <div class="fgrid3" style="margin-bottom:20px">
+      <div class="fg"><label>Capacité Max (L)</label><input type="number" id="nc-cap" value="20000" min="1000" step="500"/></div>
+      <div class="fg"><label>Seuil Alerte (L)</label><input type="number" id="nc-alert" value="3000" min="0" step="100"/></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-s" onclick="closeAddCuveModal()">Annuler</button>
+      <button class="btn btn-p" onclick="saveNewCuve()">✅ Créer la Citerne</button>
+    </div>
   </div>
 </div>
 
@@ -438,6 +464,39 @@ async function loadHistorique() {
     container.appendChild(div);
   }
 }
+
+// ── ADD CUVE MODAL ────────────────────────────────────────────
+async function openAddCuveModal() {
+  const fts = await A('/api/cuves/fuel-types');
+  const sel = document.getElementById('nc-fuel');
+  sel.innerHTML = fts.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+  document.getElementById('nc-name').value = '';
+  const modal = document.getElementById('modal-add-cuve');
+  modal.style.display = 'flex';
+  document.getElementById('nc-name').focus();
+}
+
+function closeAddCuveModal() {
+  document.getElementById('modal-add-cuve').style.display = 'none';
+}
+
+async function saveNewCuve() {
+  const name        = document.getElementById('nc-name').value.trim();
+  const fuel_type_id= parseInt(document.getElementById('nc-fuel').value);
+  const capacite_max= parseFloat(document.getElementById('nc-cap').value) || 20000;
+  const niveau_alerte= parseFloat(document.getElementById('nc-alert').value) || 3000;
+  if (!name) { toast('Entrez un nom pour la citerne', 'er'); return; }
+  const r = await A('/api/cuves', { method: 'POST', body: JSON.stringify({ name, fuel_type_id, capacite_max, niveau_alerte }) });
+  if (r.error) { toast(r.error, 'er'); return; }
+  toast(name + ' créée ✓');
+  closeAddCuveModal();
+  loadTableau();
+}
+
+// Close modal on backdrop click
+document.getElementById('modal-add-cuve').addEventListener('click', function(e) {
+  if (e.target === this) closeAddCuveModal();
+});
 
 loadTableau();
 </script>

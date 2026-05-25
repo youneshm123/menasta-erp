@@ -8,6 +8,14 @@ const compression = require('compression');
 const { initDB, pool } = require('./db');
 const { requireAuth, requireMinRole } = require('./middleware');
 
+// Fail fast if critical env vars are missing
+const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET'];
+for (const v of REQUIRED_ENV) {
+  if (!process.env[v]) { console.error(`[MENASTA] Env var manquant: ${v}`); process.exit(1); }
+}
+
+const START_TIME = Date.now();
+
 async function start() {
   await initDB();
 
@@ -37,6 +45,17 @@ async function start() {
 
   // ── Compression ──
   app.use(compression());
+
+  // ── Request logging ──
+  app.use((req, _res, next) => {
+    const t = Date.now();
+    _res.on('finish', () => {
+      const ms = Date.now() - t;
+      const level = _res.statusCode >= 500 ? 'ERROR' : _res.statusCode >= 400 ? 'WARN' : 'INFO';
+      console.log(`[${level}] ${req.method} ${req.originalUrl} ${_res.statusCode} ${ms}ms`);
+    });
+    next();
+  });
 
   // ── Body parsing ──
   app.use(express.json({ limit: '1mb' }));
@@ -158,6 +177,16 @@ async function start() {
     },
   }));
 
+  // ── Health check (no auth — for Railway / uptime monitors) ──
+  app.get('/health', async (_req, res) => {
+    try {
+      await pool.query('SELECT 1');
+      res.json({ ok: true, uptime: Math.floor((Date.now() - START_TIME) / 1000) });
+    } catch (e) {
+      res.status(503).json({ ok: false, error: e.message });
+    }
+  });
+
   // ── API Routes ──
   // Public (any authenticated user)
   app.use('/api/auth',      require('./routes/auth'));
@@ -228,34 +257,10 @@ async function start() {
   app.get('/logs',     page('logs.html'));
   app.get('/ai',       page('ai-chat.html'));
 
-  // ── Error handler ──
-  app.use((err, _req, res, _next) => {
-    console.error('[ERROR]', err.message);
-    res.status(err.status || 500).json({ error: err.message || 'Erreur serveur interne' });
-  });
-
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`\n⛽  MENASTA v2 — http://localhost:${PORT}\n`);
-  });
-
-  // ── Daily WhatsApp summary at 22:00 ──
-  startDailySummary();
-
-  // ── DB keep-alive (prevents Neon cold starts) ──
-  setInterval(async () => {
-    try { await pool.query('SELECT 1'); } catch (_) {}
-  }, 4 * 60 * 1000); // every 4 minutes
-
-  // ── Anomaly detection (every hour) ──
-  const { startAnomalyDetection } = require('./services/anomaly');
-  startAnomalyDetection();
-
-  // ── Automated backups (daily at 03:00) ──
+  // ── Backup & anomaly routes (must be before error handler) ──
   const { startScheduledBackups, runBackup, listBackups } = require('./services/backup');
   startScheduledBackups();
 
-  // Backup API (patron only)
   app.get('/api/backups', requireAuth, requireMinRole('patron'), (_req, res) => {
     res.json(listBackups());
   });
@@ -267,7 +272,6 @@ async function start() {
     } catch(e) { next(e); }
   });
 
-  // ── Manual anomaly trigger (patron only) ──
   app.get('/api/anomaly/check', requireAuth, requireMinRole('patron'), async (_req, res, next) => {
     try {
       const { runChecksNow } = require('./services/anomaly');
@@ -275,6 +279,41 @@ async function start() {
       res.json({ alerts, count: alerts.length });
     } catch(e) { next(e); }
   });
+
+  // ── Error handler ──
+  app.use((err, _req, res, _next) => {
+    console.error('[ERROR]', err.message);
+    res.status(err.status || 500).json({ error: err.message || 'Erreur serveur interne' });
+  });
+
+  const PORT = process.env.PORT || 3000;
+  const server = app.listen(PORT, () => {
+    console.log(`\n⛽  MENASTA v2 — http://localhost:${PORT}\n`);
+  });
+
+  // ── Graceful shutdown ──
+  const shutdown = (signal) => {
+    console.log(`[MENASTA] ${signal} reçu — arrêt propre...`);
+    server.close(() => {
+      console.log('[MENASTA] Serveur arrêté proprement.');
+      process.exit(0);
+    });
+    setTimeout(() => { console.error('[MENASTA] Arrêt forcé.'); process.exit(1); }, 10000);
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT',  () => shutdown('SIGINT'));
+
+  // ── Daily WhatsApp summary at 22:00 ──
+  startDailySummary();
+
+  // ── DB keep-alive (prevents Neon cold starts) ──
+  setInterval(async () => {
+    try { await pool.query('SELECT 1'); } catch (_) {}
+  }, 4 * 60 * 1000);
+
+  // ── Anomaly detection (every hour) ──
+  const { startAnomalyDetection } = require('./services/anomaly');
+  startAnomalyDetection();
 }
 
 function startDailySummary() {
