@@ -55,7 +55,7 @@ router.get('/summary', requireAuth, wrap(async (_req, res) => {
   const ym = today.slice(0, 7);
   const { rows: [factures] } = await pool.query(`
     SELECT COUNT(*) as count, COALESCE(SUM(total_ttc),0) as total
-    FROM factures WHERE strftime('%Y-%m', facture_date)=$1
+    FROM factures WHERE TO_CHAR(facture_date,'YYYY-MM')=$1
   `, [ym]);
 
   // ── Créances ──

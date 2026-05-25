@@ -8,7 +8,7 @@ router.get('/', requireAuth, wrap(async (req, res) => {
   const { month } = req.query;
   let q, params;
   if (month) {
-    q = `SELECT e.*,u.full_name as recorded_by_name FROM expenses e LEFT JOIN users u ON u.id=e.recorded_by WHERE strftime('%Y-%m', e.expense_date)=$1 ORDER BY e.expense_date DESC`;
+    q = `SELECT e.*,u.full_name as recorded_by_name FROM expenses e LEFT JOIN users u ON u.id=e.recorded_by WHERE TO_CHAR(e.expense_date,'YYYY-MM')=$1 ORDER BY e.expense_date DESC`;
     params = [month];
   } else {
     q = `SELECT e.*,u.full_name as recorded_by_name FROM expenses e LEFT JOIN users u ON u.id=e.recorded_by ORDER BY e.expense_date DESC`;
@@ -19,8 +19,9 @@ router.get('/', requireAuth, wrap(async (req, res) => {
 }));
 
 router.post('/', requireAuth, wrap(async (req, res) => {
-  const { category, description, amount, expense_date, notes } = req.body || {};
-  if (!description || !amount) return res.status(400).json({ error: 'Description et montant requis' });
+  const { category, description, expense_date, notes } = req.body || {};
+  const amount = parseFloat(req.body.amount);
+  if (!description || !amount || amount <= 0) return res.status(400).json({ error: 'Description et montant valide requis' });
   const { rows: [{ id }] } = await pool.query(`
     INSERT INTO expenses (category,description,amount,expense_date,notes,recorded_by)
     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id

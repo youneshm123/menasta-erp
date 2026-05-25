@@ -9,7 +9,7 @@ router.get('/monthly', requireAuth, wrap(async (req, res) => {
 
   const { rows: months } = await pool.query(`
     SELECT
-      strftime('%Y-%m', opened_at) as month,
+      TO_CHAR(opened_at,'YYYY-MM') as month,
       COUNT(*) as shift_count,
       COALESCE(SUM(total_fuel_revenue),0)    as fuel_revenue,
       COALESCE(SUM(total_credit_deducted),0) as credits,
@@ -17,14 +17,14 @@ router.get('/monthly', requireAuth, wrap(async (req, res) => {
       COALESCE(SUM(net_cash),0)              as net_cash,
       COALESCE(SUM(total_liters_sold),0)     as liters_sold
     FROM shifts
-    WHERE status='closed' AND strftime('%Y', opened_at)=$1
-    GROUP BY month ORDER BY month DESC
+    WHERE status='closed' AND TO_CHAR(opened_at,'YYYY')=$1
+    GROUP BY TO_CHAR(opened_at,'YYYY-MM') ORDER BY month DESC
   `, [String(year)]);
 
   const { rows: expenses } = await pool.query(`
-    SELECT strftime('%Y-%m', expense_date) as month, COALESCE(SUM(amount),0) as total
-    FROM expenses WHERE strftime('%Y', expense_date)=$1
-    GROUP BY month
+    SELECT TO_CHAR(expense_date,'YYYY-MM') as month, COALESCE(SUM(amount),0) as total
+    FROM expenses WHERE TO_CHAR(expense_date,'YYYY')=$1
+    GROUP BY TO_CHAR(expense_date,'YYYY-MM')
   `, [String(year)]);
 
   const expMap = {};
@@ -45,7 +45,7 @@ router.get('/monthly', requireAuth, wrap(async (req, res) => {
 }));
 
 router.get('/years', requireAuth, wrap(async (_req, res) => {
-  const { rows } = await pool.query(`SELECT DISTINCT strftime('%Y', opened_at) as y FROM shifts ORDER BY y DESC`);
+  const { rows } = await pool.query(`SELECT DISTINCT TO_CHAR(opened_at,'YYYY') as y FROM shifts ORDER BY y DESC`);
   res.json(rows.map(r => r.y));
 }));
 

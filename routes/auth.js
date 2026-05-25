@@ -30,6 +30,8 @@ router.get('/me', requireAuth, wrap(async (req, res) => {
 
 router.put('/password', requireAuth, wrap(async (req, res) => {
   const { current_password, new_password } = req.body || {};
+  if (!new_password || new_password.length < 8)
+    return res.status(400).json({ error: 'Nouveau mot de passe trop court (min 8 caractères)' });
   const { rows } = await pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]);
   const user = rows[0];
   if (!bcrypt.compareSync(current_password, user.password_hash))

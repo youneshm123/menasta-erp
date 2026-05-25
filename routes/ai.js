@@ -667,11 +667,23 @@ RÈGLES STRICTES:
     return res.status(400).json({ error: 'Impossible de générer une requête SQL valide' });
   }
 
+  // Block queries that could expose sensitive columns
+  const BLOCKED_PATTERNS = /password_hash|password_reset|secret|jwt|token\b/i;
+  if (BLOCKED_PATTERNS.test(sql)) {
+    return res.status(403).json({ error: 'Requête non autorisée: colonnes sensibles détectées' });
+  }
+
   // Step 2: Execute the SQL
   let rows;
   try {
     const result = await pool.query(sql);
-    rows = result.rows;
+    // Strip sensitive columns defensively even if they slip through
+    rows = result.rows.map(r => {
+      const clean = { ...r };
+      delete clean.password_hash;
+      delete clean.password;
+      return clean;
+    });
   } catch (e) {
     return res.status(400).json({ error: `Erreur SQL: ${e.message}`, sql });
   }

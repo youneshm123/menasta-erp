@@ -77,9 +77,10 @@ router.get('/sales', requireAuth, wrap(async (req, res) => {
 }));
 
 router.post('/sales', requireAuth, wrap(async (req, res) => {
-  const { shift_id, credit_client_id, pump_id, amount, notes, product_type } = req.body || {};
-  if (!shift_id || !credit_client_id || !amount)
-    return res.status(400).json({ error: 'Champs obligatoires manquants' });
+  const { shift_id, credit_client_id, pump_id, notes, product_type } = req.body || {};
+  const amount = parseFloat(req.body.amount);
+  if (!shift_id || !credit_client_id || !amount || amount <= 0)
+    return res.status(400).json({ error: 'Champs obligatoires manquants ou montant invalide' });
 
   const { rows: sr } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='open'", [shift_id]);
   if (!sr.length) return res.status(400).json({ error: 'Poste non trouvé ou déjà fermé' });
@@ -104,10 +105,10 @@ router.post('/sales', requireAuth, wrap(async (req, res) => {
 
   const { rows: [sale] } = await pool.query(`
     SELECT cs.*, cc.name as client_name, cc.phone as client_phone, cc.balance_due, cc.credit_limit,
-           p.name as pump_name
+           COALESCE(p.name, 'Lubrifiant') as pump_name
     FROM credit_sales cs
     JOIN credit_clients cc ON cc.id=cs.credit_client_id
-    JOIN pumps p ON p.id=cs.pump_id WHERE cs.id=$1
+    LEFT JOIN pumps p ON p.id=cs.pump_id WHERE cs.id=$1
   `, [id]);
 
   // Auto WhatsApp if credit limit hit

@@ -110,18 +110,28 @@ router.post('/', requireAuth, wrap(async (req, res) => {
   const { rows: open } = await pool.query("SELECT id FROM shifts WHERE status='open'");
   if (open.length) return res.status(400).json({ error: 'Un poste est déjà ouvert (ID ' + open[0].id + ')' });
 
-  const { rows: [{ id: shiftId }] } = await pool.query(
-    'INSERT INTO shifts (opened_by,notes,avance,pompiste,heure_debut,heure_fin) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
-    [req.user.id, notes || '', parseFloat(avance) || 0, pompiste||null, heure_debut||null, heure_fin||null]
-  );
-  for (const r of readings)
-    await pool.query(
-      "INSERT INTO pump_readings (shift_id,pump_id,reading_type,meter_value,recorded_by) VALUES ($1,$2,'start',$3,$4)",
-      [shiftId, r.pump_id, r.meter_value, req.user.id]
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [{ id: shiftId }] } = await client.query(
+      'INSERT INTO shifts (opened_by,notes,avance,pompiste,heure_debut,heure_fin) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
+      [req.user.id, notes || '', parseFloat(avance) || 0, pompiste||null, heure_debut||null, heure_fin||null]
     );
+    for (const r of readings)
+      await client.query(
+        "INSERT INTO pump_readings (shift_id,pump_id,reading_type,meter_value,recorded_by) VALUES ($1,$2,'start',$3,$4)",
+        [shiftId, r.pump_id, r.meter_value, req.user.id]
+      );
+    await client.query('COMMIT');
 
-  const { rows: [shift] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [shiftId]);
-  res.status(201).json(await shiftDetail(shift));
+    const { rows: [shift] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [shiftId]);
+    res.status(201).json(await shiftDetail(shift));
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 }));
 
 router.post('/:id/close', requireAuth, wrap(async (req, res) => {
@@ -132,24 +142,34 @@ router.post('/:id/close', requireAuth, wrap(async (req, res) => {
     return res.status(400).json({ error: 'Relevés de fin requis' });
 
   const shift = rows[0];
-  for (const r of readings)
-    await pool.query(`
-      INSERT INTO pump_readings (shift_id,pump_id,reading_type,meter_value,recorded_by)
-      VALUES ($1,$2,'end',$3,$4)
-      ON CONFLICT (shift_id,pump_id,reading_type) DO UPDATE SET meter_value=EXCLUDED.meter_value, recorded_by=EXCLUDED.recorded_by
-    `, [shift.id, r.pump_id, r.meter_value, req.user.id]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const r of readings)
+      await client.query(`
+        INSERT INTO pump_readings (shift_id,pump_id,reading_type,meter_value,recorded_by)
+        VALUES ($1,$2,'end',$3,$4)
+        ON CONFLICT (shift_id,pump_id,reading_type) DO UPDATE SET meter_value=EXCLUDED.meter_value, recorded_by=EXCLUDED.recorded_by
+      `, [shift.id, r.pump_id, r.meter_value, req.user.id]);
 
-  const calc = await calcShift(shift.id);
-  await pool.query(`
-    UPDATE shifts SET
-      status='closed', closed_at=datetime('now'),
-      total_liters_sold=$1, total_fuel_revenue=$2, total_credit_deducted=$3,
-      total_product_sales=$4, net_cash=$5, notes=COALESCE($6,notes)
-    WHERE id=$7
-  `, [calc.totalLiters, calc.totalFuel, calc.totalCredit, calc.totalProduct, calc.netCash, notes||null, shift.id]);
+    const calc = await calcShift(shift.id);
+    await client.query(`
+      UPDATE shifts SET
+        status='closed', closed_at=NOW(),
+        total_liters_sold=$1, total_fuel_revenue=$2, total_credit_deducted=$3,
+        total_product_sales=$4, net_cash=$5, notes=COALESCE($6,notes)
+      WHERE id=$7
+    `, [calc.totalLiters, calc.totalFuel, calc.totalCredit, calc.totalProduct, calc.netCash, notes||null, shift.id]);
+    await client.query('COMMIT');
 
-  const { rows: [updated] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [shift.id]);
-  res.json({ ...await shiftDetail(updated), calc });
+    const { rows: [updated] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [shift.id]);
+    res.json({ ...await shiftDetail(updated), calc });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 }));
 
 router.post('/:id/reopen', requireAuth, wrap(async (req, res) => {

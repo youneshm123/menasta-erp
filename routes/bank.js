@@ -31,7 +31,7 @@ router.get('/balance', requireAuth, wrap(async (_req, res) => {
   const { rows: [{ t: to }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type IN ('retrait','virement_out','cheque_out')`);
   const { rows: [{ t: po }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type='cheque_out' AND check_status='pending'`);
   const { rows: [{ t: pi }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type='cheque_in'  AND check_status='pending'`);
-  const balance = parseFloat(s.initial_balance) + parseFloat(ti) - parseFloat(to);
+  const balance = parseFloat(s?.initial_balance ?? 0) + parseFloat(ti) - parseFloat(to);
   res.json({
     account_name:       s.account_name,
     initial_balance:    parseFloat(s.initial_balance),
@@ -48,7 +48,7 @@ router.get('/balance', requireAuth, wrap(async (_req, res) => {
 router.get('/transactions', requireAuth, wrap(async (req, res) => {
   const { month, search, type, category } = req.query;
   let where = []; const params = []; let i = 1;
-  if (month)    { where.push(`strftime('%Y-%m', t.txn_date)=$${i++}`); params.push(month); }
+  if (month)    { where.push(`TO_CHAR(t.txn_date,'YYYY-MM')=$${i++}`); params.push(month); }
   if (type)     { where.push(`t.type=$${i++}`);                        params.push(type); }
   if (category) { where.push(`t.category=$${i++}`);                    params.push(category); }
   if (search)   { where.push(`(t.description ILIKE $${i} OR t.beneficiary ILIKE $${i+1} OR t.check_number ILIKE $${i+2})`); params.push('%'+search+'%', '%'+search+'%', '%'+search+'%'); i += 3; }
@@ -62,7 +62,7 @@ router.get('/transactions', requireAuth, wrap(async (req, res) => {
 
   const { rows: [s] }       = await pool.query('SELECT initial_balance FROM bank_settings WHERE id=1');
   const { rows: all }        = await pool.query('SELECT id,type,amount FROM bank_transactions ORDER BY txn_date ASC, id ASC');
-  let bal = parseFloat(s.initial_balance);
+  let bal = parseFloat(s?.initial_balance ?? 0);
   const balMap = {};
   for (const r of all) { bal += sign(r.type) * parseFloat(r.amount); balMap[r.id] = bal; }
 
@@ -74,8 +74,9 @@ router.get('/transactions', requireAuth, wrap(async (req, res) => {
 
 // ── create transaction ────────────────────────────────────────
 router.post('/transactions', requireAuth, wrap(async (req, res) => {
-  const { txn_date, type, category, description, amount, check_number, beneficiary, due_date, check_status, notes } = req.body || {};
-  if (!type || !description || !amount) return res.status(400).json({ error: 'Type, description et montant requis' });
+  const { txn_date, type, category, description, check_number, beneficiary, due_date, check_status, notes } = req.body || {};
+  const amount = parseFloat(req.body.amount);
+  if (!type || !description || !amount || amount <= 0) return res.status(400).json({ error: 'Type, description et montant valide requis' });
   const isCheck = type === 'cheque_in' || type === 'cheque_out';
   const { rows: [{ id }] } = await pool.query(`
     INSERT INTO bank_transactions (txn_date,type,category,description,amount,check_number,beneficiary,due_date,check_status,notes,recorded_by)
@@ -131,6 +132,7 @@ router.get('/checks', requireAuth, wrap(async (_req, res) => {
 router.get('/history', requireAuth, wrap(async (req, res) => {
   const days = Math.min(parseInt(req.query.days) || 30, 365);
   const { rows: [s] } = await pool.query('SELECT initial_balance FROM bank_settings WHERE id=1');
+  const initialBal = parseFloat(s?.initial_balance ?? 0);
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
   const cutoffStr = cutoff.toISOString().slice(0,10);
 
@@ -139,7 +141,7 @@ router.get('/history', requireAuth, wrap(async (req, res) => {
     FROM bank_transactions WHERE txn_date < $1
   `, [cutoffStr]);
 
-  let runBal = parseFloat(s.initial_balance) + parseFloat(before);
+  let runBal = initialBal + parseFloat(before);
 
   const { rows: daily } = await pool.query(`
     SELECT txn_date as day,
@@ -164,12 +166,12 @@ router.get('/stats/categories', requireAuth, wrap(async (req, res) => {
   const month = req.query.month || new Date().toISOString().slice(0,7);
   const { rows: out } = await pool.query(`
     SELECT category, SUM(amount) as total FROM bank_transactions
-    WHERE strftime('%Y-%m', txn_date)=$1 AND type IN ('retrait','virement_out','cheque_out')
+    WHERE TO_CHAR(txn_date,'YYYY-MM')=$1 AND type IN ('retrait','virement_out','cheque_out')
     GROUP BY category ORDER BY total DESC
   `, [month]);
   const { rows: inp } = await pool.query(`
     SELECT category, SUM(amount) as total FROM bank_transactions
-    WHERE strftime('%Y-%m', txn_date)=$1 AND type IN ('depot','virement_in','cheque_in')
+    WHERE TO_CHAR(txn_date,'YYYY-MM')=$1 AND type IN ('depot','virement_in','cheque_in')
     GROUP BY category ORDER BY total DESC
   `, [month]);
   res.json({ out, in: inp });
@@ -182,7 +184,7 @@ router.get('/report', requireAuth, wrap(async (req, res) => {
     SELECT txn_date as day,
       SUM(CASE WHEN type IN ('depot','virement_in','cheque_in')    THEN amount ELSE 0 END) as total_in,
       SUM(CASE WHEN type IN ('retrait','virement_out','cheque_out') THEN amount ELSE 0 END) as total_out
-    FROM bank_transactions WHERE strftime('%Y-%m', txn_date)=$1
+    FROM bank_transactions WHERE TO_CHAR(txn_date,'YYYY-MM')=$1
     GROUP BY txn_date ORDER BY txn_date DESC
   `, [month]);
   const totIn  = rows.reduce((s,r) => s + parseFloat(r.total_in), 0);
@@ -194,7 +196,7 @@ router.get('/report', requireAuth, wrap(async (req, res) => {
 router.get('/reconcile/unreconciled', requireAuth, wrap(async (_req, res) => {
   const { rows: [s] }    = await pool.query('SELECT initial_balance FROM bank_settings WHERE id=1');
   const { rows: all }     = await pool.query('SELECT id,type,amount FROM bank_transactions ORDER BY txn_date ASC, id ASC');
-  let bal = parseFloat(s.initial_balance);
+  let bal = parseFloat(s?.initial_balance ?? 0);
   const balMap = {};
   for (const r of all) { bal += sign(r.type) * parseFloat(r.amount); balMap[r.id] = bal; }
 

@@ -44,8 +44,8 @@ router.put('/users/:id/status', wrap(async (req, res) => {
 // PUT /api/admin/users/:id/password — reset password
 router.put('/users/:id/password', wrap(async (req, res) => {
   const { new_password } = req.body || {};
-  if (!new_password || new_password.length < 4)
-    return res.status(400).json({ error: 'Mot de passe trop court (min 4 caractères)' });
+  if (!new_password || new_password.length < 8)
+    return res.status(400).json({ error: 'Mot de passe trop court (min 8 caractères)' });
   const hash = bcrypt.hashSync(new_password, 10);
   await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, req.params.id]);
   res.json({ ok: true });
