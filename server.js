@@ -245,6 +245,7 @@ async function start() {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
+    res.setHeader('Clear-Site-Data', '"cache"');
     res.sendFile(path.join(__dirname, 'public', f));
   };
   app.get('/',         page('login.html'));
