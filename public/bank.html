@@ -770,36 +770,69 @@ const IMPORT_TYPE_MAP = {
 
 let importRows = [];
 
+// Convert array-of-arrays (first row = headers) to array-of-objects
+function parseImportRows(rawRows) {
+  if (rawRows.length < 2) return [];
+  const headers = rawRows[0].map(h => h.toLowerCase().trim());
+  return rawRows.slice(1).map(cells => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = (cells[i] || '').trim(); });
+    return obj;
+  });
+}
+
+function renderPastePreview(rawRows, container) {
+  if (!rawRows.length) { container.innerHTML = ''; return; }
+  const headers = rawRows[0];
+  const preview = rawRows.slice(1, 6);
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:11px">';
+  html += '<thead><tr>' + headers.map(h =>
+    `<th style="background:#1D2D3E;color:#fff;padding:4px 8px;text-align:left;white-space:nowrap">${h}</th>`
+  ).join('') + '</tr></thead><tbody>';
+  preview.forEach((row, i) => {
+    html += `<tr style="background:${i%2?'#f5f5f5':'#fff'}">` +
+      row.map(c => `<td style="padding:3px 8px;border-bottom:1px solid #eee">${c}</td>`).join('') + '</tr>';
+  });
+  if (rawRows.length - 1 > 5)
+    html += `<tr><td colspan="${headers.length}" style="padding:4px 8px;color:#888;font-size:11px">… et ${rawRows.length - 6} ligne(s) supplémentaire(s)</td></tr>`;
+  html += `</tbody></table><p style="margin-top:6px;font-size:11px;color:#888">${rawRows.length - 1} ligne(s) détectée(s)</p>`;
+  container.innerHTML = html;
+}
+
 function onImportPaste(e) {
   const text = e.target.value;
-  if (!text.trim()) { document.getElementById('import-preview').innerHTML=''; return; }
-  const parsed = parseExcelPaste(text);
-  importRows = parsed;
-  renderPastePreview(parsed, document.getElementById('import-preview'));
+  const previewEl = document.getElementById('import-preview');
+  if (!text.trim()) { previewEl.innerHTML = ''; importRows = []; return; }
+  const rawRows = parseExcelPaste(text);
+  importRows = parseImportRows(rawRows);
+  renderPastePreview(rawRows, previewEl);
 }
 
 // ── SUBMIT IMPORT ──────────────────────────────────────────────────────────
 async function submitImport() {
   const rawText = document.getElementById('import-paste').value;
-  if (rawText.trim()) importRows = parseExcelPaste(rawText);
+  if (rawText.trim() && !importRows.length) {
+    importRows = parseImportRows(parseExcelPaste(rawText));
+  }
   if (!importRows.length) { toast('Aucune ligne à importer', 'er'); return; }
   let ok = 0, err = 0;
   for (const row of importRows) {
     try {
-      const typeRaw = (row.type || row.Type || '').toLowerCase().trim();
+      const typeRaw = (row.type || row['type'] || '').toLowerCase().trim();
       const type = IMPORT_TYPE_MAP[typeRaw] || 'depot';
       await api('POST', '/transactions', {
-        type, txn_date: row.date||row.Date||today(),
-        amount: parseFloat(row.montant||row.Montant||0),
-        description: row.description||row.Description||'Import',
-        category: row.categorie||row.Catégorie||row.categorie||'Autre',
-        beneficiary: row.beneficiaire||row.Bénéficiaire||null,
-        check_number: row['n°cheque']||row['N°Chèque']||null,
+        type,
+        txn_date:    row.date || today(),
+        amount:      parseFloat(row.montant || 0),
+        description: row.description || row['description'] || 'Import',
+        category:    row['catégorie'] || row.categorie || row.category || 'Autre',
+        beneficiary: row['bénéficiaire'] || row.beneficiaire || null,
+        check_number: row['n°chèque'] || row['n°cheque'] || null,
       });
       ok++;
     } catch(e) { err++; }
   }
-  toast(`Importé : ${ok} OK${err?' · '+err+' erreurs':''}`, err?'er':'g');
+  toast(`Importé : ${ok} OK${err ? ' · ' + err + ' erreurs' : ''}`, err ? 'er' : 'g');
   closeModal('m-import-txn');
   importRows = [];
   document.getElementById('import-paste').value = '';
