@@ -261,6 +261,30 @@ async function start() {
   app.get('/logs',     page('logs.html'));
   app.get('/ai',       page('ai-chat.html'));
 
+  // ── Cache-buster route ──
+  app.get('/clear', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Clear-Site-Data', '"cache", "storage"');
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<title>Clearing cache...</title></head><body style="font-family:sans-serif;text-align:center;padding:60px;">
+<h2>🔄 Clearing cache...</h2>
+<p>You will be redirected automatically.</p>
+<script>
+(async function(){
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch(e) {}
+  setTimeout(() => location.replace('/app'), 800);
+})();
+</script></body></html>`);
+  });
+
   // ── Backup & anomaly routes (must be before error handler) ──
   const { startScheduledBackups, runBackup, listBackups } = require('./services/backup');
   startScheduledBackups();
