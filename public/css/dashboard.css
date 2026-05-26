@@ -27,16 +27,16 @@
 /* ── Body layout when DS shell is active ── */
 body.ds-active {
   margin-left: var(--ds-w) !important;
+  padding-top: var(--ds-th) !important;   /* push content below fixed topbar */
   transition: margin-left .22s ease;
 }
 body.ds-active.ds-col {
   margin-left: var(--ds-col) !important;
 }
-/* Override old fiori padding-top */
+/* app-layout pages also need overflow reset (body was height:100vh overflow:hidden) */
 body.app-layout.ds-active {
-  padding-top: var(--ds-th) !important;
-  overflow: auto;
-  height: auto;
+  overflow: auto !important;
+  height: auto !important;
 }
 /* app.html uses #layout with its own padding-top — zero it out */
 body.ds-active #layout {
