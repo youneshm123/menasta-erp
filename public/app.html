@@ -1152,16 +1152,16 @@ function showShiftSummary(result) {
       <div class="fxb"><span class="fw7">(-) Ventes Crédit</span><span class="fw7 c-r">- ${fmt(c.totalCredit)} MAD</span></div>
       <div class="fxb"><span class="fw7">(+) Ventes Produits</span><span class="fw7 c-g">+ ${fmt(c.totalProduct)} MAD</span></div>
       ${(c.totalAvance||0) > 0 ? `<div class="fxb"><span class="fw7">(-) Avance Pompiste</span><span class="fw7" style="color:var(--orange)">- ${fmt(c.totalAvance)} MAD</span></div>` : ''}
-      ${(c.totalExpenses||0) > 0 ? `<div class="fxb"><span class="fw7">(-) Dépenses du Poste</span><span class="fw7 c-r">- ${fmt(c.totalExpenses)} MAD</span></div>` : ''}
+      <div class="fxb"><span class="fw7">(-) Dépenses du Poste</span><span class="fw7 c-r">- ${fmt(c.totalExpenses||0)} MAD</span></div>
       <hr class="div"/>
       <div class="fxb"><span style="font-size:16px;font-weight:800">💵 CAISSE NETTE</span><span style="font-size:22px;font-weight:800;color:var(--green)">${fmt(c.netCash)} MAD</span></div>
     </div>
     ${s.expenses && s.expenses.length ? `
-    <div style="margin-top:16px;">
-      <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:8px;">💸 Dépenses enregistrées (${s.expenses.length})</div>
-      ${s.expenses.map(e => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-lt);font-size:13px;">
-        <span><strong style="color:var(--muted);font-size:11px;">${e.category}</strong> — ${e.description}</span>
-        <span style="color:var(--red);font-weight:700;">-${fmt(e.amount)} MAD</span>
+    <div style="margin-top:16px;background:var(--bg);border-radius:8px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">💸 Détail Dépenses (${s.expenses.length})</div>
+      ${s.expenses.map(e => `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border-lt);font-size:13px;">
+        <span><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--bg2);color:var(--muted);margin-right:8px;">${e.category}</span>${e.description}</span>
+        <span style="color:var(--red);font-weight:800;white-space:nowrap;">- ${fmt(e.amount)} MAD</span>
       </div>`).join('')}
     </div>` : ''}`;
   document.getElementById('shift-detail-body').innerHTML = html;
