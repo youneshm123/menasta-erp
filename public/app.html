@@ -2149,8 +2149,9 @@ async function boot() {
   try {
     const user = await api('GET', '/auth/me');
     S.user = user;
-    document.getElementById('sh-name').textContent = user.full_name;
-    document.getElementById('sh-av').textContent   = initials(user.full_name);
+    const shName = document.getElementById('sh-name');
+    if (shName) shName.textContent = user.full_name;
+    document.getElementById('sh-av').textContent = initials(user.full_name);
 
     const [pumps, fuels, clients, activeShift] = await Promise.all([
       api('GET', '/pumps'),
@@ -2237,9 +2238,9 @@ function expWord(tableId, title, tblEl) {
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="/js/excel-utils.js"></script>
 <script>
-const _origNav = navigate;
-window.navigate = function(p) {
-  _origNav(p);
+const _origGoTo = window.goTo;
+window.goTo = function(p) {
+  _origGoTo(p);
   setTimeout(attachExportBtns, 400);
 };
 attachExportBtns();
