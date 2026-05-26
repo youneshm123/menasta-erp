@@ -635,11 +635,12 @@ function exportWord(tableId, title) {
     'td{border:1px solid #ddd;padding:5px 10px}',
     'tr:nth-child(even)td{background:#f9f9f9}'
   ].join('');
-  const html = '<html><head><meta charset="UTF-8"><style>' + css + '<\/style><\/head><body>'
-    + '<h2>' + title + '<\/h2>'
-    + '<p style="color:#666;font-size:11px">Exporté le ' + new Date().toLocaleDateString('fr-FR') + '<\/p>'
+  const C = '<';
+  const html = '<html><head><meta charset="UTF-8"><style>' + css + C+'/style>'+C+'/head><body>'
+    + '<h2>' + title + C+'/h2>'
+    + '<p style="color:#666;font-size:11px">Exporté le ' + new Date().toLocaleDateString('fr-FR') + C+'/p>'
     + clone.outerHTML
-    + '<\/body><\/html>';
+    + C+'/body>'+C+'/html>';
   const blob = new Blob([html], { type: 'application/msword' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);

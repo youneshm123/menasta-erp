@@ -620,10 +620,11 @@ function expXL(tbl, title) {
 function expWord(tbl, title) {
   const clone = tbl.cloneNode(true); clone.querySelectorAll('input,button').forEach(el => el.remove());
   const css = 'body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}';
-  const html = '<html><head><meta charset="UTF-8"><style>' + css + '<\/style><\/head><body>'
-    + '<h2>' + (title||'Export') + '<\/h2>'
-    + '<p style="color:#666;font-size:11px">Exporté le ' + new Date().toLocaleDateString('fr-FR') + '<\/p>'
-    + clone.outerHTML + '<\/body><\/html>';
+  const C = '<';
+  const html = '<html><head><meta charset="UTF-8"><style>' + css + C+'/style>'+C+'/head><body>'
+    + '<h2>' + (title||'Export') + C+'/h2>'
+    + '<p style="color:#666;font-size:11px">Exporté le ' + new Date().toLocaleDateString('fr-FR') + C+'/p>'
+    + clone.outerHTML + C+'/body>'+C+'/html>';
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html],{type:'application/msword'})); a.download = (title||'export').replace(/\s+/g,'_')+'.doc'; a.click();
 }
 (function wireExport() {
