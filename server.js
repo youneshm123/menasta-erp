@@ -177,6 +177,9 @@ async function start() {
     },
   }));
 
+  // ── Favicon (prevent 404 noise) ──
+  app.get('/favicon.ico', (_req, res) => res.status(204).end());
+
   // ── Health check (no auth — for Railway / uptime monitors) ──
   app.get('/health', async (_req, res) => {
     try {
