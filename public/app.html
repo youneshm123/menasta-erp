@@ -650,6 +650,8 @@ const S = { user: null, pumps: [], fuelTypes: [], activeShift: null, products: [
 const pageNames = { dashboard:'Tableau de Bord', shift:'Poste en Cours', 'shifts-history':'Historique Postes', credits:'Créances Clients', products:'Produits & Huiles', reports:'Rapports Mensuels', expenses:'Dépenses', stock:'Stock Carburant', pumps:'Pompes & Prix', settings:'Paramètres' };
 let paymentClientId = null;
 let chartWeekly = null, chartSplit = null;
+// Live shift calculation state
+let _liveCredit = 0, _liveProduct = 0, _liveExp = 0, _liveAvance = 0;
 
 // ─── AUTH ───────────────────────────────────────────────────
 const token = () => localStorage.getItem('fm_token');
@@ -846,12 +848,15 @@ async function loadShiftPage() {
       <span style="background:${fuelBg};color:${fuelColor};font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;">${r.fuel}</span>
       <span style="font-size:12px;color:var(--muted);flex:1;">Début : <strong style="color:var(--text);font-variant-numeric:tabular-nums;">${startFmt}</strong></span>
       <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${r.price?.toFixed(3)} MAD/L</span>
-      <input type="number" class="end-reading" data-pump="${pid}" data-start="${r.start||0}" step="0.1" placeholder="Fin…" value="${r.end != null ? r.end : ''}" style="width:130px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font);outline:none;" onfocus="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,.1)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'"/>
+      <input type="number" class="end-reading" data-pump="${pid}" data-start="${r.start||0}" data-price="${r.price||0}" step="0.1" placeholder="Fin…" value="${r.end != null ? r.end : ''}" oninput="calcLiveCA()" style="width:130px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font);outline:none;" onfocus="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,.1)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'"/>
     </div>`;
   }).join('');
 
-  const totalCredit  = shift.credit_sales.reduce((s, r) => s + r.amount, 0);
-  const totalProduct = shift.product_sales.reduce((s, r) => s + r.total_amount, 0);
+  const totalCredit    = shift.credit_sales.reduce((s, r) => s + r.amount, 0);
+  const totalProduct   = shift.product_sales.reduce((s, r) => s + r.total_amount, 0);
+  const totalExpenses  = (shift.expenses || []).reduce((s, e) => s + parseFloat(e.amount), 0);
+  _liveCredit = totalCredit; _liveProduct = totalProduct;
+  _liveExp = totalExpenses;  _liveAvance = shift.avance || 0;
 
   el.innerHTML = `
     <div style="background:var(--sb-bg);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
@@ -863,7 +868,13 @@ async function loadShiftPage() {
       <span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);color:#4ADE80;padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:700;">● En Cours</span>
     </div>
 
-    <div class="tiles" style="margin-bottom:18px;">
+    <div class="tiles" style="margin-bottom:10px;">
+      <div class="tile" style="--tile-color:#0070F2;">
+        <div class="tile-accent"></div>
+        <div class="tile-ic-wrap" style="background:#EFF6FF;"><i data-lucide="fuel"></i></div>
+        <div class="tile-val" style="color:#0070F2;" id="live-ca">0.00 MAD</div>
+        <div class="tile-lbl">CA Carburant (en cours)</div>
+      </div>
       <div class="tile" style="--tile-color:var(--orange);">
         <div class="tile-accent"></div>
         <div class="tile-ic-wrap" style="background:#FFFBEB;"><i data-lucide="handshake"></i></div>
@@ -876,7 +887,17 @@ async function loadShiftPage() {
         <div class="tile-val" style="color:var(--green);">${fmt(totalProduct)} MAD</div>
         <div class="tile-lbl">Ventes Produits</div>
       </div>
+      <div class="tile" style="--tile-color:var(--red);">
+        <div class="tile-accent"></div>
+        <div class="tile-ic-wrap" style="background:#FEF2F2;">💸</div>
+        <div class="tile-val" style="color:var(--red);" id="live-exp">${fmt(totalExpenses)} MAD</div>
+        <div class="tile-lbl">Dépenses du Poste</div>
+      </div>
       ${shift.avance > 0 ? `<div class="tile" style="--tile-color:var(--blue);"><div class="tile-accent"></div><div class="tile-ic-wrap" style="background:#EFF6FF;">💵</div><div class="tile-val" style="color:var(--blue);">${fmt(shift.avance)} MAD</div><div class="tile-lbl">Avance Pompiste</div></div>` : ''}
+    </div>
+    <div style="background:var(--sb-bg);border-radius:var(--r);padding:12px 20px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
+      <span style="color:rgba(255,255,255,.7);font-size:13px;font-weight:700;">💵 Caisse Estimée (saisir les compteurs fin)</span>
+      <span id="live-net" style="font-size:20px;font-weight:900;color:#4ADE80;">— MAD</span>
     </div>
 
     <div class="section" style="margin-bottom:20px;">
@@ -953,8 +974,9 @@ async function loadShiftPage() {
       </div>
       <div id="sd-list" style="max-height:220px;overflow-y:auto;"></div>
     </div>`;
-  // Load today's expenses into the shift depenses list
+  // Load shift expenses list then refresh live tiles
   shiftLoadDepenses();
+  calcLiveCA();
 }
 
 // ─── DÉPENSES DU POSTE ──────────────────────────────────────
@@ -962,14 +984,18 @@ async function shiftLoadDepenses() {
   const list = document.getElementById('sd-list');
   if (!list) return;
   try {
-    const expenses = await api('GET', '/expenses');
-    const today = new Date().toISOString().slice(0,10);
-    const todayExp = expenses.filter(e => e.expense_date === today);
-    if (!todayExp.length) {
-      list.innerHTML = '<div style="padding:14px 16px;color:var(--muted);font-size:13px;text-align:center;">Aucune dépense aujourd\'hui</div>';
+    const shiftId = S.activeShift?.id;
+    const expenses = shiftId ? await api('GET', '/expenses?shift_id=' + shiftId) : [];
+    // Update live tile
+    _liveExp = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
+    const expEl = document.getElementById('live-exp');
+    if (expEl) expEl.textContent = fmt(_liveExp) + ' MAD';
+    calcLiveCA();
+    if (!expenses.length) {
+      list.innerHTML = '<div style="padding:14px 16px;color:var(--muted);font-size:13px;text-align:center;">Aucune dépense pour ce poste</div>';
       return;
     }
-    list.innerHTML = todayExp.map(e => `
+    list.innerHTML = expenses.map(e => `
       <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-lt);">
         <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg2);color:var(--muted);white-space:nowrap;">${e.category}</span>
         <span style="flex:1;font-size:13px;font-weight:600;color:var(--text);">${e.description}</span>
@@ -991,7 +1017,8 @@ async function shiftAddDepense() {
       description: desc,
       amount,
       expense_date: new Date().toISOString().slice(0,10),
-      notes: ''
+      notes: '',
+      shift_id: S.activeShift?.id || null
     });
     document.getElementById('sd-desc').value   = '';
     document.getElementById('sd-amount').value = '';
@@ -1125,9 +1152,18 @@ function showShiftSummary(result) {
       <div class="fxb"><span class="fw7">(-) Ventes Crédit</span><span class="fw7 c-r">- ${fmt(c.totalCredit)} MAD</span></div>
       <div class="fxb"><span class="fw7">(+) Ventes Produits</span><span class="fw7 c-g">+ ${fmt(c.totalProduct)} MAD</span></div>
       ${(c.totalAvance||0) > 0 ? `<div class="fxb"><span class="fw7">(-) Avance Pompiste</span><span class="fw7" style="color:var(--orange)">- ${fmt(c.totalAvance)} MAD</span></div>` : ''}
+      ${(c.totalExpenses||0) > 0 ? `<div class="fxb"><span class="fw7">(-) Dépenses du Poste</span><span class="fw7 c-r">- ${fmt(c.totalExpenses)} MAD</span></div>` : ''}
       <hr class="div"/>
       <div class="fxb"><span style="font-size:16px;font-weight:800">💵 CAISSE NETTE</span><span style="font-size:22px;font-weight:800;color:var(--green)">${fmt(c.netCash)} MAD</span></div>
-    </div>`;
+    </div>
+    ${s.expenses && s.expenses.length ? `
+    <div style="margin-top:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:8px;">💸 Dépenses enregistrées (${s.expenses.length})</div>
+      ${s.expenses.map(e => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-lt);font-size:13px;">
+        <span><strong style="color:var(--muted);font-size:11px;">${e.category}</strong> — ${e.description}</span>
+        <span style="color:var(--red);font-weight:700;">-${fmt(e.amount)} MAD</span>
+      </div>`).join('')}
+    </div>` : ''}`;
   document.getElementById('shift-detail-body').innerHTML = html;
   openModal('m-shift-detail');
 }
@@ -1159,7 +1195,8 @@ async function loadHistory() {
 
 async function viewShift(id) {
   const s = await api('GET', '/shifts/' + id);
-  showShiftSummary({ ...s, calc: { totalFuel: s.total_fuel_revenue||0, totalCredit: s.total_credit_deducted||0, totalProduct: s.total_product_sales||0, totalAvance: s.avance||0, netCash: s.net_cash||0 } });
+  const totalExpenses = (s.expenses || []).reduce((sum, e) => sum + parseFloat(e.amount), 0);
+  showShiftSummary({ ...s, calc: { totalFuel: s.total_fuel_revenue||0, totalCredit: s.total_credit_deducted||0, totalProduct: s.total_product_sales||0, totalAvance: s.avance||0, totalExpenses, netCash: s.net_cash||0 } });
 }
 
 async function reopenShift(id) {
@@ -1436,6 +1473,25 @@ function acOpen(ns) {
 }
 
 function acClose(ns) { _acPortalHide(); }
+
+// ─── LIVE CA CALCULATOR ─────────────────────────────────────
+function calcLiveCA() {
+  let ca = 0;
+  document.querySelectorAll('.end-reading').forEach(inp => {
+    const start = parseFloat(inp.dataset.start) || 0;
+    const end   = parseFloat(inp.value);
+    const price = parseFloat(inp.dataset.price) || 0;
+    if (!isNaN(end) && end >= start) ca += (end - start) * price;
+  });
+  const caEl  = document.getElementById('live-ca');
+  const netEl = document.getElementById('live-net');
+  if (caEl) caEl.textContent = fmt(ca) + ' MAD';
+  if (netEl) {
+    const net = ca - _liveCredit + _liveProduct - _liveExp - _liveAvance;
+    netEl.textContent = fmt(net) + ' MAD';
+    netEl.style.color = net >= 0 ? '#4ADE80' : '#F87171';
+  }
+}
 
 // ─── FUEL TOGGLE ────────────────────────────────────────────
 function csSelectFuel(type) {

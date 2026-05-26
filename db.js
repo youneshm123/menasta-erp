@@ -321,6 +321,7 @@ async function initDB() {
   await pgPool.query('ALTER TABLE fuel_deliveries ADD COLUMN IF NOT EXISTS numero_cheque TEXT');
   await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS ice TEXT');
   await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS adresse TEXT');
+  await pgPool.query('ALTER TABLE expenses ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shifts(id)');
   await pgPool.query(`
     CREATE TABLE IF NOT EXISTS tabac_achats (
       id          SERIAL PRIMARY KEY,

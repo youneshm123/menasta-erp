@@ -23,10 +23,12 @@ async function calcShift(shiftId) {
   const { rows: [{ t: tc }] } = await pool.query('SELECT COALESCE(SUM(amount),0) as t FROM credit_sales WHERE shift_id=$1', [shiftId]);
   const { rows: [{ t: tp }] } = await pool.query('SELECT COALESCE(SUM(total_amount),0) as t FROM product_sales WHERE shift_id=$1', [shiftId]);
   const { rows: [{ avance }] } = await pool.query('SELECT avance FROM shifts WHERE id=$1', [shiftId]);
-  const totalCredit  = parseFloat(tc);
-  const totalProduct = parseFloat(tp);
-  const totalAvance  = parseFloat(avance) || 0;
-  return { totalLiters, totalFuel, totalCredit, totalProduct, totalAvance, netCash: totalFuel - totalCredit + totalProduct - totalAvance };
+  const { rows: [{ t: te }] } = await pool.query('SELECT COALESCE(SUM(amount),0) as t FROM expenses WHERE shift_id=$1', [shiftId]);
+  const totalCredit   = parseFloat(tc);
+  const totalProduct  = parseFloat(tp);
+  const totalAvance   = parseFloat(avance) || 0;
+  const totalExpenses = parseFloat(te) || 0;
+  return { totalLiters, totalFuel, totalCredit, totalProduct, totalAvance, totalExpenses, netCash: totalFuel - totalCredit + totalProduct - totalAvance - totalExpenses };
 }
 
 async function shiftDetail(shift) {
@@ -56,6 +58,12 @@ async function shiftDetail(shift) {
     WHERE ps.shift_id=$1 ORDER BY ps.sale_time
   `, [shift.id]);
   shift.product_sales = ps;
+
+  const { rows: exp } = await pool.query(
+    'SELECT * FROM expenses WHERE shift_id=$1 ORDER BY created_at',
+    [shift.id]
+  );
+  shift.expenses = exp;
 
   return shift;
 }
