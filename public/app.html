@@ -1,17 +1,17 @@
-﻿<!DOCTYPE html><!-- v28 -->
+﻿<!DOCTYPE html><!-- v29 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
-<script>if(localStorage.getItem('_av')!=='28'){localStorage.setItem('_av','28');location.reload(true);}</script>
+<script>if(localStorage.getItem('_av')!=='29'){localStorage.setItem('_av','29');location.reload(true);}</script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=28"/>
+<link rel="stylesheet" href="/css/fiori.css?v=29"/>
 <script src="/js/sidebar.js?v=2" defer></script>
 <script src="/js/modal-init.js?v=2" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -134,6 +134,18 @@
       <div class="page" id="p-shifts-history">
         <div class="section">
           <div class="s-head"><div class="s-title">📋 Liste des Postes</div><div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('hist-tbl','Historique Postes')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('hist-tbl','Historique Postes')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('hist-tbl','Historique Postes')">📝 Word</button></div></div>
+          <div style="display:flex;gap:10px;align-items:center;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
+            <input id="hist-search-name" placeholder="🔍 Pompiste / Notes…" oninput="filterHistory()" style="flex:1;min-width:160px;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);"/>
+            <input type="date" id="hist-from" onchange="filterHistory()" title="Du" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);"/>
+            <input type="date" id="hist-to" onchange="filterHistory()" title="Au" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);"/>
+            <select id="hist-status" onchange="filterHistory()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);">
+              <option value="">Tous les statuts</option>
+              <option value="open">Ouvert</option>
+              <option value="closed">Fermé</option>
+            </select>
+            <button class="btn btn-g btn-sm" onclick="clearHistoryFilter()">✕ Effacer</button>
+            <span id="hist-count" style="font-size:12px;color:var(--muted);white-space:nowrap;"></span>
+          </div>
           <div class="s-body-flush" style="overflow-x:auto">
             <table class="t" id="hist-tbl">
               <thead><tr><th>N°</th><th>Ouvert par</th><th>Ouverture</th><th>Fermeture</th><th>CA Carb.</th><th>Crédits</th><th>Produits</th><th class="num">Caisse Nette</th><th>Statut</th><th></th></tr></thead>
@@ -1199,28 +1211,57 @@ function showShiftSummary(result) {
 }
 
 // ─── HISTORY ───────────────────────────────────────────────
+let _allShifts = [];
+
 async function loadHistory() {
-  const shifts = await api('GET', '/shifts');
-  document.getElementById('hist-body').innerHTML = shifts.map(s => {
-    const cls = s.status === 'open' ? 'st-g' : 'st-gr';
-    const lbl = s.status === 'open' ? 'Ouvert' : 'Fermé';
-    return `<tr>
-      <td class="fw7">#${s.id}</td>
-      <td>${s.opened_by_name||'?'}</td>
-      <td class="muted sm">${fmtDT(s.opened_at)}</td>
-      <td class="muted sm">${s.closed_at ? fmtDT(s.closed_at) : '—'}</td>
-      <td class="num">${s.total_fuel_revenue != null ? fmt(s.total_fuel_revenue) + ' MAD' : '—'}</td>
-      <td class="num c-r">${s.total_credit_deducted != null ? fmt(s.total_credit_deducted) + ' MAD' : '—'}</td>
-      <td class="num c-g">${s.total_product_sales != null ? fmt(s.total_product_sales) + ' MAD' : '—'}</td>
-      <td class="num fw8 ${s.status==='closed'?'c-b':''}">${s.net_cash != null ? fmt(s.net_cash) + ' MAD' : '—'}</td>
-      <td><span class="st ${cls}">${lbl}</span></td>
-      <td>
-        <button class="btn btn-g btn-xs" onclick="viewShift(${s.id})">Détail</button>
-        ${s.status==='closed'?`<button class="btn btn-p btn-xs" onclick="printShift(${s.id})">🖨️</button>`:''}
-        ${s.status==='closed'?`<button class="btn btn-xs" style="background:#f59e0b;color:#fff" onclick="reopenShift(${s.id})">Réouvrir</button>`:''}
-      </td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="10" class="tc muted" style="padding:20px">Aucun poste enregistré</td></tr>';
+  _allShifts = await api('GET', '/shifts');
+  filterHistory();
+}
+
+function renderShiftRow(s) {
+  const cls = s.status === 'open' ? 'st-g' : 'st-gr';
+  const lbl = s.status === 'open' ? 'Ouvert' : 'Fermé';
+  return `<tr>
+    <td class="fw7">#${s.id}</td>
+    <td>${s.opened_by_name||'?'}${s.pompiste?' <span class="muted sm">— '+s.pompiste+'</span>':''}</td>
+    <td class="muted sm">${fmtDT(s.opened_at)}</td>
+    <td class="muted sm">${s.closed_at ? fmtDT(s.closed_at) : '—'}</td>
+    <td class="num">${s.total_fuel_revenue != null ? fmt(s.total_fuel_revenue) + ' MAD' : '—'}</td>
+    <td class="num c-r">${s.total_credit_deducted != null ? fmt(s.total_credit_deducted) + ' MAD' : '—'}</td>
+    <td class="num c-g">${s.total_product_sales != null ? fmt(s.total_product_sales) + ' MAD' : '—'}</td>
+    <td class="num fw8 ${s.status==='closed'?'c-b':''}">${s.net_cash != null ? fmt(s.net_cash) + ' MAD' : '—'}</td>
+    <td><span class="st ${cls}">${lbl}</span></td>
+    <td>
+      <button class="btn btn-g btn-xs" onclick="viewShift(${s.id})">Détail</button>
+      ${s.status==='closed'?`<button class="btn btn-p btn-xs" onclick="printShift(${s.id})">🖨️</button>`:''}
+      ${s.status==='closed'?`<button class="btn btn-xs" style="background:#f59e0b;color:#fff" onclick="reopenShift(${s.id})">Réouvrir</button>`:''}
+    </td>
+  </tr>`;
+}
+
+function filterHistory() {
+  const q      = (document.getElementById('hist-search-name')?.value || '').toLowerCase();
+  const from   = document.getElementById('hist-from')?.value;
+  const to     = document.getElementById('hist-to')?.value;
+  const status = document.getElementById('hist-status')?.value;
+  const filtered = _allShifts.filter(s => {
+    if (q && !(s.opened_by_name||'').toLowerCase().includes(q) && !(s.pompiste||'').toLowerCase().includes(q) && !(s.notes||'').toLowerCase().includes(q)) return false;
+    if (status && s.status !== status) return false;
+    if (from && s.opened_at < from) return false;
+    if (to   && s.opened_at > to + 'T23:59:59') return false;
+    return true;
+  });
+  const countEl = document.getElementById('hist-count');
+  if (countEl) countEl.textContent = filtered.length + ' / ' + _allShifts.length + ' postes';
+  document.getElementById('hist-body').innerHTML = filtered.map(renderShiftRow).join('') || '<tr><td colspan="10" class="tc muted" style="padding:20px">Aucun résultat</td></tr>';
+}
+
+function clearHistoryFilter() {
+  document.getElementById('hist-search-name').value = '';
+  document.getElementById('hist-from').value = '';
+  document.getElementById('hist-to').value = '';
+  document.getElementById('hist-status').value = '';
+  filterHistory();
 }
 
 async function viewShift(id) {
@@ -1261,6 +1302,7 @@ async function loadCredits() {
         ${c.balance_due > 0 ? `<button class="btn btn-s btn-xs" onclick="openPayment(${c.id},'${esc(c.name)}',${c.balance_due})">💰 Payer</button>` : ''}
         <button class="btn btn-w btn-xs" onclick="openEditClient(${c.id},'${esc(c.name)}','${esc(c.phone||'')}','${esc(c.company||'')}',${c.credit_limit||'null'})">✏️</button>
         <button class="btn btn-d btn-xs" onclick="deleteClient(${c.id},'${esc(c.name)}')">🗑️</button>
+        <button class="btn btn-xs" style="background:#EFF6FF;color:#1D4ED8;" onclick="clientReleve(${c.id},'${esc(c.name)}')">📄 Relevé</button>
       </td>
     </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucun client</td></tr>';
 
@@ -1274,6 +1316,73 @@ async function loadCredits() {
     </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucune vente crédit</td></tr>';
 
   document.getElementById('nb-credits').textContent = clients.filter(c=>c.balance_due>0).length || 0;
+}
+
+async function clientReleve(id, name) {
+  toast('Génération du relevé…', 'i');
+  try {
+    const { client, sales, payments } = await api('GET', '/credits/clients/' + id + '/history');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Header
+    doc.setFillColor(91, 79, 207);
+    doc.rect(0, 0, 210, 28, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+    doc.text('MENASTA — Relevé Client', 14, 12);
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    doc.text('Édité le ' + new Date().toLocaleDateString('fr-FR'), 14, 20);
+
+    // Client info
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+    doc.text(client.name, 14, 38);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    if (client.company) doc.text('Société : ' + client.company, 14, 45);
+    if (client.phone)   doc.text('Tél : ' + client.phone, 14, 51);
+
+    // Balance box
+    const balColor = client.balance_due > 0 ? [220, 38, 38] : [34, 197, 94];
+    doc.setFillColor(...balColor);
+    doc.roundedRect(130, 32, 66, 22, 3, 3, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    doc.text('Solde actuel', 163, 40, { align: 'center' });
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text(fmt(client.balance_due) + ' MAD', 163, 50, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+
+    // Sales table
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('Ventes Crédit (' + sales.length + ')', 14, 64);
+    doc.autoTable({
+      startY: 67,
+      head: [['Date', 'Type', 'Pompe', 'Montant']],
+      body: sales.length ? sales.map(s => [fmtDT(s.sale_time), s.product_type||'—', s.pump_name||'—', fmt(s.amount) + ' MAD']) : [['Aucune vente','','','']],
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [91, 79, 207], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 245, 255] },
+      columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } }
+    });
+
+    // Payments table
+    const y2 = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('Paiements (' + payments.length + ')', 14, y2);
+    doc.autoTable({
+      startY: y2 + 3,
+      head: [['Date', 'Montant', 'Reçu par', 'Notes']],
+      body: payments.length ? payments.map(p => [fmtDT(p.payment_time), fmt(p.amount) + ' MAD', p.received_by_name||'—', p.notes||'—']) : [['Aucun paiement','','','']],
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [34, 197, 94], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [240, 255, 245] },
+      columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } }
+    });
+
+    doc.save('Releve_' + name.replace(/\s+/g, '_') + '.pdf');
+    toast('Relevé PDF généré ✓', 'g');
+  } catch(e) { toast(e.message, 'er'); }
 }
 
 function openEditClient(id, name, phone, company, limit) {
