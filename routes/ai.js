@@ -727,4 +727,41 @@ router.get('/pdf/credits', requireAuth, wrap(async (req, res) => {
 }));
 router.get('/pdf/monthly', requireAuth, wrap(async (req, res) => { pdfMonthly(res, await getBusinessData()); }));
 
+// ── Smart Categorizer ──────────────────────────────────────────────────────
+router.post('/categorize', requireAuth, wrap(async (req, res) => {
+  const { description, context } = req.body || {};
+  if (!description || description.trim().length < 3) return res.json({ category: null });
+
+  const expenseCategories = ['Maintenance', 'Salaires', 'Fournitures', 'Carburant', 'Loyer', 'Électricité', 'Eau', 'Télécom', 'Transport', 'Autre'];
+  const productCategories = ['Huiles', 'Lubrifiants', 'Filtres', 'Accessoires', 'Pièces détachées', 'Autre'];
+  const productUnits      = ['unité', 'litre', 'kg', 'boîte', 'bidon', 'paire'];
+
+  const isProduct = context === 'product';
+  const cats = isProduct ? productCategories : expenseCategories;
+
+  const prompt = isProduct
+    ? `Tu es un assistant pour une station-service marocaine. Pour ce produit: "${description.trim()}", réponds en JSON uniquement: {"category":"...","unit":"..."} en choisissant category parmi [${cats.join(',')}] et unit parmi [${productUnits.join(',')}].`
+    : `Tu es un assistant pour une station-service marocaine. Pour cette dépense: "${description.trim()}", réponds avec UNE SEULE catégorie parmi: ${cats.join(', ')}. Réponds UNIQUEMENT avec le nom de la catégorie, rien d'autre.`;
+
+  const msg = await client.messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 30,
+    messages: [{ role: 'user', content: prompt }]
+  });
+
+  const text = msg.content[0].text.trim();
+
+  if (isProduct) {
+    try {
+      const parsed = JSON.parse(text);
+      const category = productCategories.find(c => c.toLowerCase() === (parsed.category||'').toLowerCase()) || 'Autre';
+      const unit     = productUnits.find(u => u.toLowerCase() === (parsed.unit||'').toLowerCase()) || 'unité';
+      return res.json({ category, unit });
+    } catch(_) { return res.json({ category: 'Autre', unit: 'unité' }); }
+  }
+
+  const category = expenseCategories.find(c => text.toLowerCase().includes(c.toLowerCase())) || 'Autre';
+  res.json({ category });
+}));
+
 module.exports = router;

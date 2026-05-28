@@ -1,17 +1,17 @@
-﻿<!DOCTYPE html><!-- v30 -->
+﻿<!DOCTYPE html><!-- v31 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
-<script>if(localStorage.getItem('_av')!=='30'){localStorage.setItem('_av','30');location.reload(true);}</script>
+<script>if(localStorage.getItem('_av')!=='31'){localStorage.setItem('_av','31');location.reload(true);}</script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=30"/>
+<link rel="stylesheet" href="/css/fiori.css?v=31"/>
 <script src="/js/sidebar.js?v=2" defer></script>
 <script src="/js/modal-init.js?v=2" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -536,9 +536,13 @@
     <div class="modal-body">
       <div class="fgrid">
         <div class="fg"><label>Référence *</label><input id="ap-ref" placeholder="HUI-001"/></div>
-        <div class="fg"><label>Désignation *</label><input id="ap-name" placeholder="Nom du produit"/></div>
+        <div class="fg">
+          <label>Désignation *</label>
+          <input id="ap-name" placeholder="Nom du produit" oninput="aiSuggestProduct(this.value)" autocomplete="off"/>
+          <div id="np-ai-suggestion" style="display:none;margin-top:6px;"></div>
+        </div>
         <div class="fg"><label>Catégorie</label>
-          <select id="ap-cat"><option>Huiles</option><option>Filtres</option><option>Accessoires</option><option>Autre</option></select>
+          <select id="ap-cat"><option>Huiles</option><option>Lubrifiants</option><option>Filtres</option><option>Accessoires</option><option>Pièces détachées</option><option>Autre</option></select>
         </div>
         <div class="fg"><label>Unité</label><input id="ap-unit" value="unité"/></div>
         <div class="fg"><label>Prix Vente (MAD) *</label><input type="number" id="ap-price" placeholder="0.00" step="0.01"/></div>
@@ -620,11 +624,16 @@
       <div class="fgrid">
         <div class="fg"><label>Catégorie</label>
           <select id="ex-cat">
-            <option>Maintenance</option><option>Salaires</option><option>Fournitures</option><option>Carburant</option><option>Loyer</option><option>Autre</option>
+            <option>Maintenance</option><option>Salaires</option><option>Fournitures</option><option>Carburant</option><option>Loyer</option><option>Électricité</option><option>Eau</option><option>Télécom</option><option>Transport</option><option>Autre</option>
           </select>
         </div>
         <div class="fg"><label>Date</label><input type="date" id="ex-date"/></div>
-        <div class="fg" style="grid-column:1/-1"><label>Description *</label><input id="ex-desc" placeholder="Ex: Réparation pompe 2"/></div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>Description *</label>
+          <input id="ex-desc" placeholder="Ex: Réparation pompe 2" oninput="aiSuggestExpense(this.value)" autocomplete="off"/>
+          <div id="ex-ai-suggestion" style="display:none;margin-top:6px;"></div>
+          <div id="ex-duplicate-warn" style="display:none;margin-top:6px;padding:8px 12px;background:#FEF9C3;border:1px solid #FCD34D;border-radius:6px;font-size:12px;color:#92400E;">⚠️ Dépense similaire déjà enregistrée aujourd'hui</div>
+        </div>
         <div class="fg"><label>Montant (MAD) *</label><input type="number" id="ex-amount" placeholder="0.00" step="0.01"/></div>
         <div class="fg"><label>Notes</label><input id="ex-notes" placeholder="facultatif"/></div>
       </div>
@@ -2136,6 +2145,7 @@ async function initReportsYear() {
 // ─── EXPENSES ───────────────────────────────────────────────
 async function loadExpenses() {
   const data = await api('GET', '/expenses');
+  _allExpensesCache = data; // cache for duplicate detection
   const total = data.reduce((s,e)=>s+e.amount,0);
   const cats  = {};
   data.forEach(e=>{ cats[e.category]=(cats[e.category]||0)+e.amount; });
@@ -2155,6 +2165,74 @@ async function loadExpenses() {
       <td class="num fw7 c-r">${fmt(e.amount)} MAD</td>
       <td><button class="btn btn-d btn-xs" onclick="deleteExpense(${e.id})">✕</button></td>
     </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucune dépense enregistrée</td></tr>';
+}
+
+// ─── AI SMART INPUT ─────────────────────────────────────────
+let _aiExpTimer = null;
+let _allExpensesCache = [];
+
+function aiSuggestExpense(val) {
+  const suggEl = document.getElementById('ex-ai-suggestion');
+  const dupEl  = document.getElementById('ex-duplicate-warn');
+
+  // Duplicate check (local, instant)
+  if (val.length > 4 && _allExpensesCache.length) {
+    const today = new Date().toISOString().slice(0,10);
+    const q = val.toLowerCase();
+    const dup = _allExpensesCache.find(e =>
+      e.expense_date === today && e.description.toLowerCase().includes(q.slice(0,10))
+    );
+    dupEl.style.display = dup ? 'block' : 'none';
+  } else { dupEl.style.display = 'none'; }
+
+  // AI category suggestion (debounced 700ms)
+  clearTimeout(_aiExpTimer);
+  if (val.length < 4) { suggEl.style.display = 'none'; return; }
+  suggEl.innerHTML = '<span style="color:var(--muted);font-size:12px;">🤖 Analyse…</span>';
+  suggEl.style.display = 'block';
+  _aiExpTimer = setTimeout(async () => {
+    try {
+      const r = await api('POST', '/ai/categorize', { description: val, context: 'expense' });
+      if (!r.category) { suggEl.style.display = 'none'; return; }
+      suggEl.innerHTML = `<span style="font-size:12px;color:var(--muted);">🤖 Suggestion IA : </span>
+        <button onclick="document.getElementById('ex-cat').value='${r.category}';document.getElementById('ex-ai-suggestion').style.display='none';"
+          style="background:#EFF6FF;color:#1D4ED8;border:1.5px solid #93C5FD;border-radius:20px;padding:3px 14px;font-size:12px;font-weight:700;cursor:pointer;">
+          ${r.category} ✓ Appliquer
+        </button>`;
+    } catch(_) { suggEl.style.display = 'none'; }
+  }, 700);
+}
+
+let _aiProdTimer = null;
+
+function aiSuggestProduct(val) {
+  const suggEl = document.getElementById('np-ai-suggestion');
+  if (!suggEl) return;
+  clearTimeout(_aiProdTimer);
+  if (val.length < 4) { suggEl.style.display = 'none'; return; }
+  suggEl.innerHTML = '<span style="color:var(--muted);font-size:12px;">🤖 Analyse…</span>';
+  suggEl.style.display = 'block';
+  _aiProdTimer = setTimeout(async () => {
+    try {
+      const r = await api('POST', '/ai/categorize', { description: val, context: 'product' });
+      if (!r.category) { suggEl.style.display = 'none'; return; }
+      suggEl.innerHTML = `<span style="font-size:12px;color:var(--muted);">🤖 Suggestion IA : </span>
+        <button onclick="applyProductSuggestion('${r.category}','${r.unit}')"
+          style="background:#ECFDF5;color:#059669;border:1.5px solid #6EE7B7;border-radius:20px;padding:3px 14px;font-size:12px;font-weight:700;cursor:pointer;">
+          ${r.category} · ${r.unit} ✓ Appliquer
+        </button>`;
+    } catch(_) { suggEl.style.display = 'none'; }
+  }, 700);
+}
+
+function applyProductSuggestion(category, unit) {
+  const catEl = document.getElementById('np-cat');
+  const unitEl = document.getElementById('np-unit');
+  if (catEl) catEl.value = category;
+  if (unitEl) unitEl.value = unit;
+  const suggEl = document.getElementById('np-ai-suggestion');
+  if (suggEl) suggEl.style.display = 'none';
+  toast('Suggestion IA appliquée ✓', 'g');
 }
 
 async function submitAddExpense() {
