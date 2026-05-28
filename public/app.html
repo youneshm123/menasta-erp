@@ -1,17 +1,17 @@
-﻿<!DOCTYPE html><!-- v27 -->
+﻿<!DOCTYPE html><!-- v28 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
-<script>if(localStorage.getItem('_av')!=='27'){localStorage.setItem('_av','27');location.reload(true);}</script>
+<script>if(localStorage.getItem('_av')!=='28'){localStorage.setItem('_av','28');location.reload(true);}</script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=27"/>
+<link rel="stylesheet" href="/css/fiori.css?v=28"/>
 <script src="/js/sidebar.js?v=2" defer></script>
 <script src="/js/modal-init.js?v=2" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -19,6 +19,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
+.fuel-btn.selected-espece{background:#ECFDF5;color:#059669;border-color:#059669;font-weight:800;}
 .exp-btns{display:flex;gap:5px;align-items:center;flex-shrink:0}
 .exp-btn{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:none;transition:background .15s}
 .exp-pdf{background:#fee2e2;color:#b91c1c}.exp-pdf:hover{background:#fca5a5}
@@ -393,6 +394,7 @@
             <button type="button" class="fuel-btn" id="cs-btn-gazoil" onclick="csSelectFuel('gazoil')">⛽ Gazoil</button>
             <button type="button" class="fuel-btn" id="cs-btn-essence" onclick="csSelectFuel('essence')">🟢 Essence</button>
             <button type="button" class="fuel-btn" id="cs-btn-lubrifiant" onclick="csSelectFuel('lubrifiant')">🛢️ Lubrifiant</button>
+            <button type="button" class="fuel-btn" id="cs-btn-espece" onclick="csSelectFuel('espece')">💵 Espèce</button>
           </div>
           <input type="hidden" id="cs-pump-id"/>
         </div>
@@ -454,6 +456,26 @@
     <div class="modal-ft">
       <button class="btn btn-g" onclick="closeModal('m-add-client')">Annuler</button>
       <button class="btn btn-p" onclick="submitAddClient()">Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT CLIENT -->
+<div class="overlay" id="m-edit-client">
+  <div class="modal">
+    <div class="modal-hd"><span>✏️</span><h3>Modifier Client</h3><button class="x" onclick="closeModal('m-edit-client')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="ec-id"/>
+      <div class="fgrid">
+        <div class="fg"><label>Nom Complet *</label><input id="ec-name" placeholder="Nom du client"/></div>
+        <div class="fg"><label>Téléphone</label><input id="ec-phone" placeholder="+212 6XX XXX XXX"/></div>
+        <div class="fg"><label>Société</label><input id="ec-company" placeholder="Nom de la société"/></div>
+        <div class="fg"><label>Limite Crédit (MAD)</label><input type="number" id="ec-limit" placeholder="Laisser vide = sans limite" min="0" step="1000"/></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-edit-client')">Annuler</button>
+      <button class="btn btn-p" onclick="submitEditClient()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -846,13 +868,14 @@ async function loadShiftPage() {
     const fuelColor = fuelLow.includes('gazoil') ? '#1D4ED8' : fuelLow.includes('essence') ? '#059669' : '#7C3AED';
     const fuelBg    = fuelLow.includes('gazoil') ? '#EFF6FF' : fuelLow.includes('essence') ? '#ECFDF5' : '#F5F3FF';
     const startFmt  = r.start != null ? r.start.toLocaleString('fr-FR',{minimumFractionDigits:1}) : '—';
+    const savedEnd  = r.end != null ? r.end : (localStorage.getItem('er-' + shift.id + '-' + pid) || '');
     return `
     <div style="display:flex;align-items:center;gap:16px;padding:11px 18px;border-bottom:1px solid var(--border-lt);">
       <div style="font-size:13.5px;font-weight:800;color:var(--text);min-width:70px;">${r.name}</div>
       <span style="background:${fuelBg};color:${fuelColor};font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;">${r.fuel}</span>
       <span style="font-size:12px;color:var(--muted);flex:1;">Début : <strong style="color:var(--text);font-variant-numeric:tabular-nums;">${startFmt}</strong></span>
       <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${r.price?.toFixed(3)} MAD/L</span>
-      <input type="number" class="end-reading" data-pump="${pid}" data-start="${r.start||0}" data-price="${r.price||0}" step="0.1" placeholder="Fin…" value="${r.end != null ? r.end : ''}" oninput="calcLiveCA()" style="width:130px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font);outline:none;" onfocus="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,.1)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'"/>
+      <input type="number" class="end-reading" data-pump="${pid}" data-start="${r.start||0}" data-price="${r.price||0}" step="0.1" placeholder="Fin…" value="${savedEnd}" oninput="calcLiveCA();localStorage.setItem('er-${shift.id}-${pid}',this.value)" style="width:130px;padding:7px 10px;border:1.5px solid ${savedEnd?'var(--green)':'var(--border)'};border-radius:var(--r);font-size:14px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font);outline:none;" onfocus="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,.1)'" onblur="this.style.borderColor=this.value?'var(--green)':'var(--border)';this.style.boxShadow='none'"/>
     </div>`;
   }).join('');
 
@@ -1112,7 +1135,10 @@ async function submitCloseShift() {
   });
   if (!valid) return;
   try {
-    const result = await api('POST', '/shifts/' + S.activeShift.id + '/close', { readings, notes: document.getElementById('cs-notes').value });
+    const closedId = S.activeShift.id;
+    const result = await api('POST', '/shifts/' + closedId + '/close', { readings, notes: document.getElementById('cs-notes').value });
+    // Clear persisted end readings for this shift
+    inputs.forEach(inp => localStorage.removeItem('er-' + closedId + '-' + inp.dataset.pump));
     closeModal('m-close-shift');
     S.activeShift = null;
     toast('Poste fermé — Caisse nette: ' + fmt(result.calc.netCash) + ' MAD');
@@ -1231,8 +1257,10 @@ async function loadCredits() {
       <td class="muted">${c.company||'—'}</td>
       <td class="muted sm">${c.phone||'—'}</td>
       <td class="num fw7 ${c.balance_due>0?'c-r':'c-g'}">${fmt(c.balance_due)} MAD</td>
-      <td>
+      <td style="display:flex;gap:5px;flex-wrap:wrap;">
         ${c.balance_due > 0 ? `<button class="btn btn-s btn-xs" onclick="openPayment(${c.id},'${esc(c.name)}',${c.balance_due})">💰 Payer</button>` : ''}
+        <button class="btn btn-w btn-xs" onclick="openEditClient(${c.id},'${esc(c.name)}','${esc(c.phone||'')}','${esc(c.company||'')}',${c.credit_limit||'null'})">✏️</button>
+        <button class="btn btn-d btn-xs" onclick="deleteClient(${c.id},'${esc(c.name)}')">🗑️</button>
       </td>
     </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucun client</td></tr>';
 
@@ -1246,6 +1274,42 @@ async function loadCredits() {
     </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucune vente crédit</td></tr>';
 
   document.getElementById('nb-credits').textContent = clients.filter(c=>c.balance_due>0).length || 0;
+}
+
+function openEditClient(id, name, phone, company, limit) {
+  document.getElementById('ec-id').value = id;
+  document.getElementById('ec-name').value = name;
+  document.getElementById('ec-phone').value = phone;
+  document.getElementById('ec-company').value = company;
+  document.getElementById('ec-limit').value = limit !== null && limit !== 'null' ? limit : '';
+  openModal('m-edit-client');
+}
+
+async function submitEditClient() {
+  const id = document.getElementById('ec-id').value;
+  const name = document.getElementById('ec-name').value.trim();
+  if (!name) { toast('Nom requis', 'er'); return; }
+  const limitVal = document.getElementById('ec-limit').value;
+  try {
+    await api('PUT', '/credits/clients/' + id, {
+      name,
+      phone: document.getElementById('ec-phone').value,
+      company: document.getElementById('ec-company').value,
+      credit_limit: limitVal ? parseFloat(limitVal) : null
+    });
+    closeModal('m-edit-client');
+    toast('Client modifié ✓');
+    loadCredits();
+  } catch(e) { toast(e.message, 'er'); }
+}
+
+async function deleteClient(id, name) {
+  if (!confirm(`Supprimer le client "${name}" ?`)) return;
+  try {
+    await api('DELETE', '/credits/clients/' + id);
+    toast('Client supprimé');
+    loadCredits();
+  } catch(e) { toast(e.message, 'er'); }
 }
 
 function openPayment(clientId, name, balance) {
@@ -1299,7 +1363,7 @@ function csAddToList() {
   const amount     = parseFloat(document.getElementById('cs-amount').value);
   const notes      = document.getElementById('cs-notes-f').value;
   if (!clientId)             { toast('Sélectionnez un client', 'wn'); return; }
-  if (!_csFuelType)          { toast('Choisissez le type (Gazoil / Essence / Lubrifiant)', 'wn'); return; }
+  if (!_csFuelType)          { toast('Choisissez le type (Gazoil / Essence / Lubrifiant / Espèce)', 'wn'); return; }
   if (!amount || amount <= 0){ toast('Montant invalide', 'er'); return; }
   csPending.push({ client_id: clientId, client_name: clientName, pump_id: pumpId ? parseInt(pumpId) : null, product_type: _csFuelType, amount, notes });
   document.getElementById('cs-client-input').value = '';
@@ -1323,7 +1387,7 @@ function updateCsPendingUI() {
     btn.disabled = true; btn.textContent = '✅ Enregistrer tout (0)'; return;
   }
   wrap.style.display = 'block';
-  const typeIcon = { gazoil:'⛽', essence:'🟢', lubrifiant:'🛢️' };
+  const typeIcon = { gazoil:'⛽', essence:'🟢', lubrifiant:'🛢️', espece:'💵' };
   items.innerHTML = csPending.map((c,i) => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg2);border-radius:6px;margin-bottom:4px;gap:8px;">
       <span style="flex:1">${typeIcon[c.product_type]||''} <strong>${c.client_name}</strong> — ${c.product_type} — <strong style="color:var(--orange)">${fmt(c.amount)} MAD</strong>${c.notes?' <span style="color:var(--muted);font-size:11px;">'+c.notes+'</span>':''}</span>
@@ -1502,9 +1566,10 @@ function csSelectFuel(type) {
   document.getElementById('cs-btn-gazoil').className     = 'fuel-btn' + (type==='gazoil'     ? ' selected-gazoil'     : '');
   document.getElementById('cs-btn-essence').className    = 'fuel-btn' + (type==='essence'    ? ' selected-essence'    : '');
   document.getElementById('cs-btn-lubrifiant').className = 'fuel-btn' + (type==='lubrifiant' ? ' selected-lubrifiant' : '');
+  document.getElementById('cs-btn-espece').className     = 'fuel-btn' + (type==='espece'     ? ' selected-espece'     : '');
   document.getElementById('cs-pump-id').value = '';
   _csFuelType = type;
-  if (type === 'lubrifiant') return;
+  if (type === 'lubrifiant' || type === 'espece') return;
   // Auto-fill pump if one is active for this fuel type — but pump is optional
   const pump = S.pumps.find(p => p.status === 'active' && (p.fuel_name||'').toLowerCase().includes(type));
   if (pump) document.getElementById('cs-pump-id').value = pump.id;
