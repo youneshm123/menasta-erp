@@ -1,17 +1,17 @@
-﻿<!DOCTYPE html><!-- v29 -->
+﻿<!DOCTYPE html><!-- v30 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
-<script>if(localStorage.getItem('_av')!=='29'){localStorage.setItem('_av','29');location.reload(true);}</script>
+<script>if(localStorage.getItem('_av')!=='30'){localStorage.setItem('_av','30');location.reload(true);}</script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=29"/>
+<link rel="stylesheet" href="/css/fiori.css?v=30"/>
 <script src="/js/sidebar.js?v=2" defer></script>
 <script src="/js/modal-init.js?v=2" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -167,6 +167,9 @@
                 <button class="btn btn-p btn-sm" onclick="openModal('m-add-client')">+ Nouveau Client</button>
               </div>
             </div>
+            <div style="padding:10px 16px 4px;border-bottom:1px solid var(--border-lt);">
+              <input placeholder="🔍 Rechercher client, société, téléphone…" oninput="searchTable(this.value,'clients-body',5)" style="width:100%;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;"/>
+            </div>
             <div class="s-body-flush" style="overflow-x:auto">
               <table class="t" id="clients-tbl"><thead><tr><th>Nom</th><th>Société</th><th>Téléphone</th><th class="num">Solde Dû</th><th></th></tr></thead>
               <tbody id="clients-body"></tbody></table>
@@ -179,6 +182,9 @@
                 <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('csales-tbl','Ventes Crédit')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('csales-tbl','Ventes Crédit')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('csales-tbl','Ventes Crédit')">📝 Word</button></div>
                 <button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">+ Vente Crédit</button>
               </div>
+            </div>
+            <div style="padding:10px 16px 4px;border-bottom:1px solid var(--border-lt);">
+              <input placeholder="🔍 Rechercher client, pompe…" oninput="searchTable(this.value,'csales-body',5)" style="width:100%;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;"/>
             </div>
             <div class="s-body-flush" style="overflow-x:auto">
               <table class="t" id="csales-tbl"><thead><tr><th>Client</th><th>Pompe</th><th>Litres</th><th class="num">Montant</th><th>Date</th></tr></thead>
@@ -281,6 +287,9 @@
               <button class="btn btn-p btn-sm" onclick="openModal('m-add-expense')">+ Ajouter</button>
             </div>
           </div>
+          <div style="padding:10px 16px 4px;border-bottom:1px solid var(--border-lt);">
+            <input placeholder="🔍 Rechercher description, catégorie…" oninput="searchTable(this.value,'exp-body',5)" style="width:100%;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;"/>
+          </div>
           <div class="s-body-flush" style="overflow-x:auto">
             <table class="t" id="exp-tbl">
               <thead><tr><th>Date</th><th>Catégorie</th><th>Description</th><th class="num">Montant</th><th></th></tr></thead>
@@ -301,6 +310,9 @@
               <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('stock-tbl','Livraisons Carburant')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('stock-tbl','Livraisons Carburant')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('stock-tbl','Livraisons Carburant')">📝 Word</button></div>
               <button class="btn btn-p btn-sm" onclick="openDeliveryModal()">+ Livraison</button>
             </div>
+          </div>
+          <div style="padding:10px 16px 4px;border-bottom:1px solid var(--border-lt);">
+            <input placeholder="🔍 Rechercher carburant, fournisseur, notes…" oninput="searchTable(this.value,'stock-body',9)" style="width:100%;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;"/>
           </div>
           <div class="s-body-flush" style="overflow-x:auto">
             <table class="t" id="stock-tbl">
@@ -1751,6 +1763,29 @@ async function loadProducts() {
     </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucune vente</td></tr>';
 
   populateSellModal();
+}
+
+// ─── GENERIC TABLE SEARCH ──────────────────────────────────
+function searchTable(val, bodyId, colspan) {
+  const q = (val || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('#' + bodyId + ' tr');
+  let visible = 0;
+  rows.forEach(row => {
+    if (row.id && row.id.endsWith('-no-results')) return;
+    const show = !q || row.textContent.toLowerCase().includes(q);
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const noResId = bodyId + '-no-results';
+  let noRes = document.getElementById(noResId);
+  if (!visible && q) {
+    if (!noRes) {
+      noRes = document.createElement('tr');
+      noRes.id = noResId;
+      noRes.innerHTML = '<td colspan="' + colspan + '" class="tc muted" style="padding:20px">Aucun résultat pour « ' + val + ' »</td>';
+      document.getElementById(bodyId).appendChild(noRes);
+    } else { noRes.style.display = ''; noRes.querySelector('td').textContent = 'Aucun résultat pour « ' + val + ' »'; }
+  } else if (noRes) { noRes.style.display = 'none'; }
 }
 
 function filterProducts(val) {
