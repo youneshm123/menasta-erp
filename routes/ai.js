@@ -2,10 +2,41 @@ const router  = require('express').Router();
 const Anthropic = require('@anthropic-ai/sdk');
 const PDFDocument = require('pdfkit');
 const { pool } = require('../db');
-const { requireAuth } = require('../middleware');
+const { requireAuth, requireMinRole } = require('../middleware');
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// ── AI-generated SQL safety ────────────────────────────────────────────────
+// Defense in depth: (1) only allow a single SELECT/WITH statement, (2) deny
+// dangerous functions / sensitive identifiers, (3) execute inside a READ ONLY
+// transaction with a statement timeout so any write/DDL is rejected by Postgres
+// itself even if the textual guards are ever bypassed.
+function isSafeSelect(sql) {
+  if (!sql || typeof sql !== 'string') return false;
+  const s = sql.trim().replace(/;+\s*$/, '').trim(); // drop trailing semicolons
+  if (!s) return false;
+  if (s.includes(';')) return false;                 // no multiple statements
+  if (!/^(select|with)\b/i.test(s)) return false;    // read queries only
+  // dangerous server-side functions (file/network access, DoS, bulk copy)
+  if (/\b(pg_sleep|pg_read_file|pg_read_binary_file|pg_ls_dir|pg_stat_file|lo_import|lo_export|dblink|copy)\b/i.test(s)) return false;
+  // sensitive columns / system catalogs
+  if (/password_hash|password|secret|\bjwt\b|\btoken\b|pg_catalog|information_schema|pg_shadow|pg_authid|pg_roles|pg_user\b/i.test(s)) return false;
+  return true;
+}
+
+async function runReadOnlySelect(sql) {
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN TRANSACTION READ ONLY');
+    await c.query("SET LOCAL statement_timeout = '8s'");
+    const result = await c.query(sql);
+    return result.rows.slice(0, 500);
+  } finally {
+    try { await c.query('ROLLBACK'); } catch (_) {}
+    c.release();
+  }
+}
 
 // ── Fetch all business data ──────────────────────────────────────────────────
 async function getBusinessData() {
@@ -553,8 +584,8 @@ function pdfMonthly(res, d) {
 
 // ── ROUTES ────────────────────────────────────────────────────────────────────
 
-// Streaming chat
-router.post('/chat', requireAuth, async (req, res, next) => {
+// Streaming chat — exposes consolidated financials, so gérant and above only
+router.post('/chat', requireAuth, requireMinRole('gerant'), async (req, res, next) => {
   try {
     const { message, history = [], language = 'fr' } = req.body;
     if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message requis' });
@@ -643,9 +674,11 @@ Tables PostgreSQL disponibles:
 - activity_logs(id, user_id, username, module, action, details, ip_addr, created_at)
 `;
 
-router.post('/query', requireAuth, wrap(async (req, res) => {
+router.post('/query', requireAuth, requireMinRole('patron'), wrap(async (req, res) => {
   const { question } = req.body || {};
-  if (!question) return res.status(400).json({ error: 'Question requise' });
+  if (!question || typeof question !== 'string' || !question.trim())
+    return res.status(400).json({ error: 'Question requise' });
+  const q = question.trim().slice(0, 1000);
 
   // Step 1: Claude generates the SQL
   const sqlResp = await client.messages.create({
@@ -654,7 +687,7 @@ router.post('/query', requireAuth, wrap(async (req, res) => {
     messages: [{
       role: 'user',
       content: `Tu es un expert SQL PostgreSQL pour un ERP de station service marocaine (MENASTA).
-Génère UNE SEULE requête SQL SELECT valide pour répondre à cette question: "${question}"
+Génère UNE SEULE requête SQL SELECT valide pour répondre à cette question: "${q}"
 
 Schéma:
 ${DB_SCHEMA}
@@ -662,37 +695,35 @@ ${DB_SCHEMA}
 RÈGLES STRICTES:
 - Génère UNIQUEMENT le SQL, sans explication, sans markdown, sans \`\`\`
 - Utilise ONLY SELECT (jamais INSERT/UPDATE/DELETE/DROP)
+- Une seule requête, jamais plusieurs séparées par ;
 - Limite à 100 résultats maximum (LIMIT 100)
 - Utilise COALESCE pour éviter les NULL
+- N'accède jamais à password_hash ni aux catalogues système (pg_*, information_schema)
 - Les dates sont en TIMESTAMPTZ ou DATE
 - Utilise TO_CHAR pour formater les dates si nécessaire`
     }]
   });
 
-  const sql = sqlResp.content[0]?.text?.trim();
-  if (!sql || !sql.toUpperCase().startsWith('SELECT')) {
-    return res.status(400).json({ error: 'Impossible de générer une requête SQL valide' });
+  // Strip any markdown fences the model may add despite instructions
+  let sql = (sqlResp.content[0]?.text || '').trim()
+    .replace(/^```(?:sql)?/i, '').replace(/```$/, '').trim();
+
+  if (!isSafeSelect(sql)) {
+    return res.status(400).json({ error: 'Requête non autorisée ou impossible à générer.' });
   }
 
-  // Block queries that could expose sensitive columns
-  const BLOCKED_PATTERNS = /password_hash|password_reset|secret|jwt|token\b/i;
-  if (BLOCKED_PATTERNS.test(sql)) {
-    return res.status(403).json({ error: 'Requête non autorisée: colonnes sensibles détectées' });
-  }
-
-  // Step 2: Execute the SQL
+  // Step 2: Execute inside a READ ONLY transaction (writes are impossible)
   let rows;
   try {
-    const result = await pool.query(sql);
-    // Strip sensitive columns defensively even if they slip through
-    rows = result.rows.map(r => {
+    rows = (await runReadOnlySelect(sql)).map(r => {
       const clean = { ...r };
       delete clean.password_hash;
       delete clean.password;
       return clean;
     });
   } catch (e) {
-    return res.status(400).json({ error: `Erreur SQL: ${e.message}`, sql });
+    console.error('[AI QUERY SQL]', e.message, '::', sql);
+    return res.status(400).json({ error: "La requête n'a pas pu être exécutée." });
   }
 
   // Step 3: Claude interprets the results in natural language
@@ -714,10 +745,10 @@ Réponds à la question en français de manière claire et concise, comme si tu 
   res.json({ question, sql, rows, answer, count: rows.length });
 }));
 
-// PDF endpoints
-router.get('/pdf/daily',   requireAuth, wrap(async (req, res) => { pdfDaily(res,   await getBusinessData()); }));
-router.get('/pdf/weekly',  requireAuth, wrap(async (req, res) => { pdfWeekly(res,  await getBusinessData()); }));
-router.get('/pdf/credits', requireAuth, wrap(async (req, res) => {
+// PDF endpoints — full financial reports, gérant and above only
+router.get('/pdf/daily',   requireAuth, requireMinRole('gerant'), wrap(async (req, res) => { pdfDaily(res,   await getBusinessData()); }));
+router.get('/pdf/weekly',  requireAuth, requireMinRole('gerant'), wrap(async (req, res) => { pdfWeekly(res,  await getBusinessData()); }));
+router.get('/pdf/credits', requireAuth, requireMinRole('gerant'), wrap(async (req, res) => {
   let data = await getBusinessData();
   if (req.query.ids) {
     const ids = req.query.ids.split(',').map(Number).filter(Boolean);
@@ -725,9 +756,9 @@ router.get('/pdf/credits', requireAuth, wrap(async (req, res) => {
   }
   pdfCredits(res, data);
 }));
-router.get('/pdf/monthly', requireAuth, wrap(async (req, res) => { pdfMonthly(res, await getBusinessData()); }));
+router.get('/pdf/monthly', requireAuth, requireMinRole('gerant'), wrap(async (req, res) => { pdfMonthly(res, await getBusinessData()); }));
 
-// ── Smart Categorizer ──────────────────────────────────────────────────────
+// ── Smart Categorizer ── (harmless: classifies a description string, no data exposure)
 router.post('/categorize', requireAuth, wrap(async (req, res) => {
   const { description, context } = req.body || {};
   if (!description || description.trim().length < 3) return res.json({ category: null });

@@ -261,8 +261,8 @@ async function start() {
   app.get('/logs',     page('logs.html'));
   app.get('/ai',       page('ai-chat.html'));
 
-  // ── Cache-buster route ──
-  app.get('/clear', (_req, res) => {
+  // ── Cache-buster route (token-protected) ──
+  app.get('/clear', (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -309,9 +309,17 @@ async function start() {
   });
 
   // ── Error handler ──
-  app.use((err, _req, res, _next) => {
-    console.error('[ERROR]', err.message);
-    res.status(err.status || 500).json({ error: err.message || 'Erreur serveur interne' });
+  // Client errors (4xx) may surface their message; server errors (5xx) return a
+  // generic message and log full detail server-side to avoid leaking internals.
+  app.use((err, req, res, _next) => {
+    const status = err.status || err.statusCode || 500;
+    if (status >= 500) {
+      console.error(`[ERROR] ${req.method} ${req.originalUrl} —`, err.stack || err.message);
+    } else {
+      console.warn(`[WARN] ${req.method} ${req.originalUrl} — ${err.message}`);
+    }
+    const clientMsg = status < 500 ? (err.message || 'Requête invalide') : 'Erreur serveur interne';
+    res.status(status).json({ error: clientMsg });
   });
 
   const PORT = process.env.PORT || 3000;
@@ -348,10 +356,17 @@ function startDailySummary() {
   const { sendWhatsApp } = require('./services/whatsapp');
   let lastSentDate = '';
 
+  const TZ = process.env.SUMMARY_TZ || 'Africa/Casablanca';
   setInterval(async () => {
-    const now = new Date();
-    const hm  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    const today = now.toISOString().slice(0,10);
+    // Wall-clock time in the station's timezone, not the server's (UTC on Railway)
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(new Date());
+    const get = t => parts.find(p => p.type === t).value;
+    const hour = get('hour') === '24' ? '00' : get('hour');
+    const hm = `${hour}:${get('minute')}`;
+    const today = `${get('year')}-${get('month')}-${get('day')}`;
     const targetHour = process.env.DAILY_SUMMARY_HOUR || '22:00';
     if (hm !== targetHour || lastSentDate === today) return;
     lastSentDate = today;

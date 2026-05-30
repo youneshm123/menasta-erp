@@ -350,11 +350,23 @@ async function initDB() {
     }
   }
 
-  // Papa account
-  const { rows: [{ c: pu }] } = await pgPool.query("SELECT COUNT(*) as c FROM users WHERE username='papa'");
-  if (parseInt(pu) === 0) {
-    const hash = await bcrypt.hash('papa123', 10);
-    await pgPool.query("INSERT INTO users (full_name,username,password_hash,role) VALUES ($1,$2,$3,$4)", ['Papa','papa',hash,'patron']);
+  // ── Bootstrap account (only on a truly empty users table) ──
+  // No hard-coded credentials. Set BOOTSTRAP_ADMIN_USER + BOOTSTRAP_ADMIN_PASSWORD
+  // (min 12 chars) in the environment to create the first patron account on a fresh DB.
+  const { rows: [{ c: uc }] } = await pgPool.query('SELECT COUNT(*) as c FROM users');
+  if (parseInt(uc) === 0) {
+    const bu = (process.env.BOOTSTRAP_ADMIN_USER || '').trim();
+    const bp = process.env.BOOTSTRAP_ADMIN_PASSWORD || '';
+    if (bu && bp.length >= 12) {
+      const hash = await bcrypt.hash(bp, 12);
+      await pgPool.query(
+        'INSERT INTO users (full_name,username,password_hash,role) VALUES ($1,$2,$3,$4)',
+        ['Administrateur', bu, hash, 'patron']
+      );
+      console.log(`✅ Compte initial '${bu}' (patron) créé depuis les variables d'environnement.`);
+    } else {
+      console.warn("⚠️  Aucun utilisateur en base. Définissez BOOTSTRAP_ADMIN_USER et BOOTSTRAP_ADMIN_PASSWORD (≥12 caractères) puis redémarrez pour créer le compte initial.");
+    }
   }
 
   // Tabac seed
