@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
+const { computeFuelTotals } = require('../lib/shiftCalc');
 
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
@@ -14,12 +15,7 @@ async function calcShift(shiftId) {
     WHERE s.shift_id=$1 AND s.reading_type='start'
   `, [shiftId]);
 
-  let totalLiters = 0, totalFuel = 0;
-  for (const r of readings) {
-    const liters = Math.max(0, r.end_val - r.start_val);
-    totalLiters += liters;
-    totalFuel   += liters * r.price_per_liter;
-  }
+  const { totalLiters, totalFuel } = computeFuelTotals(readings);
   const { rows: [{ t: tc }] } = await pool.query('SELECT COALESCE(SUM(amount),0) as t FROM credit_sales WHERE shift_id=$1', [shiftId]);
   const { rows: [{ t: tp }] } = await pool.query('SELECT COALESCE(SUM(total_amount),0) as t FROM product_sales WHERE shift_id=$1', [shiftId]);
   const { rows: [{ avance }] } = await pool.query('SELECT avance FROM shifts WHERE id=$1', [shiftId]);
