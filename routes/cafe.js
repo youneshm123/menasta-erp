@@ -54,14 +54,17 @@ router.post('/sales', requireAuth, wrap(async (req, res) => {
   if (!entries || !entries.length) return res.status(400).json({ error: 'Données manquantes' });
   const d = date || new Date().toISOString().slice(0,10);
   for (const e of entries) {
-    const price = e.unit_price || 7;
+    const qty = parseFloat(e.quantity) || 0;
+    if (qty < 0) return res.status(400).json({ error: 'Quantité invalide' });
+    const price = e.unit_price != null ? parseFloat(e.unit_price) : 7;
+    if (!isFinite(price) || price < 0) return res.status(400).json({ error: 'Prix invalide' });
     await pool.query(`
       INSERT INTO cafe_sales (sale_date,menu_item_id,quantity,unit_price,total,recorded_by)
       VALUES ($1,$2,$3,$4,$5,$6)
       ON CONFLICT(sale_date,menu_item_id) DO UPDATE SET
         quantity=EXCLUDED.quantity, unit_price=EXCLUDED.unit_price,
         total=EXCLUDED.total, recorded_by=EXCLUDED.recorded_by
-    `, [d, e.menu_item_id, e.quantity||0, price, (e.quantity||0)*price, req.user.id]);
+    `, [d, e.menu_item_id, qty, price, qty*price, req.user.id]);
   }
   res.json({ ok: true });
 }));
@@ -116,14 +119,17 @@ router.post('/stock/usage', requireAuth, wrap(async (req, res) => {
   if (!entries || !entries.length) return res.status(400).json({ error: 'Données manquantes' });
   const d = date || new Date().toISOString().slice(0,10);
   for (const e of entries) {
-    const cost = e.cost_per_unit;
+    const qty = parseFloat(e.quantity_used) || 0;
+    if (qty < 0) return res.status(400).json({ error: 'Quantité invalide' });
+    const cost = e.cost_per_unit != null ? parseFloat(e.cost_per_unit) : 0;
+    if (!isFinite(cost) || cost < 0) return res.status(400).json({ error: 'Coût invalide' });
     await pool.query(`
       INSERT INTO cafe_stock_usage (usage_date,stock_item_id,quantity_used,cost_per_unit,total_cost,recorded_by)
       VALUES ($1,$2,$3,$4,$5,$6)
       ON CONFLICT(usage_date,stock_item_id) DO UPDATE SET
         quantity_used=EXCLUDED.quantity_used, cost_per_unit=EXCLUDED.cost_per_unit,
         total_cost=EXCLUDED.total_cost, recorded_by=EXCLUDED.recorded_by
-    `, [d, e.stock_item_id, e.quantity_used||0, cost, (e.quantity_used||0)*cost, req.user.id]);
+    `, [d, e.stock_item_id, qty, cost, qty*cost, req.user.id]);
   }
   res.json({ ok: true });
 }));

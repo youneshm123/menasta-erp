@@ -11,10 +11,11 @@ router.get('/produits', requireAuth, wrap(async (_req, res) => {
 
 router.post('/produits', requireAuth, wrap(async (req, res) => {
   const { name, prix_achat, prix_vente } = req.body || {};
-  if (!name || !prix_achat || !prix_vente) return res.status(400).json({ error: 'Champs requis' });
+  const pa = parseFloat(prix_achat), pv = parseFloat(prix_vente);
+  if (!name || !isFinite(pa) || pa <= 0 || !isFinite(pv) || pv <= 0) return res.status(400).json({ error: 'Nom et prix valides requis' });
   const { rows: [{ id }] } = await pool.query(
     'INSERT INTO tabac_products (name,prix_achat,prix_vente) VALUES ($1,$2,$3) RETURNING id',
-    [name, prix_achat, prix_vente]
+    [name, pa, pv]
   );
   const { rows: [p] } = await pool.query('SELECT * FROM tabac_products WHERE id=$1', [id]);
   res.status(201).json(p);
@@ -22,6 +23,10 @@ router.post('/produits', requireAuth, wrap(async (req, res) => {
 
 router.put('/produits/:id', requireAuth, wrap(async (req, res) => {
   const { name, prix_achat, prix_vente } = req.body || {};
+  if (prix_achat != null && (!isFinite(parseFloat(prix_achat)) || parseFloat(prix_achat) < 0))
+    return res.status(400).json({ error: 'Prix d\'achat invalide' });
+  if (prix_vente != null && (!isFinite(parseFloat(prix_vente)) || parseFloat(prix_vente) < 0))
+    return res.status(400).json({ error: 'Prix de vente invalide' });
   const { rows } = await pool.query('SELECT * FROM tabac_products WHERE id=$1', [req.params.id]);
   const p = rows[0];
   if (!p) return res.status(404).json({ error: 'Produit introuvable' });
@@ -57,17 +62,19 @@ router.post('/ventes', requireAuth, wrap(async (req, res) => {
   if (!entries || !entries.length) return res.status(400).json({ error: 'Données manquantes' });
   const d = date || new Date().toISOString().slice(0, 10);
   for (const e of entries) {
+    const q = parseFloat(e.quantite);
+    if (!isFinite(q) || q < 0) return res.status(400).json({ error: 'Quantité invalide' });
     const { rows: [p] } = await pool.query('SELECT * FROM tabac_products WHERE id=$1', [e.product_id]);
     if (!p) continue;
-    const montant = +(e.quantite * p.prix_vente).toFixed(2);
-    const benefice = +((p.prix_vente - p.prix_achat) * e.quantite).toFixed(2);
+    const montant = +(q * p.prix_vente).toFixed(2);
+    const benefice = +((p.prix_vente - p.prix_achat) * q).toFixed(2);
     await pool.query(`
       INSERT INTO tabac_ventes (vente_date,product_id,quantite,prix_vente,prix_achat,montant,benefice,recorded_by)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       ON CONFLICT(vente_date,product_id) DO UPDATE SET
         quantite=EXCLUDED.quantite, montant=EXCLUDED.montant,
         benefice=EXCLUDED.benefice, recorded_by=EXCLUDED.recorded_by
-    `, [d, e.product_id, e.quantite, p.prix_vente, p.prix_achat, montant, benefice, req.user.id]);
+    `, [d, e.product_id, q, p.prix_vente, p.prix_achat, montant, benefice, req.user.id]);
   }
   res.json({ ok: true });
 }));
@@ -129,12 +136,15 @@ router.get('/achats', requireAuth, wrap(async (_req, res) => {
 
 router.post('/achats', requireAuth, wrap(async (req, res) => {
   const { product_id, quantite, prix_achat, achat_date, notes } = req.body || {};
-  if (!product_id || !quantite) return res.status(400).json({ error: 'Produit et quantité requis' });
+  const q = parseFloat(quantite);
+  if (!product_id || !isFinite(q) || q <= 0) return res.status(400).json({ error: 'Produit et quantité valide requis' });
+  if (prix_achat != null && (!isFinite(parseFloat(prix_achat)) || parseFloat(prix_achat) < 0))
+    return res.status(400).json({ error: 'Prix d\'achat invalide' });
   const { rows: [p] } = await pool.query('SELECT * FROM tabac_products WHERE id=$1', [product_id]);
   if (!p) return res.status(404).json({ error: 'Produit introuvable' });
   const { rows: [a] } = await pool.query(
     'INSERT INTO tabac_achats (product_id,quantite,prix_achat,achat_date,notes,recorded_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-    [product_id, quantite, prix_achat || p.prix_achat, achat_date || new Date().toISOString().slice(0,10), notes||null, req.user.id]
+    [product_id, q, prix_achat || p.prix_achat, achat_date || new Date().toISOString().slice(0,10), notes||null, req.user.id]
   );
   res.status(201).json(a);
 }));

@@ -51,10 +51,11 @@ router.get('/fuel-types', requireAuth, wrap(async (_req, res) => {
 
 router.post('/fuel-types', requireAuth, wrap(async (req, res) => {
   const { name, price_per_liter, color_hex } = req.body || {};
-  if (!name || !price_per_liter) return res.status(400).json({ error: 'Nom et prix requis' });
+  const prix = parseFloat(price_per_liter);
+  if (!name || !isFinite(prix) || prix <= 0) return res.status(400).json({ error: 'Nom et prix valide requis' });
   const { rows: [{ id }] } = await pool.query(
     'INSERT INTO fuel_types (name,price_per_liter,color_hex) VALUES ($1,$2,$3) RETURNING id',
-    [name, price_per_liter, color_hex||'#0070F2']
+    [name, prix, color_hex||'#0070F2']
   );
   const { rows: [ft] } = await pool.query('SELECT * FROM fuel_types WHERE id=$1', [id]);
   res.status(201).json(ft);
@@ -62,6 +63,8 @@ router.post('/fuel-types', requireAuth, wrap(async (req, res) => {
 
 router.put('/fuel-types/:id', requireAuth, wrap(async (req, res) => {
   const { price_per_liter, name, color_hex } = req.body || {};
+  if (price_per_liter != null && (!isFinite(parseFloat(price_per_liter)) || parseFloat(price_per_liter) <= 0))
+    return res.status(400).json({ error: 'Prix invalide' });
   const { rows } = await pool.query('SELECT * FROM fuel_types WHERE id=$1', [req.params.id]);
   const ft = rows[0];
   if (!ft) return res.status(404).json({ error: 'Type carburant introuvable' });

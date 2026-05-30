@@ -11,11 +11,12 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
 
 router.post('/', requireAuth, wrap(async (req, res) => {
   const { reference, name, category, unit, price, stock_qty, stock_min } = req.body || {};
-  if (!reference || !name || !price) return res.status(400).json({ error: 'Référence, nom et prix requis' });
+  const prix = parseFloat(price);
+  if (!reference || !name || !isFinite(prix) || prix <= 0) return res.status(400).json({ error: 'Référence, nom et prix valide requis' });
   const { rows: [{ id }] } = await pool.query(`
     INSERT INTO products (reference,name,category,unit,price,stock_qty,stock_min)
     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id
-  `, [reference, name, category||'Huiles', unit||'unité', price, stock_qty||0, stock_min||5]);
+  `, [reference, name, category||'Huiles', unit||'unité', prix, stock_qty||0, stock_min||5]);
   const { rows: [p] } = await pool.query('SELECT * FROM products WHERE id=$1', [id]);
   res.status(201).json(p);
 }));
@@ -55,7 +56,8 @@ router.get('/sales', requireAuth, wrap(async (req, res) => {
 
 router.post('/sales', requireAuth, wrap(async (req, res) => {
   const { shift_id, product_id, quantity } = req.body || {};
-  if (!shift_id || !product_id || !quantity) return res.status(400).json({ error: 'Champs obligatoires manquants' });
+  const qty = parseFloat(quantity);
+  if (!shift_id || !product_id || !isFinite(qty) || qty <= 0) return res.status(400).json({ error: 'Quantité valide et champs obligatoires requis' });
 
   const { rows: sr } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='open'", [shift_id]);
   if (!sr.length) return res.status(400).json({ error: 'Poste non trouvé ou déjà fermé' });
@@ -63,15 +65,15 @@ router.post('/sales', requireAuth, wrap(async (req, res) => {
   const { rows: pr } = await pool.query('SELECT * FROM products WHERE id=$1 AND is_active=1', [product_id]);
   const product = pr[0];
   if (!product) return res.status(404).json({ error: 'Produit introuvable' });
-  if (product.stock_qty < quantity) return res.status(400).json({ error: 'Stock insuffisant' });
+  if (product.stock_qty < qty) return res.status(400).json({ error: 'Stock insuffisant' });
 
-  const total = +(quantity * product.price).toFixed(2);
+  const total = +(qty * product.price).toFixed(2);
   const { rows: [{ id }] } = await pool.query(`
     INSERT INTO product_sales (shift_id,product_id,quantity,unit_price,total_amount,recorded_by)
     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id
-  `, [shift_id, product_id, quantity, product.price, total, req.user.id]);
+  `, [shift_id, product_id, qty, product.price, total, req.user.id]);
 
-  await pool.query('UPDATE products SET stock_qty=stock_qty-$1 WHERE id=$2', [quantity, product_id]);
+  await pool.query('UPDATE products SET stock_qty=stock_qty-$1 WHERE id=$2', [qty, product_id]);
 
   const { rows: [sale] } = await pool.query(
     'SELECT ps.*,p.name as product_name,p.reference FROM product_sales ps JOIN products p ON p.id=ps.product_id WHERE ps.id=$1', [id]

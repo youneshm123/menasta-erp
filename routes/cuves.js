@@ -105,7 +105,8 @@ router.get('/:id/historique', requireAuth, wrap(async (req, res) => {
 // ── POST new lecture (dip reading) ────────────────────────────
 router.post('/lectures', requireAuth, wrap(async (req, res) => {
   const { cuve_id, lecture_date, niveau_litres, notes } = req.body || {};
-  if (!cuve_id || niveau_litres == null) return res.status(400).json({ error: 'cuve_id et niveau_litres requis' });
+  const niv = parseFloat(niveau_litres);
+  if (!cuve_id || !isFinite(niv) || niv < 0) return res.status(400).json({ error: 'cuve_id et niveau_litres valide requis' });
   const date = lecture_date || new Date().toISOString().slice(0, 10);
 
   await pool.query(`
@@ -115,7 +116,7 @@ router.post('/lectures', requireAuth, wrap(async (req, res) => {
       niveau_litres=EXCLUDED.niveau_litres,
       recorded_by=EXCLUDED.recorded_by,
       notes=EXCLUDED.notes
-  `, [cuve_id, date, niveau_litres, req.user.id, notes || null]);
+  `, [cuve_id, date, niv, req.user.id, notes || null]);
 
   res.json({ ok: true });
 }));
@@ -136,13 +137,16 @@ router.get('/livraisons', requireAuth, wrap(async (_req, res) => {
 // ── POST new livraison ────────────────────────────────────────
 router.post('/livraisons', requireAuth, wrap(async (req, res) => {
   const { cuve_id, livraison_date, litres_recus, fournisseur, prix_unitaire, bon_livraison, notes } = req.body || {};
-  if (!cuve_id || !litres_recus) return res.status(400).json({ error: 'cuve_id et litres_recus requis' });
+  const litres = parseFloat(litres_recus);
+  if (!cuve_id || !isFinite(litres) || litres <= 0) return res.status(400).json({ error: 'cuve_id et litres_recus valide requis' });
+  if (prix_unitaire != null && (!isFinite(parseFloat(prix_unitaire)) || parseFloat(prix_unitaire) < 0))
+    return res.status(400).json({ error: 'Prix unitaire invalide' });
   const date = livraison_date || new Date().toISOString().slice(0, 10);
 
   const { rows: [{ id }] } = await pool.query(`
     INSERT INTO cuve_livraisons (cuve_id,livraison_date,litres_recus,fournisseur,prix_unitaire,bon_livraison,recorded_by,notes)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id
-  `, [cuve_id, date, litres_recus, fournisseur||null, prix_unitaire||null, bon_livraison||null, req.user.id, notes||null]);
+  `, [cuve_id, date, litres, fournisseur||null, prix_unitaire||null, bon_livraison||null, req.user.id, notes||null]);
 
   res.status(201).json({ ok: true, id });
 }));
