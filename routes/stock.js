@@ -15,7 +15,7 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
   const result = [];
   for (const ft of fuels) {
     const { rows: [row] } = await pool.query(
-      'SELECT COALESCE(SUM(liters_delivered),0) as total, COALESCE(SUM(cost),0) as cost FROM fuel_deliveries WHERE fuel_type_id=$1',
+      'SELECT COALESCE(SUM(quantity_liters),0) as total, COALESCE(SUM(quantity_liters*cost_per_liter),0) as cost FROM fuel_deliveries WHERE fuel_type_id=$1',
       [ft.id]
     );
     const { rows: deliveries } = await pool.query(`
@@ -42,13 +42,12 @@ router.post('/delivery', requireAuth, wrap(async (req, res) => {
   const { rows: ftr } = await pool.query('SELECT * FROM fuel_types WHERE id=$1', [Number(fuel_type_id)]);
   if (!ftr.length) return res.status(404).json({ error: 'Carburant introuvable' });
   const litres     = unit === 'tonnes' ? qty * DENSITY : qty;
-  const prixUnit   = cost_per_liter ? parseFloat(cost_per_liter) : 0;
-  const totalCost  = +(litres * prixUnit).toFixed(2);
+  const prixUnit   = cost_per_liter ? parseFloat(cost_per_liter) : null;
   const delivDate  = delivery_date || new Date().toISOString().slice(0,10);
   const { rows: [{ id }] } = await pool.query(`
-    INSERT INTO fuel_deliveries (fuel_type_id,liters_delivered,price_per_liter,cost,delivery_date,notes,numero_cheque,recorded_by)
+    INSERT INTO fuel_deliveries (fuel_type_id,quantity_liters,cost_per_liter,delivery_date,supplier,notes,numero_cheque,recorded_by)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id
-  `, [Number(fuel_type_id), litres, prixUnit, totalCost, delivDate, notes||null, numero_cheque||null, req.user.id]);
+  `, [Number(fuel_type_id), litres, prixUnit, delivDate, supplier||null, notes||null, numero_cheque||null, req.user.id]);
 
   // Auto-fill cuve livraison for the matching fuel type
   const { rows: cuves } = await pool.query(

@@ -145,11 +145,11 @@ async function initDB() {
     CREATE TABLE IF NOT EXISTS fuel_deliveries (
       id               SERIAL PRIMARY KEY,
       fuel_type_id     INTEGER NOT NULL REFERENCES fuel_types(id),
+      quantity_liters  REAL NOT NULL,
       delivery_date    DATE NOT NULL DEFAULT CURRENT_DATE,
-      liters_delivered REAL NOT NULL,
-      price_per_liter  REAL NOT NULL DEFAULT 0,
-      cost             REAL NOT NULL DEFAULT 0,
+      supplier         TEXT,
       notes            TEXT,
+      cost_per_liter   REAL,
       recorded_by      INTEGER REFERENCES users(id),
       numero_cheque    TEXT,
       created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()

@@ -650,7 +650,7 @@ Tables PostgreSQL disponibles:
 - pump_readings(id, shift_id, pump_id, reading_type, meter_value, recorded_by, created_at)
 - pumps(id, name, fuel_type_id, status)
 - fuel_types(id, name, price_per_liter, color_hex, is_active)
-- fuel_deliveries(id, fuel_type_id, delivery_date, liters_delivered, price_per_liter, cost, notes, numero_cheque, recorded_by, created_at)
+- fuel_deliveries(id, fuel_type_id, quantity_liters, delivery_date, supplier, cost_per_liter, notes, numero_cheque, recorded_by, created_at)
 - credit_clients(id, name, phone, company, balance_due, credit_limit, ice, adresse, is_active, notes, created_at)
 - credit_sales(id, shift_id, credit_client_id, pump_id, liters, price_per_liter, amount, product_type, sale_time, recorded_by, notes)
 - credit_payments(id, credit_client_id, shift_id, amount, payment_time, recorded_by, notes)
