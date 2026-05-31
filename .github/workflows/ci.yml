@@ -1,0 +1,23 @@
+name: CI
+
+# Runs the unit test suite on every push to master and on pull requests.
+# Tests are pure-function / mocked (no database), so no secrets are needed.
+# This is an additive quality signal — Railway deploys independently of it.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    name: Unit tests (node --test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm test
