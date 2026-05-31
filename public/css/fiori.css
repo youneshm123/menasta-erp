@@ -1158,28 +1158,9 @@ body.sb-open .sidebar {
 }
 .dm-toggle:hover { background: rgba(255,255,255,.12); color: #fff; transform: rotate(18deg); }
 
-/* Shared dark-mode rules — applied both via media query and [data-theme="dark"] */
-@mixin dark-mode {
-  --bg:       #13171c;
-  --bg2:      #1a1f26;
-  --surface:  #1e2530;
-  --surface2: #252d39;
-  --border:    #2e3740;
-  --border-lt: #252c38;
-  --border-dk: #3d4a58;
-  --text:     #e2e8f0;
-  --text-2:   #b8c5d3;
-  --muted:    #7d8fa3;
-  --subtle:   #4f6070;
-  --disabled: #3d4a58;
-  --shell-bg: #0f1318;
-  --blue-lt:   rgba(0,112,242,.15);
-  --blue-ring: rgba(0,112,242,.3);
-  --green-lt:  rgba(16,126,62,.18);
-  --red-lt:    rgba(187,0,0,.18);
-  --orange-lt: rgba(233,115,12,.18);
-  --purple-lt: rgba(108,50,160,.18);
-}
+/* Dark-mode tokens are defined twice below: once for the OS preference
+   (@media prefers-color-scheme) and once for the manual [data-theme="dark"]
+   toggle. They are kept in sync by hand. */
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -1355,3 +1336,45 @@ body.sb-open .sidebar {
 .bp-feat-ic { color: rgba(255,255,255,.7); }
 .bp-feat-ic svg { width: 16px; height: 16px; }
 .dm-toggle svg { width: 16px; height: 16px; }
+
+/* ══════════════════════════════════════════════════
+   ACCESSIBILITY  (keyboard focus + reduced motion)
+══════════════════════════════════════════════════ */
+
+/* Visible keyboard focus for every interactive element.
+   :focus-visible only matches keyboard / assistive-tech focus — never a
+   mouse click — so it adds a clear focus ring without affecting pointer use.
+   Placed last so it overrides earlier `outline:none` on form fields. */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+.nav-item:focus-visible,
+.tile:focus-visible,
+.lp-tile:focus-visible,
+.kpi-card:focus-visible,
+.dm-toggle:focus-visible,
+.fs-icon-btn:focus-visible,
+.sb-hamburger:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible,
+[role="button"]:focus-visible,
+.fg input:focus-visible,
+.fg select:focus-visible,
+.fg textarea:focus-visible,
+.ac-input:focus-visible,
+.search-bar input:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* Respect users who request reduced motion (WCAG 2.3.3).
+   Near-zero durations keep transition/animation `*end` events firing so JS
+   that awaits them still works. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
