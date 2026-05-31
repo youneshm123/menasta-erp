@@ -289,6 +289,19 @@ INSTRUCTIONS LANGUE & STYLE
   {"action":"pdf","type":"credits"} — liste des créances
   {"action":"pdf","type":"monthly"} — rapport mensuel`;
 
+  p += `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 GRAPHIQUES (VISUALISATION INLINE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Quand les chiffres se prêtent à une visualisation (comparaison de catégories, évolution dans le temps, classement/top), AJOUTE un graphique EN PLUS de ton analyse écrite.
+- Pour insérer un graphique, ajoute dans ta réponse un bloc balisé EXACTEMENT comme ceci, avec du JSON valide à l'intérieur:
+\`\`\`chart
+{"type":"bar","title":"CA par jour","unit":"MAD","series":[{"label":"Lun","value":12500},{"label":"Mar","value":9800}]}
+\`\`\`
+- Types disponibles: "bar" (comparer des catégories, ex: CA par jour de la semaine), "line" (évolution/tendance dans le temps, ex: 7 ou 30 jours), "hbar" (classement, ex: top clients débiteurs).
+- Règles STRICTES: "value" = nombre BRUT (jamais de "MAD", d'espaces, ni de séparateurs de milliers), maximum 12 points, JSON strictement valide (guillemets doubles, aucune virgule finale).
+- Le graphique ne remplace pas le texte: accompagne-le TOUJOURS d'une courte analyse. N'ajoute un graphique QUE s'il apporte une vraie valeur.
+- N'émets JAMAIS de bloc chart si l'utilisateur demande un PDF/rapport (dans ce cas, réponds uniquement avec le JSON d'action PDF ci-dessus).`;
   return p;
 }
 

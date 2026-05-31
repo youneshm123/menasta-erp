@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="/css/fiori.css?v=32"/>
 <script src="/js/sidebar.js?v=2" defer></script>
 <script src="/js/modal-init.js?v=2" defer></script>
+<script src="/js/chart.js?v=1" defer></script>
 <style>
 .app-main { overflow: hidden; display: flex; flex-direction: column; }
 .chat-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -84,6 +85,9 @@
 .msg.ai .msg-bubble td { padding: 7px 10px; border-bottom: 1px solid var(--border-lt); }
 .msg.ai .msg-bubble tr:last-child td { border-bottom: none; }
 .msg.ai .msg-bubble .num { font-weight: 700; color: #2563EB; font-variant-numeric: tabular-nums; }
+/* AI charts */
+.chart-wrap { margin: 10px 0 4px; max-width: 520px; border: 1px solid var(--border-lt); border-radius: 12px; padding: 10px 12px 6px; background: var(--surface); }
+.chart-wrap svg { display: block; width: 100%; height: auto; }
 /* Follow-up chips */
 .followup-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding: 0 4px; }
 .rtl .followup-wrap { flex-direction: row-reverse; }
@@ -589,6 +593,37 @@ function md(text) {
   return t;
 }
 
+// ── Rich renderer: markdown + inline AI charts (```chart blocks) ──────────────
+// The AI may embed a fenced ```chart {json} ``` block. We pull complete blocks
+// out BEFORE md() (so its generic ``` rule doesn't turn them into <pre>), render
+// them to SVG via buildChartSvg(), and splice them back in. An unterminated
+// block (mid-stream) is hidden until its closing fence arrives.
+function renderRich(text) {
+  const charts = [];
+  let t = text.replace(/```chart\s*\n?([\s\S]*?)```/gi, (_, json) => {
+    const i = charts.length;
+    charts.push(json);
+    return '\n\nCHARTPLACEHOLDER' + i + 'END\n\n';
+  });
+  t = t.replace(/```chart\s*[\s\S]*$/i, ''); // drop a still-streaming block
+  let html = md(t);
+  html = html.replace(/<p>CHARTPLACEHOLDER(\d+)END<\/p>/g, (_, i) => chartFromJson(charts[+i]));
+  html = html.replace(/CHARTPLACEHOLDER(\d+)END/g, (_, i) => chartFromJson(charts[+i]));
+  return html;
+}
+
+function chartFromJson(json) {
+  if (typeof window.buildChartSvg !== 'function' || json == null) return '';
+  let spec;
+  try { spec = JSON.parse(json); }
+  catch (_) {
+    try { spec = JSON.parse(String(json).replace(/,\s*([}\]])/g, '$1')); } // tolerate trailing commas
+    catch (__) { return ''; }
+  }
+  try { return '<div class="chart-wrap">' + window.buildChartSvg(spec) + '</div>'; }
+  catch (_) { return ''; }
+}
+
 function appendMsg(role, htmlContent, time) {
   const welcome = document.getElementById('welcome-screen');
   if (welcome) welcome.remove();
@@ -726,7 +761,7 @@ async function sendMessage() {
             const parsed = JSON.parse(raw);
             if (parsed.text) {
               fullText += parsed.text;
-              bubble.innerHTML = md(fullText);
+              bubble.innerHTML = renderRich(fullText);
               scrollToBottom();
             } else if (parsed.pdf) {
               isPDF = true;
