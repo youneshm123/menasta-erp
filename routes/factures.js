@@ -65,21 +65,31 @@ router.post('/', requireAuth, wrap(async (req, res) => {
   montant_tva = +montant_tva.toFixed(2);
   total_ttc = +total_ttc.toFixed(2);
 
-  const { rows: [{ id }] } = await pool.query(`
-    INSERT INTO factures (numero,facture_date,client_name,client_adresse,client_ice,total_ht,montant_tva,total_ttc,notes,recorded_by)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id
-  `, [numero, facture_date||new Date().toISOString().slice(0,10), client_name, client_adresse||null, client_ice||null, total_ht, montant_tva, total_ttc, notes||null, req.user.id]);
+  const dbc = await pool.connect();
+  try {
+    await dbc.query('BEGIN');
+    const { rows: [{ id }] } = await dbc.query(`
+      INSERT INTO factures (numero,facture_date,client_name,client_adresse,client_ice,total_ht,montant_tva,total_ttc,notes,recorded_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id
+    `, [numero, facture_date||new Date().toISOString().slice(0,10), client_name, client_adresse||null, client_ice||null, total_ht, montant_tva, total_ttc, notes||null, req.user.id]);
 
-  for (const l of lignes) {
-    await pool.query(`
-      INSERT INTO facture_lignes (facture_id,code_produit,designation,quantite,prix_ht,taux_tva,total_ht,montant_tva,montant_ttc)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-    `, [id, l.code_produit||null, l.designation, l.quantite, l.prix_ht, l.taux_tva||10, l.total_ht, l.montant_tva, l.montant_ttc]);
+    for (const l of lignes) {
+      await dbc.query(`
+        INSERT INTO facture_lignes (facture_id,code_produit,designation,quantite,prix_ht,taux_tva,total_ht,montant_tva,montant_ttc)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      `, [id, l.code_produit||null, l.designation, l.quantite, l.prix_ht, l.taux_tva||10, l.total_ht, l.montant_tva, l.montant_ttc]);
+    }
+    await dbc.query('COMMIT');
+
+    const { rows: [facture] } = await dbc.query('SELECT * FROM factures WHERE id=$1', [id]);
+    const { rows: lignesRes } = await dbc.query('SELECT * FROM facture_lignes WHERE facture_id=$1 ORDER BY id', [id]);
+    res.status(201).json({ ...facture, lignes: lignesRes });
+  } catch (e) {
+    await dbc.query('ROLLBACK');
+    throw e;
+  } finally {
+    dbc.release();
   }
-
-  const { rows: [facture] } = await pool.query('SELECT * FROM factures WHERE id=$1', [id]);
-  const { rows: lignesRes } = await pool.query('SELECT * FROM facture_lignes WHERE facture_id=$1 ORDER BY id', [id]);
-  res.status(201).json({ ...facture, lignes: lignesRes });
 }));
 
 router.put('/:id', requireAuth, wrap(async (req, res) => {
@@ -108,28 +118,48 @@ router.put('/:id', requireAuth, wrap(async (req, res) => {
   montant_tva = +montant_tva.toFixed(2);
   total_ttc = +total_ttc.toFixed(2);
 
-  await pool.query(`
-    UPDATE factures SET facture_date=$1,client_name=$2,client_adresse=$3,client_ice=$4,
-      total_ht=$5,montant_tva=$6,total_ttc=$7,notes=$8 WHERE id=$9
-  `, [facture_date||rows[0].facture_date, client_name, client_adresse||null, client_ice||null, total_ht, montant_tva, total_ttc, notes||null, req.params.id]);
+  const dbc = await pool.connect();
+  try {
+    await dbc.query('BEGIN');
+    await dbc.query(`
+      UPDATE factures SET facture_date=$1,client_name=$2,client_adresse=$3,client_ice=$4,
+        total_ht=$5,montant_tva=$6,total_ttc=$7,notes=$8 WHERE id=$9
+    `, [facture_date||rows[0].facture_date, client_name, client_adresse||null, client_ice||null, total_ht, montant_tva, total_ttc, notes||null, req.params.id]);
 
-  await pool.query('DELETE FROM facture_lignes WHERE facture_id=$1', [req.params.id]);
-  for (const l of lignes) {
-    await pool.query(`
-      INSERT INTO facture_lignes (facture_id,code_produit,designation,quantite,prix_ht,taux_tva,total_ht,montant_tva,montant_ttc)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-    `, [req.params.id, l.code_produit||null, l.designation, l.quantite, l.prix_ht, l.taux_tva||10, l.total_ht, l.montant_tva, l.montant_ttc]);
+    await dbc.query('DELETE FROM facture_lignes WHERE facture_id=$1', [req.params.id]);
+    for (const l of lignes) {
+      await dbc.query(`
+        INSERT INTO facture_lignes (facture_id,code_produit,designation,quantite,prix_ht,taux_tva,total_ht,montant_tva,montant_ttc)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      `, [req.params.id, l.code_produit||null, l.designation, l.quantite, l.prix_ht, l.taux_tva||10, l.total_ht, l.montant_tva, l.montant_ttc]);
+    }
+    await dbc.query('COMMIT');
+
+    const { rows: [facture] } = await dbc.query('SELECT * FROM factures WHERE id=$1', [req.params.id]);
+    const { rows: lignesRes } = await dbc.query('SELECT * FROM facture_lignes WHERE facture_id=$1 ORDER BY id', [req.params.id]);
+    res.json({ ...facture, lignes: lignesRes });
+  } catch (e) {
+    await dbc.query('ROLLBACK');
+    throw e;
+  } finally {
+    dbc.release();
   }
-
-  const { rows: [facture] } = await pool.query('SELECT * FROM factures WHERE id=$1', [req.params.id]);
-  const { rows: lignesRes } = await pool.query('SELECT * FROM facture_lignes WHERE facture_id=$1 ORDER BY id', [req.params.id]);
-  res.json({ ...facture, lignes: lignesRes });
 }));
 
 router.delete('/:id', requireAuth, wrap(async (req, res) => {
-  await pool.query('DELETE FROM facture_lignes WHERE facture_id=$1', [req.params.id]);
-  await pool.query('DELETE FROM factures WHERE id=$1', [req.params.id]);
-  res.json({ ok: true });
+  const dbc = await pool.connect();
+  try {
+    await dbc.query('BEGIN');
+    await dbc.query('DELETE FROM facture_lignes WHERE facture_id=$1', [req.params.id]);
+    await dbc.query('DELETE FROM factures WHERE id=$1', [req.params.id]);
+    await dbc.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await dbc.query('ROLLBACK');
+    throw e;
+  } finally {
+    dbc.release();
+  }
 }));
 
 module.exports = router;

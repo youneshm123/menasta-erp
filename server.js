@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const express    = require('express');
+const crypto     = require('crypto');
 const path       = require('path');
 const helmet     = require('helmet');
 const rateLimit  = require('express-rate-limit');
@@ -46,13 +47,23 @@ async function start() {
   // ── Compression ──
   app.use(compression());
 
-  // ── Request logging ──
-  app.use((req, _res, next) => {
+  // ── Request logging (correlation ID + structured JSON in prod) ──
+  app.use((req, res, next) => {
     const t = Date.now();
-    _res.on('finish', () => {
+    req.id = crypto.randomUUID();
+    res.setHeader('X-Request-Id', req.id);
+    res.on('finish', () => {
       const ms = Date.now() - t;
-      const level = _res.statusCode >= 500 ? 'ERROR' : _res.statusCode >= 400 ? 'WARN' : 'INFO';
-      console.log(`[${level}] ${req.method} ${req.originalUrl} ${_res.statusCode} ${ms}ms`);
+      const level = res.statusCode >= 500 ? 'ERROR' : res.statusCode >= 400 ? 'WARN' : 'INFO';
+      if (process.env.NODE_ENV === 'production') {
+        console.log(JSON.stringify({
+          level, ts: new Date().toISOString(), reqId: req.id,
+          method: req.method, path: req.originalUrl, status: res.statusCode,
+          ms, user: req.user ? req.user.id : null, ip: req.ip,
+        }));
+      } else {
+        console.log(`[${level}] ${req.method} ${req.originalUrl} ${res.statusCode} ${ms}ms (${req.id.slice(0, 8)})`);
+      }
     });
     next();
   });
@@ -313,13 +324,14 @@ async function start() {
   // generic message and log full detail server-side to avoid leaking internals.
   app.use((err, req, res, _next) => {
     const status = err.status || err.statusCode || 500;
+    const ref = req.id || '-';
     if (status >= 500) {
-      console.error(`[ERROR] ${req.method} ${req.originalUrl} —`, err.stack || err.message);
+      console.error(`[ERROR] [${ref}] ${req.method} ${req.originalUrl} —`, err.stack || err.message);
     } else {
-      console.warn(`[WARN] ${req.method} ${req.originalUrl} — ${err.message}`);
+      console.warn(`[WARN] [${ref}] ${req.method} ${req.originalUrl} — ${err.message}`);
     }
     const clientMsg = status < 500 ? (err.message || 'Requête invalide') : 'Erreur serveur interne';
-    res.status(status).json({ error: clientMsg });
+    res.status(status).json({ error: clientMsg, ref });
   });
 
   const PORT = process.env.PORT || 3000;

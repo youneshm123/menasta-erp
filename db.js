@@ -2,8 +2,23 @@ require('dotenv').config();
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 
+// pg-connection-string warns that sslmode 'require' is currently treated as
+// 'verify-full' and will weaken to libpq semantics in pg v9. We pin TLS
+// explicitly via the ssl object below, so the URL param is redundant — strip
+// it to silence the deprecation warning without changing security posture.
+function stripSslmode(url) {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.delete('sslmode');
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 const pgPool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: stripSslmode(process.env.DATABASE_URL),
   ssl: process.env.NODE_ENV === 'production'
     ? { rejectUnauthorized: true }
     : { rejectUnauthorized: false }
