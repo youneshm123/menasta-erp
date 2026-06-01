@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
+const { pctDelta, fillDailySeries, estMargin } = require('../lib/analytics');
 
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
@@ -111,6 +112,101 @@ router.get('/summary', requireAuth, wrap(async (_req, res) => {
     credits_clients:     parseInt(credits.rows[0]?.clients   || 0),
     logs_total:          parseInt(logs.rows[0]?.total        || 0),
     weekly_revenue:      weekly,
+  });
+}));
+
+// Advanced analytics — period comparisons, 30-day trend, top credit clients.
+// Numbers come straight from shifts; fuel margin uses a blended purchase cost
+// (fuel_deliveries + cuve_livraisons) and degrades to null when no cost is known.
+router.get('/analytics', requireAuth, wrap(async (_req, res) => {
+  const [agg, cost, trend, topClients] = await Promise.all([
+    pool.query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN opened_at::date = CURRENT_DATE
+              THEN COALESCE(total_fuel_revenue,0)+COALESCE(total_product_sales,0) ELSE 0 END),0) AS rev_today,
+        COALESCE(SUM(CASE WHEN opened_at::date = CURRENT_DATE - INTERVAL '1 day'
+              THEN COALESCE(total_fuel_revenue,0)+COALESCE(total_product_sales,0) ELSE 0 END),0) AS rev_yesterday,
+        COALESCE(SUM(CASE WHEN opened_at::date = CURRENT_DATE
+              THEN COALESCE(total_liters_sold,0) ELSE 0 END),0) AS liters_today,
+        COALESCE(SUM(CASE WHEN opened_at::date = CURRENT_DATE - INTERVAL '1 day'
+              THEN COALESCE(total_liters_sold,0) ELSE 0 END),0) AS liters_yesterday,
+        COALESCE(SUM(CASE WHEN opened_at >= date_trunc('month', CURRENT_DATE)
+              THEN COALESCE(total_fuel_revenue,0)+COALESCE(total_product_sales,0) ELSE 0 END),0) AS rev_mtd,
+        COALESCE(SUM(CASE WHEN opened_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '1 month'
+                       AND opened_at::date <= (CURRENT_DATE - INTERVAL '1 month')::date
+              THEN COALESCE(total_fuel_revenue,0)+COALESCE(total_product_sales,0) ELSE 0 END),0) AS rev_last_month,
+        COALESCE(SUM(CASE WHEN opened_at >= date_trunc('month', CURRENT_DATE)
+              THEN COALESCE(total_fuel_revenue,0) ELSE 0 END),0) AS fuel_rev_mtd,
+        COALESCE(SUM(CASE WHEN opened_at >= date_trunc('month', CURRENT_DATE)
+              THEN COALESCE(total_liters_sold,0) ELSE 0 END),0) AS liters_mtd,
+        COALESCE(SUM(CASE WHEN opened_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '1 month'
+                       AND opened_at::date <= (CURRENT_DATE - INTERVAL '1 month')::date
+              THEN COALESCE(total_fuel_revenue,0) ELSE 0 END),0) AS fuel_rev_last_month,
+        COALESCE(SUM(CASE WHEN opened_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '1 month'
+                       AND opened_at::date <= (CURRENT_DATE - INTERVAL '1 month')::date
+              THEN COALESCE(total_liters_sold,0) ELSE 0 END),0) AS liters_last_month
+      FROM shifts
+    `),
+    pool.query(`
+      SELECT CASE WHEN SUM(qty) > 0 THEN SUM(cost*qty)/SUM(qty) ELSE NULL END AS avg_cost
+      FROM (
+        SELECT cost_per_liter AS cost, quantity_liters AS qty
+          FROM fuel_deliveries WHERE cost_per_liter IS NOT NULL AND quantity_liters > 0
+        UNION ALL
+        SELECT prix_unitaire AS cost, litres_recus AS qty
+          FROM cuve_livraisons WHERE prix_unitaire IS NOT NULL AND litres_recus > 0
+      ) x
+    `),
+    pool.query(`
+      SELECT opened_at::date AS day,
+             COALESCE(SUM(COALESCE(total_fuel_revenue,0)+COALESCE(total_product_sales,0)),0) AS revenue
+      FROM shifts
+      WHERE opened_at >= CURRENT_DATE - INTERVAL '29 days'
+      GROUP BY day ORDER BY day
+    `),
+    pool.query(`
+      SELECT name, COALESCE(company,'') AS company,
+             COALESCE(balance_due,0) AS balance, credit_limit
+      FROM credit_clients
+      WHERE is_active=1 AND balance_due > 0
+      ORDER BY balance_due DESC
+      LIMIT 5
+    `),
+  ]);
+
+  const a = agg.rows[0] || {};
+  const num = v => parseFloat(v) || 0;
+  const avgCost = (cost.rows[0] && cost.rows[0].avg_cost != null) ? parseFloat(cost.rows[0].avg_cost) : null;
+
+  const revToday = num(a.rev_today), revYest = num(a.rev_yesterday);
+  const revMtd   = num(a.rev_mtd),   revLast = num(a.rev_last_month);
+  const litToday = num(a.liters_today), litYest = num(a.liters_yesterday);
+  const litMtd   = num(a.liters_mtd),   litLast = num(a.liters_last_month);
+
+  const marginMtd  = estMargin(num(a.fuel_rev_mtd),        litMtd,  avgCost);
+  const marginLast = estMargin(num(a.fuel_rev_last_month), litLast, avgCost);
+
+  res.json({
+    revenue: {
+      today: revToday, yesterday: revYest, delta_pct: pctDelta(revToday, revYest),
+      mtd: revMtd, last_month_same: revLast, mtd_delta_pct: pctDelta(revMtd, revLast),
+    },
+    liters: {
+      today: litToday, yesterday: litYest, delta_pct: pctDelta(litToday, litYest),
+      mtd: litMtd, last_month_same: litLast, mtd_delta_pct: pctDelta(litMtd, litLast),
+    },
+    margin: {
+      mtd: marginMtd, last_month: marginLast,
+      delta_pct: (marginMtd != null && marginLast != null) ? pctDelta(marginMtd, marginLast) : null,
+      avg_cost_per_liter: avgCost,
+    },
+    trend_30d: fillDailySeries(trend.rows, 30),
+    top_credit_clients: topClients.rows.map(r => ({
+      name: r.name,
+      company: r.company || '',
+      balance: num(r.balance),
+      credit_limit: r.credit_limit != null ? num(r.credit_limit) : null,
+    })),
   });
 }));
 
