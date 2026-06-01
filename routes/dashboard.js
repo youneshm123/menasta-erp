@@ -70,7 +70,7 @@ router.get('/fuel-split', requireAuth, wrap(async (_req, res) => {
 // All-in-one home page summary — single DB round-trip bundle
 router.get('/summary', requireAuth, wrap(async (_req, res) => {
   const [shifts, bank, cuves, credits, logs, weeklyRaw] = await Promise.all([
-    pool.query('SELECT total_fuel_revenue, created_at FROM shifts ORDER BY created_at DESC LIMIT 1'),
+    pool.query('SELECT total_fuel_revenue, opened_at FROM shifts ORDER BY opened_at DESC LIMIT 1'),
     pool.query(`
       SELECT
         (SELECT COALESCE(initial_balance,0) FROM bank_settings WHERE id=1) +
