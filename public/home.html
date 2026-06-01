@@ -639,6 +639,80 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
       </div>
     </div>
 
+    <!-- ═══ Analyse avancée ═══ -->
+    <div class="sec-hd" style="margin-top:6px">
+      <h2>Analyse avancée</h2>
+      <div class="sec-acts">
+        <button class="pill-btn"><i data-lucide="trending-up"></i>Comparaison de périodes</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-card-hd">
+          <div class="kpi-ic-wrap">
+            <div class="kpi-ic"><i data-lucide="banknote"></i></div>
+            <span class="kpi-lbl">Revenu aujourd'hui</span>
+          </div>
+        </div>
+        <div class="kpi-val" id="an-rev-today">—</div>
+        <span class="kpi-ch nt" id="an-rev-today-ch">—</span><span class="kpi-ch-sub">vs hier</span>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card-hd">
+          <div class="kpi-ic-wrap">
+            <div class="kpi-ic"><i data-lucide="trending-up"></i></div>
+            <span class="kpi-lbl">CA du mois</span>
+          </div>
+        </div>
+        <div class="kpi-val" id="an-rev-mtd">—</div>
+        <span class="kpi-ch nt" id="an-rev-mtd-ch">—</span><span class="kpi-ch-sub">vs mois dernier</span>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card-hd">
+          <div class="kpi-ic-wrap">
+            <div class="kpi-ic"><i data-lucide="percent"></i></div>
+            <span class="kpi-lbl">Marge carburant (mois)</span>
+          </div>
+        </div>
+        <div class="kpi-val" id="an-margin">—</div>
+        <span class="kpi-ch nt" id="an-margin-ch">—</span><span class="kpi-ch-sub">estimée</span>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card-hd">
+          <div class="kpi-ic-wrap">
+            <div class="kpi-ic"><i data-lucide="gauge"></i></div>
+            <span class="kpi-lbl">Litres vendus (mois)</span>
+          </div>
+        </div>
+        <div class="kpi-val" id="an-liters">—</div>
+        <span class="kpi-ch nt" id="an-liters-ch">—</span><span class="kpi-ch-sub">vs mois dernier</span>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-hd">
+          <div>
+            <div class="chart-total-val" id="an-trend-total">—</div>
+            <div class="chart-sub">Revenu · 30 derniers jours</div>
+          </div>
+          <button class="pill-btn"><i data-lucide="calendar-days"></i>30 jours</button>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-trend30"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-hd">
+          <div>
+            <div class="chart-total-val" id="an-top-total">—</div>
+            <div class="chart-sub">Top clients créditeurs</div>
+          </div>
+          <button class="link-btn" onclick="window.location='/app'"><i data-lucide="users"></i> Crédits</button>
+        </div>
+        <div class="chart-wrap" id="an-top" style="height:auto;min-height:165px"></div>
+      </div>
+    </div>
+
     <!-- Derniers postes table -->
     <div class="tbl-card">
       <div class="tbl-hd">
@@ -762,6 +836,87 @@ window.addEventListener('resize', () => { if (window.innerWidth > 768) closeSb()
 
 // ── Charts ────────────────────────────────────────────
 let barChart = null, lineChart = null;
+
+// ── Advanced analytics ────────────────────────────────
+let trendChart = null;
+const escH = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function setDelta(id, pct) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (pct == null) { el.className = 'kpi-ch nt'; el.textContent = '—'; return; }
+  const cls = pct > 0 ? 'up' : pct < 0 ? 'dn' : 'nt';
+  const arrow = pct > 0 ? '▲ ' : pct < 0 ? '▼ ' : '';
+  el.className = 'kpi-ch ' + cls;
+  el.textContent = arrow + Math.abs(pct).toLocaleString('fr-FR') + '%';
+}
+
+function buildTrend30(series) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const grid = isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.04)';
+  const lbl  = isDark ? '#6b7280' : '#9ca3af';
+  const labels = series.map(d => new Date(d.day+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}));
+  const data   = series.map(d => parseFloat(d.revenue)||0);
+  document.getElementById('an-trend-total').textContent = fmt(data.reduce((a,b)=>a+b,0))+' DH';
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(document.getElementById('chart-trend30'), {
+    type:'line',
+    data:{ labels, datasets:[{
+      data, borderColor:'#5b4fcf', backgroundColor:'rgba(91,79,207,.08)',
+      fill:true, tension:0.35, pointRadius:0, pointHoverRadius:5, borderWidth:2
+    }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>fmt(c.raw)+' DH' } } },
+      scales:{
+        x:{ grid:{color:grid}, ticks:{color:lbl,font:{size:10},maxRotation:0,autoSkip:true,maxTicksLimit:8} },
+        y:{ grid:{color:grid}, ticks:{color:lbl,font:{size:11},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+function renderTopClients(list) {
+  const wrap = document.getElementById('an-top');
+  if (!wrap) return;
+  const total = list.reduce((a,c)=>a+(parseFloat(c.balance)||0),0);
+  document.getElementById('an-top-total').textContent = fmt(total)+' DH';
+  if (!list.length) { wrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:28px 0;text-align:center">Aucune créance en cours</div>'; return; }
+  const max = Math.max.apply(null, list.map(c=>parseFloat(c.balance)||0).concat([1]));
+  wrap.innerHTML = list.map(c => {
+    const bal = parseFloat(c.balance)||0;
+    const pct = Math.round(bal/max*100);
+    const nm  = c.name || '—';
+    const ini = nm.split(' ').map(w=>w[0]).filter(Boolean).join('').slice(0,2).toUpperCase() || '?';
+    return '<div style="display:flex;align-items:center;gap:10px;margin:9px 0">'
+      + '<div class="user-av" style="width:28px;height:28px;font-size:10px">' + escH(ini) + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      +   '<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px">'
+      +     '<span style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escH(nm) + '</span>'
+      +     '<span style="font-size:12.5px;font-weight:700;flex-shrink:0">' + fmt(bal) + ' DH</span>'
+      +   '</div>'
+      +   '<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--primary);border-radius:3px"></div></div>'
+      + '</div></div>';
+  }).join('');
+}
+
+async function loadAnalytics() {
+  try {
+    const r = await fetch('/api/dashboard/analytics', { headers:{ Authorization:'Bearer '+TOKEN } });
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('an-rev-today').textContent = fmt(d.revenue.today)+' DH';
+    setDelta('an-rev-today-ch', d.revenue.delta_pct);
+    document.getElementById('an-rev-mtd').textContent = fmt(d.revenue.mtd)+' DH';
+    setDelta('an-rev-mtd-ch', d.revenue.mtd_delta_pct);
+    document.getElementById('an-margin').textContent = (d.margin.mtd == null ? '—' : fmt(d.margin.mtd)+' DH');
+    setDelta('an-margin-ch', d.margin.delta_pct);
+    document.getElementById('an-liters').textContent = fmt(d.liters.mtd)+' L';
+    setDelta('an-liters-ch', d.liters.mtd_delta_pct);
+    if (Array.isArray(d.trend_30d)) buildTrend30(d.trend_30d);
+    renderTopClients(d.top_credit_clients || []);
+  } catch(e) { console.warn('analytics', e); }
+}
 
 function buildCharts(weekly) {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -889,6 +1044,7 @@ async function load() {
 }
 
 load();
+loadAnalytics();
 </script>
 <script>lucide.createIcons();</script>
 </body>
