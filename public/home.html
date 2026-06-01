@@ -643,7 +643,8 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
     <div class="sec-hd" style="margin-top:6px">
       <h2>Analyse avancée</h2>
       <div class="sec-acts">
-        <button class="pill-btn"><i data-lucide="trending-up"></i>Comparaison de périodes</button>
+        <button class="exp-btn" onclick="exportAnalytics('pdf')"><i data-lucide="file-text"></i>PDF</button>
+        <button class="exp-btn" onclick="exportAnalytics('csv')"><i data-lucide="sheet"></i>Excel</button>
       </div>
     </div>
 
@@ -916,6 +917,22 @@ async function loadAnalytics() {
     if (Array.isArray(d.trend_30d)) buildTrend30(d.trend_30d);
     renderTopClients(d.top_credit_clients || []);
   } catch(e) { console.warn('analytics', e); }
+}
+
+async function exportAnalytics(kind) {
+  const url = kind === 'pdf' ? '/api/dashboard/analytics/export.pdf' : '/api/dashboard/analytics/export.csv';
+  try {
+    const r = await fetch(url, { headers:{ Authorization:'Bearer '+TOKEN } });
+    if (!r.ok) { alert('Export indisponible (' + r.status + ')'); return; }
+    const blob = await r.blob();
+    const today = new Date().toISOString().slice(0,10);
+    const ext = kind === 'pdf' ? 'pdf' : 'csv';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'MENASTA_Analyse_' + today + '.' + ext;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  } catch(e) { console.warn('export', e); alert('Erreur export'); }
 }
 
 function buildCharts(weekly) {

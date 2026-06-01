@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const PDFDocument = require('pdfkit');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
 const { pctDelta, fillDailySeries, estMargin } = require('../lib/analytics');
@@ -116,9 +117,10 @@ router.get('/summary', requireAuth, wrap(async (_req, res) => {
 }));
 
 // Advanced analytics — period comparisons, 30-day trend, top credit clients.
-// Numbers come straight from shifts; fuel margin uses a blended purchase cost
+// Shared by the JSON route (GET /analytics) and the PDF/CSV exports. Numbers come
+// straight from shifts; fuel margin uses a blended purchase cost
 // (fuel_deliveries + cuve_livraisons) and degrades to null when no cost is known.
-router.get('/analytics', requireAuth, wrap(async (_req, res) => {
+async function computeAnalytics() {
   const [agg, cost, trend, topClients] = await Promise.all([
     pool.query(`
       SELECT
@@ -186,7 +188,7 @@ router.get('/analytics', requireAuth, wrap(async (_req, res) => {
   const marginMtd  = estMargin(num(a.fuel_rev_mtd),        litMtd,  avgCost);
   const marginLast = estMargin(num(a.fuel_rev_last_month), litLast, avgCost);
 
-  res.json({
+  return {
     revenue: {
       today: revToday, yesterday: revYest, delta_pct: pctDelta(revToday, revYest),
       mtd: revMtd, last_month_same: revLast, mtd_delta_pct: pctDelta(revMtd, revLast),
@@ -207,7 +209,137 @@ router.get('/analytics', requireAuth, wrap(async (_req, res) => {
       balance: num(r.balance),
       credit_limit: r.credit_limit != null ? num(r.credit_limit) : null,
     })),
-  });
+  };
+}
+
+router.get('/analytics', requireAuth, wrap(async (_req, res) => {
+  res.json(await computeAnalytics());
 }));
+
+// CSV export — French-Excel dialect: UTF-8 BOM, semicolon delimiter, CRLF rows.
+router.get('/analytics/export.csv', requireAuth, wrap(async (_req, res) => {
+  const d = await computeAnalytics();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const nf = n => (n == null ? '' : Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  const pf = p => (p == null ? '' : (p > 0 ? '+' : '') + Number(p).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %');
+  const esc = v => {
+    const s = String(v == null ? '' : v);
+    return /[";\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const rows = [];
+  const push = (...cells) => rows.push(cells.map(esc).join(';'));
+
+  push('MENASTA — Analyse avancée', today);
+  push('');
+  push('Indicateur', 'Valeur', 'Référence', 'Variation');
+  push("Revenu du jour", nf(d.revenue.today), nf(d.revenue.yesterday) + ' (hier)', pf(d.revenue.delta_pct));
+  push('Revenu du mois', nf(d.revenue.mtd), nf(d.revenue.last_month_same) + ' (mois préc.)', pf(d.revenue.mtd_delta_pct));
+  push("Litres du jour", nf(d.liters.today), nf(d.liters.yesterday) + ' (hier)', pf(d.liters.delta_pct));
+  push('Litres du mois', nf(d.liters.mtd), nf(d.liters.last_month_same) + ' (mois préc.)', pf(d.liters.mtd_delta_pct));
+  push('Marge carburant (mois)', nf(d.margin.mtd), nf(d.margin.last_month) + ' (mois préc.)', pf(d.margin.delta_pct));
+  push('Coût moyen / litre', nf(d.margin.avg_cost_per_liter));
+  push('');
+  push('Top clients crédit');
+  push('Client', 'Société', 'Solde dû', 'Plafond');
+  d.top_credit_clients.forEach(c => push(c.name, c.company, nf(c.balance), nf(c.credit_limit)));
+  push('');
+  push('Tendance 30 jours');
+  push('Jour', 'Revenu');
+  d.trend_30d.forEach(p => push(p.day, nf(p.revenue)));
+
+  const csv = '﻿' + rows.join('\r\n') + '\r\n';
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="MENASTA_Analyse_${today}.csv"`);
+  res.send(csv);
+}));
+
+// PDF export — same house style as the AI reports (routes/ai.js).
+router.get('/analytics/export.pdf', requireAuth, wrap(async (_req, res) => {
+  const d = await computeAnalytics();
+  pdfAnalytics(res, d);
+}));
+
+function pdfAnalytics(res, d) {
+  const fmt = n => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const pct = p => (p == null ? '—' : (p > 0 ? '+' : '') + Number(p).toLocaleString('fr-FR',{maximumFractionDigits:1}) + ' %');
+  const today = new Date().toISOString().slice(0,10);
+
+  const doc = new PDFDocument({ margin:50, size:'A4' });
+  res.setHeader('Content-Type','application/pdf');
+  res.setHeader('Content-Disposition',`attachment; filename="MENASTA_Analyse_${today}.pdf"`);
+  doc.pipe(res);
+
+  // Header bar
+  doc.rect(0,0,595,75).fill('#0F172A');
+  doc.fontSize(20).font('Helvetica-Bold').fillColor('#FFFFFF').text('⛽  MENASTA', 50,18);
+  doc.fontSize(10).font('Helvetica').fillColor('#94A3B8').text('Station Service — Analyse Avancée', 50,44);
+  doc.fontSize(10).fillColor('#CBD5E1').text(today, 460,44);
+
+  let y = 95;
+  const col = (label,val,yy,x1=55,x2=350,highlight=false) => {
+    doc.fontSize(10).font('Helvetica').fillColor('#64748B').text(label,x1,yy);
+    doc.fontSize(10).font('Helvetica-Bold').fillColor(highlight?'#2563EB':'#0F172A').text(val,x2,yy,{align:'right',width:190});
+  };
+  const secTitle = (title,color='#2563EB') => {
+    doc.fontSize(9).font('Helvetica-Bold').fillColor(color).text(title,55,y);
+    doc.moveTo(55,y+13).lineTo(540,y+13).lineWidth(0.4).strokeColor('#E2E8F0').stroke();
+    y+=20;
+  };
+
+  // KPI row
+  const marginTxt = d.margin.mtd != null ? fmt(d.margin.mtd)+' MAD' : '—';
+  const kpis = [
+    {l:'Revenu du jour',          v:fmt(d.revenue.today)+' MAD', c:'#2563EB', bg:'#EFF6FF'},
+    {l:'Revenu du mois',          v:fmt(d.revenue.mtd)+' MAD',   c:'#0D9488', bg:'#F0FDFA'},
+    {l:'Marge carburant (mois)',  v:marginTxt,                   c:'#059669', bg:'#ECFDF5'},
+    {l:'Litres du mois',          v:fmt(d.liters.mtd)+' L',      c:'#7C3AED', bg:'#F5F3FF'},
+  ];
+  kpis.forEach((k,i) => {
+    const bx=55+(i%2)*248, by=y+Math.floor(i/2)*52;
+    doc.roundedRect(bx,by,235,44,5).fill(k.bg);
+    doc.fontSize(8).font('Helvetica').fillColor(k.c).text(k.l.toUpperCase(),bx+10,by+7);
+    doc.fontSize(14).font('Helvetica-Bold').fillColor(k.c).text(k.v,bx+10,by+21);
+  });
+  y += 120;
+
+  secTitle('REVENU');
+  col("Aujourd'hui",fmt(d.revenue.today)+' MAD',y,55,350,true); y+=16;
+  col('Hier',fmt(d.revenue.yesterday)+' MAD',y); y+=16;
+  col('Variation vs hier',pct(d.revenue.delta_pct),y); y+=16;
+  col('Mois en cours',fmt(d.revenue.mtd)+' MAD',y,55,350,true); y+=16;
+  col('Même période mois préc.',fmt(d.revenue.last_month_same)+' MAD',y); y+=16;
+  col('Variation vs mois préc.',pct(d.revenue.mtd_delta_pct),y); y+=22;
+
+  secTitle('LITRES VENDUS');
+  col("Aujourd'hui",fmt(d.liters.today)+' L',y,55,350,true); y+=16;
+  col('Hier',fmt(d.liters.yesterday)+' L',y); y+=16;
+  col('Variation vs hier',pct(d.liters.delta_pct),y); y+=16;
+  col('Mois en cours',fmt(d.liters.mtd)+' L',y,55,350,true); y+=16;
+  col('Variation vs mois préc.',pct(d.liters.mtd_delta_pct),y); y+=22;
+
+  secTitle('MARGE CARBURANT (ESTIMÉE)');
+  if (d.margin.mtd != null) {
+    col('Marge mois en cours',fmt(d.margin.mtd)+' MAD',y,55,350,true); y+=16;
+    col('Marge mois préc.',d.margin.last_month != null ? fmt(d.margin.last_month)+' MAD' : '—',y); y+=16;
+    col('Variation',pct(d.margin.delta_pct),y); y+=16;
+    col('Coût moyen / litre',d.margin.avg_cost_per_liter != null ? fmt(d.margin.avg_cost_per_liter)+' MAD' : '—',y); y+=22;
+  } else {
+    doc.fontSize(9).font('Helvetica-Oblique').fillColor('#94A3B8')
+      .text("Aucun coût d'achat connu — marge indisponible.",55,y); y+=22;
+  }
+
+  if (d.top_credit_clients.length > 0) {
+    secTitle('TOP CLIENTS CRÉDIT','#DC2626');
+    d.top_credit_clients.forEach(c => {
+      const label = c.company ? `${c.name} (${c.company})` : c.name;
+      col(label,fmt(c.balance)+' MAD',y); y+=16;
+    });
+  }
+
+  doc.fontSize(8).font('Helvetica').fillColor('#94A3B8')
+    .text(`Généré le ${new Date().toLocaleString('fr-FR')} · MENASTA AI`,50,780,{align:'center',width:495});
+  doc.end();
+}
 
 module.exports = router;
