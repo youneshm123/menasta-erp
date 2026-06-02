@@ -738,7 +738,11 @@ function closeModal(id) {
   // Hide the autocomplete portal when any modal closes
   if (typeof _acPortalHide === 'function') _acPortalHide();
 }
-document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); }));
+document.querySelectorAll('.overlay').forEach(o => {
+  let pressedOnBackdrop = false;
+  o.addEventListener('mousedown', e => { pressedOnBackdrop = (e.target === o); });
+  o.addEventListener('click', e => { if (e.target === o && pressedOnBackdrop) o.classList.remove('open'); });
+});
 
 // ─── NAV ────────────────────────────────────────────────────
 document.querySelectorAll('.nav-item[data-p]').forEach(el => el.addEventListener('click', () => goTo(el.dataset.p)));
@@ -1117,6 +1121,9 @@ async function prepareOpenShift() {
         </tbody></table>
       </div>
     </div>`;
+  // Default hours: 09:00 → 09:00 (24h shift)
+  document.getElementById('os-heure-debut').value = '09:00';
+  document.getElementById('os-heure-fin').value   = '09:00';
   openModal('m-open-shift');
 }
 
