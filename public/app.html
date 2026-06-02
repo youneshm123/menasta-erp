@@ -158,38 +158,21 @@
       <!-- ══ PAGE: CRÉANCES ══ -->
       <div class="page" id="p-credits">
         <div class="tiles" id="credit-tiles"></div>
-        <div style="display:flex;flex-direction:column;gap:20px;">
-          <div class="section">
-            <div class="s-head">
-              <div class="s-title">👥 Clients Crédit</div>
-              <div class="fxg">
-                <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('clients-tbl','Clients Crédit')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('clients-tbl','Clients Crédit')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('clients-tbl','Clients Crédit')">📝 Word</button></div>
-                <button class="btn btn-p btn-sm" onclick="openModal('m-add-client')">+ Nouveau Client</button>
-              </div>
-            </div>
-            <div style="padding:10px 16px 4px;border-bottom:1px solid var(--border-lt);">
-              <input placeholder="🔍 Rechercher client, société, téléphone…" oninput="searchTable(this.value,'clients-body',5)" style="width:100%;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;"/>
-            </div>
-            <div class="s-body-flush" style="overflow-x:auto">
-              <table class="t" id="clients-tbl"><thead><tr><th>Nom</th><th>Société</th><th>Téléphone</th><th class="num">Solde Dû</th><th></th></tr></thead>
-              <tbody id="clients-body"></tbody></table>
+        <div class="section">
+          <div class="s-head">
+            <div class="s-title">👥 Clients Crédit</div>
+            <div class="fxg">
+              <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('clients-tbl','Clients Crédit')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('clients-tbl','Clients Crédit')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('clients-tbl','Clients Crédit')">📝 Word</button></div>
+              <button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">🤝 Vente Crédit</button>
+              <button class="btn btn-p btn-sm" onclick="openModal('m-add-client')">+ Nouveau Client</button>
             </div>
           </div>
-          <div class="section">
-            <div class="s-head">
-              <div class="s-title">📝 Dernières Ventes Crédit</div>
-              <div class="fxg">
-                <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('csales-tbl','Ventes Crédit')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('csales-tbl','Ventes Crédit')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('csales-tbl','Ventes Crédit')">📝 Word</button></div>
-                <button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">+ Vente Crédit</button>
-              </div>
-            </div>
-            <div style="padding:10px 16px 4px;border-bottom:1px solid var(--border-lt);">
-              <input placeholder="🔍 Rechercher client, pompe…" oninput="searchTable(this.value,'csales-body',5)" style="width:100%;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;"/>
-            </div>
-            <div class="s-body-flush" style="overflow-x:auto">
-              <table class="t" id="csales-tbl"><thead><tr><th>Client</th><th>Pompe</th><th>Litres</th><th class="num">Montant</th><th>Date</th></tr></thead>
-              <tbody id="csales-body"></tbody></table>
-            </div>
+          <div style="padding:10px 16px 4px;border-bottom:1px solid var(--border-lt);">
+            <input placeholder="🔍 Rechercher client, société, téléphone…" oninput="searchTable(this.value,'clients-body',8)" style="width:100%;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;"/>
+          </div>
+          <div class="s-body-flush" style="overflow-x:auto">
+            <table class="t" id="clients-tbl"><thead><tr><th>Nom</th><th>Société</th><th>Téléphone</th><th class="num">Crédit Pris</th><th class="num">Nb Ventes</th><th>Dernière Vente</th><th class="num">Solde Dû</th><th></th></tr></thead>
+            <tbody id="clients-body"></tbody></table>
           </div>
         </div>
       </div>
@@ -1313,11 +1296,26 @@ async function loadCredits() {
     { ic:'⚠️', val: clients.filter(c=>c.balance_due>0).length, lbl:'Comptes Débiteurs', tc:'var(--orange)' },
   ].map(t => `<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
-  document.getElementById('clients-body').innerHTML = clients.map(c => `
+  // Aggregate credit sales per client → total taken, count, last sale date
+  const agg = {};
+  sales.forEach(s => {
+    const k = s.credit_client_id;
+    if (!agg[k]) agg[k] = { total: 0, count: 0, last: null };
+    agg[k].total += parseFloat(s.amount) || 0;
+    agg[k].count += 1;
+    if (!agg[k].last || new Date(s.sale_time) > new Date(agg[k].last)) agg[k].last = s.sale_time;
+  });
+
+  document.getElementById('clients-body').innerHTML = clients.map(c => {
+    const a = agg[c.id] || { total: 0, count: 0, last: null };
+    return `
     <tr>
       <td class="fw7">${c.name}</td>
       <td class="muted">${c.company||'—'}</td>
       <td class="muted sm">${c.phone||'—'}</td>
+      <td class="num fw7 c-o">${a.total>0?fmt(a.total)+' MAD':'—'}</td>
+      <td class="num">${a.count||'—'}</td>
+      <td class="muted sm">${a.last?fmtDT(a.last):'—'}</td>
       <td class="num fw7 ${c.balance_due>0?'c-r':'c-g'}">${fmt(c.balance_due)} MAD</td>
       <td style="display:flex;gap:5px;flex-wrap:wrap;">
         ${c.balance_due > 0 ? `<button class="btn btn-s btn-xs" onclick="openPayment(${c.id},'${esc(c.name)}',${c.balance_due})">💰 Payer</button>` : ''}
@@ -1325,16 +1323,8 @@ async function loadCredits() {
         <button class="btn btn-d btn-xs" onclick="deleteClient(${c.id},'${esc(c.name)}')">🗑️</button>
         <button class="btn btn-xs" style="background:#EFF6FF;color:#1D4ED8;" onclick="clientReleve(${c.id},'${esc(c.name)}')">📄 Relevé</button>
       </td>
-    </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucun client</td></tr>';
-
-  document.getElementById('csales-body').innerHTML = sales.slice(0, 30).map(s => `
-    <tr>
-      <td class="fw7">${s.client_name}</td>
-      <td>${s.pump_name}</td>
-      <td class="num">${s.liters} L</td>
-      <td class="num fw7 c-o">${fmt(s.amount)} MAD</td>
-      <td class="muted sm">${fmtDT(s.sale_time)}</td>
-    </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucune vente crédit</td></tr>';
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" class="tc muted" style="padding:20px">Aucun client</td></tr>';
 
   document.getElementById('nb-credits').textContent = clients.filter(c=>c.balance_due>0).length || 0;
 }
