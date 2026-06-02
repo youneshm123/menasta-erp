@@ -234,6 +234,14 @@ const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 
 const A = (url, opt={}) => fetch(url, { headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, ...opt }).then(r => r.json());
 const fmt = (n, d=2) => (parseFloat(n)||0).toFixed(d);
+// Robust date formatter: accepts 'YYYY-MM-DD' or full ISO, returns 'DD/MM/YYYY' (never "Invalid Date")
+function fmtDate(v) {
+  if (!v) return '';
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  const d = new Date(v);
+  return isNaN(d) ? String(v) : d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
 function toast(msg, t='g') {
   const d = document.createElement('div'); d.className = 'toast t-' + t; d.textContent = msg;
   document.getElementById('toasts').appendChild(d); setTimeout(() => d.remove(), 3000);
@@ -340,7 +348,7 @@ async function loadListe() {
   rows.forEach(f => {
     tbody.innerHTML += `<tr>
       <td><strong>${f.numero}</strong></td>
-      <td>${f.facture_date}</td>
+      <td>${fmtDate(f.facture_date)}</td>
       <td>${f.client_name}</td>
       <td class="num">${fmt(f.total_ht)} MAD</td>
       <td class="num">${fmt(f.montant_tva)} MAD</td>
@@ -493,7 +501,7 @@ async function editFacture(id) {
   _editingFactureId = id;
   document.getElementById('lignes-body').innerHTML = '';
   ligneCount = 0;
-  document.getElementById('f-date').value    = f.facture_date;
+  document.getElementById('f-date').value    = String(f.facture_date || '').slice(0, 10);
   document.getElementById('f-client').value  = f.client_name;
   document.getElementById('f-ice').value     = f.client_ice || '';
   document.getElementById('f-adresse').value = f.client_adresse || '';
@@ -581,7 +589,7 @@ function montantEnLettres(n) {
 
 // ── Facture print — identique à la facture physique STE MENASTA ──
 function buildPrintHtml(f) {
-  const dateStr = new Date(f.facture_date + 'T00:00:00').toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit', year:'numeric'});
+  const dateStr = fmtDate(f.facture_date);
 
   // Group TVA by rate
   const tvaGroups = {};

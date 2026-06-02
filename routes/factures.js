@@ -12,7 +12,7 @@ function genNumero(lastNum) {
 }
 
 router.get('/', requireAuth, wrap(async (_req, res) => {
-  const { rows } = await pool.query('SELECT * FROM factures ORDER BY facture_date DESC, id DESC');
+  const { rows } = await pool.query("SELECT *, to_char(facture_date,'YYYY-MM-DD') AS facture_date FROM factures ORDER BY facture_date DESC, id DESC");
   res.json(rows);
 }));
 
@@ -32,7 +32,7 @@ router.get('/clients-suggest', requireAuth, wrap(async (_req, res) => {
 }));
 
 router.get('/:id', requireAuth, wrap(async (req, res) => {
-  const { rows } = await pool.query('SELECT * FROM factures WHERE id=$1', [req.params.id]);
+  const { rows } = await pool.query("SELECT *, to_char(facture_date,'YYYY-MM-DD') AS facture_date FROM factures WHERE id=$1", [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Facture introuvable' });
   const { rows: lignes } = await pool.query('SELECT * FROM facture_lignes WHERE facture_id=$1 ORDER BY id', [req.params.id]);
   res.json({ ...rows[0], lignes });
@@ -81,7 +81,7 @@ router.post('/', requireAuth, wrap(async (req, res) => {
     }
     await dbc.query('COMMIT');
 
-    const { rows: [facture] } = await dbc.query('SELECT * FROM factures WHERE id=$1', [id]);
+    const { rows: [facture] } = await dbc.query("SELECT *, to_char(facture_date,'YYYY-MM-DD') AS facture_date FROM factures WHERE id=$1", [id]);
     const { rows: lignesRes } = await dbc.query('SELECT * FROM facture_lignes WHERE facture_id=$1 ORDER BY id', [id]);
     res.status(201).json({ ...facture, lignes: lignesRes });
   } catch (e) {
@@ -135,7 +135,7 @@ router.put('/:id', requireAuth, wrap(async (req, res) => {
     }
     await dbc.query('COMMIT');
 
-    const { rows: [facture] } = await dbc.query('SELECT * FROM factures WHERE id=$1', [req.params.id]);
+    const { rows: [facture] } = await dbc.query("SELECT *, to_char(facture_date,'YYYY-MM-DD') AS facture_date FROM factures WHERE id=$1", [req.params.id]);
     const { rows: lignesRes } = await dbc.query('SELECT * FROM facture_lignes WHERE facture_id=$1 ORDER BY id', [req.params.id]);
     res.json({ ...facture, lignes: lignesRes });
   } catch (e) {
