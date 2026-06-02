@@ -20,11 +20,14 @@ async function calcShift(shiftId) {
   const { rows: [{ t: tp }] } = await pool.query('SELECT COALESCE(SUM(total_amount),0) as t FROM product_sales WHERE shift_id=$1', [shiftId]);
   const { rows: [{ avance }] } = await pool.query('SELECT avance FROM shifts WHERE id=$1', [shiftId]);
   const { rows: [{ t: te }] } = await pool.query('SELECT COALESCE(SUM(amount),0) as t FROM expenses WHERE shift_id=$1', [shiftId]);
+  const { rows: [{ t: tpay }] } = await pool.query('SELECT COALESCE(SUM(amount),0) as t FROM credit_payments WHERE shift_id=$1', [shiftId]);
   const totalCredit   = parseFloat(tc);
   const totalProduct  = parseFloat(tp);
   const totalAvance   = parseFloat(avance) || 0;
   const totalExpenses = parseFloat(te) || 0;
-  return { totalLiters, totalFuel, totalCredit, totalProduct, totalAvance, totalExpenses, netCash: totalFuel - totalCredit + totalProduct - totalAvance - totalExpenses };
+  const totalPayments = parseFloat(tpay) || 0;
+  return { totalLiters, totalFuel, totalCredit, totalProduct, totalAvance, totalExpenses, totalPayments,
+           netCash: totalFuel - totalCredit + totalProduct - totalAvance - totalExpenses + totalPayments };
 }
 
 async function shiftDetail(shift) {
@@ -46,6 +49,14 @@ async function shiftDetail(shift) {
     WHERE cs.shift_id=$1 ORDER BY cs.sale_time
   `, [shift.id]);
   shift.credit_sales = cs;
+
+  const { rows: cpay } = await pool.query(`
+    SELECT cp.*, cc.name as client_name
+    FROM credit_payments cp
+    JOIN credit_clients cc ON cc.id=cp.credit_client_id
+    WHERE cp.shift_id=$1 ORDER BY cp.payment_time
+  `, [shift.id]);
+  shift.credit_payments = cpay;
 
   const { rows: ps } = await pool.query(`
     SELECT ps.*, pr.name as product_name, pr.reference
@@ -161,9 +172,9 @@ router.post('/:id/close', requireAuth, wrap(async (req, res) => {
       UPDATE shifts SET
         status='closed', closed_at=NOW(),
         total_liters_sold=$1, total_fuel_revenue=$2, total_credit_deducted=$3,
-        total_product_sales=$4, net_cash=$5, notes=COALESCE($6,notes)
-      WHERE id=$7
-    `, [calc.totalLiters, calc.totalFuel, calc.totalCredit, calc.totalProduct, calc.netCash, notes||null, shift.id]);
+        total_product_sales=$4, net_cash=$5, credit_paid=$6, notes=COALESCE($7,notes)
+      WHERE id=$8
+    `, [calc.totalLiters, calc.totalFuel, calc.totalCredit, calc.totalProduct, calc.netCash, calc.totalPayments, notes||null, shift.id]);
     await client.query('COMMIT');
 
     const { rows: [updated] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [shift.id]);

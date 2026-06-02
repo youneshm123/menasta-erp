@@ -332,6 +332,7 @@ async function initDB() {
   `);
 
   await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS avance REAL NOT NULL DEFAULT 0');
+  await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS credit_paid REAL NOT NULL DEFAULT 0');
   await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS pompiste TEXT');
   await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS heure_debut TEXT');
   await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS heure_fin TEXT');

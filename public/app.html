@@ -386,9 +386,16 @@
 <!-- CREDIT SALE BATCH -->
 <div class="overlay" id="m-credit-sale">
   <div class="modal modal-lg">
-    <div class="modal-hd"><span><i data-lucide="handshake"></i></span><h3>Ventes Crédit</h3><button class="x" onclick="csCancel()">×</button></div>
+    <div class="modal-hd"><span><i data-lucide="handshake"></i></span><h3>Bon Crédit</h3><button class="x" onclick="csCancel()">×</button></div>
     <div class="modal-body">
       <div class="fgrid mb2">
+        <div class="fg" style="grid-column:1/-1">
+          <label>Opération</label>
+          <div class="fuel-toggle">
+            <button type="button" class="fuel-btn active" id="cs-mode-credit" onclick="csSelectMode('credit')">🤝 Crédit (− Caisse)</button>
+            <button type="button" class="fuel-btn" id="cs-mode-payment" onclick="csSelectMode('payment')">💰 Paiement (+ Caisse)</button>
+          </div>
+        </div>
         <div class="fg" style="grid-column:1/-1">
           <label>Client</label>
           <div class="ac-wrap">
@@ -396,7 +403,7 @@
             <input type="hidden" id="cs-client-id"/>
           </div>
         </div>
-        <div class="fg" style="grid-column:1/-1">
+        <div class="fg" style="grid-column:1/-1" id="cs-type-row">
           <label>Type</label>
           <div class="fuel-toggle">
             <button type="button" class="fuel-btn" id="cs-btn-gazoil" onclick="csSelectFuel('gazoil')">⛽ Gazoil</button>
@@ -694,7 +701,7 @@ const pageNames = { dashboard:'Tableau de Bord', shift:'Poste en Cours', 'shifts
 let paymentClientId = null;
 let chartWeekly = null, chartSplit = null;
 // Live shift calculation state
-let _liveCredit = 0, _liveProduct = 0, _liveExp = 0, _liveAvance = 0;
+let _liveCredit = 0, _liveProduct = 0, _liveExp = 0, _liveAvance = 0, _livePayments = 0;
 
 // ─── AUTH ───────────────────────────────────────────────────
 const token = () => localStorage.getItem('fm_token');
@@ -899,8 +906,9 @@ async function loadShiftPage() {
   const totalCredit    = shift.credit_sales.reduce((s, r) => s + r.amount, 0);
   const totalProduct   = shift.product_sales.reduce((s, r) => s + r.total_amount, 0);
   const totalExpenses  = (shift.expenses || []).reduce((s, e) => s + parseFloat(e.amount), 0);
+  const totalPayments  = (shift.credit_payments || []).reduce((s, p) => s + parseFloat(p.amount), 0);
   _liveCredit = totalCredit; _liveProduct = totalProduct;
-  _liveExp = totalExpenses;  _liveAvance = shift.avance || 0;
+  _liveExp = totalExpenses;  _liveAvance = shift.avance || 0;  _livePayments = totalPayments;
 
   el.innerHTML = `
     <div style="background:var(--sb-bg);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
@@ -931,6 +939,7 @@ async function loadShiftPage() {
         <div class="tile-val" style="color:var(--green);">${fmt(totalProduct)} MAD</div>
         <div class="tile-lbl">Ventes Produits</div>
       </div>
+      ${totalPayments > 0 ? `<div class="tile" style="--tile-color:var(--green);"><div class="tile-accent"></div><div class="tile-ic-wrap" style="background:#ECFDF5;">💰</div><div class="tile-val" style="color:var(--green);">${fmt(totalPayments)} MAD</div><div class="tile-lbl">Paiements Crédit (+)</div></div>` : ''}
       <div class="tile" style="--tile-color:var(--red);">
         <div class="tile-accent"></div>
         <div class="tile-ic-wrap" style="background:#FEF2F2;">💸</div>
@@ -1197,6 +1206,7 @@ function showShiftSummary(result) {
     <div style="background:var(--bg);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px;">
       <div class="fxb"><span class="fw7">Total CA Carburant</span><span class="fw8 c-b">${fmt(c.totalFuel)} MAD</span></div>
       <div class="fxb"><span class="fw7">(-) Ventes Crédit</span><span class="fw7 c-r">- ${fmt(c.totalCredit)} MAD</span></div>
+      ${(c.totalPayments||0) > 0 ? `<div class="fxb"><span class="fw7">(+) Paiements Crédit reçus</span><span class="fw7 c-g">+ ${fmt(c.totalPayments)} MAD</span></div>` : ''}
       <div class="fxb"><span class="fw7">(+) Ventes Produits</span><span class="fw7 c-g">+ ${fmt(c.totalProduct)} MAD</span></div>
       ${(c.totalAvance||0) > 0 ? `<div class="fxb"><span class="fw7">(-) Avance Pompiste</span><span class="fw7" style="color:var(--orange)">- ${fmt(c.totalAvance)} MAD</span></div>` : ''}
       <div class="fxb"><span class="fw7">(-) Dépenses du Poste</span><span class="fw7 c-r">- ${fmt(c.totalExpenses||0)} MAD</span></div>
@@ -1272,7 +1282,7 @@ function clearHistoryFilter() {
 async function viewShift(id) {
   const s = await api('GET', '/shifts/' + id);
   const totalExpenses = (s.expenses || []).reduce((sum, e) => sum + parseFloat(e.amount), 0);
-  showShiftSummary({ ...s, calc: { totalFuel: s.total_fuel_revenue||0, totalCredit: s.total_credit_deducted||0, totalProduct: s.total_product_sales||0, totalAvance: s.avance||0, totalExpenses, netCash: s.net_cash||0 } });
+  showShiftSummary({ ...s, calc: { totalFuel: s.total_fuel_revenue||0, totalCredit: s.total_credit_deducted||0, totalProduct: s.total_product_sales||0, totalAvance: s.avance||0, totalExpenses, totalPayments: s.credit_paid||0, netCash: s.net_cash||0 } });
 }
 
 async function reopenShift(id) {
@@ -1464,6 +1474,18 @@ async function submitPayment() {
 
 let csPending = [];
 let _csFuelType = '';
+let _csMode = 'credit';   // 'credit' = debit (− caisse) ; 'payment' = remboursement (+ caisse)
+
+function csSelectMode(mode) {
+  _csMode = mode;
+  document.getElementById('cs-mode-credit').classList.toggle('active', mode === 'credit');
+  document.getElementById('cs-mode-payment').classList.toggle('active', mode === 'payment');
+  // Type (gazoil/essence/…) only matters for a credit sale
+  const typeRow = document.getElementById('cs-type-row');
+  if (typeRow) typeRow.style.display = mode === 'payment' ? 'none' : '';
+  const amt = document.getElementById('cs-amount');
+  if (amt) { const col = mode === 'payment' ? 'var(--green)' : 'var(--orange)'; amt.style.color = col; amt.style.borderColor = col; }
+}
 
 function csCancel() {
   csPending = []; _csFuelType = '';
@@ -1484,9 +1506,9 @@ function csAddToList() {
   const amount     = parseFloat(document.getElementById('cs-amount').value);
   const notes      = document.getElementById('cs-notes-f').value;
   if (!clientId)             { toast('Sélectionnez un client', 'wn'); return; }
-  if (!_csFuelType)          { toast('Choisissez le type (Gazoil / Essence / Lubrifiant / Espèce)', 'wn'); return; }
+  if (_csMode === 'credit' && !_csFuelType) { toast('Choisissez le type (Gazoil / Essence / Lubrifiant / Espèce)', 'wn'); return; }
   if (!amount || amount <= 0){ toast('Montant invalide', 'er'); return; }
-  csPending.push({ client_id: clientId, client_name: clientName, pump_id: pumpId ? parseInt(pumpId) : null, product_type: _csFuelType, amount, notes });
+  csPending.push({ mode: _csMode, client_id: clientId, client_name: clientName, pump_id: _csMode === 'payment' ? null : (pumpId ? parseInt(pumpId) : null), product_type: _csMode === 'payment' ? 'paiement' : _csFuelType, amount, notes });
   document.getElementById('cs-client-input').value = '';
   document.getElementById('cs-client-id').value = '';
   document.getElementById('cs-pump-id').value = '';
@@ -1508,12 +1530,18 @@ function updateCsPendingUI() {
     btn.disabled = true; btn.textContent = '✅ Enregistrer tout (0)'; return;
   }
   wrap.style.display = 'block';
-  const typeIcon = { gazoil:'⛽', essence:'🟢', lubrifiant:'🛢️', espece:'💵' };
-  items.innerHTML = csPending.map((c,i) => `
+  const typeIcon = { gazoil:'⛽', essence:'🟢', lubrifiant:'🛢️', espece:'💵', paiement:'💰' };
+  items.innerHTML = csPending.map((c,i) => {
+    const pay = c.mode === 'payment';
+    const tag = pay
+      ? '<span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;background:#DCFCE7;color:#15803D;margin-right:6px;">PAIEMENT +</span>'
+      : '<span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;background:#FFEDD5;color:#C2410C;margin-right:6px;">CRÉDIT −</span>';
+    return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg2);border-radius:6px;margin-bottom:4px;gap:8px;">
-      <span style="flex:1">${typeIcon[c.product_type]||''} <strong>${c.client_name}</strong> — ${c.product_type} — <strong style="color:var(--orange)">${fmt(c.amount)} MAD</strong>${c.notes?' <span style="color:var(--muted);font-size:11px;">'+c.notes+'</span>':''}</span>
+      <span style="flex:1">${tag}${typeIcon[c.product_type]||''} <strong>${c.client_name}</strong> — ${pay?'remboursement':c.product_type} — <strong style="color:${pay?'var(--green)':'var(--orange)'}">${pay?'+':'−'} ${fmt(c.amount)} MAD</strong>${c.notes?' <span style="color:var(--muted);font-size:11px;">'+c.notes+'</span>':''}</span>
       <button class="btn btn-d btn-xs" onclick="csRemovePending(${i})">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   btn.disabled = false; btn.textContent = `✅ Enregistrer tout (${csPending.length})`;
 }
 
@@ -1527,11 +1555,18 @@ async function csSubmitAll() {
   let saved = 0;
   for (const c of csPending) {
     try {
-      await api('POST', '/credits/sales', {
-        shift_id: S.activeShift.id, credit_client_id: c.client_id,
-        pump_id: c.pump_id || null, amount: c.amount,
-        notes: c.notes, product_type: c.product_type
-      });
+      if (c.mode === 'payment') {
+        await api('POST', '/credits/payments', {
+          shift_id: S.activeShift.id, credit_client_id: c.client_id,
+          amount: c.amount, notes: c.notes
+        });
+      } else {
+        await api('POST', '/credits/sales', {
+          shift_id: S.activeShift.id, credit_client_id: c.client_id,
+          pump_id: c.pump_id || null, amount: c.amount,
+          notes: c.notes, product_type: c.product_type
+        });
+      }
       saved++;
     } catch(e) { toast(`${c.client_name}: ${e.message}`, 'er'); }
   }
@@ -1557,6 +1592,7 @@ function populateCreditSaleModal() {
   document.getElementById('cs-notes-f').value = '';
   document.querySelectorAll('.fuel-btn').forEach(b => b.className = 'fuel-btn');
   _csFuelType = '';
+  csSelectMode('credit');
   acRender('cs', S.clients);
 }
 
@@ -1676,7 +1712,7 @@ function calcLiveCA() {
   const netEl = document.getElementById('live-net');
   if (caEl) caEl.textContent = fmt(ca) + ' MAD';
   if (netEl) {
-    const net = ca - _liveCredit + _liveProduct - _liveExp - _liveAvance;
+    const net = ca - _liveCredit + _liveProduct - _liveExp - _liveAvance + _livePayments;
     netEl.textContent = fmt(net) + ' MAD';
     netEl.style.color = net >= 0 ? '#4ADE80' : '#F87171';
   }
@@ -2416,6 +2452,7 @@ function printShift(id) {
     <div class="summary">
       <div class="row"><span>CA Carburant</span><span>${fmt(s.total_fuel_revenue||0)} MAD</span></div>
       <div class="row"><span>(-) Crédits</span><span>-${fmt(s.total_credit_deducted||0)} MAD</span></div>
+      ${(s.credit_paid||0) > 0 ? `<div class="row"><span>(+) Paiements Crédit</span><span>+${fmt(s.credit_paid)} MAD</span></div>` : ''}
       <div class="row"><span>(+) Produits</span><span>+${fmt(s.total_product_sales||0)} MAD</span></div>
       <div class="row"><span class="big">CAISSE NETTE</span><span class="big">${fmt(s.net_cash||0)} MAD</span></div>
     </div>
