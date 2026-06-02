@@ -74,6 +74,7 @@ body.app-layout{overflow:auto}
     <a href="/cafe" class="sb-item"><span class="ni"><i data-lucide="coffee"></i></span> Café</a>
     <a href="/tabac" class="sb-item"><span class="ni"><i data-lucide="cigarette"></i></span> Tabac</a>
     <a href="/bank" class="sb-item"><span class="ni"><i data-lucide="landmark"></i></span> Banque</a>
+    <a href="/cuves" class="sb-item"><span class="ni"><i data-lucide="gauge"></i></span> Cuves</a>
     <a href="/factures" class="sb-item"><span class="ni"><i data-lucide="receipt-text"></i></span> Factures</a>
   </div>
   <div class="sb-foot">
@@ -200,6 +201,54 @@ body.app-layout{overflow:auto}
       </div>
     </div>
 
+  </div>
+
+  <!-- CUVES (NIVEAUX RÉSERVOIRS) -->
+  <div class="section" style="margin-bottom:24px">
+    <div class="s-head">⛽ Cuves — Niveaux & Écarts</div>
+    <div id="cuves-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;padding:4px"></div>
+  </div>
+
+  <!-- CUMUL DU MOIS -->
+  <div class="section" style="margin-bottom:24px">
+    <div class="s-head">🗓️ Cumul du Mois — <span id="month-lbl"></span></div>
+    <div class="kpi-row" id="month-row" style="margin:4px 0 0">
+      <div class="kpi-card"><div class="kpi-icon" style="background:#EFF6FF"><i data-lucide="fuel"></i></div><div class="kpi-val blue" id="m-car">—</div><div class="kpi-lbl">CA Carburant</div><div class="kpi-sub" id="m-liters">—</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:#FFFBEB">☕</div><div class="kpi-val" id="m-cafe">—</div><div class="kpi-lbl">Café</div><div class="kpi-sub">Ventes du mois</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:#FDF4EC">🚬</div><div class="kpi-val" id="m-tabac">—</div><div class="kpi-lbl">Tabac</div><div class="kpi-sub" id="m-tabac-ben">—</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:#FEF2F2">💸</div><div class="kpi-val red" id="m-dep">—</div><div class="kpi-lbl">Dépenses</div><div class="kpi-sub" id="m-postes">—</div></div>
+    </div>
+  </div>
+
+  <!-- DÉPENSES & CRÉANCES DÉTAIL -->
+  <div class="panels" style="grid-template-columns:1fr 1fr;margin-bottom:24px">
+    <!-- Dépenses -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon" style="background:#FEF2F2">💸</div>
+        <div>
+          <div class="panel-title">Dépenses / Charges</div>
+          <div class="panel-sub" id="dep-sub">Ce mois</div>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="prow"><span class="prow-lbl">Aujourd'hui</span><span class="prow-val red" id="dep-today">—</span></div>
+        <div class="prow"><span class="prow-lbl">Total ce mois</span><span class="prow-val red big" id="dep-month">—</span></div>
+        <div id="dep-cats" style="margin-top:6px"></div>
+        <div id="dep-recent" style="margin-top:8px;border-top:1px solid var(--border-lt);padding-top:8px"></div>
+      </div>
+    </div>
+    <!-- Créances détail -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon" style="background:#FFF7ED"><i data-lucide="handshake"></i></div>
+        <div>
+          <div class="panel-title">Qui me doit de l'argent</div>
+          <div class="panel-sub" id="cred-detail-sub">Clients débiteurs</div>
+        </div>
+      </div>
+      <div class="panel-body" id="cred-list">—</div>
+    </div>
   </div>
 
   <!-- STOCK PRODUITS -->
@@ -351,6 +400,75 @@ async function load() {
   // Créances
   document.getElementById('cred-count').textContent = d.credits.nb_clients + ' client(s)';
   document.getElementById('cred-total').textContent = fmt(d.credits.total_due) + ' MAD';
+
+  // ── Cuves ──
+  const cuvesGrid = document.getElementById('cuves-grid');
+  if (!d.cuves || !d.cuves.length) {
+    cuvesGrid.innerHTML = '<div style="color:#9CA3AF;font-size:13px;padding:12px">Aucune cuve configurée</div>';
+  } else {
+    cuvesGrid.innerHTML = d.cuves.map(c => {
+      const pct = c.fill_pct != null ? Math.max(0, Math.min(100, c.fill_pct)) : 0;
+      const barColor = c.low ? '#DC2626' : (c.color || '#2563EB');
+      const niveau = c.niveau != null ? fmt(c.niveau, 0) + ' L' : 'Aucune lecture';
+      let ecartHtml = '';
+      if (c.ecart != null) {
+        const col = Math.abs(c.ecart) <= 50 ? '#059669' : (c.ecart < 0 ? '#DC2626' : '#D97706');
+        const sign = c.ecart > 0 ? '+' : '';
+        ecartHtml = `<div style="font-size:11px;margin-top:6px;color:${col};font-weight:700">Écart: ${sign}${fmt(c.ecart,0)} L</div>`;
+      }
+      return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--surface)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-weight:800;font-size:14px">${c.name}</div>
+          <span style="font-size:10px;font-weight:700;color:#fff;background:${c.color||'#2563EB'};padding:2px 8px;border-radius:20px">${c.fuel_name}</span>
+        </div>
+        <div style="font-size:18px;font-weight:900;color:${c.low?'#DC2626':'var(--text)'}">${niveau}</div>
+        <div style="font-size:11px;color:#9CA3AF;margin-bottom:8px">sur ${fmt(c.capacite,0)} L${c.fill_pct!=null?' · '+c.fill_pct+'%':''}</div>
+        <div style="height:8px;background:#F3F4F6;border-radius:4px;overflow:hidden">
+          <div style="height:8px;background:${barColor};width:${pct}%"></div>
+        </div>
+        ${c.low ? '<div style="font-size:11px;margin-top:6px;color:#DC2626;font-weight:700">⚠️ Niveau bas (≤ '+fmt(c.alerte,0)+' L)</div>' : ''}
+        ${ecartHtml}
+      </div>`;
+    }).join('');
+  }
+
+  // ── Cumul du mois ──
+  const monthNames = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const now2 = new Date();
+  document.getElementById('month-lbl').textContent = monthNames[now2.getMonth()] + ' ' + now2.getFullYear();
+  document.getElementById('m-car').textContent   = fmt(d.mois.carburant) + ' MAD';
+  document.getElementById('m-liters').textContent = fmt(d.mois.liters,0) + ' L · ' + d.mois.postes + ' poste(s)';
+  document.getElementById('m-cafe').textContent  = fmt(d.mois.cafe) + ' MAD';
+  document.getElementById('m-tabac').textContent = fmt(d.mois.tabac) + ' MAD';
+  document.getElementById('m-tabac-ben').textContent = 'Bénéfice ' + fmt(d.mois.tabac_benefice) + ' MAD';
+  document.getElementById('m-dep').textContent   = fmt(d.mois.depenses) + ' MAD';
+  document.getElementById('m-postes').textContent = 'Caisse nette ' + fmt(d.mois.net) + ' MAD';
+
+  // ── Dépenses ──
+  document.getElementById('dep-today').textContent = fmt(d.depenses.today) + ' MAD';
+  document.getElementById('dep-month').textContent = fmt(d.depenses.month) + ' MAD';
+  document.getElementById('dep-cats').innerHTML = (d.depenses.by_cat || []).map(c =>
+    `<div class="prow" style="padding:3px 0"><span class="prow-lbl" style="font-size:12px">${c.category}</span><span class="prow-val" style="font-size:12px">${fmt(c.total)} MAD</span></div>`
+  ).join('');
+  document.getElementById('dep-recent').innerHTML = (d.depenses.recent && d.depenses.recent.length)
+    ? '<div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-bottom:4px">Dernières dépenses</div>' +
+      d.depenses.recent.map(e =>
+        `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
+          <span style="color:#6B7280">${e.expense_date} · ${e.description}</span>
+          <span style="color:#DC2626;font-weight:700">${fmt(e.amount)} MAD</span>
+        </div>`).join('')
+    : '<div style="color:#9CA3AF;font-size:12px">Aucune dépense</div>';
+
+  // ── Créances détail (qui doit) ──
+  document.getElementById('cred-detail-sub').textContent = d.credits.nb_clients + ' client(s) débiteur(s)';
+  const credList = document.getElementById('cred-list');
+  credList.innerHTML = (d.credits.list && d.credits.list.length)
+    ? d.credits.list.map(c =>
+        `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border-lt)">
+          <div><div style="font-weight:700;font-size:13px">${c.name}</div><div style="font-size:11px;color:#9CA3AF">${c.company||c.phone||''}</div></div>
+          <span style="color:#DC2626;font-weight:800">${fmt(c.balance_due)} MAD</span>
+        </div>`).join('')
+    : '<div style="color:#9CA3AF;font-size:12px;text-align:center;padding:12px">Aucun client débiteur 🎉</div>';
 
   // Stock table
   const stockBody = document.getElementById('stock-body');
