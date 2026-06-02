@@ -12,7 +12,7 @@ function genNumero(lastNum) {
 }
 
 router.get('/', requireAuth, wrap(async (_req, res) => {
-  const { rows } = await pool.query("SELECT *, to_char(facture_date,'YYYY-MM-DD') AS facture_date FROM factures ORDER BY facture_date DESC, id DESC");
+  const { rows } = await pool.query("SELECT *, to_char(facture_date,'YYYY-MM-DD') AS facture_date FROM factures ORDER BY factures.facture_date DESC, id DESC");
   res.json(rows);
 }));
 
