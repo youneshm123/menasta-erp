@@ -51,7 +51,7 @@ async function getBusinessData() {
     q1(`SELECT COALESCE(SUM(CASE WHEN type IN ('depot','virement_in','cheque_in') THEN amount ELSE -amount END),0) as bal FROM bank_transactions`, [], { bal:0 }),
     q1(`SELECT COUNT(*) as count, COALESCE(SUM(total_ttc),0) as total FROM factures WHERE TO_CHAR(facture_date,'YYYY-MM')=$1`, [ym], { count:0, total:0 }),
     q1(`SELECT COALESCE(SUM(balance_due),0) as total_due, COUNT(*) as nb_clients FROM credit_clients WHERE is_active=1 AND balance_due > 0`, [], { total_due:0, nb_clients:0 }),
-    q(`SELECT name, balance_due, credit_limit, phone FROM credit_clients WHERE is_active=1 AND balance_due > 0 ORDER BY balance_due DESC`),
+    q(`SELECT id, name, balance_due, credit_limit, phone FROM credit_clients WHERE is_active=1 AND balance_due > 0 ORDER BY balance_due DESC`),
     q(`SELECT (opened_at)::date as day, COALESCE(SUM(total_fuel_revenue),0) as carburant,
               COALESCE(SUM(total_liters_sold),0) as liters, COALESCE(SUM(net_cash),0) as net,
               COALESCE(SUM(avance),0) as avance, COUNT(*) as postes
@@ -307,7 +307,7 @@ INSTRUCTIONS LANGUE & STYLE
 
 // ── PDF: Daily ────────────────────────────────────────────────────────────────
 function pdfDaily(res, d) {
-  const fmt = n => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmt = n => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/[  ]/g,' ');
   const { today, car, cafe, tabac, bankBalance, totalCA, total_due, nb_clients, creditClients, recentShifts7, merged30 } = d;
 
   const doc = new PDFDocument({ margin:50, size:'A4' });
@@ -317,7 +317,7 @@ function pdfDaily(res, d) {
 
   // Header bar
   doc.rect(0,0,595,75).fill('#0F172A');
-  doc.fontSize(20).font('Helvetica-Bold').fillColor('#FFFFFF').text('⛽  MENASTA', 50,18);
+  doc.fontSize(20).font('Helvetica-Bold').fillColor('#FFFFFF').text('MENASTA', 50,18);
   doc.fontSize(10).font('Helvetica').fillColor('#94A3B8').text('Station Service — Rapport Journalier', 50,44);
   doc.fontSize(10).fillColor('#CBD5E1').text(today, 460,44);
 
@@ -382,7 +382,7 @@ function pdfDaily(res, d) {
 
 // ── PDF: Weekly ───────────────────────────────────────────────────────────────
 function pdfWeekly(res, d) {
-  const fmt = n => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmt = n => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/[  ]/g,' ');
   const { today, merged30, bankBalance, total_due } = d;
   const week = merged30.slice(0,7);
 
@@ -392,7 +392,7 @@ function pdfWeekly(res, d) {
   doc.pipe(res);
 
   doc.rect(0,0,595,75).fill('#0F172A');
-  doc.fontSize(20).font('Helvetica-Bold').fillColor('#FFFFFF').text('⛽  MENASTA', 50,18);
+  doc.fontSize(20).font('Helvetica-Bold').fillColor('#FFFFFF').text('MENASTA', 50,18);
   doc.fontSize(10).font('Helvetica').fillColor('#94A3B8').text('Rapport Hebdomadaire — 7 Derniers Jours', 50,44);
   doc.fontSize(10).fillColor('#CBD5E1').text(today, 460,44);
 
@@ -466,7 +466,7 @@ function pdfWeekly(res, d) {
 
 // ── PDF: Credits ──────────────────────────────────────────────────────────────
 function pdfCredits(res, d) {
-  const fmt = n => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmt = n => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/[  ]/g,' ');
   const { today, creditClients, total_due, nb_clients } = d;
 
   const doc = new PDFDocument({ margin:50, size:'A4' });
@@ -475,7 +475,7 @@ function pdfCredits(res, d) {
   doc.pipe(res);
 
   doc.rect(0,0,595,75).fill('#7F1D1D');
-  doc.fontSize(20).font('Helvetica-Bold').fillColor('#FFFFFF').text('⛽  MENASTA', 50,18);
+  doc.fontSize(20).font('Helvetica-Bold').fillColor('#FFFFFF').text('MENASTA', 50,18);
   doc.fontSize(10).font('Helvetica').fillColor('#FCA5A5').text('Rapport Créances Clients', 50,44);
   doc.fontSize(10).fillColor('#FECACA').text(today, 460,44);
 
@@ -508,7 +508,7 @@ function pdfCredits(res, d) {
 
 // ── PDF: Monthly ──────────────────────────────────────────────────────────────
 function pdfMonthly(res, d) {
-  const fmt = n => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmt = n => parseFloat(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/[  ]/g,' ');
   const { today, ym, merged30, bankBalance, total_due, factures, tabacProducts } = d;
 
   const doc = new PDFDocument({ margin:50, size:'A4' });
@@ -517,7 +517,7 @@ function pdfMonthly(res, d) {
   doc.pipe(res);
 
   doc.rect(0,0,595,75).fill('#0F172A');
-  doc.fontSize(20).font('Helvetica-Bold').fillColor('#FFFFFF').text('⛽  MENASTA', 50,18);
+  doc.fontSize(20).font('Helvetica-Bold').fillColor('#FFFFFF').text('MENASTA', 50,18);
   doc.fontSize(10).font('Helvetica').fillColor('#94A3B8').text(`Rapport Mensuel — ${ym}`, 50,44);
   doc.fontSize(10).fillColor('#CBD5E1').text(today, 460,44);
 
