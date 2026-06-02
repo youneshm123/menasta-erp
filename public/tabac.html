@@ -154,7 +154,7 @@
       </div>
       <div class="section" style="margin-bottom:16px">
         <div class="s-head">
-          <span class="s-title">📦 Niveaux de Stock</span>
+          <span class="s-title">📦 Ajouter au Stock</span>
           <div class="exp-btns">
             <button class="exp-btn exp-pdf" onclick="exportPDF('stock-table','Stock Tabac')">📄 PDF</button>
             <button class="exp-btn exp-xl"  onclick="exportExcel('stock-table','Stock Tabac')">📊 Excel</button>
@@ -166,14 +166,23 @@
             <thead>
               <tr>
                 <th>Produit</th>
-                <th class="num">Acheté</th>
-                <th class="num">Vendu</th>
                 <th class="num">Stock Actuel</th>
-                <th class="num">État</th>
+                <th class="num">Prix Achat/U</th>
+                <th class="num">Quantité à Ajouter</th>
+                <th class="num">Coût Total</th>
               </tr>
             </thead>
             <tbody id="stock-body"></tbody>
+            <tfoot>
+              <tr style="background:#FFF8F3">
+                <td colspan="4" style="padding:12px 14px;font-weight:800;font-size:14px">📦 Coût Total Approvisionnement</td>
+                <td class="num fw8 c-br" style="font-size:18px;padding:12px 14px" id="stock-add-total">0,00 MAD</td>
+              </tr>
+            </tfoot>
           </table>
+          <div style="margin-top:16px;display:flex;justify-content:flex-end">
+            <button class="btn btn-p" style="padding:12px 32px;font-size:14px" onclick="saveStockBulk()">✅ Enregistrer l'Approvisionnement</button>
+          </div>
         </div>
       </div>
       <div class="section">
@@ -405,24 +414,32 @@ async function loadStock() {
     A('/api/tabac/achats')
   ]);
 
-  // Stock table
+  // Stock table — café-style: a quantity input per product (add new stock)
+  _stockProducts = stock;
   const sb = document.getElementById('stock-body');
-  sb.innerHTML = '';
-  if (!stock.length) { sb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)">Aucun produit</td></tr>'; }
-  stock.forEach(s => {
-    const actuel = parseFloat(s.stock_actuel);
-    let badge, label;
-    if (actuel <= 0)     { badge = 'badge-out'; label = '❌ Rupture'; }
-    else if (actuel < 5) { badge = 'badge-low'; label = '⚠️ Faible'; }
-    else                 { badge = 'badge-ok';  label = '✅ OK'; }
-    sb.innerHTML += `<tr id="stock-row-${s.id}" style="cursor:pointer" onclick="startStockInline(${s.id},'${s.name.replace(/'/g,"\\'")}',${s.prix_achat||0})">
-      <td><strong>${s.name}</strong> <span style="font-size:11px;color:var(--muted);margin-left:4px">← cliquer pour ajouter</span></td>
-      <td class="num">${fmt(s.total_achete)}</td>
-      <td class="num">${fmt(s.total_vendu)}</td>
-      <td class="num fw8 c-br">${fmt(actuel)}</td>
-      <td class="num"><span class="stock-badge ${badge}">${label}</span></td>
-    </tr>`;
-  });
+  if (!stock.length) {
+    sb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)">Aucun produit</td></tr>';
+  } else {
+    sb.innerHTML = stock.map((s, i) => {
+      const actuel = parseFloat(s.stock_actuel);
+      let badge, label;
+      if (actuel <= 0)     { badge = 'badge-out'; label = '❌ Rupture'; }
+      else if (actuel < 5) { badge = 'badge-low'; label = '⚠️ Faible'; }
+      else                 { badge = 'badge-ok';  label = '✅ OK'; }
+      return `<tr>
+        <td><strong>${s.name}</strong> <span class="stock-badge ${badge}" style="margin-left:6px">${label}</span></td>
+        <td class="num fw8 c-br">${fmt(actuel)}</td>
+        <td class="num">${fmt(s.prix_achat||0)} MAD</td>
+        <td class="num">
+          <input type="number" class="addqty-inp" data-idx="${i}" data-pa="${s.prix_achat||0}"
+            value="0" min="0" step="0.5" oninput="updateStockAddRow(this)"
+            style="width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:700;text-align:right;font-family:var(--font)"/>
+        </td>
+        <td class="num fw8 c-br" id="addrow-${i}">0,00 MAD</td>
+      </tr>`;
+    }).join('');
+  }
+  updateStockAddTotal();
 
   // Achats table
   const ab = document.getElementById('achats-body');
@@ -472,35 +489,46 @@ async function saveAchat() {
 }
 
 
-function startStockInline(id, name, prixAchat) {
-  const row = document.getElementById('stock-row-' + id);
-  if (!row) return;
-  row.onclick = null;
-  row.style.background = 'var(--blue-lt)';
-  row.innerHTML = `
-    <td colspan="5" style="padding:10px 14px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <strong style="font-size:14px;min-width:140px">${name}</strong>
-        <input type="number" id="inline-qty-${id}" min="0.5" step="0.5" placeholder="Quantité à ajouter" autofocus
-          style="width:160px;padding:8px 12px;border:2px solid var(--blue);border-radius:8px;font-size:15px;font-weight:700;color:var(--blue)"
-          onkeydown="if(event.key==='Enter')saveStockInline(${id},'${name.replace(/'/g,"\\'")}',${prixAchat}); if(event.key==='Escape')loadStock()"/>
-        <button class="btn btn-p btn-sm" onclick="saveStockInline(${id},'${name.replace(/'/g,"\\'")}',${prixAchat})">✅ Ajouter</button>
-        <button class="btn btn-g btn-sm" onclick="loadStock()">✕</button>
-      </div>
-    </td>`;
-  setTimeout(() => { const inp = document.getElementById('inline-qty-' + id); if(inp) inp.focus(); }, 50);
+// ── Café-style bulk "add to stock" ──
+let _stockProducts = [];
+
+function updateStockAddRow(inp) {
+  const i  = inp.dataset.idx;
+  const qty = parseFloat(inp.value) || 0;
+  const pa  = parseFloat(inp.dataset.pa) || 0;
+  const cell = document.getElementById('addrow-' + i);
+  if (cell) cell.textContent = fmt(qty * pa) + ' MAD';
+  updateStockAddTotal();
 }
 
-async function saveStockInline(id, name, prixAchat) {
-  const inp = document.getElementById('inline-qty-' + id);
-  const qty = parseFloat(inp?.value);
-  if (!qty || qty <= 0) { toast('Quantité invalide', 'er'); inp?.focus(); return; }
-  await A('/api/tabac/achats', { method: 'POST', body: JSON.stringify({
-    product_id: id, quantite: qty,
-    prix_achat: prixAchat || 0,
-    achat_date: new Date().toISOString().slice(0,10), notes: null
-  })});
-  toast(name + ' : +' + qty + ' unités ajoutées ✓');
+function updateStockAddTotal() {
+  let total = 0;
+  document.querySelectorAll('.addqty-inp').forEach(inp => {
+    total += (parseFloat(inp.value) || 0) * (parseFloat(inp.dataset.pa) || 0);
+  });
+  const el = document.getElementById('stock-add-total');
+  if (el) el.textContent = fmt(total) + ' MAD';
+}
+
+async function saveStockBulk() {
+  const entries = [];
+  document.querySelectorAll('.addqty-inp').forEach(inp => {
+    const qty = parseFloat(inp.value) || 0;
+    if (qty > 0) {
+      const p = _stockProducts[inp.dataset.idx];
+      if (p) entries.push({ product_id: p.id, quantite: qty, prix_achat: parseFloat(p.prix_achat) || 0 });
+    }
+  });
+  if (!entries.length) { toast('Saisissez au moins une quantité', 'er'); return; }
+  const achat_date = new Date().toISOString().slice(0, 10);
+  let saved = 0;
+  for (const e of entries) {
+    try {
+      await A('/api/tabac/achats', { method: 'POST', body: JSON.stringify({ ...e, achat_date, notes: null }) });
+      saved++;
+    } catch (err) { toast(err.message || 'Erreur', 'er'); }
+  }
+  toast(saved + ' approvisionnement(s) enregistré(s) ✓');
   loadStock();
 }
 
