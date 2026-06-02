@@ -307,6 +307,14 @@ async function initDB() {
       montant_tva  REAL NOT NULL,
       montant_ttc  REAL NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS facture_clients (
+      id         SERIAL PRIMARY KEY,
+      name       TEXT NOT NULL,
+      ice        TEXT,
+      adresse    TEXT,
+      is_active  INTEGER NOT NULL DEFAULT 1,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `);
 
   await pgPool.query(`

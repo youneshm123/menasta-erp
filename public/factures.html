@@ -87,6 +87,7 @@
   <div class="sb-nav">
     <div class="nav-item active" onclick="showTab('liste',this)"><span class="ni"><i data-lucide="clipboard-list"></i></span> Liste Factures</div>
     <div class="nav-item" onclick="showTab('nouvelle',this)"><span class="ni"><i data-lucide="plus-circle"></i></span> Nouvelle Facture</div>
+    <div class="nav-item" onclick="showTab('clients',this)"><span class="ni"><i data-lucide="users"></i></span> Clients</div>
     <div class="nav-item" onclick="showTab('tabac',this)"><span class="ni"><i data-lucide="cigarette"></i></span> Ventes Tabac</div>
   </div>
   <div class="sb-foot">
@@ -165,6 +166,29 @@
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="btn btn-g" onclick="showTab('liste')">Annuler</button>
         <button class="btn btn-p" onclick="saveFacture()">💾 Enregistrer la Facture</button>
+      </div>
+    </div>
+
+    <!-- CLIENTS -->
+    <div id="tab-clients" class="tab-pane">
+      <div class="form-card">
+        <h3 id="cl-form-title">Ajouter un Client</h3>
+        <div class="fgrid3" style="margin-bottom:12px">
+          <div class="fg"><label>Nom Client *</label><input type="text" id="nc-name" placeholder="Ex: STE EXEMPLE SARL"/></div>
+          <div class="fg"><label>ICE</label><input type="text" id="nc-ice" placeholder="002256198000012"/></div>
+          <div class="fg"><label>Adresse</label><input type="text" id="nc-adresse" placeholder="MNASRA"/></div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-g" id="nc-cancel" onclick="resetClientForm()" style="display:none">Annuler</button>
+          <button class="btn btn-p" onclick="saveClient()">💾 Enregistrer le Client</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="s-head"><span class="s-title">Liste des Clients</span></div>
+        <table class="t">
+          <thead><tr><th>Nom</th><th>ICE</th><th>Adresse</th><th></th></tr></thead>
+          <tbody id="clients-body"></tbody>
+        </table>
       </div>
     </div>
 
@@ -259,7 +283,77 @@ function showTab(name, el) {
   if (el) el.classList.add('active');
   if (name === 'liste')    loadListe();
   if (name === 'nouvelle') initNouvelleFacture();
+  if (name === 'clients')  loadClientsList();
   if (name === 'tabac')    loadTabacHistory();
+}
+
+// ── CLIENTS MANAGEMENT ────────────────────────────────────────
+let _editingClientId = null;
+let _clientsList = [];
+
+async function loadClientsList() {
+  _clientsList = await A('/api/factures/clients');
+  const tbody = document.getElementById('clients-body');
+  if (!_clientsList.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted)">Aucun client</td></tr>'; return; }
+  tbody.innerHTML = _clientsList.map(c => `<tr>
+    <td><strong>${esc(c.name)}</strong></td>
+    <td>${esc(c.ice || '—')}</td>
+    <td>${esc(c.adresse || '—')}</td>
+    <td class="num" style="display:flex;gap:4px;justify-content:flex-end">
+      <button class="btn btn-g btn-xs" onclick="editClient(${c.id})">✏️</button>
+      <button class="btn btn-d btn-xs" onclick="deleteClient(${c.id})">🗑️</button>
+    </td>
+  </tr>`).join('');
+}
+
+async function saveClient() {
+  const name = document.getElementById('nc-name').value.trim();
+  if (!name) { toast('Nom client requis', 'er'); return; }
+  const body = {
+    name,
+    ice: document.getElementById('nc-ice').value.trim() || null,
+    adresse: document.getElementById('nc-adresse').value.trim() || null,
+  };
+  let r;
+  if (_editingClientId) {
+    r = await A('/api/factures/clients/' + _editingClientId, { method: 'PUT', body: JSON.stringify(body) });
+  } else {
+    r = await A('/api/factures/clients', { method: 'POST', body: JSON.stringify(body) });
+  }
+  if (r.error) { toast(r.error, 'er'); return; }
+  toast('Client enregistré ✓');
+  resetClientForm();
+  loadClientsList();
+  loadClients(); // refresh the autocomplete cache used by Nouvelle Facture
+}
+
+function editClient(id) {
+  const c = _clientsList.find(x => x.id === id);
+  if (!c) return;
+  _editingClientId = c.id;
+  document.getElementById('nc-name').value    = c.name || '';
+  document.getElementById('nc-ice').value     = c.ice || '';
+  document.getElementById('nc-adresse').value = c.adresse || '';
+  document.getElementById('cl-form-title').textContent = 'Modifier le Client';
+  document.getElementById('nc-cancel').style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetClientForm() {
+  _editingClientId = null;
+  document.getElementById('nc-name').value = '';
+  document.getElementById('nc-ice').value = '';
+  document.getElementById('nc-adresse').value = '';
+  document.getElementById('cl-form-title').textContent = 'Ajouter un Client';
+  document.getElementById('nc-cancel').style.display = 'none';
+}
+
+async function deleteClient(id) {
+  if (!confirm('Supprimer ce client ?')) return;
+  await A('/api/factures/clients/' + id, { method: 'DELETE' });
+  toast('Client supprimé');
+  loadClientsList();
+  loadClients();
 }
 
 // ── CLIENT AUTOCOMPLETE ────────────────────────────────────────

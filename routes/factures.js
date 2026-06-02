@@ -16,19 +16,45 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
   res.json(rows);
 }));
 
-// Client suggestions: merge credit_clients + past invoice clients
+// Client suggestions for the autocomplete — dedicated facture_clients only
 router.get('/clients-suggest', requireAuth, wrap(async (_req, res) => {
-  const { rows: cc } = await pool.query(`
-    SELECT name, ice, adresse, company FROM credit_clients WHERE is_active=1 ORDER BY name
+  const { rows } = await pool.query(`
+    SELECT name, ice, adresse, NULL as company
+    FROM facture_clients WHERE is_active=1 ORDER BY name
   `);
-  const { rows: fc } = await pool.query(`
-    SELECT DISTINCT client_name as name, client_ice as ice, client_adresse as adresse, NULL as company
-    FROM factures ORDER BY client_name
-  `);
-  // merge, deduplicate by name (credit_clients take priority)
-  const seen = new Set(cc.map(c => c.name.toLowerCase()));
-  const all = [...cc, ...fc.filter(c => !seen.has(c.name.toLowerCase()))];
-  res.json(all);
+  res.json(rows);
+}));
+
+// ── Facture clients (dedicated, separate from carburant credit clients) ──
+router.get('/clients', requireAuth, wrap(async (_req, res) => {
+  const { rows } = await pool.query('SELECT * FROM facture_clients WHERE is_active=1 ORDER BY name');
+  res.json(rows);
+}));
+
+router.post('/clients', requireAuth, wrap(async (req, res) => {
+  const { name, ice, adresse } = req.body || {};
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Nom client requis' });
+  const { rows: [c] } = await pool.query(
+    'INSERT INTO facture_clients (name, ice, adresse) VALUES ($1,$2,$3) RETURNING *',
+    [name.trim(), (ice||'').trim() || null, (adresse||'').trim() || null]
+  );
+  res.status(201).json(c);
+}));
+
+router.put('/clients/:id', requireAuth, wrap(async (req, res) => {
+  const { name, ice, adresse } = req.body || {};
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Nom client requis' });
+  const { rows: [c] } = await pool.query(
+    'UPDATE facture_clients SET name=$1, ice=$2, adresse=$3 WHERE id=$4 RETURNING *',
+    [name.trim(), (ice||'').trim() || null, (adresse||'').trim() || null, req.params.id]
+  );
+  if (!c) return res.status(404).json({ error: 'Client introuvable' });
+  res.json(c);
+}));
+
+router.delete('/clients/:id', requireAuth, wrap(async (req, res) => {
+  await pool.query('UPDATE facture_clients SET is_active=0 WHERE id=$1', [req.params.id]);
+  res.json({ ok: true });
 }));
 
 router.get('/:id', requireAuth, wrap(async (req, res) => {
