@@ -3,8 +3,16 @@
 <head>
 <meta charset="UTF-8"/>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>MENASTA — Tableau Patron</title>
+<!-- PWA / Mobile app (Add to Home Screen) -->
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#5b4fcf"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="MENASTA"/>
+<link rel="apple-touch-icon" href="/icon-192.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/fiori.css?v=32"/>
@@ -28,6 +36,30 @@ body.app-layout{overflow:auto}
 .sb-logout{width:100%;padding:8px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:11px;font-family:var(--font);cursor:pointer;transition:background .15s,color .15s;margin-top:6px}
 .sb-logout:hover{background:rgba(239,68,68,.15);color:#f87171;border-color:rgba(239,68,68,.3)}
 @media(max-width:900px){.panels{grid-template-columns:1fr 1fr}.kpi-row{grid-template-columns:1fr 1fr}}
+
+/* ── MOBILE (téléphone) ── */
+@media(max-width:760px){
+  .sidebar{display:none!important}                 /* la nav du haut suffit sur mobile */
+  .main{margin-left:0;padding:12px 11px 40px}
+  #p-topbar{flex-direction:column!important;align-items:flex-start!important;gap:8px;margin-bottom:16px}
+  .topbar-title{font-size:18px}
+  .topbar-clock{font-size:11.5px;padding:5px 10px}
+  .kpi-row{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .panels{grid-template-columns:1fr;gap:12px;margin-bottom:14px}
+  .section{margin-bottom:14px}
+  .s-head{flex-wrap:wrap;gap:6px;row-gap:8px}
+  .s-title{font-size:13px}
+  .tile-val{font-size:17px}
+  .kpi-val{font-size:18px}
+  .exp-btns{flex-wrap:wrap}
+  .t th,.t td{padding:7px 8px;font-size:12px}
+  /* let wide tables scroll instead of squishing */
+  .section>div[style*="overflow-x"]{ -webkit-overflow-scrolling:touch }
+}
+@media(max-width:430px){
+  .kpi-row{grid-template-columns:1fr}
+  #cuves-grid{grid-template-columns:1fr!important}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
 <link rel="stylesheet" href="/css/dashboard.css?v=1"/>
@@ -91,7 +123,7 @@ body.app-layout{overflow:auto}
 </aside>
 
 <div class="main">
-  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px">
+  <div id="p-topbar" style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px">
     <div>
       <div class="topbar-title" id="greeting">Bonjour 👑</div>
       <div class="topbar-sub" id="date-lbl">Chargement…</div>
