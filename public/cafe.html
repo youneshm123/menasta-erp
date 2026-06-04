@@ -604,21 +604,40 @@ function _expData(tbl) {
   );
   return { headers, rows };
 }
+function expNotify(msg, isErr) {
+  let host = document.getElementById('exp-notify');
+  if (!host) { host = document.createElement('div'); host.id = 'exp-notify';
+    host.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center'; document.body.appendChild(host); }
+  const d = document.createElement('div');
+  d.style.cssText = `padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.18);color:#fff;background:${isErr?'#DC2626':'#16A34A'}`;
+  d.textContent = msg; host.appendChild(d); setTimeout(() => d.remove(), 4000);
+}
 function expPDF(tbl, title) {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'landscape' });
-  doc.setFontSize(13); doc.text((title||'Export') + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
-  const { headers, rows } = _expData(tbl);
-  doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [29, 45, 62] } });
-  doc.save((title||'export').replace(/\s+/g,'_') + '.pdf');
+  try {
+    if (!tbl) throw new Error('Tableau introuvable');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(13); doc.text((title||'Export') + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
+    const { headers, rows } = _expData(tbl);
+    if (!rows.length) { expNotify('Aucune donnée à exporter', true); return; }
+    doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [29, 45, 62] } });
+    doc.save((title||'export').replace(/\s+/g,'_') + '.pdf');
+    expNotify('📄 PDF téléchargé');
+  } catch(e) { expNotify('Erreur PDF : ' + e.message, true); }
 }
 function expXL(tbl, title) {
-  const { headers, rows } = _expData(tbl);
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, (title||'export').slice(0,31));
-  XLSX.writeFile(wb, (title||'export').replace(/\s+/g,'_') + '.xlsx');
+  try {
+    if (!tbl) throw new Error('Tableau introuvable');
+    const { headers, rows } = _expData(tbl);
+    if (!rows.length) { expNotify('Aucune donnée à exporter', true); return; }
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, (title||'export').slice(0,31));
+    XLSX.writeFile(wb, (title||'export').replace(/\s+/g,'_') + '.xlsx');
+    expNotify('📊 Excel téléchargé');
+  } catch(e) { expNotify('Erreur Excel : ' + e.message, true); }
 }
 function expWord(tbl, title) {
+  try {
   const clone = tbl.cloneNode(true); clone.querySelectorAll('input,button').forEach(el => el.remove());
   const css = 'body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}';
   const C = '<';
@@ -627,6 +646,8 @@ function expWord(tbl, title) {
     + '<p style="color:#666;font-size:11px">Exporté le ' + new Date().toLocaleDateString('fr-FR') + C+'/p>'
     + clone.outerHTML + C+'/body>'+C+'/html>';
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html],{type:'application/msword'})); a.download = (title||'export').replace(/\s+/g,'_')+'.doc'; a.click();
+  expNotify('📝 Word téléchargé');
+  } catch(e) { expNotify('Erreur Word : ' + e.message, true); }
 }
 (function wireExport() {
   const style = `.exp-btns{display:flex;gap:5px;align-items:center;flex-shrink:0}.exp-btn{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:none;transition:background .15s}.exp-pdf{background:#fee2e2;color:#b91c1c}.exp-pdf:hover{background:#fca5a5}.exp-xl{background:#dcfce7;color:#15803d}.exp-xl:hover{background:#86efac}.exp-word{background:#dbeafe;color:#1d4ed8}.exp-word:hover{background:#93c5fd}`;

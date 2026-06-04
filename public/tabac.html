@@ -633,27 +633,44 @@ function tableToData(tableId) {
   return { headers, rows };
 }
 
+function expNotify(msg, isErr) {
+  let host = document.getElementById('exp-notify');
+  if (!host) { host = document.createElement('div'); host.id = 'exp-notify';
+    host.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center'; document.body.appendChild(host); }
+  const d = document.createElement('div');
+  d.style.cssText = `padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.18);color:#fff;background:${isErr?'#DC2626':'#16A34A'}`;
+  d.textContent = msg; host.appendChild(d); setTimeout(() => d.remove(), 4000);
+}
 function exportPDF(tableId, title) {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'landscape' });
-  doc.setFontSize(14);
-  doc.text(title + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
-  const { headers, rows } = tableToData(tableId);
-  doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [99, 60, 180] } });
-  doc.save(title.replace(/\s+/g,'_') + '.pdf');
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(14);
+    doc.text(title + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
+    const { headers, rows } = tableToData(tableId);
+    if (!rows.length) { expNotify('Aucune donnée à exporter', true); return; }
+    doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [99, 60, 180] } });
+    doc.save(title.replace(/\s+/g,'_') + '.pdf');
+    expNotify('📄 PDF téléchargé');
+  } catch(e) { expNotify('Erreur PDF : ' + e.message, true); }
 }
 
 function exportExcel(tableId, title) {
-  const { headers, rows } = tableToData(tableId);
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, title.slice(0,31));
-  XLSX.writeFile(wb, title.replace(/\s+/g,'_') + '.xlsx');
+  try {
+    const { headers, rows } = tableToData(tableId);
+    if (!rows.length) { expNotify('Aucune donnée à exporter', true); return; }
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, title.slice(0,31));
+    XLSX.writeFile(wb, title.replace(/\s+/g,'_') + '.xlsx');
+    expNotify('📊 Excel téléchargé');
+  } catch(e) { expNotify('Erreur Excel : ' + e.message, true); }
 }
 
 function exportWord(tableId, title) {
+  try {
   const tbl = document.getElementById(tableId);
-  if (!tbl) return;
+  if (!tbl) { expNotify('Tableau introuvable', true); return; }
   const clone = tbl.cloneNode(true);
   clone.querySelectorAll('input,button').forEach(el => el.remove());
   const css = [
@@ -675,6 +692,8 @@ function exportWord(tableId, title) {
   a.href = URL.createObjectURL(blob);
   a.download = title.replace(/\s+/g,'_') + '.doc';
   a.click();
+  expNotify('📝 Word téléchargé');
+  } catch(e) { expNotify('Erreur Word : ' + e.message, true); }
 }
 
 function logout() { localStorage.clear(); location.href = '/'; }

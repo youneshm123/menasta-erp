@@ -2533,21 +2533,37 @@ function _tblData(tableId, tblEl) {
   );
   return { headers, rows };
 }
-function expPDF(tableId, title, tblEl) {
-  if (!window.jspdf) { alert('PDF lib loading...'); return; }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'landscape' });
-  doc.setFontSize(14);
-  doc.text((title||'Export') + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
-  const { headers, rows } = _tblData(tableId, tblEl);
-  doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [29, 45, 62] } });
-  doc.save((title||'export').replace(/\s+/g,'_') + '.pdf');
+function expNotify(msg, isErr) {
+  let host = document.getElementById('exp-notify');
+  if (!host) { host = document.createElement('div'); host.id = 'exp-notify';
+    host.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center'; document.body.appendChild(host); }
+  const d = document.createElement('div');
+  d.style.cssText = `padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.18);color:#fff;background:${isErr?'#DC2626':'#16A34A'}`;
+  d.textContent = msg; host.appendChild(d); setTimeout(() => d.remove(), 4000);
 }
-function expXL(tableId, title, tblEl) { exportTableToExcel(tblEl || document.getElementById(tableId), title, { skipLastCols: 0 }); }
+function expPDF(tableId, title, tblEl) {
+  try {
+    if (!window.jspdf) { expNotify('Librairie PDF en cours de chargement, réessayez', true); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(14);
+    doc.text((title||'Export') + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
+    const { headers, rows } = _tblData(tableId, tblEl);
+    if (!rows.length) { expNotify('Aucune donnée à exporter', true); return; }
+    doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [29, 45, 62] } });
+    doc.save((title||'export').replace(/\s+/g,'_') + '.pdf');
+    expNotify('📄 PDF téléchargé');
+  } catch(e) { expNotify('Erreur PDF : ' + e.message, true); }
+}
+function expXL(tableId, title, tblEl) {
+  try { exportTableToExcel(tblEl || document.getElementById(tableId), title, { skipLastCols: 0 }); expNotify('📊 Excel téléchargé'); }
+  catch(e) { expNotify('Erreur Excel : ' + e.message, true); }
+}
 function expXLtbl(tblEl, title) { exportTableToExcel(tblEl, title, { skipLastCols: 0 }); }
 function expWord(tableId, title, tblEl) {
+  try {
   const tbl = tblEl || (tableId ? document.getElementById(tableId) : null);
-  if (!tbl) return;
+  if (!tbl) { expNotify('Tableau introuvable', true); return; }
   const clone = tbl.cloneNode(true);
   clone.querySelectorAll('input,button').forEach(el => el.remove());
   const css = 'body{font-family:Arial,sans-serif;font-size:12px}h2{margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#1D2D3E;color:#fff;padding:6px 10px;text-align:left}td{border:1px solid #ddd;padding:5px 10px}tr:nth-child(even)td{background:#f9f9f9}';
@@ -2559,6 +2575,8 @@ function expWord(tableId, title, tblEl) {
     + C+'/body>'+C+'/html>';
   const blob = new Blob([html], { type: 'application/msword' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (title||'export').replace(/\s+/g,'_') + '.doc'; a.click();
+  expNotify('📝 Word téléchargé');
+  } catch(e) { expNotify('Erreur Word : ' + e.message, true); }
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
