@@ -20,6 +20,17 @@ function signature(desc) {
     .replace(/[0-9]/g, ' ').replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
 }
 
+// Normalise a date string to YYYY-MM-DD (accepts ISO or DD/MM/YYYY, Moroccan style). Returns null if unparseable.
+function normDate(s) {
+  if (!s) return null;
+  s = String(s).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);
+  if (m) { let y = m[3]; if (y.length === 2) y = '20' + y; return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
+  return null;
+}
+
 // ── settings ──────────────────────────────────────────────────
 router.get('/settings', requireAuth, wrap(async (_req, res) => {
   const { rows: [s] } = await pool.query('SELECT * FROM bank_settings WHERE id=1');
@@ -295,20 +306,21 @@ ${text.slice(0, 12000)}`;
       if (ruleMap[sig].txn_type) type = ruleMap[sig].txn_type;
       learned = true;
     }
+    const date = normDate(r.date);
     // duplicate detection (same date + amount + (cheque no | description))
     let duplicate = false;
-    if (r.date) {
+    if (date) {
       const { rows: dup } = await pool.query(
         `SELECT id FROM bank_transactions
          WHERE txn_date=$1 AND ROUND(amount::numeric,2)=ROUND($2::numeric,2)
            AND ( (COALESCE($3,'')<>'' AND check_number=$3) OR (COALESCE($3,'')='' AND description=$4) )
          LIMIT 1`,
-        [r.date, amount, r.check_number || null, r.description || '']
+        [date, amount, r.check_number || null, r.description || '']
       );
       duplicate = dup.length > 0;
     }
     out.push({
-      date: r.date || null, description: r.description || '', amount,
+      date: date || null, description: r.description || '', amount,
       type, category, check_number: r.check_number || null, beneficiary: r.beneficiary || null,
       learned, duplicate, include: !duplicate
     });
@@ -332,7 +344,7 @@ router.post('/import/commit', requireAuth, wrap(async (req, res) => {
         INSERT INTO bank_transactions (txn_date,type,category,description,amount,check_number,beneficiary,check_status,bank_ref,recorded_by)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
       `, [
-        r.date || new Date().toISOString().slice(0,10), r.type,
+        normDate(r.date) || new Date().toISOString().slice(0,10), r.type,
         BANK_CATS.includes(r.category) ? r.category : 'Autre',
         r.description || 'Import relevé', amount,
         r.check_number || null, r.beneficiary || null,
