@@ -222,33 +222,35 @@ body.app-layout{overflow:auto}
   </div>
 
   <!-- DÉPENSES & CRÉANCES DÉTAIL -->
-  <div class="panels" style="grid-template-columns:1fr 1fr;margin-bottom:24px">
-    <!-- Dépenses -->
-    <div class="panel">
-      <div class="panel-head">
-        <div class="panel-icon" style="background:#FEF2F2">💸</div>
-        <div>
-          <div class="panel-title">Dépenses / Charges</div>
-          <div class="panel-sub" id="dep-sub">Ce mois</div>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div class="prow"><span class="prow-lbl">Aujourd'hui</span><span class="prow-val red" id="dep-today">—</span></div>
-        <div class="prow"><span class="prow-lbl">Total ce mois</span><span class="prow-val red big" id="dep-month">—</span></div>
-        <div id="dep-cats" style="margin-top:6px"></div>
-        <div id="dep-recent" style="margin-top:8px;border-top:1px solid var(--border-lt);padding-top:8px"></div>
+  <!-- DÉPENSES / CHARGES -->
+  <div class="section" style="margin-bottom:20px">
+    <div class="s-head">
+      <div class="s-title">💸 Dépenses / Charges</div>
+      <div style="display:flex;gap:18px;font-size:12.5px;font-weight:700">
+        <span>Aujourd'hui : <span class="c-r" id="dep-today">—</span></span>
+        <span>Total ce mois : <span class="c-r" id="dep-month">—</span></span>
       </div>
     </div>
-    <!-- Créances détail -->
-    <div class="panel">
-      <div class="panel-head">
-        <div class="panel-icon" style="background:#FFF7ED"><i data-lucide="handshake"></i></div>
-        <div>
-          <div class="panel-title">Qui me doit de l'argent</div>
-          <div class="panel-sub" id="cred-detail-sub">Clients débiteurs</div>
-        </div>
-      </div>
-      <div class="panel-body" id="cred-list">—</div>
+    <div id="dep-cats" style="padding:10px 16px 2px;display:flex;flex-wrap:wrap;gap:8px"></div>
+    <div style="overflow-x:auto">
+      <table class="t" id="dep-table">
+        <thead><tr><th>Date</th><th>Catégorie</th><th>Description</th><th class="num">Montant</th></tr></thead>
+        <tbody id="dep-recent-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CRÉANCES — QUI ME DOIT -->
+  <div class="section" style="margin-bottom:24px">
+    <div class="s-head">
+      <div class="s-title">🤝 Qui me doit de l'argent</div>
+      <span id="cred-detail-sub" style="font-size:12px;color:var(--muted)">—</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="t" id="cred-table">
+        <thead><tr><th>Client</th><th>Société</th><th>Téléphone</th><th class="num">Montant Dû</th></tr></thead>
+        <tbody id="cred-body"></tbody>
+      </table>
     </div>
   </div>
 
@@ -331,6 +333,8 @@ if (user) {
 function logout() { localStorage.clear(); location.href = '/'; }
 
 const fmt = (n, d=2) => (parseFloat(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const ymd = v => v ? String(v).slice(0,10) : '';
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 function updateClock() {
   const now = new Date();
@@ -449,27 +453,27 @@ async function load() {
   document.getElementById('dep-today').textContent = fmt(d.depenses.today) + ' MAD';
   document.getElementById('dep-month').textContent = fmt(d.depenses.month) + ' MAD';
   document.getElementById('dep-cats').innerHTML = (d.depenses.by_cat || []).map(c =>
-    `<div class="prow" style="padding:3px 0"><span class="prow-lbl" style="font-size:12px">${c.category}</span><span class="prow-val" style="font-size:12px">${fmt(c.total)} MAD</span></div>`
+    `<span style="font-size:11.5px;background:var(--bg2);border:1px solid var(--border-lt);border-radius:20px;padding:3px 10px"><strong>${esc(c.category)}</strong> · ${fmt(c.total)} MAD</span>`
   ).join('');
-  document.getElementById('dep-recent').innerHTML = (d.depenses.recent && d.depenses.recent.length)
-    ? '<div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-bottom:4px">Dernières dépenses</div>' +
-      d.depenses.recent.map(e =>
-        `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
-          <span style="color:#6B7280">${e.expense_date} · ${e.description}</span>
-          <span style="color:#DC2626;font-weight:700">${fmt(e.amount)} MAD</span>
-        </div>`).join('')
-    : '<div style="color:#9CA3AF;font-size:12px">Aucune dépense</div>';
+  document.getElementById('dep-recent-body').innerHTML = (d.depenses.recent && d.depenses.recent.length)
+    ? d.depenses.recent.map(e => `<tr>
+        <td style="white-space:nowrap">${ymd(e.expense_date)}</td>
+        <td style="color:var(--muted);font-size:12px">${esc(e.category||'')}</td>
+        <td>${esc(e.description||'')}</td>
+        <td class="num c-r fw7">${fmt(e.amount)} MAD</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;padding:18px;color:#9CA3AF">Aucune dépense</td></tr>';
 
   // ── Créances détail (qui doit) ──
   document.getElementById('cred-detail-sub').textContent = d.credits.nb_clients + ' client(s) débiteur(s)';
-  const credList = document.getElementById('cred-list');
-  credList.innerHTML = (d.credits.list && d.credits.list.length)
-    ? d.credits.list.map(c =>
-        `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border-lt)">
-          <div><div style="font-weight:700;font-size:13px">${c.name}</div><div style="font-size:11px;color:#9CA3AF">${c.company||c.phone||''}</div></div>
-          <span style="color:#DC2626;font-weight:800">${fmt(c.balance_due)} MAD</span>
-        </div>`).join('')
-    : '<div style="color:#9CA3AF;font-size:12px;text-align:center;padding:12px">Aucun client débiteur 🎉</div>';
+  document.getElementById('cred-body').innerHTML = (d.credits.list && d.credits.list.length)
+    ? d.credits.list.map(c => `<tr>
+        <td><strong>${esc(c.name)}</strong></td>
+        <td style="color:var(--muted)">${esc(c.company||'—')}</td>
+        <td style="color:var(--muted);font-size:12px">${esc(c.phone||'—')}</td>
+        <td class="num c-r fw8">${fmt(c.balance_due)} MAD</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;padding:18px;color:#9CA3AF">Aucun client débiteur 🎉</td></tr>';
 
   // Stock table
   const stockBody = document.getElementById('stock-body');

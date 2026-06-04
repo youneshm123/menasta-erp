@@ -98,7 +98,7 @@ router.get('/summary', requireAuth, wrap(async (_req, res) => {
   const { rows: recentExpenses } = await pool.query(`
     SELECT e.*, u.full_name as recorded_by_name
     FROM expenses e LEFT JOIN users u ON u.id=e.recorded_by
-    ORDER BY e.expense_date DESC, e.id DESC LIMIT 8
+    ORDER BY e.expense_date DESC, e.id DESC LIMIT 100
   `);
 
   // ── Créances détaillées (qui doit combien) ──
