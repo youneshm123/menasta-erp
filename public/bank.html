@@ -160,7 +160,7 @@
         </select>
         <button class="btn btn-p btn-sm" onclick="loadTransactions()">Actualiser</button>
         <button class="btn btn-ghost btn-sm" id="btn-copy-txn" onclick="exportTableToExcel(document.querySelector('#txn-body').closest('table'),'Transactions_Banque',{skipLastCols:1,btnEl:this})">📊 Exporter Excel</button>
-        <button class="btn btn-ghost btn-sm" onclick="openModal('m-import-txn')">📥 Importer Excel</button>
+        <button class="btn btn-p btn-sm" onclick="openImportReleve()">🤖 Importer Relevé</button>
         <button class="btn btn-ghost btn-sm" onclick="printStatement()">🖨️ Imprimer</button>
       </div>
       <!-- Quick-add bar -->
@@ -358,6 +358,46 @@
   </div>
 </div>
 
+<!-- ══ MODAL: Importer Relevé (IA) ══ -->
+<div class="overlay" id="m-import-releve">
+  <div class="modal" style="max-width:1000px">
+    <div class="modal-hd"><div class="mh-ic">🤖</div><h3>Importer un Relevé Bancaire</h3><button class="x" onclick="closeModal('m-import-releve')">×</button></div>
+    <div class="modal-body">
+      <!-- Step 1: paste -->
+      <div id="ir-step-paste">
+        <p style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Copiez le contenu de votre relevé (PDF ou Excel) et collez-le ci-dessous. L'IA va lire chaque ligne, deviner le type et la catégorie, et détecter les doublons.</p>
+        <textarea id="ir-text" rows="9" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:monospace;resize:vertical" placeholder="Collez ici le relevé… (dates, descriptions, montants débit/crédit)"></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+          <button class="btn btn-p" id="ir-analyze-btn" onclick="analyzeReleve()">🔍 Analyser</button>
+        </div>
+      </div>
+      <!-- Step 2: preview -->
+      <div id="ir-step-preview" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:13px;font-weight:700" id="ir-summary">—</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="irBackToPaste()">← Modifier le texte</button>
+            <label style="font-size:12px;display:flex;align-items:center;gap:5px;color:var(--muted)"><input type="checkbox" id="ir-hide-dupes" onchange="renderImportPreview()"/> Masquer les doublons</label>
+          </div>
+        </div>
+        <div style="overflow:auto;max-height:46vh;border:1px solid var(--border-lt);border-radius:8px">
+          <table class="t" style="font-size:12px" data-no-tools>
+            <thead><tr>
+              <th style="width:34px"><input type="checkbox" id="ir-all" onchange="irToggleAll(this.checked)" checked/></th>
+              <th>Date</th><th>Description</th><th class="num">Montant</th><th>Type</th><th>Catégorie</th><th>N° Chèque</th><th>État</th>
+            </tr></thead>
+            <tbody id="ir-preview-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('m-import-releve')">Fermer</button>
+      <button class="btn btn-s btn-sm" id="ir-commit-btn" onclick="commitReleve()" style="display:none">📥 Importer (0)</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── UTILS ──────────────────────────────────────────────────────────────────
 const token = localStorage.getItem('fm_token') || '';
@@ -370,6 +410,7 @@ async function api(method, url, body) {
   return data;
 }
 function fmt(n, d=0) { return (parseFloat(n)||0).toLocaleString('fr-FR', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+function ymd(v) { return v ? String(v).slice(0,10) : ''; }
 function today() { return new Date().toISOString().slice(0,10); }
 function thisMonth() { return new Date().toISOString().slice(0,7); }
 function toast(msg, t='g') {
@@ -402,7 +443,7 @@ async function refreshBalance() {
   try {
     const b = await api('GET', '/bank/balance');
     document.getElementById('top-balance').textContent = 'Solde : ' + fmt(b.balance, 2) + ' MAD';
-    const fc = b.forecast ?? b.balance;
+    const fc = b.forecasted_balance ?? b.balance;
     document.getElementById('top-forecast').textContent = '⏳ Prévisionnel : ' + fmt(fc, 2) + ' MAD';
   } catch(e) {}
 }
@@ -410,12 +451,13 @@ async function refreshBalance() {
 // ── DASHBOARD ─────────────────────────────────────────────────────────────
 let _balChart = null;
 async function loadDashboard() {
-  const [bal, txns] = await Promise.all([
+  const [bal, txns, hist] = await Promise.all([
     api('GET', '/bank/balance'),
-    api('GET', '/transactions?limit=10')
+    api('GET', '/bank/transactions'),
+    api('GET', '/bank/history?days=30').catch(() => [])
   ]);
   const b = bal.balance;
-  const forecast = bal.forecast ?? b;
+  const forecast = bal.forecasted_balance ?? b;
   document.getElementById('db-tiles').innerHTML = [
     { ic:'💰', val: fmt(b,2)+' MAD', lbl:'Solde Actuel',      tc:'var(--blue)' },
     { ic:'⏳', val: fmt(forecast,2)+' MAD', lbl:'Prévisionnel',tc:'var(--orange)' },
@@ -424,19 +466,19 @@ async function loadDashboard() {
   ].map(t=>`<div class="tile" style="--tc:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
   // Recent transactions
-  document.getElementById('db-recent').innerHTML = (txns.items||txns||[]).slice(0,8).map(t => `
+  document.getElementById('db-recent').innerHTML = ((txns.rows)||[]).slice(0,8).map(t => `
     <tr>
-      <td>${t.txn_date||''}</td>
+      <td>${ymd(t.txn_date)}</td>
       <td><span class="badge ${t.type}">${txnLabel(t.type)}</span></td>
       <td>${t.description||''}</td>
       <td style="color:var(--muted);font-size:12px">${t.category||''}</td>
       <td class="num ${['depot','virement_in','cheque_in'].includes(t.type)?'c-g':'c-r'}">${fmt(t.amount,2)}</td>
-      <td class="num">${t.balance_after!=null?fmt(t.balance_after,2):'—'}</td>
+      <td class="num">${t.running_balance!=null?fmt(t.running_balance,2):'—'}</td>
     </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Aucune transaction</td></tr>';
 
   // Pending cheques
   try {
-    const checks = await api('GET', '/checks?status=pending');
+    const checks = (await api('GET', '/bank/checks')).filter(c => c.check_status === 'pending');
     document.getElementById('db-pending-list').innerHTML = (checks||[]).slice(0,6).map(c => `
       <div style="padding:8px 0;border-bottom:1px solid var(--border-lt);font-size:12px">
         <div style="font-weight:700">${c.type==='cheque_out'?'📤':'📥'} ${c.check_number||'—'} · ${fmt(c.amount,2)} MAD</div>
@@ -444,15 +486,15 @@ async function loadDashboard() {
       </div>`).join('') || '<div style="padding:12px;color:var(--muted);font-size:12px">Aucun chèque en attente</div>';
   } catch(e) {}
 
-  // Balance chart
-  if (bal.daily_balances && bal.daily_balances.length) {
+  // Balance chart (from /bank/history)
+  if (Array.isArray(hist) && hist.length) {
     const ctx = document.getElementById('chart-balance').getContext('2d');
     if (_balChart) _balChart.destroy();
     _balChart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: bal.daily_balances.map(d=>d.date),
-        datasets: [{ label:'Solde MAD', data: bal.daily_balances.map(d=>d.balance),
+        labels: hist.map(d=>d.day),
+        datasets: [{ label:'Solde MAD', data: hist.map(d=>d.balance),
           borderColor:'#0070F2', backgroundColor:'rgba(0,112,242,.08)', fill:true,
           tension:.3, pointRadius:2 }]
       },
@@ -471,22 +513,17 @@ async function loadTransactions() {
   const type = document.getElementById('txn-type-filter').value;
   const cat  = document.getElementById('txn-cat-filter').value;
   const params = new URLSearchParams({ month: mon });
-  if (q) params.set('q', q);
+  if (q) params.set('search', q);
   if (type) params.set('type', type);
   if (cat) params.set('category', cat);
 
-  const data = await api('GET', '/transactions?' + params);
-  const items = data.items || data || [];
-  let runBal = data.opening_balance ?? 0;
-  let totIn = 0, totOut = 0;
+  const data = await api('GET', '/bank/transactions?' + params);
+  const items = data.rows || [];
 
   document.getElementById('txn-body').innerHTML = items.map(t => {
     const isIn = ['depot','virement_in','cheque_in'].includes(t.type);
-    if (isIn) totIn += parseFloat(t.amount||0);
-    else totOut += parseFloat(t.amount||0);
-    runBal = t.balance_after ?? runBal;
     return `<tr>
-      <td>${t.txn_date||''}</td>
+      <td>${ymd(t.txn_date)}</td>
       <td><span class="badge ${t.type}">${txnLabel(t.type)}</span></td>
       <td style="color:var(--muted);font-size:11px">${t.category||''}</td>
       <td>${t.description||''}</td>
@@ -494,14 +531,14 @@ async function loadTransactions() {
       <td style="font-size:12px">${t.check_number||''}</td>
       <td class="num ${isIn?'':'c-r'}">${isIn?'':fmt(t.amount,2)}</td>
       <td class="num ${isIn?'c-g':''}">${isIn?fmt(t.amount,2):''}</td>
-      <td class="num" style="font-weight:700">${fmt(runBal,2)}</td>
+      <td class="num" style="font-weight:700">${t.running_balance!=null?fmt(t.running_balance,2):'—'}</td>
       <td style="font-size:11px;text-align:center">${t.is_reconciled?'✅':''}</td>
       <td><button class="btn btn-ghost btn-sm" style="color:var(--red);padding:3px 8px" onclick="deleteTxn(${t.id})">🗑</button></td>
     </tr>`;
   }).join('') || '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--muted)">Aucune transaction ce mois</td></tr>';
 
-  document.getElementById('txn-tot-in').textContent  = fmt(totIn,2) + ' MAD';
-  document.getElementById('txn-tot-out').textContent = fmt(totOut,2) + ' MAD';
+  document.getElementById('txn-tot-in').textContent  = fmt(data.total_in||0,2) + ' MAD';
+  document.getElementById('txn-tot-out').textContent = fmt(data.total_out||0,2) + ' MAD';
 
   // Populate category filter
   const cats = [...new Set(items.map(t=>t.category).filter(Boolean))];
@@ -513,7 +550,7 @@ async function loadTransactions() {
 
 async function deleteTxn(id) {
   if (!confirm('Supprimer cette transaction ?')) return;
-  await api('DELETE', '/transactions/' + id);
+  await api('DELETE', '/bank/transactions/' + id);
   toast('Transaction supprimée');
   refreshBalance();
   loadTransactions();
@@ -563,7 +600,7 @@ async function quickAddTxn() {
     check_status: isCk ? 'pending' : null,
   };
   try {
-    await api('POST', '/transactions', body);
+    await api('POST', '/bank/transactions', body);
     document.getElementById('qa-amount').value = '';
     document.getElementById('qa-desc').value   = '';
     if (isCk) {
@@ -580,7 +617,7 @@ async function quickAddTxn() {
 // ── CHEQUES ───────────────────────────────────────────────────────────────
 let _allCheques = [];
 async function loadCheques() {
-  const checks = await api('GET', '/checks');
+  const checks = await api('GET', '/bank/checks');
   _allCheques = checks;
   const out = checks.filter(c => c.type === 'cheque_out');
   const inp = checks.filter(c => c.type === 'cheque_in');
@@ -616,26 +653,27 @@ function filterCheques() {
     || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun résultat</td></tr>';
 }
 
-const STATUS_LABELS = { pending:'⏳ En attente', 'encaissé':'✅ Encaissé', cancelled:'❌ Annulé', returned:'↩️ Retourné' };
+const STATUS_LABELS = { pending:'⏳ En attente', cashed:'✅ Encaissé', 'encaissé':'✅ Encaissé', cancelled:'❌ Annulé', returned:'↩️ Retourné' };
 function ckRow(c, dir) {
   const st = STATUS_LABELS[c.check_status] || c.check_status || '—';
-  const stColor = c.check_status==='pending'?'var(--orange)':c.check_status==='encaissé'?'var(--green)':'var(--red)';
+  const isCashed = c.check_status==='cashed' || c.check_status==='encaissé';
+  const stColor = c.check_status==='pending'?'var(--orange)':isCashed?'var(--green)':'var(--red)';
   return `<tr>
-    <td>${c.txn_date||''}</td>
+    <td>${ymd(c.txn_date)}</td>
     <td style="font-weight:700">${c.check_number||'—'}</td>
     <td>${c.beneficiary||'—'}</td>
-    <td>${c.due_date||'—'}</td>
+    <td>${ymd(c.due_date)||'—'}</td>
     <td class="num" style="font-weight:700">${fmt(c.amount,2)} MAD</td>
     <td><span style="font-size:11px;color:${stColor}">${st}</span></td>
     <td style="white-space:nowrap">
       ${c.check_status==='pending'?`
-        <button class="btn btn-ghost btn-sm" onclick="quickStatus(${c.id},'encaissé')">✅</button>
-        <button class="btn btn-ghost btn-sm" onclick="quickStatus(${c.id},'returned')">↩️</button>
-        <button class="btn btn-ghost btn-sm" onclick="quickStatus(${c.id},'cancelled')">❌</button>`:''}
+        <button class="btn btn-ghost btn-sm" title="Encaissé" onclick="quickStatus(${c.id},'cashed')">✅</button>
+        <button class="btn btn-ghost btn-sm" title="Retourné" onclick="quickStatus(${c.id},'returned')">↩️</button>
+        <button class="btn btn-ghost btn-sm" title="Annulé" onclick="quickStatus(${c.id},'cancelled')">❌</button>`:''}
     </td></tr>`;
 }
 async function quickStatus(id, status) {
-  await api('PATCH', '/checks/' + id, { check_status: status });
+  await api('PATCH', '/bank/checks/' + id + '/status', { check_status: status });
   toast('Statut mis à jour');
   loadCheques();
   refreshBalance();
@@ -645,44 +683,49 @@ async function quickStatus(id, status) {
 let _dailyChart = null, _catChart = null;
 async function loadRapport() {
   const mon = document.getElementById('rpt-month').value || thisMonth();
-  const data = await api('GET', '/bank/rapport?month=' + mon);
+  const [data, catStats] = await Promise.all([
+    api('GET', '/bank/report?month=' + mon),
+    api('GET', '/bank/stats/categories?month=' + mon).catch(() => ({ out: [] }))
+  ]);
+  const daily = data.rows || [];
   document.getElementById('rpt-tiles').innerHTML = [
     { ic:'📈', val:fmt(data.total_in||0,2)+' MAD',  lbl:'Entrées',   tc:'var(--green)' },
     { ic:'📉', val:fmt(data.total_out||0,2)+' MAD', lbl:'Sorties',   tc:'var(--red)' },
-    { ic:'💰', val:fmt((data.total_in||0)-(data.total_out||0),2)+' MAD', lbl:'Net du Mois', tc:'var(--blue)' },
-    { ic:'📋', val:data.count||0,                   lbl:'Transactions', tc:'var(--muted)' },
+    { ic:'💰', val:fmt(data.net||0,2)+' MAD',       lbl:'Net du Mois', tc:'var(--blue)' },
+    { ic:'📅', val:daily.length,                    lbl:'Jours actifs', tc:'var(--muted)' },
   ].map(t=>`<div class="tile" style="--tc:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
-  if (data.daily) {
+  {
+    const ordered = [...daily].sort((a,b)=> (a.day<b.day?-1:1));
     const ctx1 = document.getElementById('chart-daily').getContext('2d');
     if (_dailyChart) _dailyChart.destroy();
     _dailyChart = new Chart(ctx1, {
       type:'bar',
-      data:{ labels:data.daily.map(d=>d.date), datasets:[
-        {label:'Entrées',data:data.daily.map(d=>d.total_in),backgroundColor:'rgba(34,197,94,.7)'},
-        {label:'Sorties',data:data.daily.map(d=>d.total_out),backgroundColor:'rgba(239,68,68,.7)'}
+      data:{ labels:ordered.map(d=>ymd(d.day)), datasets:[
+        {label:'Entrées',data:ordered.map(d=>parseFloat(d.total_in)),backgroundColor:'rgba(34,197,94,.7)'},
+        {label:'Sorties',data:ordered.map(d=>parseFloat(d.total_out)),backgroundColor:'rgba(239,68,68,.7)'}
       ]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
     });
   }
-  if (data.by_category) {
+  {
     const ctx2 = document.getElementById('chart-cat').getContext('2d');
     if (_catChart) _catChart.destroy();
-    const cats = data.by_category.filter(c=>c.total_out>0);
+    const cats = (catStats.out||[]).filter(c=>parseFloat(c.total)>0);
     _catChart = new Chart(ctx2, {
       type:'doughnut',
       data:{ labels:cats.map(c=>c.category||'Autre'), datasets:[{
-        data:cats.map(c=>c.total_out),
-        backgroundColor:['#0070F2','#F59E0B','#10B981','#EF4444','#8B5CF6','#EC4899','#06B6D4']
+        data:cats.map(c=>parseFloat(c.total)),
+        backgroundColor:['#0070F2','#F59E0B','#10B981','#EF4444','#8B5CF6','#EC4899','#06B6D4','#64748B']
       }]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}
     });
   }
-  document.getElementById('rpt-body').innerHTML = (data.daily||[]).map(d => `<tr>
-    <td>${d.date}</td><td class="num c-g">${fmt(d.total_in,2)}</td>
+  document.getElementById('rpt-body').innerHTML = daily.map(d => `<tr>
+    <td>${ymd(d.day)}</td><td class="num c-g">${fmt(d.total_in,2)}</td>
     <td class="num c-r">${fmt(d.total_out,2)}</td>
-    <td class="num" style="font-weight:700">${fmt((d.total_in||0)-(d.total_out||0),2)}</td>
-  </tr>`).join('');
+    <td class="num" style="font-weight:700">${fmt((parseFloat(d.total_in)||0)-(parseFloat(d.total_out)||0),2)}</td>
+  </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">Aucune donnée ce mois</td></tr>';
   document.getElementById('rpt-foot').innerHTML = `<tr style="font-weight:900;background:var(--bg2)">
     <td>Total</td>
     <td class="num c-g">${fmt(data.total_in||0,2)} MAD</td>
@@ -696,13 +739,13 @@ async function loadSettings() {
   try {
     const s = await api('GET', '/bank/settings');
     if (s.account_name) document.getElementById('cfg-name').value = s.account_name;
-    if (s.opening_balance != null) document.getElementById('cfg-balance').value = s.opening_balance;
+    if (s.initial_balance != null) document.getElementById('cfg-balance').value = s.initial_balance;
   } catch(e) {}
 }
 async function saveSettings() {
   const account_name = document.getElementById('cfg-name').value.trim();
-  const opening_balance = parseFloat(document.getElementById('cfg-balance').value) || 0;
-  await api('POST', '/bank/settings', { account_name, opening_balance });
+  const initial_balance = parseFloat(document.getElementById('cfg-balance').value) || 0;
+  await api('PUT', '/bank/settings', { account_name, initial_balance });
   toast('Paramètres enregistrés ✓');
   refreshBalance();
 }
@@ -725,6 +768,103 @@ function txnLabel(type) {
 }
 
 
+// ── IMPORT RELEVÉ (IA) ─────────────────────────────────────────────────────
+const IR_TYPES = [['depot','💰 Dépôt'],['retrait','💸 Retrait'],['virement_in','📥 Vir+'],['virement_out','📤 Vir-'],['cheque_in','✅ Chèque+'],['cheque_out','💳 Chèque-']];
+const IR_CATS  = ['Carburant','Salaires','Loyer','Maintenance','Fournisseur','Client','Banque','Impôts','Autre'];
+let _irRows = [];
+
+function openImportReleve() {
+  _irRows = [];
+  document.getElementById('ir-text').value = '';
+  document.getElementById('ir-step-paste').style.display = '';
+  document.getElementById('ir-step-preview').style.display = 'none';
+  document.getElementById('ir-commit-btn').style.display = 'none';
+  openModal('m-import-releve');
+}
+function irBackToPaste() {
+  document.getElementById('ir-step-paste').style.display = '';
+  document.getElementById('ir-step-preview').style.display = 'none';
+  document.getElementById('ir-commit-btn').style.display = 'none';
+}
+
+async function analyzeReleve() {
+  const text = document.getElementById('ir-text').value.trim();
+  if (text.length < 5) { toast('Collez d\'abord le relevé', 'er'); return; }
+  const btn = document.getElementById('ir-analyze-btn');
+  btn.disabled = true; btn.textContent = '⏳ Analyse en cours…';
+  try {
+    const data = await api('POST', '/bank/import/parse', { text });
+    _irRows = (data.rows || []).map(r => ({ ...r }));
+    if (!_irRows.length) { toast('Aucune opération détectée', 'er'); return; }
+    document.getElementById('ir-step-paste').style.display = 'none';
+    document.getElementById('ir-step-preview').style.display = '';
+    document.getElementById('ir-commit-btn').style.display = '';
+    renderImportPreview();
+  } catch(e) { toast(e.message, 'er'); }
+  finally { btn.disabled = false; btn.textContent = '🔍 Analyser'; }
+}
+
+function irSet(i, field, val) {
+  if (!_irRows[i]) return;
+  _irRows[i][field] = (field === 'include') ? val : val;
+  if (field === 'include') updateCommitCount();
+}
+function irToggleAll(checked) { _irRows.forEach(r => r.include = checked); renderImportPreview(); }
+
+function renderImportPreview() {
+  const hideDupes = document.getElementById('ir-hide-dupes').checked;
+  const dupes = _irRows.filter(r => r.duplicate).length;
+  const nw = _irRows.length - dupes;
+  document.getElementById('ir-summary').textContent =
+    `${_irRows.length} ligne(s) · ${nw} nouvelle(s)` + (dupes ? ` · ⚠️ ${dupes} doublon(s)` : '');
+
+  const tbody = document.getElementById('ir-preview-body');
+  tbody.innerHTML = _irRows.map((r, i) => {
+    if (hideDupes && r.duplicate) return '';
+    const typeOpts = IR_TYPES.map(([v,l]) => `<option value="${v}" ${r.type===v?'selected':''}>${l}</option>`).join('');
+    const catOpts  = IR_CATS.map(c => `<option value="${c}" ${r.category===c?'selected':''}>${c}</option>`).join('');
+    const etat = r.duplicate
+      ? '<span style="color:var(--orange);font-size:11px;font-weight:700">⚠️ Doublon</span>'
+      : (r.learned ? '<span style="color:var(--green);font-size:11px;font-weight:700">✅ Appris</span>'
+                   : '<span style="color:var(--muted);font-size:11px">Nouveau</span>');
+    const isIn = ['depot','virement_in','cheque_in'].includes(r.type);
+    return `<tr style="${r.duplicate?'background:#FFF7ED':''}">
+      <td><input type="checkbox" ${r.include?'checked':''} onchange="irSet(${i},'include',this.checked)"/></td>
+      <td style="white-space:nowrap">${ymd(r.date)||'—'}</td>
+      <td>${(r.description||'').slice(0,60)}</td>
+      <td class="num ${isIn?'c-g':'c-r'}" style="font-weight:700;white-space:nowrap">${isIn?'+':'−'} ${fmt(r.amount,2)}</td>
+      <td><select onchange="irSet(${i},'type',this.value)" style="font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px">${typeOpts}</select></td>
+      <td><select onchange="irSet(${i},'category',this.value)" style="font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:5px">${catOpts}</select></td>
+      <td style="font-size:11px">${r.check_number||''}</td>
+      <td>${etat}</td>
+    </tr>`;
+  }).join('');
+  updateCommitCount();
+}
+
+function updateCommitCount() {
+  const n = _irRows.filter(r => r.include).length;
+  const btn = document.getElementById('ir-commit-btn');
+  btn.textContent = `📥 Importer (${n})`;
+  btn.disabled = n === 0;
+}
+
+async function commitReleve() {
+  const rows = _irRows.filter(r => r.include);
+  if (!rows.length) { toast('Sélectionnez au moins une ligne', 'er'); return; }
+  const btn = document.getElementById('ir-commit-btn');
+  btn.disabled = true; btn.textContent = '⏳ Import…';
+  try {
+    const res = await api('POST', '/bank/import/commit', { rows });
+    toast(`✓ ${res.inserted} opération(s) importée(s)`);
+    closeModal('m-import-releve');
+    refreshBalance();
+    if (document.querySelector('#p-transactions.active')) loadTransactions();
+    if (document.querySelector('#p-dashboard.active'))    loadDashboard();
+    if (document.querySelector('#p-cheques.active'))      loadCheques();
+  } catch(e) { toast(e.message, 'er'); btn.disabled = false; updateCommitCount(); }
+}
+
 async function submitAddTxn() {
   const type   = document.getElementById('at-type').value;
   const date   = document.getElementById('at-date').value || today();
@@ -733,7 +873,7 @@ async function submitAddTxn() {
   if (!desc || !amount || amount<=0) { toast('Remplissez tous les champs requis','er'); return; }
   const isCheck = type==='cheque_in'||type==='cheque_out';
   try {
-    await api('POST','/transactions',{
+    await api('POST','/bank/transactions',{
       type, txn_date:date, amount, description:desc,
       category: document.getElementById('at-cat').value,
       check_number: isCheck ? document.getElementById('at-chknum').value  : null,
@@ -823,7 +963,7 @@ async function submitImport() {
     try {
       const typeRaw = (row.type || row['type'] || '').toLowerCase().trim();
       const type = IMPORT_TYPE_MAP[typeRaw] || 'depot';
-      await api('POST', '/transactions', {
+      await api('POST', '/bank/transactions', {
         type,
         txn_date:    row.date || today(),
         amount:      parseFloat(row.montant || 0),

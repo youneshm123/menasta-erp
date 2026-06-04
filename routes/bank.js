@@ -1,12 +1,24 @@
 const router = require('express').Router();
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
+const Anthropic = require('@anthropic-ai/sdk');
+const aiClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
 const IN_TYPES  = ['depot', 'virement_in', 'cheque_in'];
 const OUT_TYPES = ['retrait', 'virement_out', 'cheque_out'];
 const sign = t => IN_TYPES.includes(t) ? 1 : -1;
+
+const BANK_CATS = ['Carburant','Salaires','Loyer','Maintenance','Fournisseur','Client','Banque','Impôts','Autre'];
+const TXN_TYPES = ['depot','retrait','virement_in','virement_out','cheque_in','cheque_out'];
+
+// Normalised signature of a description (digits/punctuation stripped) — used to learn
+// "this kind of line → this category/type" so repeat imports auto-fill.
+function signature(desc) {
+  return String(desc || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[0-9]/g, ' ').replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+}
 
 // ── settings ──────────────────────────────────────────────────
 router.get('/settings', requireAuth, wrap(async (_req, res) => {
@@ -95,7 +107,7 @@ router.post('/transactions', requireAuth, wrap(async (req, res) => {
 // ── update check status ───────────────────────────────────────
 router.patch('/checks/:id/status', requireAuth, wrap(async (req, res) => {
   const { check_status } = req.body || {};
-  if (!['pending','cashed','cancelled'].includes(check_status))
+  if (!['pending','cashed','cancelled','returned'].includes(check_status))
     return res.status(400).json({ error: 'Statut invalide' });
   await pool.query('UPDATE bank_transactions SET check_status=$1 WHERE id=$2', [check_status, req.params.id]);
   const { rows: [txn] } = await pool.query('SELECT * FROM bank_transactions WHERE id=$1', [req.params.id]);
@@ -227,6 +239,120 @@ router.post('/reconcile/session', requireAuth, wrap(async (req, res) => {
     client.release();
   }
   res.json({ ok: true, count: ids.length });
+}));
+
+// ── AI STATEMENT IMPORT ───────────────────────────────────────
+// Parse a pasted bank statement into structured rows (does NOT save).
+router.post('/import/parse', requireAuth, wrap(async (req, res) => {
+  const text = String(req.body?.text || '').trim();
+  if (text.length < 5) return res.status(400).json({ error: 'Collez le contenu du relevé' });
+
+  // Known names → help the AI map to the "Client" category
+  const { rows: cc } = await pool.query('SELECT name FROM credit_clients WHERE is_active=1');
+  let fc = [];
+  try { fc = (await pool.query('SELECT name FROM facture_clients WHERE is_active=1')).rows; } catch (_) {}
+  const names = [...new Set([...cc, ...fc].map(c => c.name).filter(Boolean))].slice(0, 150);
+  const { rows: rules } = await pool.query('SELECT signature, category, txn_type FROM bank_import_rules');
+
+  const prompt = `Tu es un expert comptable marocain. Analyse ce relevé bancaire et extrais CHAQUE opération.
+Réponds UNIQUEMENT par un tableau JSON valide (rien d'autre), chaque élément ainsi:
+{"date":"YYYY-MM-DD","description":"texte","amount":<nombre positif>,"direction":"in"|"out","type":"<${TXN_TYPES.join('|')}>","check_number":<string|null>,"beneficiary":<string|null>,"category":"<${BANK_CATS.join('|')}>"}
+RÈGLES:
+- "in"=argent reçu (crédit), "out"=argent sorti (débit). amount toujours positif (sans espaces ni virgules).
+- type: dépôt espèces=depot, retrait=retrait, virement reçu=virement_in, virement émis/payé=virement_out, chèque reçu/remis=cheque_in, chèque émis/payé=cheque_out.
+- Si un numéro de chèque apparaît, mets-le dans check_number.
+- category mots-clés: AFRIQUIA/SHELL/TOTAL/PETROM/WINXO=Carburant ; SALAIRE/PAIE/CNSS=Salaires ; LOYER=Loyer ; IMPOT/TVA/DGI/PATENTE=Impôts ; AGIOS/COMMISSION/FRAIS/INTERET=Banque.
+- Clients connus (=> category "Client"): ${names.join(', ') || 'aucun'}.
+RELEVÉ:
+${text.slice(0, 12000)}`;
+
+  let parsed = [];
+  try {
+    const msg = await aiClient.messages.create({
+      model: 'claude-sonnet-4-6', max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    let t = (msg.content[0]?.text || '').trim();
+    const a = t.indexOf('['), b = t.lastIndexOf(']');
+    if (a >= 0 && b > a) t = t.slice(a, b + 1);
+    parsed = JSON.parse(t);
+  } catch (e) {
+    return res.status(502).json({ error: "Analyse IA échouée. Vérifiez le texte collé. (" + e.message + ")" });
+  }
+  if (!Array.isArray(parsed)) parsed = [];
+
+  const ruleMap = Object.fromEntries(rules.map(r => [r.signature, r]));
+  const out = [];
+  for (const r of parsed) {
+    const amount = Math.abs(parseFloat(r.amount) || 0);
+    if (!amount) continue;
+    let type = TXN_TYPES.includes(r.type) ? r.type : (r.direction === 'in' ? 'virement_in' : 'virement_out');
+    let category = BANK_CATS.includes(r.category) ? r.category : 'Autre';
+    const sig = signature(r.description);
+    let learned = false;
+    if (ruleMap[sig]) {
+      if (ruleMap[sig].category) category = ruleMap[sig].category;
+      if (ruleMap[sig].txn_type) type = ruleMap[sig].txn_type;
+      learned = true;
+    }
+    // duplicate detection (same date + amount + (cheque no | description))
+    let duplicate = false;
+    if (r.date) {
+      const { rows: dup } = await pool.query(
+        `SELECT id FROM bank_transactions
+         WHERE txn_date=$1 AND ROUND(amount::numeric,2)=ROUND($2::numeric,2)
+           AND ( (COALESCE($3,'')<>'' AND check_number=$3) OR (COALESCE($3,'')='' AND description=$4) )
+         LIMIT 1`,
+        [r.date, amount, r.check_number || null, r.description || '']
+      );
+      duplicate = dup.length > 0;
+    }
+    out.push({
+      date: r.date || null, description: r.description || '', amount,
+      type, category, check_number: r.check_number || null, beneficiary: r.beneficiary || null,
+      learned, duplicate, include: !duplicate
+    });
+  }
+  res.json({ rows: out, count: out.length });
+}));
+
+// Commit reviewed rows → create transactions + learn rules.
+router.post('/import/commit', requireAuth, wrap(async (req, res) => {
+  const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+  if (!rows.length) return res.status(400).json({ error: 'Aucune ligne à importer' });
+  const client = await pool.connect();
+  let inserted = 0;
+  try {
+    await client.query('BEGIN');
+    for (const r of rows) {
+      const amount = Math.abs(parseFloat(r.amount) || 0);
+      if (!amount || !TXN_TYPES.includes(r.type)) continue;
+      const isCheck = r.type === 'cheque_in' || r.type === 'cheque_out';
+      await client.query(`
+        INSERT INTO bank_transactions (txn_date,type,category,description,amount,check_number,beneficiary,check_status,bank_ref,recorded_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      `, [
+        r.date || new Date().toISOString().slice(0,10), r.type,
+        BANK_CATS.includes(r.category) ? r.category : 'Autre',
+        r.description || 'Import relevé', amount,
+        r.check_number || null, r.beneficiary || null,
+        isCheck ? 'pending' : null, r.description || null, req.user.id
+      ]);
+      inserted++;
+      const sig = signature(r.description);
+      if (sig) await client.query(`
+        INSERT INTO bank_import_rules (signature,category,txn_type) VALUES ($1,$2,$3)
+        ON CONFLICT(signature) DO UPDATE SET category=EXCLUDED.category, txn_type=EXCLUDED.txn_type, hits=bank_import_rules.hits+1, updated_at=NOW()
+      `, [sig, r.category || null, r.type || null]);
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+  res.json({ ok: true, inserted });
 }));
 
 module.exports = router;

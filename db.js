@@ -343,6 +343,18 @@ async function initDB() {
   await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS ice TEXT');
   await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS adresse TEXT');
   await pgPool.query('ALTER TABLE expenses ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shifts(id)');
+  await pgPool.query('ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS bank_ref TEXT');
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS bank_import_rules (
+      id          SERIAL PRIMARY KEY,
+      signature   TEXT NOT NULL UNIQUE,
+      category    TEXT,
+      txn_type    TEXT,
+      hits        INTEGER NOT NULL DEFAULT 1,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
   await pgPool.query(`
     CREATE TABLE IF NOT EXISTS tabac_achats (
       id          SERIAL PRIMARY KEY,
