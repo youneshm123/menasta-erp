@@ -508,14 +508,19 @@
           <input type="hidden" id="sp-product-price"/>
         </div>
       </div>
-      <div class="fgrid">
-        <div class="fg"><label>Quantité</label><input type="number" id="sp-qty" value="1" min="1" oninput="updateSellTotal()"/></div>
+      <div class="fgrid mb3">
+        <div class="fg"><label>Quantité</label><input type="number" id="sp-qty" value="1" min="1" oninput="updateSellTotal()" onkeydown="if(event.key==='Enter')spAddToList()"/></div>
         <div class="fg"><label>Total à payer (MAD)</label><input type="text" id="sp-total" readonly style="background:#F0FDF4;font-size:20px;font-weight:800;color:var(--green);border:2px solid var(--green);border-radius:6px;padding:10px;"/></div>
+      </div>
+      <button class="btn btn-g" style="width:100%;font-size:15px;margin-bottom:14px;" onclick="spAddToList()">+ Ajouter à la liste</button>
+      <div id="sp-pending-wrap" style="display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">En attente :</div>
+        <div id="sp-pending-items"></div>
       </div>
     </div>
     <div class="modal-ft">
-      <button class="btn btn-g" onclick="closeModal('m-sell-product')">Annuler</button>
-      <button class="btn btn-s" onclick="submitSellProduct()">✅ Vendre</button>
+      <button class="btn btn-g" onclick="spCancel()">Annuler</button>
+      <button class="btn btn-s" id="sp-submit-btn" onclick="spSubmitAll()" disabled>✅ Enregistrer tout (0)</button>
     </div>
   </div>
 </div>
@@ -882,6 +887,9 @@ async function loadShiftPage() {
       </div>`;
     return;
   }
+
+  // Ensure product catalogue is loaded for the product-sale modal autocomplete
+  try { S.products = await api('GET', '/products'); } catch(e) { /* keep cached */ }
 
   // Build pump readings map: start/end per pump
   const readMap = {};
@@ -1482,6 +1490,7 @@ async function submitPayment() {
 let csPending = [];
 let _csFuelType = '';
 let _csMode = 'credit';   // 'credit' = debit (− caisse) ; 'payment' = remboursement (+ caisse)
+let sppPending = [];      // pending product sales on the shift page (add-to-list then save all)
 
 function csSelectMode(mode) {
   _csMode = mode;
@@ -1864,6 +1873,8 @@ function populateSellModal() {
   document.getElementById('sp-product-price').value = '';
   document.getElementById('sp-qty').value = '1';
   document.getElementById('sp-total').value = '';
+  sppPending = [];
+  updateSpPendingUI();
 }
 
 function updateSellTotal() {
@@ -1872,19 +1883,64 @@ function updateSellTotal() {
   document.getElementById('sp-total').value = price > 0 ? (qty * price).toFixed(2) + ' MAD' : '';
 }
 
-async function submitSellProduct() {
-  if (!S.activeShift) { toast('Aucun poste ouvert', 'wn'); return; }
+function spAddToList() {
   const product_id = parseInt(document.getElementById('sp-product-id').value);
+  const name       = document.getElementById('sp-product-input').value.trim();
+  const price      = parseFloat(document.getElementById('sp-product-price').value) || 0;
   const quantity   = parseInt(document.getElementById('sp-qty').value);
-  if (!product_id) { toast('Veuillez sélectionner un produit', 'er'); return; }
+  if (!product_id)            { toast('Sélectionnez un produit', 'wn'); return; }
   if (!quantity || quantity < 1) { toast('Quantité invalide', 'er'); return; }
-  try {
-    await api('POST', '/products/sales', { shift_id: S.activeShift.id, product_id, quantity });
-    closeModal('m-sell-product');
-    toast('Vente enregistrée — ' + document.getElementById('sp-total').value);
-    loadProducts();
-    if (document.querySelector('#p-shift.active')) loadShiftPage();
-  } catch (e) { toast(e.message, 'er'); }
+  sppPending.push({ product_id, name, price, quantity, total: price * quantity });
+  document.getElementById('sp-product-input').value = '';
+  document.getElementById('sp-product-id').value = '';
+  document.getElementById('sp-product-price').value = '';
+  document.getElementById('sp-qty').value = '1';
+  document.getElementById('sp-total').value = '';
+  updateSpPendingUI();
+  document.getElementById('sp-product-input').focus();
+}
+
+function updateSpPendingUI() {
+  const wrap  = document.getElementById('sp-pending-wrap');
+  const items = document.getElementById('sp-pending-items');
+  const btn   = document.getElementById('sp-submit-btn');
+  if (!wrap) return;
+  if (!sppPending.length) {
+    wrap.style.display = 'none';
+    if (btn) { btn.disabled = true; btn.textContent = '✅ Enregistrer tout (0)'; }
+    return;
+  }
+  wrap.style.display = 'block';
+  items.innerHTML = sppPending.map((p, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg2);border-radius:6px;margin-bottom:4px;gap:8px;">
+      <span style="flex:1">🛢️ <strong>${p.name}</strong> — ${p.quantity} × ${p.price.toFixed(2)} = <strong style="color:var(--green)">${fmt(p.total)} MAD</strong></span>
+      <button class="btn btn-d btn-xs" onclick="spRemovePending(${i})">✕</button>
+    </div>`).join('');
+  btn.disabled = false; btn.textContent = `✅ Enregistrer tout (${sppPending.length})`;
+}
+
+function spRemovePending(i) { sppPending.splice(i, 1); updateSpPendingUI(); }
+
+function spCancel() { sppPending = []; updateSpPendingUI(); closeModal('m-sell-product'); }
+
+async function spSubmitAll() {
+  if (!S.activeShift) { toast('Aucun poste ouvert', 'wn'); return; }
+  if (!sppPending.length) { toast('Ajoutez au moins un produit', 'wn'); return; }
+  const btn = document.getElementById('sp-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+  let saved = 0;
+  for (const p of sppPending) {
+    try {
+      await api('POST', '/products/sales', { shift_id: S.activeShift.id, product_id: p.product_id, quantity: p.quantity });
+      saved++;
+    } catch (e) { toast(`${p.name}: ${e.message}`, 'er'); }
+  }
+  sppPending = [];
+  updateSpPendingUI();
+  closeModal('m-sell-product');
+  toast(`${saved} vente(s) produit enregistrée(s) ✓`, 'g');
+  loadProducts();
+  if (document.querySelector('#p-shift.active')) loadShiftPage();
 }
 
 async function submitAddProduct() {
@@ -2507,6 +2563,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof _acPortalHide === 'function') _acPortalHide();
     _orig(id);
     if (id === 'm-credit-sale') populateCreditSaleModal();
+    if (id === 'm-sell-product') populateSellModal();
   };
 });
 // Button wiring for close shift
