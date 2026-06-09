@@ -899,7 +899,11 @@ async function loadShiftPage() {
     if (r.reading_type === 'end')   readMap[r.pump_id].end   = r.meter_value;
   }
 
-  const pumpRows = Object.entries(readMap).map(([pid, r]) => {
+  const fuelRank = (n) => { const f = (n||'').toLowerCase(); return f.includes('gazoil') ? 0 : f.includes('essence') ? 1 : 2; };
+  const pumpRows = Object.entries(readMap).sort((a, b) => {
+    const d = fuelRank(a[1].fuel) - fuelRank(b[1].fuel);
+    return d !== 0 ? d : (a[1].name||'').localeCompare(b[1].name||'', 'fr', { numeric: true });
+  }).map(([pid, r]) => {
     const fuelLow   = (r.fuel||'').toLowerCase();
     const fuelColor = fuelLow.includes('gazoil') ? '#1D4ED8' : fuelLow.includes('essence') ? '#059669' : '#7C3AED';
     const fuelBg    = fuelLow.includes('gazoil') ? '#EFF6FF' : fuelLow.includes('essence') ? '#ECFDF5' : '#F5F3FF';
@@ -1110,7 +1114,11 @@ async function prepareOpenShift() {
     api('GET', '/pumps'),
     api('GET', '/shifts/last-readings').catch(() => ({})),
   ]);
-  const active = pumps.filter(p => p.status === 'active');
+  const fuelRank = (n) => { const f = (n||'').toLowerCase(); return f.includes('gazoil') ? 0 : f.includes('essence') ? 1 : 2; };
+  const active = pumps.filter(p => p.status === 'active').sort((a, b) => {
+    const d = fuelRank(a.fuel_name) - fuelRank(b.fuel_name);
+    return d !== 0 ? d : (a.name||'').localeCompare(b.name||'', 'fr', { numeric: true });
+  });
   const hasLast = Object.keys(lastReadings).length > 0;
   document.getElementById('open-shift-form').innerHTML = `
     <div class="fgrid3" style="margin-bottom:4px">
