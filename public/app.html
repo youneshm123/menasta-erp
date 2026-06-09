@@ -2390,18 +2390,29 @@ async function loadStock() {
   const profitColor  = profit >= 0 ? '#188918' : '#BB0000';
 
   document.getElementById('stock-cards').innerHTML = fuels.map(ft => {
-    const low  = ft.stock_liters < 5000;
-    const empty = ft.stock_liters === 0;
+    const hasJauge = ft.actual_stock != null;
+    const stock = hasJauge ? ft.actual_stock : ft.stock_liters;
+    const low  = stock < 5000;
+    const empty = stock <= 0;
     const color = empty ? '#BB0000' : low ? '#E65100' : ft.color_hex;
-    const liters = ft.stock_liters.toLocaleString('fr-FR', {maximumFractionDigits: 0});
-    const tonnes = (ft.stock_liters / 1000).toLocaleString('fr-FR', {maximumFractionDigits: 1});
+    const liters = stock.toLocaleString('fr-FR', {maximumFractionDigits: 0});
+    const tonnes = (stock / 1000).toLocaleString('fr-FR', {maximumFractionDigits: 1});
     return `
     <div style="flex:1;min-width:220px;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);overflow:hidden;border-top:5px solid ${color}">
       <div style="padding:24px 28px">
         <div style="font-size:13px;font-weight:700;color:#6A6D70;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🛢️ ${ft.name}</div>
         <div style="font-size:42px;font-weight:900;color:${color};line-height:1">${liters}</div>
-        <div style="font-size:15px;color:#6A6D70;margin-top:2px">Litres &nbsp;·&nbsp; <strong style="color:${color}">${tonnes} T</strong></div>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;font-size:13px;color:#6A6D70">
+        <div style="font-size:15px;color:#6A6D70;margin-top:2px">Litres en stock &nbsp;·&nbsp; <strong style="color:${color}">${tonnes} T</strong></div>
+        ${hasJauge ? `
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;font-size:12px;color:#6A6D70;line-height:1.7">
+          Jauge du <strong>${ft.jauge_date}</strong><br/>
+          <span style="color:#188918">+ ${ft.liv_since.toLocaleString('fr-FR')} L livrés</span> &nbsp;·&nbsp;
+          <span style="color:#0070F2">− ${ft.sold_since.toLocaleString('fr-FR')} L vendus</span>
+        </div>`
+        : `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;font-size:12px;color:#E65100;line-height:1.5">
+            ⚠️ Total livré (pas de jauge). <a href="/cuves" style="color:#0070F2;font-weight:700">Saisir une jauge</a> pour le stock réel.
+           </div>`}
+        <div style="margin-top:10px;font-size:13px;color:#6A6D70">
           Coût achats : <strong style="color:#333">${fmt(ft.total_cost)} MAD</strong>
         </div>
         <div style="margin-top:8px">

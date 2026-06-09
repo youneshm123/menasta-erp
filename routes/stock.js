@@ -23,9 +23,54 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
       FROM fuel_deliveries fd LEFT JOIN users u ON u.id=fd.recorded_by
       WHERE fd.fuel_type_id=$1 ORDER BY fd.created_at DESC LIMIT 20
     `, [ft.id]);
+
+    // ── Actual running stock = latest jauge + deliveries since − liters sold since ──
+    // Mirrors the Cuves "théorique" logic, aggregated per fuel type.
+    let actual_stock = null, jauge_date = null, liv_since = 0, sold_since = 0;
+    const { rows: cuves } = await pool.query(
+      'SELECT id FROM cuves WHERE fuel_type_id=$1 AND is_active=1', [ft.id]
+    );
+    if (cuves.length) {
+      const cuveIds = cuves.map(c => c.id);
+      let base = 0, hasLec = false, refDate = null;
+      for (const cid of cuveIds) {
+        const { rows: [lec] } = await pool.query(
+          'SELECT * FROM cuve_lectures WHERE cuve_id=$1 ORDER BY lecture_date DESC LIMIT 1', [cid]
+        );
+        if (lec) {
+          hasLec = true;
+          base += parseFloat(lec.niveau_litres);
+          if (!refDate || lec.lecture_date > refDate) refDate = lec.lecture_date;
+        }
+      }
+      if (hasLec) {
+        const { rows: [{ liv }] } = await pool.query(
+          'SELECT COALESCE(SUM(litres_recus),0) as liv FROM cuve_livraisons WHERE cuve_id = ANY($1) AND livraison_date > $2',
+          [cuveIds, refDate]
+        );
+        const { rows: [{ sold }] } = await pool.query(`
+          SELECT COALESCE(SUM(pr_end.meter_value - pr_start.meter_value), 0) as sold
+          FROM pumps p
+          JOIN pump_readings pr_start ON pr_start.pump_id=p.id AND pr_start.reading_type='start'
+          JOIN pump_readings pr_end   ON pr_end.pump_id=p.id AND pr_end.reading_type='end'
+                                      AND pr_end.shift_id=pr_start.shift_id
+          JOIN shifts s ON s.id=pr_start.shift_id AND s.status='closed'
+          WHERE p.fuel_type_id=$1 AND date(s.opened_at) > $2
+        `, [ft.id, refDate]);
+        liv_since  = parseFloat(liv);
+        sold_since = parseFloat(sold);
+        actual_stock = base + liv_since - sold_since;
+        jauge_date = refDate;
+      }
+    }
+
     result.push({
       id: ft.id, name: ft.name, color_hex: ft.color_hex,
       stock_liters: parseFloat(row.total),
+      actual_stock: actual_stock != null ? Math.round(actual_stock) : null,
+      jauge_date,
+      liv_since:  Math.round(liv_since),
+      sold_since: Math.round(sold_since),
       total_cost:   parseFloat(row.cost),
       deliveries
     });
