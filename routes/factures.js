@@ -41,6 +41,35 @@ router.post('/clients', requireAuth, wrap(async (req, res) => {
   res.status(201).json(c);
 }));
 
+// ── Bulk import facture clients (paste from old software) ──
+router.post('/clients/bulk', requireAuth, wrap(async (req, res) => {
+  const list = Array.isArray(req.body && req.body.clients) ? req.body.clients : [];
+  if (!list.length) return res.status(400).json({ error: 'Aucun client à importer' });
+
+  // Existing names (case-insensitive) to skip duplicates
+  const { rows: existing } = await pool.query('SELECT LOWER(name) as n FROM facture_clients WHERE is_active=1');
+  const seen = new Set(existing.map(r => r.n));
+
+  let inserted = 0, skipped = 0;
+  const added = [];
+  for (const c of list) {
+    const name = (c && c.name ? String(c.name) : '').trim();
+    if (!name) { skipped++; continue; }
+    const key = name.toLowerCase();
+    if (seen.has(key)) { skipped++; continue; }
+    seen.add(key);
+    const ice     = (c.ice     ? String(c.ice)     : '').trim() || null;
+    const adresse = (c.adresse ? String(c.adresse) : '').trim() || null;
+    const { rows: [row] } = await pool.query(
+      'INSERT INTO facture_clients (name, ice, adresse) VALUES ($1,$2,$3) RETURNING name',
+      [name, ice, adresse]
+    );
+    added.push(row.name);
+    inserted++;
+  }
+  res.json({ ok: true, inserted, skipped });
+}));
+
 router.put('/clients/:id', requireAuth, wrap(async (req, res) => {
   const { name, ice, adresse } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Nom client requis' });

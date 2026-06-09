@@ -172,6 +172,26 @@
 
     <!-- CLIENTS -->
     <div id="tab-clients" class="tab-pane">
+      <!-- BULK IMPORT -->
+      <div class="form-card" style="margin-bottom:16px">
+        <h3 style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleBulkImport()">
+          📋 Importer une liste de clients
+          <span id="bulk-caret" style="font-size:13px;color:var(--muted)">▼</span>
+        </h3>
+        <div id="bulk-body" style="display:none">
+          <p style="font-size:12.5px;color:var(--muted);margin:6px 0 10px;line-height:1.6">
+            Dans votre ancien logiciel, sélectionnez les lignes (Nom + ICE) et copiez-les, puis collez ci-dessous.
+            Un client par ligne. Formats acceptés : <strong>Nom &lt;tab&gt; ICE</strong>, <strong>Nom ; ICE</strong>, ou collage direct du tableau.
+          </p>
+          <textarea id="bulk-text" rows="7" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:monospace;resize:vertical" placeholder="2J TRANS&#9;002575887000051&#10;ABDELHAQ ANIQ&#9;003221738000055&#10;…"></textarea>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">
+            <button class="btn btn-g" onclick="parseBulkClients()">🔍 Aperçu</button>
+            <button class="btn btn-p" id="bulk-import-btn" onclick="commitBulkClients()" style="display:none">📥 Importer (0)</button>
+          </div>
+          <div id="bulk-preview" style="margin-top:12px"></div>
+        </div>
+      </div>
+
       <div class="form-card">
         <h3 id="cl-form-title">Ajouter un Client</h3>
         <div class="fgrid3" style="margin-bottom:12px">
@@ -305,6 +325,88 @@ async function loadClientsList() {
       <button class="btn btn-d btn-xs" onclick="deleteClient(${c.id})">🗑️</button>
     </td>
   </tr>`).join('');
+}
+
+// ── BULK CLIENT IMPORT ─────────────────────────────────────────
+let _bulkParsed = [];
+
+function toggleBulkImport() {
+  const b = document.getElementById('bulk-body');
+  const open = b.style.display === 'none';
+  b.style.display = open ? '' : 'none';
+  document.getElementById('bulk-caret').textContent = open ? '▲' : '▼';
+}
+
+// Parse one pasted line into { name, ice }
+function parseBulkLine(line) {
+  let parts = line.includes('\t') ? line.split('\t')
+            : line.includes(';')  ? line.split(';')
+            : [line];
+  parts = parts.map(p => p.trim()).filter(p => p.length);
+  const isIce  = s => /^\d[\d\s]{7,}$/.test(s);
+  const isCode = s => /^\d{3,4}[A-Za-z]/.test(s);            // e.g. 3421DRAD account code
+  let ice = '';
+  for (const p of parts) { if (isIce(p)) { ice = p.replace(/\s+/g, ''); break; } }
+  // name = the text cell with the most letters (ignore ICE and account-code cells)
+  let name = '';
+  let bestLetters = -1;
+  for (const p of parts) {
+    if (isIce(p) || isCode(p)) continue;
+    const letters = (p.match(/[A-Za-zÀ-ÿ]/g) || []).length;
+    if (letters > bestLetters) { bestLetters = letters; name = p; }
+  }
+  // single blob without tabs: strip ICE + leading account code out of the line
+  if (!name && parts.length === 1) {
+    name = parts[0].replace(/\d{8,}/g, '').replace(/^\d{3,4}[A-Za-z]+\s*/, '').trim();
+  }
+  return { name, ice };
+}
+
+function parseBulkClients() {
+  const raw = document.getElementById('bulk-text').value;
+  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length);
+  _bulkParsed = lines.map(parseBulkLine).filter(c => c.name);
+  const prev = document.getElementById('bulk-preview');
+  const btn  = document.getElementById('bulk-import-btn');
+  if (!_bulkParsed.length) {
+    prev.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:13px">Rien à importer — vérifiez le format.</div>';
+    btn.style.display = 'none';
+    return;
+  }
+  const noIce = _bulkParsed.filter(c => !c.ice).length;
+  prev.innerHTML = `
+    <div style="font-size:12.5px;font-weight:700;margin-bottom:6px">${_bulkParsed.length} client(s) détecté(s)${noIce ? ` · ⚠️ ${noIce} sans ICE` : ''}</div>
+    <div style="max-height:300px;overflow:auto;border:1px solid var(--border-lt);border-radius:8px">
+      <table class="t" style="font-size:13px;width:100%">
+        <thead><tr><th style="width:36px">#</th><th>Nom</th><th style="width:170px">ICE</th></tr></thead>
+        <tbody>${_bulkParsed.map((c, i) => `<tr>
+          <td class="muted">${i + 1}</td>
+          <td><strong>${esc(c.name)}</strong></td>
+          <td>${c.ice ? esc(c.ice) : '<span style="color:var(--orange)">— aucun —</span>'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-top:6px">Vérifiez que chaque ICE correspond bien au bon client avant d'importer.</div>`;
+  btn.style.display = '';
+  btn.textContent = `📥 Importer (${_bulkParsed.length})`;
+}
+
+async function commitBulkClients() {
+  if (!_bulkParsed.length) { toast('Cliquez d\'abord sur Aperçu', 'er'); return; }
+  const btn = document.getElementById('bulk-import-btn');
+  btn.disabled = true; btn.textContent = '⏳ Import…';
+  try {
+    const r = await A('/api/factures/clients/bulk', { method: 'POST', body: JSON.stringify({ clients: _bulkParsed }) });
+    if (r.error) { toast(r.error, 'er'); return; }
+    toast(`✓ ${r.inserted} client(s) importé(s)` + (r.skipped ? ` · ${r.skipped} ignoré(s) (doublon/vide)` : ''));
+    document.getElementById('bulk-text').value = '';
+    document.getElementById('bulk-preview').innerHTML = '';
+    _bulkParsed = [];
+    btn.style.display = 'none';
+    loadClientsList();
+    loadClients();
+  } catch (e) { toast(e.message, 'er'); }
+  finally { btn.disabled = false; btn.textContent = '📥 Importer (0)'; }
 }
 
 async function saveClient() {
