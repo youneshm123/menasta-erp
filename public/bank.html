@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="/js/pdf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/fiori.css?v=32"/>
@@ -370,7 +371,12 @@
     <div class="modal-body">
       <!-- Step 1: paste -->
       <div id="ir-step-paste">
-        <p style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Copiez le contenu de votre relevé (PDF ou Excel) et collez-le ci-dessous. L'IA va lire chaque ligne, deviner le type et la catégorie, et détecter les doublons.</p>
+        <p style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Importez votre relevé : <strong>chargez un fichier PDF</strong> ou collez le texte ci-dessous. L'IA va lire chaque ligne, deviner le type et la catégorie, et détecter les doublons.</p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:12px;border:1.5px dashed var(--border);border-radius:8px;background:var(--bg2,#f8fafc)">
+          <input type="file" id="ir-pdf" accept="application/pdf,.pdf" style="display:none" onchange="onReleveFile(event)"/>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ir-pdf').click()">📄 Charger un PDF</button>
+          <span id="ir-pdf-status" style="font-size:12px;color:var(--muted)">Aucun fichier — ou collez le texte ci-dessous.</span>
+        </div>
         <textarea id="ir-text" rows="9" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:monospace;resize:vertical" placeholder="Collez ici le relevé… (dates, descriptions, montants débit/crédit)"></textarea>
         <div style="display:flex;justify-content:flex-end;margin-top:10px">
           <button class="btn btn-p" id="ir-analyze-btn" onclick="analyzeReleve()">🔍 Analyser</button>
@@ -782,6 +788,8 @@ let _irRows = [];
 function openImportReleve() {
   _irRows = [];
   document.getElementById('ir-text').value = '';
+  const ps = document.getElementById('ir-pdf-status');
+  if (ps) ps.textContent = 'Aucun fichier — ou collez le texte ci-dessous.';
   document.getElementById('ir-step-paste').style.display = '';
   document.getElementById('ir-step-preview').style.display = 'none';
   document.getElementById('ir-commit-btn').style.display = 'none';
@@ -793,9 +801,51 @@ function irBackToPaste() {
   document.getElementById('ir-commit-btn').style.display = 'none';
 }
 
+// ── PDF → texte (extraction côté navigateur via pdf.js) ──
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.min.js';
+
+async function onReleveFile(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('ir-pdf-status');
+  if (!window.pdfjsLib) { statusEl.textContent = '⚠️ Lecteur PDF non chargé — collez le texte.'; return; }
+  statusEl.textContent = '⏳ Lecture du PDF…';
+  try {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    let text = '';
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      // Group items into lines by their vertical position
+      let lastY = null, line = '';
+      const lines = [];
+      for (const it of content.items) {
+        const y = it.transform[5];
+        if (lastY !== null && Math.abs(y - lastY) > 2) { lines.push(line.trim()); line = ''; }
+        line += it.str + ' ';
+        lastY = y;
+      }
+      if (line.trim()) lines.push(line.trim());
+      text += lines.join('\n') + '\n';
+    }
+    text = text.trim();
+    if (!text || text.length < 5) {
+      statusEl.textContent = '⚠️ Aucun texte trouvé (PDF scanné ?) — collez le texte manuellement.';
+      return;
+    }
+    document.getElementById('ir-text').value = text;
+    statusEl.textContent = `✓ ${file.name} — ${pdf.numPages} page(s) lue(s). Cliquez « Analyser ».`;
+  } catch (e) {
+    statusEl.textContent = '⚠️ Erreur lecture PDF : ' + e.message;
+  } finally {
+    ev.target.value = '';
+  }
+}
+
 async function analyzeReleve() {
   const text = document.getElementById('ir-text').value.trim();
-  if (text.length < 5) { toast('Collez d\'abord le relevé', 'er'); return; }
+  if (text.length < 5) { toast('Chargez un PDF ou collez d\'abord le relevé', 'er'); return; }
   const btn = document.getElementById('ir-analyze-btn');
   btn.disabled = true; btn.textContent = '⏳ Analyse en cours…';
   try {

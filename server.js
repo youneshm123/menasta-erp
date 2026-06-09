@@ -220,9 +220,9 @@ async function start() {
   app.use('/api/reports',   requireAuth, requireMinRole('gerant'), require('./routes/reports'));
   app.use('/api/stock',     requireAuth, requireMinRole('gerant'), require('./routes/stock'));
   app.use('/api/factures',  requireAuth, requireMinRole('gerant'), require('./routes/factures'));
+  app.use('/api/bank',      requireAuth, requireMinRole('gerant'), require('./routes/bank'));
 
   // Patron only
-  app.use('/api/bank',      requireAuth, requireMinRole('patron'), require('./routes/bank'));
   app.use('/api/patron',    requireAuth, requireMinRole('patron'), require('./routes/patron'));
 
   // Admin only
