@@ -77,7 +77,41 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
   }
 
   const grandCost = result.reduce((s, f) => s + f.total_cost, 0);
-  res.json({ fuels: result, total_revenue: parseFloat(totalRevenue), total_cost: grandCost, profit: parseFloat(totalRevenue) - grandCost });
+
+  // ── Daily profit (last 30 days) = revenue that day − liters sold × avg purchase cost ──
+  const avgCost = {};                       // fuel_type_id → average purchase cost per liter
+  for (const f of result) avgCost[f.id] = f.stock_liters > 0 ? f.total_cost / f.stock_liters : 0;
+
+  const { rows: dayLiters } = await pool.query(`
+    SELECT to_char(s.opened_at,'YYYY-MM-DD') as d, p.fuel_type_id as ftid,
+           COALESCE(SUM(pr_end.meter_value - pr_start.meter_value),0) as liters
+    FROM pumps p
+    JOIN pump_readings pr_start ON pr_start.pump_id=p.id AND pr_start.reading_type='start'
+    JOIN pump_readings pr_end   ON pr_end.pump_id=p.id AND pr_end.reading_type='end'
+                                AND pr_end.shift_id=pr_start.shift_id
+    JOIN shifts s ON s.id=pr_start.shift_id AND s.status='closed'
+    WHERE s.opened_at >= NOW() - INTERVAL '30 days'
+    GROUP BY 1, 2
+  `);
+  const { rows: dayRev } = await pool.query(`
+    SELECT to_char(opened_at,'YYYY-MM-DD') as d, COALESCE(SUM(total_fuel_revenue),0) as rev
+    FROM shifts WHERE status='closed' AND opened_at >= NOW() - INTERVAL '30 days'
+    GROUP BY 1
+  `);
+
+  const dayMap = {};
+  for (const r of dayRev) dayMap[r.d] = { date: r.d, liters: 0, revenue: parseFloat(r.rev), cost: 0 };
+  for (const r of dayLiters) {
+    const d = dayMap[r.d] || (dayMap[r.d] = { date: r.d, liters: 0, revenue: 0, cost: 0 });
+    const liters = parseFloat(r.liters);
+    d.liters += liters;
+    d.cost   += liters * (avgCost[r.ftid] || 0);
+  }
+  const daily_profit = Object.values(dayMap)
+    .map(d => ({ date: d.date, liters: Math.round(d.liters), revenue: Math.round(d.revenue), cost: Math.round(d.cost), profit: Math.round(d.revenue - d.cost) }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  res.json({ fuels: result, total_revenue: parseFloat(totalRevenue), total_cost: grandCost, profit: parseFloat(totalRevenue) - grandCost, daily_profit });
 }));
 
 router.post('/delivery', requireAuth, wrap(async (req, res) => {
