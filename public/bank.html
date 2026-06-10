@@ -451,9 +451,11 @@ document.querySelectorAll('.nav-item[data-p]').forEach(el => {
 });
 
 // ── BALANCE ───────────────────────────────────────────────────────────────
+let _bankAccountName = 'STE MENASTA SARL AU';
 async function refreshBalance() {
   try {
     const b = await api('GET', '/bank/balance');
+    if (b.account_name) _bankAccountName = b.account_name;
     document.getElementById('top-balance').textContent = 'Solde : ' + fmt(b.balance, 2) + ' MAD';
     const fc = b.forecasted_balance ?? b.balance;
     document.getElementById('top-forecast').textContent = '⏳ Prévisionnel : ' + fmt(fc, 2) + ' MAD';
@@ -547,6 +549,7 @@ async function loadTransactions() {
       <td class="num" style="font-weight:700">${t.running_balance!=null?fmt(t.running_balance,2):'—'}</td>
       <td style="font-size:11px;text-align:center">${t.is_reconciled?'✅':''}</td>
       <td style="white-space:nowrap">
+        ${['virement_in','virement_out','cheque_in','cheque_out'].includes(t.type)?`<button class="btn btn-ghost btn-sm" style="padding:3px 8px" title="Pièce comptable" onclick="printTxnVoucher(${t.id})">📄</button>`:''}
         <button class="btn btn-ghost btn-sm" style="padding:3px 8px" title="Modifier" onclick="openEditTxn(${t.id})">✏️</button>
         <button class="btn btn-ghost btn-sm" style="color:var(--red);padding:3px 8px" title="Supprimer" onclick="deleteTxn(${t.id})">🗑</button></td>
     </tr>`;
@@ -687,6 +690,7 @@ function ckRow(c, dir) {
         <button class="btn btn-ghost btn-sm" title="Encaissé" onclick="quickStatus(${c.id},'cashed')">✅</button>
         <button class="btn btn-ghost btn-sm" title="Retourné" onclick="quickStatus(${c.id},'returned')">↩️</button>
         <button class="btn btn-ghost btn-sm" title="Annulé" onclick="quickStatus(${c.id},'cancelled')">❌</button>`:''}
+      <button class="btn btn-ghost btn-sm" title="Pièce comptable" onclick="printTxnVoucher(${c.id})">📄</button>
       <button class="btn btn-ghost btn-sm" title="Modifier" onclick="openEditTxn(${c.id})">✏️</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" title="Supprimer" onclick="deleteTxn(${c.id})">🗑</button>
     </td></tr>`;
@@ -784,6 +788,72 @@ function txnLabel(type) {
   const MAP = { depot:'💰 Dépôt', retrait:'💸 Retrait', virement_in:'📥 Vir+', virement_out:'📤 Vir-',
     cheque_in:'✅ Chèque+', cheque_out:'💳 Chèque-' };
   return MAP[type] || type;
+}
+
+// ── Pièce comptable (justificatif) pour une opération virement/chèque ──
+const VOUCHER_TYPE = {
+  virement_in:  ['Virement reçu',  'ENTRÉE'],
+  virement_out: ['Virement émis',  'SORTIE'],
+  cheque_in:    ['Chèque reçu',    'ENTRÉE'],
+  cheque_out:   ['Chèque émis',    'SORTIE'],
+};
+const VOUCHER_STATUS = { pending:'En attente', cashed:'Encaissé', 'encaissé':'Encaissé', cancelled:'Annulé', returned:'Retourné' };
+
+function printTxnVoucher(id) {
+  const t = (_txns || []).concat(_allCheques || []).find(x => x.id === id);
+  if (!t) { toast('Opération introuvable', 'er'); return; }
+  const isCheck = t.type === 'cheque_in' || t.type === 'cheque_out';
+  const [label, sens] = VOUCHER_TYPE[t.type] || [txnLabel(t.type), ''];
+  const sensColor = sens === 'ENTRÉE' ? '#188918' : '#BB0000';
+  const row = (lbl, val) => val ? `<tr><td class="k">${lbl}</td><td class="v">${val}</td></tr>` : '';
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/>
+<title>Pièce comptable - ${label} ${fmt(t.amount,2)} MAD</title>
+<style>
+  *{box-sizing:border-box} body{font-family:'Times New Roman',Times,serif;color:#000;background:#fff;margin:0;padding:26px 30px;font-size:13px}
+  .doc{max-width:620px;margin:0 auto;border:1.5px solid #000;padding:0}
+  .hd{text-align:center;padding:16px 14px 10px;border-bottom:1.5px solid #000}
+  .hd .co{font-size:22px;font-weight:bold;font-style:italic;letter-spacing:1px}
+  .hd .sub{font-size:12px;color:#333;margin-top:2px}
+  .title{text-align:center;margin:14px 0}
+  .title span{display:inline-block;border:2.5px solid #000;padding:6px 30px;font-size:14px;font-weight:bold;letter-spacing:2px}
+  .sens{text-align:center;font-size:16px;font-weight:bold;margin:6px 0 14px;color:${sensColor}}
+  table{width:100%;border-collapse:collapse;margin:0 14px 14px;width:calc(100% - 28px)}
+  td{padding:8px 10px;border:1px solid #999;font-size:13px;vertical-align:top}
+  td.k{background:#f3f3f3;font-weight:bold;width:38%}
+  .amt{font-size:20px;font-weight:bold}
+  .ft{display:flex;justify-content:space-between;margin:26px 16px 10px;font-size:12px}
+  .sig{margin-top:40px;border-top:1px solid #000;width:200px;text-align:center;padding-top:4px}
+  .note{text-align:center;font-size:10px;color:#777;margin-top:14px}
+  @media print{body{padding:0}}
+</style></head><body>
+  <div class="doc">
+    <div class="hd"><div class="co">${_bankAccountName}</div><div class="sub">Pièce comptable — Opération bancaire</div></div>
+    <div class="title"><span>${isCheck ? 'JUSTIFICATIF CHÈQUE' : 'JUSTIFICATIF VIREMENT'}</span></div>
+    <div class="sens">${sens} ${sens==='ENTRÉE'?'(+)':'(−)'}</div>
+    <table>
+      ${row('Nature de l\'opération', label)}
+      ${row('Date', ymd(t.txn_date))}
+      <tr><td class="k">Montant</td><td class="v amt">${fmt(t.amount,2)} MAD</td></tr>
+      ${row('Catégorie', t.category)}
+      ${row('Description', t.description)}
+      ${row(isCheck?'Bénéficiaire / Émetteur':'Bénéficiaire', t.beneficiary)}
+      ${isCheck ? row('N° de chèque', t.check_number) : ''}
+      ${isCheck ? row('Date d\'échéance', ymd(t.due_date)) : ''}
+      ${isCheck ? row('Statut', VOUCHER_STATUS[t.check_status] || t.check_status) : ''}
+      ${row('Notes', t.notes)}
+    </table>
+    <div class="ft">
+      <div>Édité le ${new Date().toLocaleDateString('fr-FR')}</div>
+      <div class="sig">Signature / Cachet</div>
+    </div>
+    <div class="note">Document généré par MENASTA — à remettre au comptable</div>
+  </div>
+  <script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { toast('Autorisez les pop-ups pour imprimer', 'er'); return; }
+  w.document.write(html);
+  w.document.close();
 }
 
 
