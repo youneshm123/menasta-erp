@@ -22,7 +22,7 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
     ORDER BY stock_qty ASC
   `);
 
-  // ── Low tabac stock (< 5) ──
+  // ── Low tabac stock (≤ 5 units) ──
   const { rows: tabac } = await pool.query(`
     SELECT id, name, stock_actuel FROM (
       SELECT tp.id, tp.name,
@@ -33,10 +33,16 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
       LEFT JOIN tabac_achats ta ON ta.product_id=tp.id
       WHERE tp.is_active=1
       GROUP BY tp.id, tp.name, tp.stock_adjust
-    ) s WHERE s.stock_actuel < 5 ORDER BY s.stock_actuel ASC
+    ) s WHERE s.stock_actuel <= 5 ORDER BY s.stock_actuel ASC
   `);
 
-  // ── Low cuve levels (last jauge ≤ alert threshold) ──
+  // ── Low cuve levels — Gazoil ≤ 10 000 L (10 T), Essence ≤ 1 000 L (1 T) ──
+  const fuelThreshold = (name) => {
+    const f = (name || '').toLowerCase();
+    if (f.includes('gazoil') || f.includes('gasoil') || f.includes('diesel')) return 10000;
+    if (f.includes('essence')) return 1000;
+    return null; // fall back to the cuve's own niveau_alerte
+  };
   const cuves = [];
   try {
     const { rows: cuveRows } = await pool.query(`
@@ -48,8 +54,9 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
       const { rows: [lec] } = await pool.query(
         'SELECT niveau_litres FROM cuve_lectures WHERE cuve_id=$1 ORDER BY lecture_date DESC LIMIT 1', [cu.id]
       );
-      if (lec && parseFloat(lec.niveau_litres) <= parseFloat(cu.niveau_alerte)) {
-        cuves.push({ id: cu.id, name: cu.name, fuel: cu.fuel, niveau: parseFloat(lec.niveau_litres), seuil: parseFloat(cu.niveau_alerte) });
+      const seuil = fuelThreshold(cu.fuel) != null ? fuelThreshold(cu.fuel) : parseFloat(cu.niveau_alerte);
+      if (lec && parseFloat(lec.niveau_litres) <= seuil) {
+        cuves.push({ id: cu.id, name: cu.name, fuel: cu.fuel, niveau: parseFloat(lec.niveau_litres), seuil });
       }
     }
   } catch (_) { /* cuves optional */ }
