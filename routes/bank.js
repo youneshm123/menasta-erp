@@ -134,6 +134,37 @@ router.patch('/transactions/:id/reconcile', requireAuth, wrap(async (req, res) =
   res.json(txn);
 }));
 
+// ── full edit of a transaction / check (montant, statut, tout) ──
+router.put('/transactions/:id', requireAuth, wrap(async (req, res) => {
+  const { rows: [cur] } = await pool.query('SELECT * FROM bank_transactions WHERE id=$1', [req.params.id]);
+  if (!cur) return res.status(404).json({ error: 'Transaction introuvable' });
+  const b = req.body || {};
+  const type   = TXN_TYPES.includes(b.type) ? b.type : cur.type;
+  const amount = b.amount != null ? parseFloat(b.amount) : parseFloat(cur.amount);
+  if (!isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Montant valide requis' });
+  const isCheck = type === 'cheque_in' || type === 'cheque_out';
+  await pool.query(`
+    UPDATE bank_transactions SET
+      txn_date=$1, type=$2, category=$3, description=$4, amount=$5,
+      check_number=$6, beneficiary=$7, due_date=$8, check_status=$9, notes=$10
+    WHERE id=$11
+  `, [
+    normDate(b.txn_date) || cur.txn_date,
+    type,
+    b.category || cur.category,
+    b.description != null ? b.description : cur.description,
+    amount,
+    isCheck ? (b.check_number != null ? b.check_number : cur.check_number) : null,
+    isCheck ? (b.beneficiary  != null ? b.beneficiary  : cur.beneficiary)  : null,
+    isCheck ? (b.due_date || cur.due_date) : null,
+    isCheck ? (b.check_status || cur.check_status || 'pending') : null,
+    b.notes != null ? b.notes : cur.notes,
+    cur.id
+  ]);
+  const { rows: [txn] } = await pool.query('SELECT * FROM bank_transactions WHERE id=$1', [cur.id]);
+  res.json(txn);
+}));
+
 // ── delete ────────────────────────────────────────────────────
 router.delete('/transactions/:id', requireAuth, wrap(async (req, res) => {
   await pool.query('DELETE FROM bank_transactions WHERE id=$1', [req.params.id]);

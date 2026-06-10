@@ -118,7 +118,7 @@
     <div class="topbar-title" id="page-title">Tableau de Bord</div>
     <div class="balance-pill" id="top-balance">Solde : —</div>
     <div class="forecast-pill" id="top-forecast" title="Solde après encaissement de tous les chèques en attente">⏳ Prévisionnel : —</div>
-    <button class="btn btn-s btn-sm" onclick="openModal('m-add-txn')">+ Transaction</button>
+    <button class="btn btn-s btn-sm" onclick="openAddTxn()">+ Transaction</button>
   </div>
   <div class="app-content" id="content">
 
@@ -297,7 +297,7 @@
 <!-- ── MODAL: Add Transaction ── -->
 <div class="overlay" id="m-add-txn">
   <div class="modal">
-    <div class="modal-hd"><div class="mh-ic"><i data-lucide="credit-card"></i></div><h3>Nouvelle Transaction</h3><button class="x" onclick="closeModal('m-add-txn')">✕</button></div>
+    <div class="modal-hd"><div class="mh-ic"><i data-lucide="credit-card"></i></div><h3 id="at-modal-title">Nouvelle Transaction</h3><button class="x" onclick="closeModal('m-add-txn')">✕</button></div>
     <div class="modal-body">
       <div class="fgrid">
         <div class="fg" style="grid-column:1/-1">
@@ -343,7 +343,7 @@
     </div>
     <div class="modal-ft">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('m-add-txn')">Annuler</button>
-      <button class="btn btn-s btn-sm" onclick="submitAddTxn()">💾 Enregistrer</button>
+      <button class="btn btn-s btn-sm" id="at-submit-btn" onclick="submitAddTxn()">💾 Enregistrer</button>
     </div>
   </div>
 </div>
@@ -531,6 +531,7 @@ async function loadTransactions() {
 
   const data = await api('GET', '/bank/transactions?' + params);
   const items = data.rows || [];
+  _txns = items;
 
   document.getElementById('txn-body').innerHTML = items.map(t => {
     const isIn = ['depot','virement_in','cheque_in'].includes(t.type);
@@ -545,7 +546,9 @@ async function loadTransactions() {
       <td class="num ${isIn?'c-g':''}">${isIn?fmt(t.amount,2):''}</td>
       <td class="num" style="font-weight:700">${t.running_balance!=null?fmt(t.running_balance,2):'—'}</td>
       <td style="font-size:11px;text-align:center">${t.is_reconciled?'✅':''}</td>
-      <td><button class="btn btn-ghost btn-sm" style="color:var(--red);padding:3px 8px" onclick="deleteTxn(${t.id})">🗑</button></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" style="padding:3px 8px" title="Modifier" onclick="openEditTxn(${t.id})">✏️</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red);padding:3px 8px" title="Supprimer" onclick="deleteTxn(${t.id})">🗑</button></td>
     </tr>`;
   }).join('') || '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--muted)">Aucune transaction ce mois</td></tr>';
 
@@ -565,7 +568,9 @@ async function deleteTxn(id) {
   await api('DELETE', '/bank/transactions/' + id);
   toast('Transaction supprimée');
   refreshBalance();
-  loadTransactions();
+  if (document.querySelector('#p-transactions.active')) loadTransactions();
+  if (document.querySelector('#p-cheques.active'))      loadCheques();
+  if (document.querySelector('#p-dashboard.active'))    loadDashboard();
 }
 
 function printStatement() {
@@ -682,6 +687,8 @@ function ckRow(c, dir) {
         <button class="btn btn-ghost btn-sm" title="Encaissé" onclick="quickStatus(${c.id},'cashed')">✅</button>
         <button class="btn btn-ghost btn-sm" title="Retourné" onclick="quickStatus(${c.id},'returned')">↩️</button>
         <button class="btn btn-ghost btn-sm" title="Annulé" onclick="quickStatus(${c.id},'cancelled')">❌</button>`:''}
+      <button class="btn btn-ghost btn-sm" title="Modifier" onclick="openEditTxn(${c.id})">✏️</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" title="Supprimer" onclick="deleteTxn(${c.id})">🗑</button>
     </td></tr>`;
 }
 async function quickStatus(id, status) {
@@ -926,6 +933,43 @@ async function commitReleve() {
   } catch(e) { toast(e.message, 'er'); btn.disabled = false; updateCommitCount(); }
 }
 
+// ── Add / Edit transaction ───────────────────────────────────
+let _txns = [];
+let _editTxnId = null;
+
+function openAddTxn() {
+  _editTxnId = null;
+  document.getElementById('at-modal-title').textContent = 'Nouvelle Transaction';
+  document.getElementById('at-submit-btn').textContent  = '💾 Enregistrer';
+  document.getElementById('at-type').value = 'depot';
+  document.getElementById('at-date').value = today();
+  document.getElementById('at-cat').value  = 'Autre';
+  ['at-amount','at-desc','at-chknum','at-benef','at-duedate','at-notes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('at-chkstatus').value = 'pending';
+  toggleCheckFields();
+  openModal('m-add-txn');
+}
+
+function openEditTxn(id) {
+  const t = (_txns || []).concat(_allCheques || []).find(x => x.id === id);
+  if (!t) { toast('Transaction introuvable', 'er'); return; }
+  _editTxnId = id;
+  document.getElementById('at-modal-title').textContent = 'Modifier la Transaction';
+  document.getElementById('at-submit-btn').textContent  = '💾 Mettre à jour';
+  document.getElementById('at-type').value     = t.type;
+  document.getElementById('at-date').value     = (t.txn_date || '').slice(0,10);
+  document.getElementById('at-amount').value   = t.amount;
+  document.getElementById('at-desc').value     = t.description || '';
+  document.getElementById('at-cat').value      = t.category || 'Autre';
+  document.getElementById('at-notes').value    = t.notes || '';
+  document.getElementById('at-chknum').value   = t.check_number || '';
+  document.getElementById('at-benef').value    = t.beneficiary || '';
+  document.getElementById('at-duedate').value  = (t.due_date || '').slice(0,10);
+  document.getElementById('at-chkstatus').value = t.check_status || 'pending';
+  toggleCheckFields();
+  openModal('m-add-txn');
+}
+
 async function submitAddTxn() {
   const type   = document.getElementById('at-type').value;
   const date   = document.getElementById('at-date').value || today();
@@ -933,19 +977,22 @@ async function submitAddTxn() {
   const desc   = document.getElementById('at-desc').value.trim();
   if (!desc || !amount || amount<=0) { toast('Remplissez tous les champs requis','er'); return; }
   const isCheck = type==='cheque_in'||type==='cheque_out';
+  const payload = {
+    type, txn_date:date, amount, description:desc,
+    category: document.getElementById('at-cat').value,
+    check_number: isCheck ? document.getElementById('at-chknum').value  : null,
+    beneficiary:  isCheck ? document.getElementById('at-benef').value   : null,
+    due_date:     isCheck ? document.getElementById('at-duedate').value : null,
+    check_status: isCheck ? document.getElementById('at-chkstatus').value : null,
+    notes: document.getElementById('at-notes').value
+  };
   try {
-    await api('POST','/bank/transactions',{
-      type, txn_date:date, amount, description:desc,
-      category: document.getElementById('at-cat').value,
-      check_number: isCheck ? document.getElementById('at-chknum').value  : null,
-      beneficiary:  isCheck ? document.getElementById('at-benef').value   : null,
-      due_date:     isCheck ? document.getElementById('at-duedate').value : null,
-      check_status: isCheck ? document.getElementById('at-chkstatus').value : null,
-      notes: document.getElementById('at-notes').value
-    });
+    if (_editTxnId) await api('PUT', '/bank/transactions/' + _editTxnId, payload);
+    else            await api('POST', '/bank/transactions', payload);
     closeModal('m-add-txn');
     ['at-amount','at-desc','at-chknum','at-benef','at-duedate','at-notes'].forEach(id => document.getElementById(id).value='');
-    toast('Transaction enregistrée ✓');
+    toast(_editTxnId ? 'Transaction modifiée ✓' : 'Transaction enregistrée ✓');
+    _editTxnId = null;
     refreshBalance();
     if (document.querySelector('#p-dashboard.active'))    loadDashboard();
     if (document.querySelector('#p-transactions.active')) loadTransactions();
