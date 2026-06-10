@@ -93,4 +93,61 @@ router.delete('/sales/:id', requireAuth, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ── Boutique QR scan ───────────────────────────────────────────
+// Recent shop sales (QR scans = sales with no poste attached). Defaults to today.
+router.get('/shop-sales', requireAuth, wrap(async (req, res) => {
+  const { date } = req.query;
+  const day = (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) ? date : null;
+  // When no date is provided, default to today.
+  const sql = `
+    SELECT ps.id, ps.quantity, ps.unit_price, ps.total_amount, ps.sale_time,
+           p.name AS product_name, p.reference, u.full_name AS sold_by
+    FROM product_sales ps
+    JOIN products p ON p.id = ps.product_id
+    LEFT JOIN users u ON u.id = ps.recorded_by
+    WHERE ps.shift_id IS NULL AND DATE(ps.sale_time) = COALESCE($1::date, CURRENT_DATE)
+    ORDER BY ps.sale_time DESC
+    LIMIT 200`;
+  const { rows } = await pool.query(sql, [day]);
+  const total = rows.reduce((a, r) => a + (parseFloat(r.total_amount) || 0), 0);
+  res.json({ sales: rows, total: +total.toFixed(2), count: rows.length });
+}));
+
+// QR scan sale — sells exactly 1 unit, no poste required, attributed to scanner.
+router.post('/scan-sell', requireAuth, wrap(async (req, res) => {
+  const { product_id } = req.body || {};
+  if (!product_id) return res.status(400).json({ error: 'Produit requis' });
+
+  const { rows: pr } = await pool.query('SELECT * FROM products WHERE id=$1 AND is_active=1', [product_id]);
+  const product = pr[0];
+  if (!product) return res.status(404).json({ error: 'Produit introuvable' });
+  if (product.stock_qty < 1) return res.status(400).json({ error: 'Stock épuisé — rien à vendre' });
+
+  const total = +product.price.toFixed(2);
+  const { rows: [{ id }] } = await pool.query(`
+    INSERT INTO product_sales (shift_id, product_id, quantity, unit_price, total_amount, recorded_by)
+    VALUES (NULL, $1, 1, $2, $3, $4) RETURNING id
+  `, [product_id, product.price, total, req.user.id]);
+
+  await pool.query('UPDATE products SET stock_qty = stock_qty - 1 WHERE id=$1', [product_id]);
+
+  res.status(201).json({
+    ok: true,
+    sale_id: id,
+    product_name: product.name,
+    reference: product.reference,
+    unit_price: product.price,
+    total_amount: total,
+    remaining_stock: product.stock_qty - 1,
+  });
+}));
+
+// Single product (for the scan landing page). Declared last so it never shadows
+// the literal routes above (/sales, /shop-sales).
+router.get('/:id', requireAuth, wrap(async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM products WHERE id=$1 AND is_active=1', [req.params.id]);
+  if (!rows[0]) return res.status(404).json({ error: 'Produit introuvable' });
+  res.json(rows[0]);
+}));
+
 module.exports = router;

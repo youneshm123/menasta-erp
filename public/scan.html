@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>MENASTA — Vente Boutique</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#5b4fcf;--primary-dk:#4a3fb8;--bg:#f4f5f9;--surface:#fff;
+  --border:#e5e7eb;--text:#111827;--muted:#6b7280;
+  --green:#059669;--green-lt:#ecfdf5;--red:#dc2626;--red-lt:#fef2f2;--orange:#d97706;
+  --font:'Inter',system-ui,sans-serif;--r:14px;
+}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;padding:18px}
+.top{display:flex;align-items:center;gap:9px;width:100%;max-width:440px;margin:6px 0 18px}
+.mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--primary),#7c6ee0);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0}
+.brand{font-weight:800;font-size:16px;letter-spacing:-.3px}
+.brand small{display:block;font-size:11px;font-weight:500;color:var(--muted)}
+.card{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);box-shadow:0 4px 18px rgba(0,0,0,.06);padding:22px;text-align:center}
+.cat{font-size:12px;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.pname{font-size:24px;font-weight:800;letter-spacing:-.4px;line-height:1.2;margin-bottom:4px}
+.pref{font-size:13px;color:var(--muted);margin-bottom:18px}
+.rows{display:flex;gap:10px;margin-bottom:20px}
+.box{flex:1;background:var(--bg);border-radius:10px;padding:12px 8px}
+.box-lbl{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.box-val{font-size:20px;font-weight:800;letter-spacing:-.3px}
+.box-val small{font-size:12px;font-weight:600;color:var(--muted)}
+.stock-ok{color:var(--green)}.stock-low{color:var(--orange)}.stock-out{color:var(--red)}
+.btn{width:100%;border:none;border-radius:12px;padding:18px;font-size:18px;font-weight:800;
+  font-family:var(--font);cursor:pointer;transition:transform .08s,opacity .15s;display:flex;
+  align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.98)}
+.btn-go{background:var(--primary);color:#fff}
+.btn-go:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:var(--surface);color:var(--primary);border:1.5px solid var(--border);font-size:15px;padding:14px;margin-top:10px}
+.msg{padding:14px;border-radius:10px;font-size:14px;font-weight:600;margin-bottom:16px}
+.msg-er{background:var(--red-lt);color:var(--red)}
+.result{text-align:center}
+.result .big{font-size:54px;margin-bottom:8px}
+.result h2{font-size:22px;font-weight:800;margin-bottom:6px}
+.result p{font-size:15px;color:var(--muted);margin-bottom:4px}
+.result .rem{font-size:15px;font-weight:700;margin:14px 0 20px}
+.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--primary);
+  border-radius:50%;animation:sp 1s linear infinite;margin:30px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+.foot{margin-top:18px;font-size:12px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="mark">🛒</div>
+  <div class="brand">MENASTA <small>Vente Boutique</small></div>
+</div>
+
+<div class="card" id="card">
+  <div class="spin"></div>
+</div>
+
+<div class="foot" id="foot"></div>
+
+<script>
+const TOKEN = localStorage.getItem('fm_token');
+// Extract product id from /scan/<id>
+const ID = (location.pathname.match(/\/scan\/(\d+)/) || [])[1];
+const card = document.getElementById('card');
+const foot = document.getElementById('foot');
+const fmt = n => (parseFloat(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+function gotoLogin() {
+  // Clear any stale/expired token first — otherwise the login page would see it
+  // and bounce straight back here, causing an infinite redirect loop.
+  localStorage.removeItem('fm_token');
+  localStorage.removeItem('fm_user');
+  location.href = '/?return=' + encodeURIComponent(location.pathname);
+}
+
+if (!TOKEN) { gotoLogin(); }
+if (!ID)    { card.innerHTML = '<div class="msg msg-er">QR invalide — aucun produit.</div>'; }
+
+let product = null;
+
+async function loadProduct() {
+  try {
+    const r = await fetch('/api/products/' + ID, { headers: { Authorization: 'Bearer ' + TOKEN } });
+    if (r.status === 401) return gotoLogin();
+    const d = await r.json();
+    if (!r.ok) { card.innerHTML = '<div class="msg msg-er">' + (d.error || 'Produit introuvable') + '</div>'; return; }
+    product = d;
+    renderProduct();
+  } catch (e) {
+    card.innerHTML = '<div class="msg msg-er">Connexion impossible. Vérifiez le réseau.</div>';
+  }
+}
+
+function stockClass(q){ return q <= 0 ? 'stock-out' : q <= (product.stock_min||5) ? 'stock-low' : 'stock-ok'; }
+
+function renderProduct() {
+  const out = product.stock_qty <= 0;
+  card.innerHTML =
+    '<div class="cat">' + (product.category || 'Boutique') + '</div>' +
+    '<div class="pname">' + esc(product.name) + '</div>' +
+    '<div class="pref">Réf. ' + esc(product.reference || '—') + '</div>' +
+    '<div class="rows">' +
+      '<div class="box"><div class="box-lbl">Prix</div><div class="box-val">' + fmt(product.price) + ' <small>DH</small></div></div>' +
+      '<div class="box"><div class="box-lbl">Stock actuel</div><div class="box-val ' + stockClass(product.stock_qty) + '">' + (parseFloat(product.stock_qty)||0) + ' <small>' + esc(product.unit||'') + '</small></div></div>' +
+    '</div>' +
+    (out
+      ? '<div class="msg msg-er">⚠️ Stock épuisé — impossible de vendre.</div>'
+      : '<button class="btn btn-go" id="sell">Confirmer la vente · 1 ' + esc(product.unit||'unité') + '</button>');
+  foot.textContent = 'Connecté — chaque scan vend 1 unité.';
+  const b = document.getElementById('sell');
+  if (b) b.addEventListener('click', sell);
+}
+
+async function sell() {
+  const b = document.getElementById('sell');
+  b.disabled = true; b.textContent = 'Enregistrement…';
+  try {
+    const r = await fetch('/api/products/scan-sell', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN },
+      body: JSON.stringify({ product_id: ID })
+    });
+    if (r.status === 401) return gotoLogin();
+    const d = await r.json();
+    if (!r.ok) {
+      b.disabled = false; b.textContent = 'Réessayer';
+      card.insertAdjacentHTML('afterbegin', '<div class="msg msg-er">' + (d.error || 'Erreur') + '</div>');
+      return;
+    }
+    renderSuccess(d);
+  } catch (e) {
+    b.disabled = false; b.textContent = 'Réessayer';
+    card.insertAdjacentHTML('afterbegin', '<div class="msg msg-er">Connexion impossible.</div>');
+  }
+}
+
+function renderSuccess(d) {
+  const low = d.remaining_stock <= (product.stock_min||5);
+  card.innerHTML =
+    '<div class="result">' +
+      '<div class="big">✅</div>' +
+      '<h2>Vendu !</h2>' +
+      '<p>' + esc(d.product_name) + '</p>' +
+      '<p style="font-weight:700;color:var(--text);font-size:18px;margin-top:6px">' + fmt(d.total_amount) + ' DH</p>' +
+      '<div class="rem ' + (low ? 'stock-low' : 'stock-ok') + '">Stock restant : ' + d.remaining_stock + ' ' + esc(product.unit||'') + (low ? ' ⚠️' : '') + '</div>' +
+      (d.remaining_stock > 0
+        ? '<button class="btn btn-go" id="again">Vendre encore 1</button>'
+        : '<div class="msg msg-er">Stock épuisé.</div>') +
+      '<button class="btn btn-ghost" onclick="location.href=\'/boutique\'">Voir les ventes du jour</button>' +
+    '</div>';
+  product.stock_qty = d.remaining_stock;
+  const a = document.getElementById('again');
+  if (a) a.addEventListener('click', () => { renderProduct(); });
+}
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+if (TOKEN && ID) loadProduct();
+</script>
+</body>
+</html>

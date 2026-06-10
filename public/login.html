@@ -275,7 +275,7 @@ async function login() {
     if (!r.ok) { showErr(data.error || 'Identifiants incorrects.'); return; }
     localStorage.setItem('fm_token', data.token);
     localStorage.setItem('fm_user', JSON.stringify(data.user));
-    window.location.href = '/home';
+    window.location.href = returnUrl();
   } catch {
     showErr('Impossible de contacter le serveur. Vérifiez votre connexion.');
   } finally {
@@ -283,9 +283,19 @@ async function login() {
   }
 }
 
+// Honor a same-origin ?return= path (e.g. a QR scan link) so employees land
+// back on the page they came from after logging in. Falls back to /home.
+function returnUrl() {
+  try {
+    const r = new URLSearchParams(location.search).get('return');
+    if (r && r.startsWith('/') && !r.startsWith('//')) return r;
+  } catch {}
+  return '/home';
+}
+
 btn.addEventListener('click', login);
 document.addEventListener('keydown', e => e.key === 'Enter' && login());
-if (localStorage.getItem('fm_token')) window.location.href = '/home';
+if (localStorage.getItem('fm_token')) window.location.href = returnUrl();
 </script>
 <script>lucide.createIcons();</script>
 </body>

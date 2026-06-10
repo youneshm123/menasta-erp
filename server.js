@@ -271,6 +271,8 @@ async function start() {
   app.get('/cuves',    page('cuves.html'));
   app.get('/logs',     page('logs.html'));
   app.get('/ai',       page('ai-chat.html'));
+  app.get('/boutique', page('boutique.html'));
+  app.get('/scan/:id', page('scan.html'));
 
   // ── Cache-buster route (token-protected) ──
   app.get('/clear', (req, res) => {

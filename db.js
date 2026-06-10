@@ -343,6 +343,8 @@ async function initDB() {
   await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS ice TEXT');
   await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS adresse TEXT');
   await pgPool.query('ALTER TABLE expenses ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shifts(id)');
+  // Boutique QR scan sales record without an open poste — make shift_id optional.
+  try { await pgPool.query('ALTER TABLE product_sales ALTER COLUMN shift_id DROP NOT NULL'); } catch(_) {}
   await pgPool.query('ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS bank_ref TEXT');
   await pgPool.query(`
     CREATE TABLE IF NOT EXISTS bank_import_rules (
