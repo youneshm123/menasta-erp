@@ -211,6 +211,21 @@
           </table>
         </div>
       </div>
+      <div class="section">
+        <div class="s-head">
+          <span class="s-title">📋 Historique des changements de stock</span>
+          <div class="exp-btns">
+            <button class="exp-btn exp-pdf" onclick="exportPDF('stockhist-table','Historique Stock Tabac')">📄 PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('stockhist-table','Historique Stock Tabac')">📊 Excel</button>
+          </div>
+        </div>
+        <div class="s-body">
+          <table class="t" id="stockhist-table">
+            <thead><tr><th>Date</th><th>Produit</th><th class="num">Ancien</th><th class="num">Nouveau</th><th class="num">Δ</th><th>Action</th><th>Par</th><th>Note</th></tr></thead>
+            <tbody id="stockhist-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- PRODUITS -->
@@ -409,10 +424,32 @@ async function loadHistorique() {
 
 // ── STOCK ────────────────────────────────────────────────────
 async function loadStock() {
-  const [stock, achats] = await Promise.all([
+  const [stock, achats, hist] = await Promise.all([
     A('/api/tabac/stock'),
-    A('/api/tabac/achats')
+    A('/api/tabac/achats'),
+    A('/api/tabac/stock-history').catch(() => [])
   ]);
+
+  // Stock change history
+  const hb = document.getElementById('stockhist-body');
+  if (hb) {
+    hb.innerHTML = (hist && hist.length) ? hist.map(h => {
+      const d = parseFloat(h.delta) || 0;
+      const dc = d > 0 ? 'c-g' : (d < 0 ? 'c-r' : '');
+      const act = h.action === 'suppression' ? '🗑️ Supprimé' : '✏️ Modifié';
+      const when = h.created_at ? new Date(h.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+      return `<tr>
+        <td style="font-size:12px">${when}</td>
+        <td><strong>${h.product_name||'—'}</strong></td>
+        <td class="num">${fmt(h.old_stock)}</td>
+        <td class="num fw7">${fmt(h.new_stock)}</td>
+        <td class="num fw7 ${dc}">${d>0?'+':''}${fmt(d)}</td>
+        <td style="font-size:12px">${act}</td>
+        <td style="color:var(--muted);font-size:12px">${h.by_name||'—'}</td>
+        <td style="color:var(--muted);font-size:12px">${h.note||'—'}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)">Aucun changement de stock</td></tr>';
+  }
 
   // Stock table — café-style: a quantity input per product (add new stock)
   _stockProducts = stock;
@@ -428,7 +465,7 @@ async function loadStock() {
       else                 { badge = 'badge-ok';  label = '✅ OK'; }
       return `<tr>
         <td><strong>${s.name}</strong> <span class="stock-badge ${badge}" style="margin-left:6px">${label}</span></td>
-        <td class="num fw8 c-br">${fmt(actuel)}</td>
+        <td class="num fw8 c-br">${fmt(actuel)} <button class="btn btn-g btn-xs" style="margin-left:6px" onclick="setTabacStock(${s.id})" title="Corriger le stock">✏️</button></td>
         <td class="num">${fmt(s.prix_achat||0)} MAD</td>
         <td class="num">
           <input type="number" class="addqty-inp" data-idx="${i}" data-pa="${s.prix_achat||0}"
@@ -488,6 +525,23 @@ async function saveAchat() {
   loadStock();
 }
 
+
+// ── Corriger le stock (valeur exacte) + journaliser le changement ──
+async function setTabacStock(id) {
+  const p = (_stockProducts || []).find(x => x.id == id);
+  if (!p) return;
+  const name = p.name;
+  const current = parseFloat(p.stock_actuel) || 0;
+  const val = prompt('Stock pour « ' + name + ' »\nStock actuel : ' + current + '\n\nNouveau stock :', current);
+  if (val === null) return;
+  const n = parseFloat(val);
+  if (!isFinite(n) || n < 0) { toast('Stock invalide', 'er'); return; }
+  const note = prompt('Note (facultatif) — raison du changement :', '') || '';
+  const r = await A('/api/tabac/produits/' + id + '/stock', { method: 'POST', body: JSON.stringify({ new_stock: n, note }) });
+  if (r && r.error) { toast(r.error, 'er'); return; }
+  toast('Stock mis à jour ✓');
+  loadStock();
+}
 
 // ── Café-style bulk "add to stock" ──
 let _stockProducts = [];

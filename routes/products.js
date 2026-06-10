@@ -39,8 +39,43 @@ router.put('/:id', requireAuth, staff, wrap(async (req, res) => {
 }));
 
 router.delete('/:id', requireAuth, staff, wrap(async (req, res) => {
+  const { rows: [p] } = await pool.query('SELECT * FROM products WHERE id=$1', [req.params.id]);
+  if (p) {
+    await pool.query(
+      `INSERT INTO stock_adjustments (module, product_id, product_name, old_stock, new_stock, delta, action, note, recorded_by)
+       VALUES ('produit',$1,$2,$3,0,$4,'suppression','Produit supprimé',$5)`,
+      [p.id, p.name, p.stock_qty, -(parseFloat(p.stock_qty) || 0), req.user.id]
+    );
+  }
   await pool.query('UPDATE products SET is_active=0 WHERE id=$1', [req.params.id]);
   res.json({ ok: true });
+}));
+
+// ── Set stock to an exact value + log the change with its date ──
+router.post('/:id/stock', requireAuth, staff, wrap(async (req, res) => {
+  const newStock = parseFloat(req.body && req.body.new_stock);
+  if (!isFinite(newStock) || newStock < 0) return res.status(400).json({ error: 'Stock invalide' });
+  const { rows: [p] } = await pool.query('SELECT * FROM products WHERE id=$1 AND is_active=1', [req.params.id]);
+  if (!p) return res.status(404).json({ error: 'Produit introuvable' });
+  const oldStock = parseFloat(p.stock_qty) || 0;
+  await pool.query('UPDATE products SET stock_qty=$1 WHERE id=$2', [newStock, p.id]);
+  await pool.query(
+    `INSERT INTO stock_adjustments (module, product_id, product_name, old_stock, new_stock, delta, action, note, recorded_by)
+     VALUES ('produit',$1,$2,$3,$4,$5,'modification',$6,$7)`,
+    [p.id, p.name, oldStock, newStock, newStock - oldStock, (req.body.note || '').trim() || null, req.user.id]
+  );
+  res.json({ ok: true, old_stock: oldStock, new_stock: newStock });
+}));
+
+// ── Stock change history (carburant huile / produits) ──
+router.get('/stock-history', requireAuth, staff, wrap(async (_req, res) => {
+  const { rows } = await pool.query(`
+    SELECT sa.*, u.full_name AS by_name
+    FROM stock_adjustments sa LEFT JOIN users u ON u.id=sa.recorded_by
+    WHERE sa.module='produit'
+    ORDER BY sa.created_at DESC LIMIT 100
+  `);
+  res.json(rows);
 }));
 
 // ── Sales ──────────────────────────────────────────────────────

@@ -39,8 +39,50 @@ router.put('/produits/:id', requireAuth, wrap(async (req, res) => {
 }));
 
 router.delete('/produits/:id', requireAuth, wrap(async (req, res) => {
+  const { rows: [p] } = await pool.query('SELECT * FROM tabac_products WHERE id=$1', [req.params.id]);
+  if (p) {
+    const { rows: [{ ach }] }  = await pool.query('SELECT COALESCE(SUM(quantite),0) AS ach FROM tabac_achats WHERE product_id=$1', [p.id]);
+    const { rows: [{ ven }] }  = await pool.query('SELECT COALESCE(SUM(quantite),0) AS ven FROM tabac_ventes WHERE product_id=$1', [p.id]);
+    const stock = parseFloat(ach) - parseFloat(ven) + (parseFloat(p.stock_adjust) || 0);
+    await pool.query(
+      `INSERT INTO stock_adjustments (module, product_id, product_name, old_stock, new_stock, delta, action, note, recorded_by)
+       VALUES ('tabac',$1,$2,$3,0,$4,'suppression','Produit supprimé',$5)`,
+      [p.id, p.name, stock, -stock, req.user.id]
+    );
+  }
   await pool.query('UPDATE tabac_products SET is_active=0 WHERE id=$1', [req.params.id]);
   res.json({ ok: true });
+}));
+
+// ── Set stock to an exact value (inventory correction) + log it ──
+router.post('/produits/:id/stock', requireAuth, wrap(async (req, res) => {
+  const newStock = parseFloat(req.body && req.body.new_stock);
+  if (!isFinite(newStock) || newStock < 0) return res.status(400).json({ error: 'Stock invalide' });
+  const { rows: [p] } = await pool.query('SELECT * FROM tabac_products WHERE id=$1 AND is_active=1', [req.params.id]);
+  if (!p) return res.status(404).json({ error: 'Produit introuvable' });
+  const { rows: [{ ach }] } = await pool.query('SELECT COALESCE(SUM(quantite),0) AS ach FROM tabac_achats WHERE product_id=$1', [p.id]);
+  const { rows: [{ ven }] } = await pool.query('SELECT COALESCE(SUM(quantite),0) AS ven FROM tabac_ventes WHERE product_id=$1', [p.id]);
+  const base    = parseFloat(ach) - parseFloat(ven);                 // stock from purchases − sales
+  const oldStock = base + (parseFloat(p.stock_adjust) || 0);
+  const newAdjust = newStock - base;                                 // make derived stock land on newStock
+  await pool.query('UPDATE tabac_products SET stock_adjust=$1 WHERE id=$2', [newAdjust, p.id]);
+  await pool.query(
+    `INSERT INTO stock_adjustments (module, product_id, product_name, old_stock, new_stock, delta, action, note, recorded_by)
+     VALUES ('tabac',$1,$2,$3,$4,$5,'modification',$6,$7)`,
+    [p.id, p.name, oldStock, newStock, newStock - oldStock, (req.body.note || '').trim() || null, req.user.id]
+  );
+  res.json({ ok: true, old_stock: oldStock, new_stock: newStock });
+}));
+
+// ── Stock change history (tabac) ──
+router.get('/stock-history', requireAuth, wrap(async (_req, res) => {
+  const { rows } = await pool.query(`
+    SELECT sa.*, u.full_name AS by_name
+    FROM stock_adjustments sa LEFT JOIN users u ON u.id=sa.recorded_by
+    WHERE sa.module='tabac'
+    ORDER BY sa.created_at DESC LIMIT 100
+  `);
+  res.json(rows);
 }));
 
 // ── Ventes ────────────────────────────────────────────────────
@@ -108,18 +150,18 @@ router.get('/ventes-mois', requireAuth, wrap(async (req, res) => {
 // ── Stock ─────────────────────────────────────────────────────
 router.get('/stock', requireAuth, wrap(async (_req, res) => {
   const { rows } = await pool.query(`
-    SELECT tp.id, tp.name, tp.prix_achat, tp.prix_vente,
+    SELECT tp.id, tp.name, tp.prix_achat, tp.prix_vente, tp.stock_adjust,
            COALESCE(SUM(ta.quantite), 0) as total_achete,
            COALESCE((SELECT SUM(tv.quantite) FROM tabac_ventes tv WHERE tv.product_id=tp.id), 0) as total_vendu
     FROM tabac_products tp
     LEFT JOIN tabac_achats ta ON ta.product_id=tp.id
     WHERE tp.is_active=1
-    GROUP BY tp.id, tp.name, tp.prix_achat, tp.prix_vente
+    GROUP BY tp.id, tp.name, tp.prix_achat, tp.prix_vente, tp.stock_adjust
     ORDER BY tp.name
   `);
   res.json(rows.map(r => ({
     ...r,
-    stock_actuel: parseFloat(r.total_achete) - parseFloat(r.total_vendu),
+    stock_actuel: parseFloat(r.total_achete) - parseFloat(r.total_vendu) + (parseFloat(r.stock_adjust) || 0),
     total_achete: parseFloat(r.total_achete),
     total_vendu:  parseFloat(r.total_vendu),
   })));

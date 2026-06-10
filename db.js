@@ -370,6 +370,28 @@ async function initDB() {
     )
   `);
 
+  // Manual stock adjustment column for tabac (inventory corrections, kept
+  // separate from purchases so cost reports stay clean).
+  await pgPool.query('ALTER TABLE tabac_products ADD COLUMN IF NOT EXISTS stock_adjust REAL NOT NULL DEFAULT 0');
+
+  // Stock change history — every manual stock change (both carburant huile
+  // products and tabac), with the date it happened.
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS stock_adjustments (
+      id           SERIAL PRIMARY KEY,
+      module       TEXT NOT NULL,            -- 'produit' | 'tabac'
+      product_id   INTEGER,
+      product_name TEXT,
+      old_stock    REAL,
+      new_stock    REAL,
+      delta        REAL,
+      action       TEXT NOT NULL DEFAULT 'modification', -- 'modification' | 'suppression'
+      note         TEXT,
+      recorded_by  INTEGER REFERENCES users(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
   // Seed cuves
   const { rows: [{ c: cuvc }] } = await pgPool.query('SELECT COUNT(*) as c FROM cuves');
   if (parseInt(cuvc) === 0) {
