@@ -11,7 +11,7 @@ router.post('/login', wrap(async (req, res) => {
   if (!username || !password)
     return res.status(400).json({ error: 'Identifiant et mot de passe requis' });
 
-  const { rows } = await pool.query('SELECT * FROM users WHERE username=$1 AND is_active=1', [username]);
+  const { rows } = await pool.query('SELECT * FROM users WHERE LOWER(username)=LOWER($1) AND is_active=1', [username]);
   const user = rows[0];
   if (!user || !(await bcrypt.compare(password, user.password_hash)))
     return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' });

@@ -60,13 +60,24 @@ tr:last-child td{border-bottom:none}
 .qr-meta{font-size:12px;color:var(--muted);margin-top:4px}
 .qr-price{font-size:13px;font-weight:700;color:var(--primary);margin-top:3px}
 .hint{font-size:12.5px;color:var(--muted);margin-top:4px}
+/* QR products table */
+.qr-prev{width:54px;height:54px;display:inline-flex;align-items:center;justify-content:center}
+.qr-prev canvas,.qr-prev img{width:54px!important;height:54px!important}
+.qty-inp{width:90px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;font-family:var(--font);text-align:center}
+.qty-inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,79,207,.12);outline:none}
+/* Print sheet (hidden on screen) */
+#print-sheet{display:none}
+.lbl{border:1px dashed #bbb;border-radius:8px;padding:10px;text-align:center;break-inside:avoid}
+.lbl .lbl-qr{width:150px;height:150px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center}
+.lbl .lbl-qr canvas,.lbl .lbl-qr img{width:150px!important;height:150px!important}
+.lbl .lbl-name{font-size:13px;font-weight:700;line-height:1.2}
+.lbl .lbl-ref{font-size:10px;color:#555;margin-top:1px}
+.lbl .lbl-price{font-size:12px;font-weight:700;color:#5b4fcf;margin-top:2px}
 @media(max-width:760px){.form-row{grid-template-columns:1fr 1fr}.form-row .fld--btn{grid-column:1/-1}}
 @media print{
   body{background:#fff;padding:0}
-  .top,.back,.sec--sales,.sec--new,.no-print,.sec-hd .btn{display:none!important}
-  .sec{border:none;box-shadow:none;padding:0;margin:0}
-  .qr-grid{grid-template-columns:repeat(3,1fr);gap:8px}
-  .qr-card{border:1px dashed #bbb;break-inside:avoid;padding:10px}
+  .wrap > *{display:none!important}
+  #print-sheet{display:grid!important;grid-template-columns:repeat(3,1fr);gap:8px}
 }
 </style>
 </head>
@@ -110,11 +121,19 @@ tr:last-child td{border-bottom:none}
   <div class="sec">
     <div class="sec-hd">
       <h2>Codes QR des produits</h2>
-      <button class="btn btn-pri no-print" onclick="window.print()">🖨️ Imprimer les étiquettes</button>
+      <button class="btn btn-pri no-print" id="print-btn" onclick="printLabels()">🖨️ Imprimer les étiquettes</button>
     </div>
-    <p class="hint no-print">Chaque produit garde toujours le même QR. Imprimez, découpez et collez-le sur le rayon ou l'article. L'employé le scanne avec l'appareil photo de son téléphone — la vente s'enregistre et le stock baisse automatiquement.</p>
-    <div class="qr-grid" id="qr-grid" style="margin-top:14px"><div class="empty">Chargement…</div></div>
+    <p class="hint no-print">Pour chaque produit, indiquez le <strong>nombre d'étiquettes</strong> à imprimer, puis cliquez sur Imprimer. Chaque produit garde toujours le même QR — l'employé le scanne, la vente s'enregistre et le stock baisse automatiquement.</p>
+    <div style="overflow-x:auto;margin-top:14px">
+      <table>
+        <thead><tr><th>QR</th><th>Produit</th><th>Réf.</th><th style="text-align:right">Prix</th><th style="text-align:right">Stock</th><th style="text-align:center">Nb étiquettes</th></tr></thead>
+        <tbody id="qr-table-body"><tr><td colspan="6" class="empty">Chargement…</td></tr></tbody>
+      </table>
+    </div>
   </div>
+
+  <!-- Hidden print sheet — filled on demand by printLabels() -->
+  <div id="print-sheet"></div>
 </div>
 
 <script>
@@ -127,6 +146,13 @@ function goLogin() {
   location.href = '/?return=' + encodeURIComponent('/boutique');
 }
 if (!TOKEN) goLogin();
+// Management page — reserved for gérant and above. Limited "scan" employees can't open it.
+const USER = (() => { try { return JSON.parse(localStorage.getItem('fm_user') || 'null'); } catch { return null; } })();
+const ROLE_LVL = { scan:0, caissier:1, gerant:2, patron:3, admin:99 };
+if (USER && (ROLE_LVL[USER.role] || 0) < 2) {
+  document.body.innerHTML = '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px"><div style="font-size:50px">🔒</div><div style="font-size:19px;font-weight:800">Accès réservé</div><div style="font-size:14px;color:#6b7280;max-width:340px;line-height:1.6">La gestion de la boutique est réservée au gérant. Votre compte sert uniquement à scanner les produits.</div></div>';
+  throw new Error('forbidden');
+}
 const H = { Authorization: 'Bearer ' + TOKEN };
 const JH = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN };
 const fmt = n => (parseFloat(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -158,7 +184,7 @@ async function createProduct() {
     document.getElementById('f-name').value=''; document.getElementById('f-ref').value='';
     document.getElementById('f-price').value=''; document.getElementById('f-qty').value='';
     document.getElementById('f-name').focus();
-    loadQRs();
+    loadProducts();
   } catch(e) {
     msg.className='form-msg er'; msg.textContent='Connexion impossible.';
   } finally {
@@ -189,41 +215,71 @@ async function loadSales() {
   } catch(e) { body.innerHTML = '<tr><td colspan="5" class="empty">Erreur de chargement.</td></tr>'; }
 }
 
-// ── QR codes ─────────────────────────────────────────────
-async function loadQRs() {
-  const grid = document.getElementById('qr-grid');
-  if (typeof QRCode === 'undefined') { grid.innerHTML = '<div class="empty">Librairie QR non chargée. Rechargez la page.</div>'; return; }
+// ── QR codes table ───────────────────────────────────────
+let _products = [];
+
+function qrLink(id) { return location.origin + '/scan/' + id; }
+
+async function loadProducts() {
+  const body = document.getElementById('qr-table-body');
+  if (typeof QRCode === 'undefined') { body.innerHTML = '<tr><td colspan="6" class="empty">Librairie QR non chargée. Rechargez la page.</td></tr>'; return; }
   try {
     const r = await fetch('/api/products', { headers: H });
     if (r.status === 401) { goLogin(); return; }
-    const products = await r.json();
-    if (!products.length) { grid.innerHTML = '<div class="empty">Aucun produit. Créez-en un ci-dessus 👆</div>'; return; }
-    grid.innerHTML = '';
-    products.forEach(p => {
-      const card = document.createElement('div');
-      card.className = 'qr-card';
-      const box = document.createElement('div');
-      box.className = 'qr-box';
-      card.appendChild(box);
-      const meta = document.createElement('div');
-      meta.innerHTML = '<div class="qr-name">' + esc(p.name) + '</div>' +
-        '<div class="qr-ref">Réf. ' + esc(p.reference||'—') + '</div>' +
-        '<div class="qr-meta">Stock : ' + (parseFloat(p.stock_qty)||0) + ' ' + esc(p.unit||'') + '</div>' +
-        '<div class="qr-price">' + fmt(p.price) + ' DH</div>';
-      card.appendChild(meta);
-      grid.appendChild(card);
-      // Stable QR per product: encodes the permanent /scan/<id> link.
-      new QRCode(box, {
-        text: location.origin + '/scan/' + p.id,
-        width: 150, height: 150,
-        colorDark: '#111827', colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
+    _products = await r.json();
+    if (!_products.length) { body.innerHTML = '<tr><td colspan="6" class="empty">Aucun produit. Créez-en un ci-dessus 👆</td></tr>'; return; }
+    body.innerHTML = '';
+    _products.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><div class="qr-prev" id="prev-' + p.id + '"></div></td>' +
+        '<td style="font-weight:600">' + esc(p.name) + '</td>' +
+        '<td style="color:var(--muted)">' + esc(p.reference||'—') + '</td>' +
+        '<td style="text-align:right;font-weight:700">' + fmt(p.price) + ' DH</td>' +
+        '<td style="text-align:right">' + (parseFloat(p.stock_qty)||0) + ' ' + esc(p.unit||'') + '</td>' +
+        '<td style="text-align:center"><input class="qty-inp" type="number" min="0" step="1" value="1" id="qty-' + p.id + '"/></td>';
+      body.appendChild(tr);
+      new QRCode(document.getElementById('prev-' + p.id), {
+        text: qrLink(p.id), width: 54, height: 54,
+        colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
       });
     });
-  } catch(e) { grid.innerHTML = '<div class="empty">Erreur de chargement.</div>'; }
+  } catch(e) { body.innerHTML = '<tr><td colspan="6" class="empty">Erreur de chargement.</td></tr>'; }
 }
 
-if (TOKEN) { loadSales(); loadQRs(); }
+// Build N labels per product (per the quantity inputs) then open the print dialog.
+function printLabels() {
+  const sheet = document.getElementById('print-sheet');
+  sheet.innerHTML = '';
+  let total = 0;
+  _products.forEach(p => {
+    const n = parseInt((document.getElementById('qty-' + p.id) || {}).value, 10);
+    const count = isFinite(n) && n > 0 ? n : 0;
+    for (let i = 0; i < count; i++) {
+      const lbl = document.createElement('div');
+      lbl.className = 'lbl';
+      const qr = document.createElement('div');
+      qr.className = 'lbl-qr';
+      lbl.appendChild(qr);
+      const meta = document.createElement('div');
+      meta.innerHTML = '<div class="lbl-name">' + esc(p.name) + '</div>' +
+        '<div class="lbl-ref">Réf. ' + esc(p.reference||'—') + '</div>' +
+        '<div class="lbl-price">' + fmt(p.price) + ' DH</div>';
+      lbl.appendChild(meta);
+      sheet.appendChild(lbl);
+      new QRCode(qr, {
+        text: qrLink(p.id), width: 150, height: 150,
+        colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
+      });
+      total++;
+    }
+  });
+  if (!total) { alert('Indiquez le nombre d\'étiquettes à imprimer pour au moins un produit.'); return; }
+  // Give QR canvases a tick to render before printing.
+  setTimeout(() => { window.print(); }, 250);
+}
+
+if (TOKEN) { loadSales(); loadProducts(); }
 </script>
 </body>
 </html>

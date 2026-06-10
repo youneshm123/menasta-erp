@@ -204,16 +204,16 @@ async function start() {
   // ── API Routes ──
   // Public (any authenticated user)
   app.use('/api/auth',      require('./routes/auth'));
-  app.use('/api/shifts',    requireAuth, require('./routes/shifts'));
-  app.use('/api/pumps',     requireAuth, require('./routes/pumps'));
-  app.use('/api/credits',   requireAuth, require('./routes/credits'));
-  app.use('/api/products',  requireAuth, require('./routes/products'));
-  app.use('/api/dashboard', requireAuth, require('./routes/dashboard'));
-  app.use('/api/expenses',  requireAuth, require('./routes/expenses'));
-  app.use('/api/cafe',      requireAuth, require('./routes/cafe'));
-  app.use('/api/tabac',     requireAuth, require('./routes/tabac'));
-  app.use('/api/cuves',     requireAuth, require('./routes/cuves'));
-  app.use('/api/ai',        requireAuth, require('./routes/ai'));
+  app.use('/api/shifts',    requireAuth, requireMinRole('caissier'), require('./routes/shifts'));
+  app.use('/api/pumps',     requireAuth, requireMinRole('caissier'), require('./routes/pumps'));
+  app.use('/api/credits',   requireAuth, requireMinRole('caissier'), require('./routes/credits'));
+  app.use('/api/products',  requireAuth, require('./routes/products')); // scan role allowed on /:id + /scan-sell (guarded inside)
+  app.use('/api/dashboard', requireAuth, requireMinRole('caissier'), require('./routes/dashboard'));
+  app.use('/api/expenses',  requireAuth, requireMinRole('caissier'), require('./routes/expenses'));
+  app.use('/api/cafe',      requireAuth, requireMinRole('caissier'), require('./routes/cafe'));
+  app.use('/api/tabac',     requireAuth, requireMinRole('caissier'), require('./routes/tabac'));
+  app.use('/api/cuves',     requireAuth, requireMinRole('caissier'), require('./routes/cuves'));
+  app.use('/api/ai',        requireAuth, requireMinRole('caissier'), require('./routes/ai'));
 
   // Gérant and above
 

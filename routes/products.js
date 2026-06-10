@@ -1,15 +1,19 @@
 const router = require('express').Router();
 const { pool } = require('../db');
-const { requireAuth } = require('../middleware');
+const { requireAuth, requireMinRole } = require('../middleware');
 
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
-router.get('/', requireAuth, wrap(async (_req, res) => {
+// Staff-only guard: blocks the limited "scan" role from everything except
+// loading a product (/:id) and confirming a QR sale (/scan-sell).
+const staff = requireMinRole('caissier');
+
+router.get('/', requireAuth, staff, wrap(async (_req, res) => {
   const { rows } = await pool.query('SELECT * FROM products WHERE is_active=1 ORDER BY category, name');
   res.json(rows);
 }));
 
-router.post('/', requireAuth, wrap(async (req, res) => {
+router.post('/', requireAuth, staff, wrap(async (req, res) => {
   const { reference, name, category, unit, price, stock_qty, stock_min } = req.body || {};
   const prix = parseFloat(price);
   if (!reference || !name || !isFinite(prix) || prix <= 0) return res.status(400).json({ error: 'Référence, nom et prix valide requis' });
@@ -21,7 +25,7 @@ router.post('/', requireAuth, wrap(async (req, res) => {
   res.status(201).json(p);
 }));
 
-router.put('/:id', requireAuth, wrap(async (req, res) => {
+router.put('/:id', requireAuth, staff, wrap(async (req, res) => {
   const { rows } = await pool.query('SELECT * FROM products WHERE id=$1', [req.params.id]);
   const p = rows[0];
   if (!p) return res.status(404).json({ error: 'Produit introuvable' });
@@ -34,13 +38,13 @@ router.put('/:id', requireAuth, wrap(async (req, res) => {
   res.json(updated);
 }));
 
-router.delete('/:id', requireAuth, wrap(async (req, res) => {
+router.delete('/:id', requireAuth, staff, wrap(async (req, res) => {
   await pool.query('UPDATE products SET is_active=0 WHERE id=$1', [req.params.id]);
   res.json({ ok: true });
 }));
 
 // ── Sales ──────────────────────────────────────────────────────
-router.get('/sales', requireAuth, wrap(async (req, res) => {
+router.get('/sales', requireAuth, staff, wrap(async (req, res) => {
   const { shift_id } = req.query;
   let q, params;
   if (shift_id) {
@@ -54,7 +58,7 @@ router.get('/sales', requireAuth, wrap(async (req, res) => {
   res.json(rows);
 }));
 
-router.post('/sales', requireAuth, wrap(async (req, res) => {
+router.post('/sales', requireAuth, staff, wrap(async (req, res) => {
   const { shift_id, product_id, quantity } = req.body || {};
   const qty = parseFloat(quantity);
   if (!shift_id || !product_id || !isFinite(qty) || qty <= 0) return res.status(400).json({ error: 'Quantité valide et champs obligatoires requis' });
@@ -81,7 +85,7 @@ router.post('/sales', requireAuth, wrap(async (req, res) => {
   res.status(201).json(sale);
 }));
 
-router.delete('/sales/:id', requireAuth, wrap(async (req, res) => {
+router.delete('/sales/:id', requireAuth, staff, wrap(async (req, res) => {
   const { rows } = await pool.query(
     'SELECT ps.*,s.status as shift_status FROM product_sales ps JOIN shifts s ON s.id=ps.shift_id WHERE ps.id=$1', [req.params.id]
   );
@@ -95,7 +99,7 @@ router.delete('/sales/:id', requireAuth, wrap(async (req, res) => {
 
 // ── Boutique QR scan ───────────────────────────────────────────
 // Recent shop sales (QR scans = sales with no poste attached). Defaults to today.
-router.get('/shop-sales', requireAuth, wrap(async (req, res) => {
+router.get('/shop-sales', requireAuth, staff, wrap(async (req, res) => {
   const { date } = req.query;
   const day = (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) ? date : null;
   // When no date is provided, default to today.

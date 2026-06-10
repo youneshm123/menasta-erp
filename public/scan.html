@@ -68,6 +68,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font
 
 <script>
 const TOKEN = localStorage.getItem('fm_token');
+const USER = (() => { try { return JSON.parse(localStorage.getItem('fm_user') || 'null'); } catch { return null; } })();
+const CAN_MANAGE = USER && ['gerant','patron','admin'].includes(USER.role);
 // Extract product id from /scan/<id>
 const ID = (location.pathname.match(/\/scan\/(\d+)/) || [])[1];
 const card = document.getElementById('card');
@@ -155,7 +157,7 @@ function renderSuccess(d) {
       (d.remaining_stock > 0
         ? '<button class="btn btn-go" id="again">Vendre encore 1</button>'
         : '<div class="msg msg-er">Stock épuisé.</div>') +
-      '<button class="btn btn-ghost" onclick="location.href=\'/boutique\'">Voir les ventes du jour</button>' +
+      (CAN_MANAGE ? '<button class="btn btn-ghost" onclick="location.href=\'/boutique\'">Voir les ventes du jour</button>' : '') +
     '</div>';
   product.stock_qty = d.remaining_stock;
   const a = document.getElementById('again');

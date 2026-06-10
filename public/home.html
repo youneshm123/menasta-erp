@@ -798,8 +798,18 @@ document.getElementById('promo-msg').textContent = greet+', '+uname+' — Bienve
 document.getElementById('hd-date').textContent = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
 
 // ── Role visibility ───────────────────────────────────
-const LEVELS = { caissier:1, gerant:2, patron:3, admin:99 };
-const lvl = LEVELS[USER.role] || 1;
+const LEVELS = { scan:0, caissier:1, gerant:2, patron:3, admin:99 };
+const lvl = LEVELS[USER.role] != null ? LEVELS[USER.role] : 1;
+// Limited "scan" employee: no launchpad access — only the QR scan page.
+if (USER.role === 'scan') {
+  document.body.innerHTML = '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px;font-family:Inter,system-ui,sans-serif;background:#f4f5f9;color:#111827">'
+    + '<div style="font-size:54px">🛒</div>'
+    + '<div style="font-size:20px;font-weight:800">Compte vendeur boutique</div>'
+    + '<div style="font-size:14px;color:#6b7280;max-width:340px;line-height:1.6">Scannez le code QR d\'un produit avec l\'appareil photo de votre téléphone pour enregistrer une vente.</div>'
+    + '<button onclick="localStorage.clear();location.href=\'/\'" style="margin-top:8px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:13px;font-weight:600;padding:9px 16px;border-radius:8px;cursor:pointer;font-family:inherit">← Déconnexion</button>'
+    + '</div>';
+  throw new Error('scan-only');
+}
 if (lvl < 3) { document.getElementById('sb-patron')?.remove(); document.getElementById('sb-logs')?.remove(); }
 if (USER.role !== 'admin') document.getElementById('sb-admin')?.remove();
 

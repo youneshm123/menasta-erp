@@ -4,7 +4,7 @@ if (!JWT_SECRET) throw new Error('[MENASTA] JWT_SECRET env var manquant — serv
 
 // Role hierarchy — higher index = more permissions
 // admin = 99 → bypasses all role restrictions automatically
-const ROLE_LEVELS = { caissier: 1, gerant: 2, patron: 3, admin: 99 };
+const ROLE_LEVELS = { scan: 0, caissier: 1, gerant: 2, patron: 3, admin: 99 };
 
 function requireAuth(req, res, next) {
   const header = req.headers.authorization;
