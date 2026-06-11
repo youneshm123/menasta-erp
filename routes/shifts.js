@@ -5,8 +5,10 @@ const { computeFuelTotals } = require('../lib/shiftCalc');
 
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
-async function calcShift(shiftId) {
-  const { rows: readings } = await pool.query(`
+// db defaults to the shared pool, but the close route passes its transaction
+// client so the just-inserted end readings are visible (they aren't committed yet).
+async function calcShift(shiftId, db = pool) {
+  const { rows: readings } = await db.query(`
     SELECT s.pump_id, s.meter_value as start_val, e.meter_value as end_val, ft.price_per_liter
     FROM pump_readings s
     JOIN pump_readings e ON e.shift_id=s.shift_id AND e.pump_id=s.pump_id AND e.reading_type='end'
@@ -16,7 +18,7 @@ async function calcShift(shiftId) {
   `, [shiftId]);
 
   // Mid-shift price changes per pump (sorted by meter ascending)
-  const { rows: changes } = await pool.query(
+  const { rows: changes } = await db.query(
     'SELECT pump_id, meter_value, price_before, price_after FROM shift_price_changes WHERE shift_id=$1 ORDER BY pump_id, meter_value ASC',
     [shiftId]
   );
@@ -40,11 +42,11 @@ async function calcShift(shiftId) {
       totalFuel += Math.max(0, E - prev) * Number(segs[segs.length - 1].price_after);
     }
   }
-  const { rows: [{ t: tc }] } = await pool.query('SELECT COALESCE(SUM(amount),0) as t FROM credit_sales WHERE shift_id=$1', [shiftId]);
-  const { rows: [{ t: tp }] } = await pool.query('SELECT COALESCE(SUM(total_amount),0) as t FROM product_sales WHERE shift_id=$1', [shiftId]);
-  const { rows: [{ avance }] } = await pool.query('SELECT avance FROM shifts WHERE id=$1', [shiftId]);
-  const { rows: [{ t: te }] } = await pool.query('SELECT COALESCE(SUM(amount),0) as t FROM expenses WHERE shift_id=$1', [shiftId]);
-  const { rows: [{ t: tpay }] } = await pool.query('SELECT COALESCE(SUM(amount),0) as t FROM credit_payments WHERE shift_id=$1', [shiftId]);
+  const { rows: [{ t: tc }] } = await db.query('SELECT COALESCE(SUM(amount),0) as t FROM credit_sales WHERE shift_id=$1', [shiftId]);
+  const { rows: [{ t: tp }] } = await db.query('SELECT COALESCE(SUM(total_amount),0) as t FROM product_sales WHERE shift_id=$1', [shiftId]);
+  const { rows: [{ avance }] } = await db.query('SELECT avance FROM shifts WHERE id=$1', [shiftId]);
+  const { rows: [{ t: te }] } = await db.query('SELECT COALESCE(SUM(amount),0) as t FROM expenses WHERE shift_id=$1', [shiftId]);
+  const { rows: [{ t: tpay }] } = await db.query('SELECT COALESCE(SUM(amount),0) as t FROM credit_payments WHERE shift_id=$1', [shiftId]);
   const totalCredit   = parseFloat(tc);
   const totalProduct  = parseFloat(tp);
   const totalAvance   = parseFloat(avance) || 0;
@@ -200,7 +202,7 @@ router.post('/:id/close', requireAuth, wrap(async (req, res) => {
         ON CONFLICT (shift_id,pump_id,reading_type) DO UPDATE SET meter_value=EXCLUDED.meter_value, recorded_by=EXCLUDED.recorded_by
       `, [shift.id, r.pump_id, r.meter_value, req.user.id]);
 
-    const calc = await calcShift(shift.id);
+    const calc = await calcShift(shift.id, client);
     await client.query(`
       UPDATE shifts SET
         status='closed', closed_at=NOW(),
