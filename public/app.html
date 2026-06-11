@@ -2559,7 +2559,9 @@ async function loadStock() {
             ⚠️ Total livré (pas de jauge). saisir une jauge (page Cuves) pour le stock réel.
            </div>`}
         <div style="margin-top:10px;font-size:13px;color:#6A6D70">
-          Coût achats : <strong style="color:#333">${fmt(ft.total_cost)} MAD</strong>
+          Prix d'achat : <strong style="color:#333">${(ft.cost_per_liter||0).toFixed(2)} MAD/L</strong>
+          <button onclick="setFuelCost(${ft.id},'${esc(ft.name)}',${ft.cost_per_liter||0})" title="Modifier le prix d'achat"
+            style="margin-left:6px;border:1px solid #ddd;background:#fff;border-radius:5px;cursor:pointer;font-size:11px;padding:1px 6px">✏️</button>
         </div>
         <div style="margin-top:8px">
           ${empty ? '<span style="color:#BB0000;font-weight:700;font-size:13px">🚨 Stock vide</span>'
@@ -2575,7 +2577,7 @@ async function loadStock() {
   if (summaryEl) summaryEl.innerHTML = `
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px">
       <div style="flex:1;min-width:160px;background:#fff;border-radius:10px;padding:18px 22px;box-shadow:0 2px 8px rgba(0,0,0,.07);border-left:4px solid #E65100">
-        <div style="font-size:12px;font-weight:700;color:#6A6D70;text-transform:uppercase;margin-bottom:4px">Coût Total Achats</div>
+        <div style="font-size:12px;font-weight:700;color:#6A6D70;text-transform:uppercase;margin-bottom:4px">Coût Carburant Vendu</div>
         <div style="font-size:22px;font-weight:900;color:#E65100">${fmt(totalCost)} MAD</div>
       </div>
       <div style="flex:1;min-width:160px;background:#fff;border-radius:10px;padding:18px 22px;box-shadow:0 2px 8px rgba(0,0,0,.07);border-left:4px solid #0070F2">
@@ -2642,6 +2644,18 @@ async function loadStock() {
   // Populate the delivery modal select — use S.fuelTypes as ultimate fallback
   const dlFuelSrc = fuels.length ? fuels : S.fuelTypes;
   document.getElementById('dl-fuel').innerHTML = dlFuelSrc.map(ft => `<option value="${ft.id}">${ft.name}</option>`).join('');
+}
+
+async function setFuelCost(id, name, current) {
+  const val = prompt(`Prix d'achat de « ${name} » (MAD/L)\nActuel : ${current}\n\nNouveau prix d'achat :`, current);
+  if (val === null) return;
+  const c = parseFloat(val);
+  if (!isFinite(c) || c < 0) { toast('Prix invalide', 'er'); return; }
+  try {
+    await api('PUT', '/stock/fuel-cost/' + id, { cost_per_liter: c });
+    toast('Prix d\'achat mis à jour ✓');
+    loadStock();
+  } catch (e) { toast(e.message, 'er'); }
 }
 
 async function deleteDelivery(id) {

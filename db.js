@@ -340,6 +340,7 @@ async function initDB() {
   try { await pgPool.query('ALTER TABLE credit_sales ALTER COLUMN pump_id DROP NOT NULL'); } catch(_) {}
   await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS credit_limit REAL');
   await pgPool.query('ALTER TABLE fuel_deliveries ADD COLUMN IF NOT EXISTS numero_cheque TEXT');
+  await pgPool.query('ALTER TABLE fuel_types ADD COLUMN IF NOT EXISTS cost_per_liter REAL NOT NULL DEFAULT 0');
   await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS ice TEXT');
   await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS adresse TEXT');
   await pgPool.query('ALTER TABLE expenses ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shifts(id)');

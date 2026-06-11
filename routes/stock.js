@@ -83,15 +83,28 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
       liv_since:  Math.round(liv_since),
       sold_since: Math.round(sold_since),
       total_cost:   parseFloat(row.cost),
+      cost_per_liter: parseFloat(ft.cost_per_liter) || 0,
       deliveries
     });
   }
 
-  const grandCost = result.reduce((s, f) => s + f.total_cost, 0);
+  // Purchase cost per liter set by the owner (fuel_types.cost_per_liter);
+  // falls back to the average delivery cost when not set.
+  const avgCost = {};
+  for (const f of result) avgCost[f.id] = f.cost_per_liter > 0 ? f.cost_per_liter : (f.stock_liters > 0 ? f.total_cost / f.stock_liters : 0);
 
-  // ── Daily profit (last 30 days) = revenue that day − liters sold × avg purchase cost ──
-  const avgCost = {};                       // fuel_type_id → average purchase cost per liter
-  for (const f of result) avgCost[f.id] = f.stock_liters > 0 ? f.total_cost / f.stock_liters : 0;
+  // Real benefice = revenue − cost of fuel SOLD (all-time liters sold × purchase cost).
+  const { rows: soldRows } = await pool.query(`
+    SELECT p.fuel_type_id as ftid, COALESCE(SUM(pr_end.meter_value - pr_start.meter_value),0) as liters
+    FROM pumps p
+    JOIN pump_readings pr_start ON pr_start.pump_id=p.id AND pr_start.reading_type='start'
+    JOIN pump_readings pr_end   ON pr_end.pump_id=p.id AND pr_end.reading_type='end'
+                                AND pr_end.shift_id=pr_start.shift_id
+    JOIN shifts s ON s.id=pr_start.shift_id AND s.status='closed'
+    GROUP BY p.fuel_type_id
+  `);
+  let grandCost = 0;
+  for (const r of soldRows) grandCost += Math.max(0, parseFloat(r.liters)) * (avgCost[r.ftid] || 0);
 
   const { rows: dayLiters } = await pool.query(`
     SELECT to_char(s.opened_at,'YYYY-MM-DD') as d, p.fuel_type_id as ftid,
@@ -152,6 +165,14 @@ router.post('/delivery', requireAuth, wrap(async (req, res) => {
 router.delete('/delivery/:id', requireAuth, wrap(async (req, res) => {
   await pool.query('DELETE FROM cuve_livraisons WHERE id=$1', [Number(req.params.id)]);
   res.json({ ok: true });
+}));
+
+// Set the purchase cost per liter for a fuel (drives the real benefice).
+router.put('/fuel-cost/:id', requireAuth, wrap(async (req, res) => {
+  const cost = parseFloat(req.body && req.body.cost_per_liter);
+  if (!isFinite(cost) || cost < 0) return res.status(400).json({ error: "Coût d'achat invalide" });
+  await pool.query('UPDATE fuel_types SET cost_per_liter=$1 WHERE id=$2', [cost, Number(req.params.id)]);
+  res.json({ ok: true, cost_per_liter: cost });
 }));
 
 module.exports = router;
