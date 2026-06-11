@@ -40,7 +40,7 @@
 #print-overlay.open{display:flex}
 #print-frame{background:#fff;width:794px;max-width:100%;border-radius:4px;padding:40px;font-family:"Times New Roman",serif}
 @media print{
-  @page{size:A4 portrait;margin:8mm}
+  @page{size:A4 portrait;margin:10mm}
   body>*{display:none!important}
   #print-overlay{display:block!important;position:static;background:none;padding:0;overflow:visible}
   #print-overlay .print-actions{display:none!important}
@@ -838,7 +838,7 @@ function buildPrintHtml(f) {
     </tr>`).join('');
 
   return `
-  <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:780px;margin:0 auto;display:flex;flex-direction:column;min-height:273mm;box-sizing:border-box">
+  <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:780px;margin:0 auto;display:flex;flex-direction:column;min-height:255mm;box-sizing:border-box">
 
     <!-- EN-TÊTE -->
     <div style="text-align:center;margin-bottom:8px;line-height:1.2">
