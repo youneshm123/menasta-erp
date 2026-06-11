@@ -552,7 +552,7 @@ async function loadListe() {
       <td class="num">${fmt(f.montant_tva)} MAD</td>
       <td class="num fw8 c-b">${fmt(f.total_ttc)} MAD</td>
       <td class="num" style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-p btn-xs" onclick="printFacture(${f.id})">🖨️</button>
+        <button class="btn btn-p btn-xs" style="padding:3px 8px;font-weight:700" onclick="printFacture(${f.id})">🖨️ Imprimer</button>
         <button class="btn btn-xs" style="background:#dcfce7;color:#15803d;border:none;cursor:pointer;padding:3px 8px;border-radius:5px;font-weight:700" onclick="dlPDF(${f.id})">📥 PDF</button>
         <button class="btn btn-g btn-xs" onclick="editFacture(${f.id})">✏️</button>
         <button class="btn btn-d btn-xs" onclick="deleteFacture(${f.id})">🗑️</button>
