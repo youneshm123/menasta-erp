@@ -75,7 +75,6 @@
     navLink('fuel',             'Carburant',  '/app') +
     navLink('coffee',           'Café',       '/cafe') +
     navLink('cigarette',        'Tabac',      '/tabac') +
-    navLink('gauge',            'Cuves',      '/cuves') +
     '    </div>' +
     '    <div class="ds-nav-grp">' +
     '      <div class="ds-nav-grp-lbl">Finances</div>' +

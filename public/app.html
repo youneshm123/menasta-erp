@@ -47,7 +47,6 @@
     <a href="/cafe"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="coffee"></i></span> Café</a>
     <a href="/bank"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="landmark"></i></span> Banque</a>
     <a href="/tabac"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="cigarette"></i></span> Tabac</a>
-    <a href="/cuves"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="gauge"></i></span> Cuves</a>
     <a href="/factures" class="fs-nav-item"><span class="fn-icon"><i data-lucide="receipt-text"></i></span> Factures</a>
     <a href="/admin"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="settings"></i></span> Admin</a>
     <a href="/ai"       class="fs-nav-item"><span class="fn-icon"><i data-lucide="bot"></i></span> IA</a>
@@ -2552,12 +2551,12 @@ async function loadStock() {
         <div style="font-size:15px;color:#6A6D70;margin-top:2px">Litres en stock &nbsp;·&nbsp; <strong style="color:${color}">${tonnes} T</strong></div>
         ${hasJauge ? `
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;font-size:12px;color:#6A6D70;line-height:1.7">
-          Jauge du <strong>${ft.jauge_date}</strong><br/>
+          Jauge du <strong>${(ft.jauge_date||'').toString().slice(0,10)}</strong><br/>
           <span style="color:#188918">+ ${ft.liv_since.toLocaleString('fr-FR')} L livrés</span> &nbsp;·&nbsp;
           <span style="color:#0070F2">− ${ft.sold_since.toLocaleString('fr-FR')} L vendus</span>
         </div>`
         : `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;font-size:12px;color:#E65100;line-height:1.5">
-            ⚠️ Total livré (pas de jauge). <a href="/cuves" style="color:#0070F2;font-weight:700">Saisir une jauge</a> pour le stock réel.
+            ⚠️ Total livré (pas de jauge). saisir une jauge (page Cuves) pour le stock réel.
            </div>`}
         <div style="margin-top:10px;font-size:13px;color:#6A6D70">
           Coût achats : <strong style="color:#333">${fmt(ft.total_cost)} MAD</strong>
@@ -2625,7 +2624,7 @@ async function loadStock() {
   document.getElementById('stock-body').innerHTML = allDeliveries.map(d => {
     const totalCostRow = d.cost_per_liter ? d.quantity_liters * d.cost_per_liter : null;
     return `<tr>
-      <td class="muted sm">${d.delivery_date}</td>
+      <td class="muted sm">${(d.delivery_date||'').toString().slice(0,10)}</td>
       <td><span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${d.color}"></span>${d.fuel_name}</span></td>
       <td class="num fw7 c-b">${d.quantity_liters.toLocaleString('fr-FR', {maximumFractionDigits:0})} L</td>
       <td class="num">${d.cost_per_liter ? d.cost_per_liter.toFixed(3) + ' MAD/L' : '—'}</td>
