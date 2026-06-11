@@ -40,10 +40,12 @@
 #print-overlay.open{display:flex}
 #print-frame{background:#fff;width:794px;max-width:100%;border-radius:4px;padding:40px;font-family:"Times New Roman",serif}
 @media print{
+  @page{size:A4 portrait;margin:8mm}
   body>*{display:none!important}
   #print-overlay{display:block!important;position:static;background:none;padding:0;overflow:visible}
   #print-overlay .print-actions{display:none!important}
-  #print-frame{box-shadow:none;border-radius:0;width:100%;max-width:100%}
+  #print-frame{box-shadow:none;border-radius:0;width:100%;max-width:100%;padding:0;margin:0}
+  #print-frame>div{max-width:100%!important;padding:0!important;margin:0!important}
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
