@@ -103,8 +103,14 @@ router.post('/', requireAuth, wrap(async (req, res) => {
       return res.status(400).json({ error: 'Valeurs de ligne invalides (quantité, prix ou TVA)' });
   }
 
-  const yymm = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
-  const { rows: [last] } = await pool.query(`SELECT COUNT(*) as c FROM factures WHERE facture_date >= $1`, [`${yymm}-01`]);
+  // Next sequence = max existing number for this month's prefix + 1.
+  // (Counting rows by date collides with existing numbers after deletions
+  //  or when facture_date and the F-YYMM prefix disagree.)
+  const now = new Date();
+  const prefix = `F-${String(now.getFullYear()).slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}M`;
+  const { rows: [last] } = await pool.query(
+    `SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM '[0-9]+$') AS INTEGER)), 0) AS c
+     FROM factures WHERE numero LIKE $1`, [prefix + '%']);
   const numero = genNumero(parseInt(last.c));
 
   let total_ht = 0, montant_tva = 0, total_ttc = 0;
