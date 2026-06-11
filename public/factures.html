@@ -759,6 +759,8 @@ async function printFacture(id) {
   const html = buildPrintHtml(f);
   document.getElementById('print-frame').innerHTML = html;
   document.getElementById('print-overlay').classList.add('open');
+  // Open the print dialog automatically once the facture is rendered.
+  setTimeout(() => window.print(), 300);
 }
 function closePrint() { document.getElementById('print-overlay').classList.remove('open'); }
 
