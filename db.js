@@ -392,6 +392,21 @@ async function initDB() {
     )
   `);
 
+  // Mid-shift fuel price changes: an intermediate meter reading per pump at the
+  // moment the price changed, so revenue splits old-price vs new-price.
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS shift_price_changes (
+      id           SERIAL PRIMARY KEY,
+      shift_id     INTEGER NOT NULL REFERENCES shifts(id),
+      pump_id      INTEGER NOT NULL REFERENCES pumps(id),
+      meter_value  REAL NOT NULL,
+      price_before REAL NOT NULL,
+      price_after  REAL NOT NULL,
+      recorded_by  INTEGER REFERENCES users(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
   // Seed cuves
   const { rows: [{ c: cuvc }] } = await pgPool.query('SELECT COUNT(*) as c FROM cuves');
   if (parseInt(cuvc) === 0) {

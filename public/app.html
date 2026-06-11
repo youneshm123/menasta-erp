@@ -503,6 +503,26 @@
   </div>
 </div>
 
+<!-- MID-SHIFT PRICE CHANGE -->
+<div class="overlay" id="m-price-change">
+  <div class="modal">
+    <div class="modal-hd"><span>💱</span><h3>Changement de Prix (en cours de poste)</h3><button class="x" onclick="closeModal('m-price-change')">×</button></div>
+    <div class="modal-body">
+      <div class="msg msg-i mb3" style="font-size:12.5px;">Le nouveau prix s'applique à <strong>toutes les pompes</strong> de ce carburant. Saisissez le compteur actuel de chaque pompe (au moment du changement) — le CA sera calculé : litres avant × ancien prix + litres après × nouveau prix.</div>
+      <div class="fgrid mb3">
+        <div class="fg"><label>Carburant *</label><select id="pc-fuel" onchange="pcRenderPumps()"></select></div>
+        <div class="fg"><label>Nouveau Prix (MAD/L) *</label><input type="number" id="pc-price" step="0.001" min="0" placeholder="ex: 11.50" style="font-size:18px;font-weight:800;color:var(--blue);"/></div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Compteur actuel par pompe</div>
+      <div id="pc-pumps"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-price-change')">Annuler</button>
+      <button class="btn btn-p" onclick="submitPriceChange()">✅ Enregistrer le changement</button>
+    </div>
+  </div>
+</div>
+
 <!-- SELL PRODUCT -->
 <div class="overlay" id="m-sell-product">
   <div class="modal">
@@ -777,6 +797,7 @@ const pageActions = {
     if (S.activeShift) {
       el.innerHTML = `<button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">🤝 Vente Crédit</button>
         <button class="btn btn-g btn-sm" onclick="openModal('m-sell-product')">🛒 Vente Produit</button>
+        <button class="btn btn-p btn-sm" onclick="openPriceChange()">💱 Changer Prix</button>
         <button class="btn btn-d btn-sm" onclick="openModal('m-close-shift')">🔒 Fermer Poste</button>`;
     } else {
       el.innerHTML = `<button class="btn btn-s" onclick="prepareOpenShift()">▶️ Ouvrir un Poste</button>`;
@@ -899,6 +920,15 @@ async function loadShiftPage() {
   // Ensure product catalogue is loaded for the product-sale modal autocomplete
   try { S.products = await api('GET', '/products'); } catch(e) { /* keep cached */ }
 
+  // Mid-shift price changes per pump (for live CA segmentation + display)
+  _pcByPump = {};
+  for (const c of (shift.price_changes || [])) {
+    (_pcByPump[c.pump_id] = _pcByPump[c.pump_id] || []).push({
+      meter: parseFloat(c.meter_value), price_before: parseFloat(c.price_before), price_after: parseFloat(c.price_after)
+    });
+  }
+  for (const k in _pcByPump) _pcByPump[k].sort((a, b) => a.meter - b.meter);
+
   // Build pump readings map: start/end per pump
   const readMap = {};
   for (const r of shift.pump_readings) {
@@ -917,14 +947,17 @@ async function loadShiftPage() {
     const fuelBg    = fuelLow.includes('gazoil') ? '#EFF6FF' : fuelLow.includes('essence') ? '#ECFDF5' : '#F5F3FF';
     const startFmt  = r.start != null ? r.start.toLocaleString('fr-FR',{minimumFractionDigits:1}) : '—';
     const savedEnd  = r.end != null ? r.end : (localStorage.getItem('er-' + shift.id + '-' + pid) || '');
+    const pcNote = (_pcByPump[pid] || []).map(c =>
+      `<div style="font-size:11px;color:var(--orange);padding:2px 18px 0;">💱 Prix changé à <strong>${c.price_after.toFixed(3)} MAD/L</strong> au compteur <strong>${c.meter.toLocaleString('fr-FR',{minimumFractionDigits:1})}</strong> (avant : ${c.price_before.toFixed(3)})</div>`
+    ).join('');
     return `
-    <div style="display:flex;align-items:center;gap:16px;padding:11px 18px;border-bottom:1px solid var(--border-lt);">
+    <div style="display:flex;align-items:center;gap:16px;padding:11px 18px;border-bottom:${pcNote?'0':'1px solid var(--border-lt)'};">
       <div style="font-size:13.5px;font-weight:800;color:var(--text);min-width:70px;">${r.name}</div>
       <span style="background:${fuelBg};color:${fuelColor};font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;">${r.fuel}</span>
       <span style="font-size:12px;color:var(--muted);flex:1;">Début : <strong style="color:var(--text);font-variant-numeric:tabular-nums;">${startFmt}</strong></span>
       <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${r.price?.toFixed(3)} MAD/L</span>
       <input type="number" class="end-reading" data-pump="${pid}" data-start="${r.start||0}" data-price="${r.price||0}" step="0.1" placeholder="Fin…" value="${savedEnd}" oninput="calcLiveCA();localStorage.setItem('er-${shift.id}-${pid}',this.value)" style="width:130px;padding:7px 10px;border:1.5px solid ${savedEnd?'var(--green)':'var(--border)'};border-radius:var(--r);font-size:14px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font);outline:none;" onfocus="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,.1)'" onblur="this.style.borderColor=this.value?'var(--green)':'var(--border)';this.style.boxShadow='none'"/>
-    </div>`;
+    </div>${pcNote ? `<div style="padding-bottom:9px;border-bottom:1px solid var(--border-lt);">${pcNote}</div>` : ''}`;
   }).join('');
 
   const totalCredit    = shift.credit_sales.reduce((s, r) => s + r.amount, 0);
@@ -1732,13 +1765,23 @@ function acOpen(ns) {
 function acClose(ns) { _acPortalHide(); }
 
 // ─── LIVE CA CALCULATOR ─────────────────────────────────────
+let _pcByPump = {};  // pump_id -> [{meter, price_before, price_after}] for mid-shift price changes
 function calcLiveCA() {
   let ca = 0;
   document.querySelectorAll('.end-reading').forEach(inp => {
     const start = parseFloat(inp.dataset.start) || 0;
     const end   = parseFloat(inp.value);
     const price = parseFloat(inp.dataset.price) || 0;
-    if (!isNaN(end) && end >= start) ca += (end - start) * price;
+    if (isNaN(end) || end < start) return;
+    const segs = _pcByPump[inp.dataset.pump];
+    if (!segs || !segs.length) { ca += (end - start) * price; return; }
+    let prev = start;
+    for (const c of segs) {
+      const m = Math.min(Math.max(c.meter, start), end);
+      ca += Math.max(0, m - prev) * c.price_before;
+      prev = Math.max(prev, m);
+    }
+    ca += Math.max(0, end - prev) * segs[segs.length - 1].price_after;
   });
   const caEl  = document.getElementById('live-ca');
   const netEl = document.getElementById('live-net');
@@ -1748,6 +1791,71 @@ function calcLiveCA() {
     netEl.textContent = fmt(net) + ' MAD';
     netEl.style.color = net >= 0 ? '#4ADE80' : '#F87171';
   }
+}
+
+// ─── MID-SHIFT PRICE CHANGE ─────────────────────────────────
+function _shiftFuels() {
+  const shift = S.activeShift; if (!shift) return [];
+  const seen = {}, out = [];
+  for (const r of shift.pump_readings || []) {
+    if (r.reading_type === 'start' && !seen[r.fuel_name]) {
+      seen[r.fuel_name] = 1;
+      const ft = (S.fuelTypes || []).find(f => f.name === r.fuel_name);
+      if (ft) out.push({ id: ft.id, name: r.fuel_name });
+    }
+  }
+  return out;
+}
+
+function openPriceChange() {
+  if (!S.activeShift) { toast('Aucun poste ouvert', 'wn'); return; }
+  const fuels = _shiftFuels();
+  if (!fuels.length) { toast('Aucun carburant dans ce poste', 'wn'); return; }
+  document.getElementById('pc-fuel').innerHTML = fuels.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+  document.getElementById('pc-price').value = '';
+  pcRenderPumps();
+  openModal('m-price-change');
+}
+
+function pcRenderPumps() {
+  const ftId = parseInt(document.getElementById('pc-fuel').value);
+  const ft = (S.fuelTypes || []).find(f => f.id === ftId);
+  const fuelName = ft ? ft.name : '';
+  const shift = S.activeShift; if (!shift) return;
+  const seen = {}, pumps = [];
+  for (const r of shift.pump_readings || []) {
+    if (r.reading_type === 'start' && r.fuel_name === fuelName && !seen[r.pump_id]) {
+      seen[r.pump_id] = 1; pumps.push({ id: r.pump_id, name: r.pump_name, start: r.meter_value });
+    }
+  }
+  document.getElementById('pc-pumps').innerHTML = pumps.map(p => {
+    const liveEnd = (document.querySelector('.end-reading[data-pump="' + p.id + '"]') || {}).value || '';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border-lt);">
+      <div style="font-weight:700;min-width:80px;">${p.name}</div>
+      <span style="font-size:11px;color:var(--muted);flex:1;">Début : ${Number(p.start).toLocaleString('fr-FR',{minimumFractionDigits:1})}</span>
+      <input type="number" class="pc-meter" data-pump="${p.id}" step="0.1" value="${liveEnd}" placeholder="Compteur maintenant"
+        style="width:170px;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:700;text-align:right;font-family:var(--font);"/>
+    </div>`;
+  }).join('') || '<div class="muted" style="padding:10px">Aucune pompe pour ce carburant.</div>';
+}
+
+async function submitPriceChange() {
+  const ftId = parseInt(document.getElementById('pc-fuel').value);
+  const np   = parseFloat(document.getElementById('pc-price').value);
+  if (!ftId) { toast('Choisissez le carburant', 'wn'); return; }
+  if (!np || np <= 0) { toast('Nouveau prix invalide', 'er'); return; }
+  const readings = [];
+  document.querySelectorAll('.pc-meter').forEach(inp => {
+    const v = parseFloat(inp.value);
+    if (isFinite(v) && v >= 0) readings.push({ pump_id: parseInt(inp.dataset.pump), meter_value: v });
+  });
+  if (!readings.length) { toast('Saisissez au moins un compteur', 'er'); return; }
+  try {
+    await api('POST', '/shifts/' + S.activeShift.id + '/price-change', { fuel_type_id: ftId, new_price: np, readings });
+    closeModal('m-price-change');
+    toast('Changement de prix enregistré ✓', 'g');
+    loadShiftPage();
+  } catch (e) { toast(e.message, 'er'); }
 }
 
 // ─── FUEL TOGGLE ────────────────────────────────────────────

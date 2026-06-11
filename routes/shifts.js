@@ -7,7 +7,7 @@ const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
 async function calcShift(shiftId) {
   const { rows: readings } = await pool.query(`
-    SELECT s.meter_value as start_val, e.meter_value as end_val, ft.price_per_liter
+    SELECT s.pump_id, s.meter_value as start_val, e.meter_value as end_val, ft.price_per_liter
     FROM pump_readings s
     JOIN pump_readings e ON e.shift_id=s.shift_id AND e.pump_id=s.pump_id AND e.reading_type='end'
     JOIN pumps p         ON p.id=s.pump_id
@@ -15,7 +15,31 @@ async function calcShift(shiftId) {
     WHERE s.shift_id=$1 AND s.reading_type='start'
   `, [shiftId]);
 
-  const { totalLiters, totalFuel } = computeFuelTotals(readings);
+  // Mid-shift price changes per pump (sorted by meter ascending)
+  const { rows: changes } = await pool.query(
+    'SELECT pump_id, meter_value, price_before, price_after FROM shift_price_changes WHERE shift_id=$1 ORDER BY pump_id, meter_value ASC',
+    [shiftId]
+  );
+  const chByPump = {};
+  for (const c of changes) (chByPump[c.pump_id] = chByPump[c.pump_id] || []).push(c);
+
+  let totalLiters = 0, totalFuel = 0;
+  for (const r of readings) {
+    const S = Number(r.start_val), E = Number(r.end_val);
+    totalLiters += Math.max(0, E - S);
+    const segs = chByPump[r.pump_id];
+    if (!segs || !segs.length) {
+      totalFuel += Math.max(0, E - S) * Number(r.price_per_liter);
+    } else {
+      let prev = S;
+      for (const c of segs) {
+        const m = Math.min(Math.max(Number(c.meter_value), S), E);
+        totalFuel += Math.max(0, m - prev) * Number(c.price_before);
+        prev = Math.max(prev, m);
+      }
+      totalFuel += Math.max(0, E - prev) * Number(segs[segs.length - 1].price_after);
+    }
+  }
   const { rows: [{ t: tc }] } = await pool.query('SELECT COALESCE(SUM(amount),0) as t FROM credit_sales WHERE shift_id=$1', [shiftId]);
   const { rows: [{ t: tp }] } = await pool.query('SELECT COALESCE(SUM(total_amount),0) as t FROM product_sales WHERE shift_id=$1', [shiftId]);
   const { rows: [{ avance }] } = await pool.query('SELECT avance FROM shifts WHERE id=$1', [shiftId]);
@@ -71,6 +95,15 @@ async function shiftDetail(shift) {
     [shift.id]
   );
   shift.expenses = exp;
+
+  const { rows: pc } = await pool.query(`
+    SELECT pc.*, p.name as pump_name, ft.name as fuel_name
+    FROM shift_price_changes pc
+    JOIN pumps p ON p.id=pc.pump_id
+    JOIN fuel_types ft ON ft.id=p.fuel_type_id
+    WHERE pc.shift_id=$1 ORDER BY pc.created_at, pc.pump_id
+  `, [shift.id]);
+  shift.price_changes = pc;
 
   return shift;
 }
@@ -185,6 +218,44 @@ router.post('/:id/close', requireAuth, wrap(async (req, res) => {
   } finally {
     client.release();
   }
+}));
+
+// ── Mid-shift fuel price change (applies to all pumps of a fuel) ──
+router.post('/:id/price-change', requireAuth, wrap(async (req, res) => {
+  const { fuel_type_id, new_price, readings } = req.body || {};
+  const np = parseFloat(new_price);
+  if (!fuel_type_id || !isFinite(np) || np <= 0) return res.status(400).json({ error: 'Carburant et nouveau prix valides requis' });
+  if (!Array.isArray(readings) || !readings.length) return res.status(400).json({ error: 'Compteurs requis' });
+
+  const { rows: sh } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='open'", [req.params.id]);
+  if (!sh.length) return res.status(404).json({ error: 'Poste ouvert introuvable' });
+  const { rows: [ft] } = await pool.query('SELECT * FROM fuel_types WHERE id=$1', [fuel_type_id]);
+  if (!ft) return res.status(404).json({ error: 'Carburant introuvable' });
+  const priceBefore = parseFloat(ft.price_per_liter);
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const r of readings) {
+      const mv = parseFloat(r.meter_value);
+      if (!isFinite(mv) || mv < 0) continue;
+      await client.query(
+        'INSERT INTO shift_price_changes (shift_id,pump_id,meter_value,price_before,price_after,recorded_by) VALUES ($1,$2,$3,$4,$5,$6)',
+        [req.params.id, r.pump_id, mv, priceBefore, np, req.user.id]
+      );
+    }
+    // The new price becomes the official price going forward.
+    await client.query('UPDATE fuel_types SET price_per_liter=$1 WHERE id=$2', [np, fuel_type_id]);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+
+  const { rows: [shift] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [req.params.id]);
+  res.json(await shiftDetail(shift));
 }));
 
 router.post('/:id/reopen', requireAuth, wrap(async (req, res) => {
