@@ -287,7 +287,10 @@ router.post('/reconcile/session', requireAuth, wrap(async (req, res) => {
 // Parse a pasted bank statement into structured rows (does NOT save).
 router.post('/import/parse', requireAuth, wrap(async (req, res) => {
   const text = String(req.body?.text || '').trim();
-  if (text.length < 5) return res.status(400).json({ error: 'Collez le contenu du relevé' });
+  let pdf_base64 = req.body && req.body.pdf_base64 ? String(req.body.pdf_base64) : '';
+  // Accept a full data URL (data:application/pdf;base64,XXXX) or bare base64
+  if (pdf_base64.includes(',')) pdf_base64 = pdf_base64.slice(pdf_base64.indexOf(',') + 1);
+  if (!pdf_base64 && text.length < 5) return res.status(400).json({ error: 'Collez le relevé ou chargez un PDF' });
 
   // Known names → help the AI map to the "Client" category
   const { rows: cc } = await pool.query('SELECT name FROM credit_clients WHERE is_active=1');
@@ -296,7 +299,7 @@ router.post('/import/parse', requireAuth, wrap(async (req, res) => {
   const names = [...new Set([...cc, ...fc].map(c => c.name).filter(Boolean))].slice(0, 150);
   const { rows: rules } = await pool.query('SELECT signature, category, txn_type FROM bank_import_rules');
 
-  const prompt = `Tu es un expert comptable marocain. Analyse ce relevé bancaire et extrais CHAQUE opération.
+  const instructions = `Tu es un expert comptable marocain. Analyse ce relevé bancaire et extrais CHAQUE opération.
 Réponds UNIQUEMENT par un tableau JSON valide (rien d'autre), chaque élément ainsi:
 {"date":"YYYY-MM-DD","description":"texte","amount":<nombre positif>,"direction":"in"|"out","type":"<${TXN_TYPES.join('|')}>","check_number":<string|null>,"beneficiary":<string|null>,"category":"<${BANK_CATS.join('|')}>"}
 RÈGLES:
@@ -304,22 +307,28 @@ RÈGLES:
 - type: dépôt espèces=depot, retrait=retrait, virement reçu=virement_in, virement émis/payé=virement_out, chèque reçu/remis=cheque_in, chèque émis/payé=cheque_out.
 - Si un numéro de chèque apparaît, mets-le dans check_number.
 - category mots-clés: AFRIQUIA/SHELL/TOTAL/PETROM/WINXO=Carburant ; SALAIRE/PAIE/CNSS=Salaires ; LOYER=Loyer ; IMPOT/TVA/DGI/PATENTE=Impôts ; AGIOS/COMMISSION/FRAIS/INTERET=Banque.
-- Clients connus (=> category "Client"): ${names.join(', ') || 'aucun'}.
-RELEVÉ:
-${text.slice(0, 12000)}`;
+- Clients connus (=> category "Client"): ${names.join(', ') || 'aucun'}.`;
+
+  // Either read the PDF directly (handles scanned/image PDFs) or parse pasted text.
+  const userContent = pdf_base64
+    ? [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdf_base64 } },
+        { type: 'text', text: instructions + '\nLe relevé est dans le document PDF ci-joint. Lis toutes les pages.' }
+      ]
+    : instructions + '\nRELEVÉ:\n' + text.slice(0, 12000);
 
   let parsed = [];
   try {
     const msg = await aiClient.messages.create({
-      model: 'claude-sonnet-4-6', max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }]
+      model: 'claude-sonnet-4-6', max_tokens: 8000,
+      messages: [{ role: 'user', content: userContent }]
     });
     let t = (msg.content[0]?.text || '').trim();
     const a = t.indexOf('['), b = t.lastIndexOf(']');
     if (a >= 0 && b > a) t = t.slice(a, b + 1);
     parsed = JSON.parse(t);
   } catch (e) {
-    return res.status(502).json({ error: "Analyse IA échouée. Vérifiez le texte collé. (" + e.message + ")" });
+    return res.status(502).json({ error: "Analyse IA échouée. Réessayez ou collez le texte. (" + e.message + ")" });
   }
   if (!Array.isArray(parsed)) parsed = [];
 

@@ -69,6 +69,9 @@ async function start() {
   });
 
   // ── Body parsing ──
+  // Bank statement PDFs are sent as base64 for AI reading — allow a larger body
+  // on that route only (must be registered before the global 1mb parser).
+  app.use('/api/bank/import', express.json({ limit: '25mb' }));
   app.use(express.json({ limit: '1mb' }));
 
   // ── Rate limiting ──

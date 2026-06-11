@@ -880,40 +880,31 @@ function irBackToPaste() {
 // ── PDF → texte (extraction côté navigateur via pdf.js) ──
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.min.js';
 
+// Send the PDF straight to the AI, which reads it (text OR scanned) and returns
+// the operations — then jump to the preview step.
 async function onReleveFile(ev) {
   const file = ev.target.files && ev.target.files[0];
   if (!file) return;
   const statusEl = document.getElementById('ir-pdf-status');
-  if (!window.pdfjsLib) { statusEl.textContent = '⚠️ Lecteur PDF non chargé — collez le texte.'; return; }
-  statusEl.textContent = '⏳ Lecture du PDF…';
+  if (file.type && file.type.indexOf('pdf') === -1) { statusEl.textContent = '⚠️ Choisissez un fichier PDF.'; ev.target.value = ''; return; }
+  statusEl.textContent = '⏳ Lecture du PDF par l\'IA… (quelques secondes)';
   try {
-    const buf = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    let text = '';
-    for (let p = 1; p <= pdf.numPages; p++) {
-      const page = await pdf.getPage(p);
-      const content = await page.getTextContent();
-      // Group items into lines by their vertical position
-      let lastY = null, line = '';
-      const lines = [];
-      for (const it of content.items) {
-        const y = it.transform[5];
-        if (lastY !== null && Math.abs(y - lastY) > 2) { lines.push(line.trim()); line = ''; }
-        line += it.str + ' ';
-        lastY = y;
-      }
-      if (line.trim()) lines.push(line.trim());
-      text += lines.join('\n') + '\n';
-    }
-    text = text.trim();
-    if (!text || text.length < 5) {
-      statusEl.textContent = '⚠️ Aucun texte trouvé (PDF scanné ?) — collez le texte manuellement.';
-      return;
-    }
-    document.getElementById('ir-text').value = text;
-    statusEl.textContent = `✓ ${file.name} — ${pdf.numPages} page(s) lue(s). Cliquez « Analyser ».`;
+    const b64 = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));   // data:application/pdf;base64,XXXX
+      r.onerror = () => reject(new Error('Lecture du fichier impossible'));
+      r.readAsDataURL(file);
+    });
+    const data = await api('POST', '/bank/import/parse', { pdf_base64: b64 });
+    _irRows = (data.rows || []).map(r => ({ ...r }));
+    if (!_irRows.length) { statusEl.textContent = '⚠️ Aucune opération détectée dans le PDF.'; return; }
+    statusEl.textContent = `✓ ${file.name} lu — ${_irRows.length} opération(s) détectée(s).`;
+    document.getElementById('ir-step-paste').style.display = 'none';
+    document.getElementById('ir-step-preview').style.display = '';
+    document.getElementById('ir-commit-btn').style.display = '';
+    renderImportPreview();
   } catch (e) {
-    statusEl.textContent = '⚠️ Erreur lecture PDF : ' + e.message;
+    statusEl.textContent = '⚠️ ' + (e.message || 'Échec de la lecture du PDF');
   } finally {
     ev.target.value = '';
   }
