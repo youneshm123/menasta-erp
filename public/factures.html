@@ -142,7 +142,7 @@
               <th style="width:80px">Code Prod.</th>
               <th>Désignation</th>
               <th style="width:120px;background:#FFF7ED;color:#C2410C" title="Entrez le montant TTC → quantité calculée auto">💰 Montant TTC</th>
-              <th style="width:100px">Prix U. HT</th>
+              <th style="width:100px">Prix U. TTC</th>
               <th style="width:70px">TVA %</th>
               <th style="width:90px;background:#F0FDF4;color:#15803D" title="Calculé automatiquement">Qté (auto)</th>
               <th style="width:90px" class="num">Total HT</th>
@@ -584,7 +584,7 @@ function addLigne() {
     <td><input type="text" placeholder="100002" data-f="code" oninput="recalcLignes()"/></td>
     <td><input type="text" placeholder="GASOIL" data-f="designation" oninput="recalcLignes()"/></td>
     <td><input type="number" min="0" step="0.01" data-f="montant_saisi" placeholder="ex: 5000.00" title="Entrez le montant TTC → quantité auto" style="background:#FFF7ED;border-color:#FB923C;font-weight:700;font-size:14px" oninput="calcQtyFromMontant(${id})"/></td>
-    <td><input type="number" value="0" min="0" step="0.01" data-f="prix_ht" oninput="calcQtyFromMontant(${id})"/></td>
+    <td><input type="number" value="0" min="0" step="0.01" data-f="prix_ttc" oninput="calcQtyFromMontant(${id})"/></td>
     <td><input type="number" value="10" min="0" step="1" data-f="taux_tva" oninput="calcQtyFromMontant(${id})"/></td>
     <td><input type="number" value="0" min="0" step="0.0001" data-f="quantite" id="qty-${id}" readonly style="background:#F0FDF4;border-color:#86EFAC;color:#15803D;font-weight:700;cursor:default" title="Calculé auto depuis Montant TTC"/></td>
     <td class="num" id="l-ht-${id}" style="font-weight:700">0.00</td>
@@ -598,11 +598,9 @@ function calcQtyFromMontant(id) {
   const tr = document.getElementById('ligne-' + id);
   if (!tr) return;
   const montant = parseFloat(tr.querySelector('[data-f=montant_saisi]').value) || 0;
-  const prix    = parseFloat(tr.querySelector('[data-f=prix_ht]').value) || 0;
-  const tva     = parseFloat(tr.querySelector('[data-f=taux_tva]').value) || 0;
+  const prixTtc = parseFloat(tr.querySelector('[data-f=prix_ttc]').value) || 0;
   const qtyEl   = tr.querySelector('[data-f=quantite]');
-  if (montant && prix) {
-    const prixTtc = prix * (1 + tva / 100);
+  if (montant && prixTtc) {
     const qty = montant / prixTtc;
     qtyEl.value = fmt(qty, 4);
   } else if (!montant) {
@@ -621,10 +619,10 @@ function recalcLigne(id) {
   const tr = document.getElementById('ligne-' + id);
   if (!tr) return;
   const q = parseFloat(tr.querySelector('[data-f=quantite]').value) || 0;
-  const p = parseFloat(tr.querySelector('[data-f=prix_ht]').value) || 0;
+  const pTtc = parseFloat(tr.querySelector('[data-f=prix_ttc]').value) || 0;
   const tva = parseFloat(tr.querySelector('[data-f=taux_tva]').value) || 0;
-  const ht = q * p;
-  const ttc = ht * (1 + tva / 100);
+  const ttc = q * pTtc;
+  const ht = ttc / (1 + tva / 100);
   document.getElementById('l-ht-' + id).textContent = fmt(ht);
   document.getElementById('l-ttc-' + id).textContent = fmt(ttc);
   recalcLignes();
@@ -635,11 +633,12 @@ function recalcLignes() {
   document.querySelectorAll('#lignes-body tr').forEach(tr => {
     const id = tr.id.replace('ligne-', '');
     const q = parseFloat(tr.querySelector('[data-f=quantite]')?.value) || 0;
-    const p = parseFloat(tr.querySelector('[data-f=prix_ht]')?.value) || 0;
+    const pTtc = parseFloat(tr.querySelector('[data-f=prix_ttc]')?.value) || 0;
     const t = parseFloat(tr.querySelector('[data-f=taux_tva]')?.value) || 0;
-    const lht = q * p;
-    const ltva = lht * t / 100;
-    ht += lht; tva += ltva; ttc += lht + ltva;
+    const lttc = q * pTtc;
+    const lht = lttc / (1 + t / 100);
+    const ltva = lttc - lht;
+    ht += lht; tva += ltva; ttc += lttc;
     const htEl = document.getElementById('l-ht-' + id);
     const ttcEl = document.getElementById('l-ttc-' + id);
     if (htEl) htEl.textContent = fmt(lht);
@@ -660,12 +659,14 @@ async function saveFacture() {
   document.querySelectorAll('#lignes-body tr').forEach(tr => {
     const designation = tr.querySelector('[data-f=designation]')?.value.trim();
     if (!designation) { valid = false; return; }
+    const tva     = parseFloat(tr.querySelector('[data-f=taux_tva]')?.value) || 10;
+    const prixTtc = parseFloat(tr.querySelector('[data-f=prix_ttc]')?.value) || 0;
     lignes.push({
       code_produit: tr.querySelector('[data-f=code]')?.value.trim() || null,
       designation,
       quantite: parseFloat(tr.querySelector('[data-f=quantite]')?.value) || 0,
-      prix_ht:  parseFloat(tr.querySelector('[data-f=prix_ht]')?.value) || 0,
-      taux_tva: parseFloat(tr.querySelector('[data-f=taux_tva]')?.value) || 10,
+      prix_ht:  prixTtc / (1 + tva / 100),
+      taux_tva: tva,
     });
   });
   if (!valid || !lignes.length) { toast('Remplissez les désignations', 'er'); return; }
@@ -709,7 +710,7 @@ async function editFacture(id) {
       <td><input type="text" data-f="code" value="${l.code_produit||''}" oninput="recalcLignes()"/></td>
       <td><input type="text" data-f="designation" value="${l.designation||''}" oninput="recalcLignes()"/></td>
       <td><input type="number" step="0.01" data-f="montant_saisi" value="${fmt(l.montant_ttc)}" placeholder="ex: 5000.00" style="background:#FFF7ED;border-color:#FB923C;font-weight:700;font-size:14px" oninput="calcQtyFromMontant(${id2})"/></td>
-      <td><input type="number" step="0.01" data-f="prix_ht" value="${fmt(l.prix_ht)}" oninput="calcQtyFromMontant(${id2})"/></td>
+      <td><input type="number" step="0.01" data-f="prix_ttc" value="${fmt((parseFloat(l.prix_ht) || 0) * (1 + (parseFloat(l.taux_tva) || 0) / 100))}" oninput="calcQtyFromMontant(${id2})"/></td>
       <td><input type="number" step="1" data-f="taux_tva" value="${l.taux_tva||10}" oninput="calcQtyFromMontant(${id2})"/></td>
       <td><input type="number" step="0.0001" data-f="quantite" id="qty-${id2}" value="${fmt(l.quantite,4)}" readonly style="background:#F0FDF4;border-color:#86EFAC;color:#15803D;font-weight:700;cursor:default" title="Calculé auto"/></td>
       <td class="num" id="l-ht-${id2}" style="font-weight:700">${fmt(l.total_ht)}</td>
@@ -805,7 +806,7 @@ function buildPrintHtml(f) {
       <td style="${TD}">${esc(l.code_produit || '')}</td>
       <td style="${TD}">${esc(l.designation)}</td>
       <td style="${TDR}">${fmt(l.quantite, 2)}</td>
-      <td style="${TDR}">${fmt(l.prix_ht)}</td>
+      <td style="${TDR}">${fmt((parseFloat(l.prix_ht) || 0) * (1 + (parseFloat(l.taux_tva) || 0) / 100))}</td>
       <td style="${TDC}">${fmt(l.taux_tva, 0)}.00 %</td>
       <td style="${TDR}">${fmt(l.total_ht)}</td>
       <td style="${TDR};font-weight:bold">${fmt(l.montant_ttc)}</td>
@@ -864,7 +865,7 @@ function buildPrintHtml(f) {
           <th style="${TD};width:76px;text-align:left;font-size:11px">Code Prod.</th>
           <th style="${TD};text-align:left;font-size:11px">Désignation</th>
           <th style="${TDC};width:72px;font-size:11px">Quantité</th>
-          <th style="${TDR};width:76px;font-size:11px">Prix U. HT</th>
+          <th style="${TDR};width:76px;font-size:11px">Prix U. TTC</th>
           <th style="${TDC};width:72px;font-size:11px">Taux TVA</th>
           <th style="${TDR};width:76px;font-size:11px">Total HT</th>
           <th style="${TDR};width:82px;font-size:11px">Montant TTC</th>
