@@ -814,7 +814,9 @@ function buildPrintHtml(f) {
       <td style="${TDR};font-weight:bold">${fmt(l.montant_ttc)}</td>
     </tr>`).join('');
 
-  const minRows = 10;
+  // A few guaranteed empty rows + one tall spacer row that stretches to push
+  // the totals to the bottom, so the table fills the whole page.
+  const minRows = 4;
   const emptyCount = Math.max(0, minRows - f.lignes.length);
   const emptyHtml = Array(emptyCount).fill(`
     <tr style="height:26px">
@@ -822,6 +824,12 @@ function buildPrintHtml(f) {
       <td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td>
       <td style="${TD}"></td>
     </tr>`).join('');
+  const spacerHtml = `
+    <tr style="height:100%">
+      <td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td>
+      <td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td>
+      <td style="${TD}"></td>
+    </tr>`;
 
   const tvaRows = Object.entries(tvaGroups).map(([taux, v]) => `
     <tr>
@@ -830,7 +838,7 @@ function buildPrintHtml(f) {
     </tr>`).join('');
 
   return `
-  <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:780px;margin:0 auto">
+  <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:780px;margin:0 auto;display:flex;flex-direction:column;min-height:273mm;box-sizing:border-box">
 
     <!-- EN-TÊTE -->
     <div style="text-align:center;margin-bottom:8px;line-height:1.2">
@@ -861,7 +869,7 @@ function buildPrintHtml(f) {
     </table>
 
     <!-- TABLEAU PRODUITS -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:10px;flex:1 1 auto;height:1px">
       <thead>
         <tr style="background:#ddd">
           <th style="${TD};width:76px;text-align:left;font-size:11px">Code Prod.</th>
@@ -873,7 +881,7 @@ function buildPrintHtml(f) {
           <th style="${TDR};width:82px;font-size:11px">Montant TTC</th>
         </tr>
       </thead>
-      <tbody>${lignesHtml}${emptyHtml}</tbody>
+      <tbody>${lignesHtml}${emptyHtml}${spacerHtml}</tbody>
     </table>
 
     <!-- TOTAUX -->
