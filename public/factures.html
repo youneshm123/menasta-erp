@@ -40,9 +40,9 @@
 #print-overlay.open{display:flex}
 #print-frame{background:#fff;width:794px;max-width:100%;border-radius:4px;padding:40px;font-family:"Times New Roman",serif}
 @media print{
-  body>*:not(#print-frame-wrap){display:none!important}
-  #print-overlay{display:block!important;position:static;background:none;padding:0}
-  #print-overlay>*:not(#print-frame){display:none}
+  body>*{display:none!important}
+  #print-overlay{display:block!important;position:static;background:none;padding:0;overflow:visible}
+  #print-overlay .print-actions{display:none!important}
   #print-frame{box-shadow:none;border-radius:0;width:100%;max-width:100%}
 }
 </style>
@@ -253,7 +253,7 @@
 <!-- PRINT OVERLAY -->
 <div id="print-overlay" onclick="if(event.target===this)closePrint()">
   <div style="display:flex;flex-direction:column;gap:12px;align-items:center;width:794px;max-width:100%">
-    <div style="display:flex;gap:10px">
+    <div class="print-actions" style="display:flex;gap:10px">
       <button class="btn btn-g" onclick="closePrint()">✕ Fermer</button>
       <button class="btn btn-p" onclick="window.print()">🖨️ Imprimer</button>
     </div>
