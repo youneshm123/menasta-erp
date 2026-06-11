@@ -3,14 +3,6 @@ const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
-function genNumero(lastNum) {
-  const now = new Date();
-  const yy = String(now.getFullYear()).slice(-2);
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const seq = String((lastNum || 0) + 1).padStart(4, '0');
-  return `F-${yy}${mm}M${seq}`;
-}
-
 router.get('/', requireAuth, wrap(async (_req, res) => {
   const { rows } = await pool.query("SELECT *, to_char(facture_date,'YYYY-MM-DD') AS facture_date FROM factures ORDER BY factures.facture_date DESC, id DESC");
   res.json(rows);
@@ -103,15 +95,16 @@ router.post('/', requireAuth, wrap(async (req, res) => {
       return res.status(400).json({ error: 'Valeurs de ligne invalides (quantité, prix ou TVA)' });
   }
 
-  // Next sequence = max existing number for this month's prefix + 1.
-  // (Counting rows by date collides with existing numbers after deletions
-  //  or when facture_date and the F-YYMM prefix disagree.)
-  const now = new Date();
-  const prefix = `F-${String(now.getFullYear()).slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}M`;
+  // Number prefix follows the facture's own month (May -> 2605), not today.
+  // Next sequence = max existing number for that month's prefix + 1.
+  // (Using MAX avoids collisions after deletions or date/prefix mismatches.)
+  const fdate = facture_date || new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const [fy, fm] = fdate.split('-');
+  const prefix = `F-${fy.slice(-2)}${fm}M`;
   const { rows: [last] } = await pool.query(
     `SELECT COALESCE(MAX(CAST(SUBSTRING(numero FROM '[0-9]+$') AS INTEGER)), 0) AS c
      FROM factures WHERE numero LIKE $1`, [prefix + '%']);
-  const numero = genNumero(parseInt(last.c));
+  const numero = `${prefix}${String(parseInt(last.c) + 1).padStart(4, '0')}`;
 
   let total_ht = 0, montant_tva = 0, total_ttc = 0;
   for (const l of lignes) {
