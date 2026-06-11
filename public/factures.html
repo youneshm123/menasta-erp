@@ -757,10 +757,19 @@ async function dlPDF(id) {
 async function printFacture(id) {
   const f = await A('/api/factures/' + id);
   const html = buildPrintHtml(f);
-  document.getElementById('print-frame').innerHTML = html;
-  document.getElementById('print-overlay').classList.add('open');
-  // Open the print dialog automatically once the facture is rendered.
-  setTimeout(() => window.print(), 300);
+  // Print the facture on its own in a hidden iframe — only the facture
+  // shows, no buttons, no overlay, no page chrome.
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8">`
+    + `<style>@page{size:A4 portrait;margin:10mm}html,body{margin:0;padding:0}</style>`
+    + `</head><body>${html}</body></html>`;
+  iframe.onload = () => {
+    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); }
+    catch (e) { toast('Erreur impression: ' + e.message, 'er'); }
+    setTimeout(() => iframe.remove(), 1000);
+  };
+  document.body.appendChild(iframe);
 }
 function closePrint() { document.getElementById('print-overlay').classList.remove('open'); }
 
