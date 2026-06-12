@@ -217,6 +217,14 @@ async function initDB() {
       recorded_by   INTEGER REFERENCES users(id),
       UNIQUE(usage_date, stock_item_id)
     );
+    CREATE TABLE IF NOT EXISTS facture_lub_products (
+      id        SERIAL PRIMARY KEY,
+      name      TEXT NOT NULL,
+      type      TEXT NOT NULL DEFAULT 'huile',
+      prix      REAL NOT NULL DEFAULT 0,
+      stock     REAL NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1
+    );
     CREATE TABLE IF NOT EXISTS service_entries (
       id           SERIAL PRIMARY KEY,
       entry_date   DATE NOT NULL DEFAULT CURRENT_DATE,
