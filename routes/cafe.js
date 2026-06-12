@@ -40,7 +40,8 @@ router.delete('/menu/:id', requireAuth, wrap(async (req, res) => {
 router.get('/sales', requireAuth, wrap(async (req, res) => {
   const date = req.query.date || new Date().toISOString().slice(0,10);
   const { rows: items } = await pool.query(`
-    SELECT cs.*, cm.name, cm.emoji, cm.price as default_price
+    SELECT cm.id, cm.name, cm.emoji, cm.price as default_price,
+           cs.quantity, cs.unit_price, cs.total
     FROM cafe_menu cm
     LEFT JOIN cafe_sales cs ON cs.menu_item_id=cm.id AND cs.sale_date=$1
     WHERE cm.is_active=1 ORDER BY cm.id
