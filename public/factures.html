@@ -110,9 +110,12 @@
     <!-- LISTE -->
     <div id="tab-liste" class="tab-pane active">
       <div class="section">
-        <div class="s-head"><span class="s-title">Toutes les Factures</span></div>
+        <div class="s-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <span class="s-title">Toutes les Factures</span>
+          <button id="btn-print-sel" class="btn btn-p btn-sm" style="display:none;font-weight:700" onclick="printSelected()">🖨️ Imprimer la sélection (<span id="sel-count">0</span>)</button>
+        </div>
         <table class="t">
-          <thead><tr><th>N° Facture</th><th>Date</th><th>Client</th><th class="num">Total HT</th><th class="num">TVA</th><th class="num">Total TTC</th><th></th></tr></thead>
+          <thead><tr><th style="width:34px"><input type="checkbox" id="sel-all" onclick="toggleSelectAll(this)" title="Tout sélectionner"/></th><th>N° Facture</th><th>Date</th><th>Client</th><th class="num">Total HT</th><th class="num">TVA</th><th class="num">Total TTC</th><th></th></tr></thead>
           <tbody id="liste-body"></tbody>
         </table>
       </div>
@@ -542,16 +545,17 @@ async function loadListe() {
   const rows = await A('/api/factures');
   const tbody = document.getElementById('liste-body');
   tbody.innerHTML = '';
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Aucune facture</td></tr>'; return; }
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Aucune facture</td></tr>'; document.getElementById('btn-print-sel').style.display='none'; return; }
   rows.forEach(f => {
     tbody.innerHTML += `<tr>
+      <td><input type="checkbox" class="sel-fac" value="${f.id}" onclick="updateSelCount()"/></td>
       <td><strong>${f.numero}</strong></td>
       <td>${fmtDate(f.facture_date)}</td>
       <td>${f.client_name}</td>
       <td class="num">${fmt(f.total_ht)} MAD</td>
       <td class="num">${fmt(f.montant_tva)} MAD</td>
       <td class="num fw8 c-b">${fmt(f.total_ttc)} MAD</td>
-      <td class="num" style="display:flex;gap:4px;flex-wrap:wrap">
+      <td style="display:flex;gap:4px;flex-wrap:wrap">
         <button class="btn btn-p btn-xs" style="padding:3px 8px;font-weight:700" onclick="printFacture(${f.id})">🖨️ Imprimer</button>
         <button class="btn btn-xs" style="background:#dcfce7;color:#15803d;border:none;cursor:pointer;padding:3px 8px;border-radius:5px;font-weight:700" onclick="dlPDF(${f.id})">📥 PDF</button>
         <button class="btn btn-g btn-xs" onclick="editFacture(${f.id})">✏️</button>
@@ -559,6 +563,55 @@ async function loadListe() {
       </td>
     </tr>`;
   });
+  const selAll = document.getElementById('sel-all');
+  if (selAll) selAll.checked = false;
+  updateSelCount();
+}
+
+// ── Sélection multiple pour impression groupée ──
+function toggleSelectAll(box) {
+  document.querySelectorAll('.sel-fac').forEach(cb => { cb.checked = box.checked; });
+  updateSelCount();
+}
+function updateSelCount() {
+  const n = document.querySelectorAll('.sel-fac:checked').length;
+  const btn = document.getElementById('btn-print-sel');
+  document.getElementById('sel-count').textContent = n;
+  btn.style.display = n ? 'inline-flex' : 'none';
+  const all = document.querySelectorAll('.sel-fac').length;
+  const selAll = document.getElementById('sel-all');
+  if (selAll) selAll.checked = all > 0 && n === all;
+}
+async function printSelected() {
+  const ids = [...document.querySelectorAll('.sel-fac:checked')].map(cb => +cb.value);
+  if (!ids.length) return;
+  const btn = document.getElementById('btn-print-sel');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '⏳ Préparation...';
+  btn.disabled = true;
+  try {
+    // Fetch all selected factures, one facture per printed page.
+    const factures = await Promise.all(ids.map(id => A('/api/factures/' + id)));
+    const pages = factures.map(f =>
+      `<div style="page-break-after:always">${buildPrintHtml(f)}</div>`
+    ).join('');
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8">`
+      + `<style>@page{size:A4 portrait;margin:10mm}html,body{margin:0;padding:0}`
+      + `div[style*="page-break-after"]:last-child{page-break-after:auto}</style>`
+      + `</head><body>${pages}</body></html>`;
+    iframe.onload = () => {
+      try { iframe.contentWindow.focus(); iframe.contentWindow.print(); }
+      catch (e) { toast('Erreur impression: ' + e.message, 'er'); }
+      setTimeout(() => iframe.remove(), 1000);
+    };
+    document.body.appendChild(iframe);
+  } catch (e) {
+    toast('Erreur: ' + e.message, 'er');
+  }
+  btn.innerHTML = orig;
+  btn.disabled = false;
 }
 
 async function deleteFacture(id) {
