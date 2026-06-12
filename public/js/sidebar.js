@@ -17,6 +17,7 @@
     '/app':      'Carburant',
     '/bank':     'Banque',
     '/cafe':     'Café',
+    '/service':  'Service',
     '/cuves':    'Cuves',
     '/factures': 'Factures',
     '/patron':   'Patron',
@@ -75,6 +76,7 @@
     navLink('fuel',             'Carburant',  '/app') +
     navLink('coffee',           'Café',       '/cafe') +
     navLink('cigarette',        'Tabac',      '/tabac') +
+    navLink('droplets',         'Service',    '/service') +
     '    </div>' +
     '    <div class="ds-nav-grp">' +
     '      <div class="ds-nav-grp-lbl">Finances</div>' +

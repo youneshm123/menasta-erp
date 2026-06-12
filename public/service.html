@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<title>MENASTA — Service</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/fiori.css?v=32"/>
+<script src="/js/sidebar.js?v=3" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/css/dashboard.css?v=1"/>
+<style>
+.svc-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:760px){.svc-grid{grid-template-columns:1fr}}
+.svc-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:18px}
+.svc-card h3{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;margin:0 0 12px}
+.svc-add{display:flex;gap:8px;margin-bottom:12px}
+.svc-add input{flex:1;padding:11px 13px;border:1.5px solid var(--border);border-radius:9px;font-size:16px;font-weight:700;font-family:var(--font);outline:none}
+.svc-add input:focus{border-color:var(--blue)}
+.svc-list{list-style:none;margin:0;padding:0;max-height:260px;overflow-y:auto}
+.svc-li{display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--border-lt);font-size:14px}
+.svc-sub{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:2px solid var(--border);font-weight:800}
+.svc-recette{background:linear-gradient(135deg,#5b4fcf,#0070F2);color:#fff;border-radius:14px;padding:22px;text-align:center;margin-top:18px}
+.svc-recette .lbl{font-size:13px;font-weight:700;opacity:.9;text-transform:uppercase;letter-spacing:.5px}
+.svc-recette .val{font-size:34px;font-weight:900;margin-top:6px}
+.svc-x{background:none;border:none;cursor:pointer;color:var(--red);font-size:15px;padding:2px 6px}
+</style>
+</head>
+<body class="app-layout">
+
+<header class="fiori-shell">
+  <a href="/home" class="fs-logo" style="text-decoration:none">
+    <div class="fs-mark"><i data-lucide="fuel"></i></div>
+    <div class="fs-brand">MENASTA</div>
+  </a>
+  <div class="fs-divider"></div>
+  <nav class="fs-nav">
+    <a href="/home"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="home"></i></span> Launchpad</a>
+    <a href="/app"      class="fs-nav-item"><span class="fn-icon"><i data-lucide="fuel"></i></span> Carburant</a>
+    <a href="/cafe"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="coffee"></i></span> Café</a>
+    <a href="/tabac"    class="fs-nav-item"><span class="fn-icon"><i data-lucide="cigarette"></i></span> Tabac</a>
+    <a href="/service"  class="fs-nav-item active"><span class="fn-icon"><i data-lucide="droplets"></i></span> Service</a>
+    <a href="/bank"     class="fs-nav-item"><span class="fn-icon"><i data-lucide="landmark"></i></span> Banque</a>
+  </nav>
+  <div class="fs-actions">
+    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre"><i data-lucide="moon"></i></button>
+    <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
+  </div>
+</header>
+
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo-row">
+      <div class="sb-mark"><i data-lucide="droplets"></i></div>
+      <div>
+        <div class="sb-name">Service</div>
+        <div class="sb-sub">Lavage & Graissage</div>
+      </div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <div class="nav-item active" data-p="saisie"><span class="ni"><i data-lucide="plus-circle"></i></span> Saisie du Jour</div>
+    <div class="nav-item" data-p="historique"><span class="ni"><i data-lucide="calendar-days"></i></span> Historique</div>
+  </div>
+  <div class="sb-foot">
+    <a href="/home" class="sb-back">← Retour Accueil</a>
+  </div>
+</aside>
+
+<div class="app-main">
+  <div class="app-topbar">
+    <div class="topbar-title" id="page-title">Saisie du Jour</div>
+    <div class="topbar-meta" id="top-date"></div>
+  </div>
+  <div class="app-content">
+
+    <!-- ══ SAISIE ══ -->
+    <div class="page active" id="p-saisie">
+      <div class="date-row" style="margin-bottom:16px">
+        <input type="date" id="svc-date"/>
+        <button class="btn btn-p btn-sm" onclick="loadDay()">Charger</button>
+      </div>
+
+      <div class="svc-grid">
+        <!-- LAVAGE -->
+        <div class="svc-card">
+          <h3>🚿 Lavage</h3>
+          <div class="svc-add">
+            <input type="number" id="in-lavage" placeholder="Montant MAD" step="0.01" min="0" onkeydown="if(event.key==='Enter')addEntry('lavage')"/>
+            <button class="btn btn-s" onclick="addEntry('lavage')">+ Ajouter</button>
+          </div>
+          <ul class="svc-list" id="list-lavage"></ul>
+          <div class="svc-sub"><span>Sous-total Lavage</span><span id="sub-lavage" class="c-g">0,00 MAD</span></div>
+        </div>
+
+        <!-- GRAISSAGE -->
+        <div class="svc-card">
+          <h3>🛢️ Graissage</h3>
+          <div class="svc-add">
+            <input type="number" id="in-graissage" placeholder="Montant MAD" step="0.01" min="0" onkeydown="if(event.key==='Enter')addEntry('graissage')"/>
+            <button class="btn btn-s" onclick="addEntry('graissage')">+ Ajouter</button>
+          </div>
+          <ul class="svc-list" id="list-graissage"></ul>
+          <div class="svc-sub"><span>Sous-total Graissage</span><span id="sub-graissage" class="c-g">0,00 MAD</span></div>
+        </div>
+      </div>
+
+      <div class="svc-recette">
+        <div class="lbl">💰 Recette du Jour</div>
+        <div class="val" id="recette">0,00 MAD</div>
+      </div>
+    </div>
+
+    <!-- ══ HISTORIQUE ══ -->
+    <div class="page" id="p-historique">
+      <div class="section">
+        <div class="s-head"><div class="s-title">📅 Historique (30 derniers jours)</div></div>
+        <div class="s-body">
+          <table class="t">
+            <thead><tr><th>Date</th><th class="num">Lavage</th><th class="num">Graissage</th><th class="num">Recette</th></tr></thead>
+            <tbody id="hist-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toasts" style="position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px"></div>
+
+<script>
+const TOKEN = localStorage.getItem('fm_token');
+async function api(method, path, body) {
+  const r = await fetch('/api/service' + path, {
+    method,
+    headers:{ 'Content-Type':'application/json','Authorization':'Bearer '+TOKEN },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || 'Erreur');
+  return data;
+}
+function toast(msg, type='g') {
+  const el = document.createElement('div');
+  el.className = 'toast t-' + type;
+  el.style.cssText = 'background:'+(type==='er'?'#DC2626':'#15803D')+';color:#fff;padding:11px 16px;border-radius:9px;font-weight:700;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.18)';
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 2600);
+}
+const fmt   = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const today = () => new Date().toISOString().slice(0,10);
+
+// Tabs
+const pageNames = { saisie:'Saisie du Jour', historique:'Historique' };
+function navigate(p) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.p===p));
+  document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('active', pg.id==='p-'+p));
+  document.getElementById('page-title').textContent = pageNames[p]||p;
+  if (p==='saisie')     loadDay();
+  if (p==='historique') loadHistorique();
+}
+document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => navigate(n.dataset.p)));
+
+document.getElementById('top-date').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+// ── SAISIE ──
+async function loadDay() {
+  const date = document.getElementById('svc-date').value || today();
+  const data = await api('GET', '/?date='+date);
+  renderType('lavage',    data.entries.filter(e=>e.service_type==='lavage'),    data.lavage);
+  renderType('graissage', data.entries.filter(e=>e.service_type==='graissage'), data.graissage);
+  document.getElementById('recette').textContent = fmt(data.recette) + ' MAD';
+}
+function renderType(type, entries, sub) {
+  const ul = document.getElementById('list-'+type);
+  ul.innerHTML = entries.length
+    ? entries.map(e => `<li class="svc-li"><span>${fmt(e.montant)} MAD</span><button class="svc-x" title="Supprimer" onclick="delEntry(${e.id})">🗑</button></li>`).join('')
+    : '<li class="svc-li" style="color:var(--muted);justify-content:center">Aucune entrée</li>';
+  document.getElementById('sub-'+type).textContent = fmt(sub) + ' MAD';
+}
+async function addEntry(type) {
+  const inp = document.getElementById('in-'+type);
+  const montant = parseFloat(inp.value);
+  if (!montant || montant <= 0) { toast('Montant invalide', 'er'); return; }
+  const date = document.getElementById('svc-date').value || today();
+  try {
+    await api('POST', '/entries', { date, service_type: type, montant });
+    inp.value = '';
+    inp.focus();
+    loadDay();
+  } catch(e) { toast(e.message, 'er'); }
+}
+async function delEntry(id) {
+  try { await api('DELETE', '/entries/'+id); loadDay(); }
+  catch(e) { toast(e.message, 'er'); }
+}
+
+// ── HISTORIQUE ──
+async function loadHistorique() {
+  const rows = await api('GET', '/historique');
+  const tb = document.getElementById('hist-body');
+  tb.innerHTML = rows.length
+    ? rows.map(r => `<tr>
+        <td>${r.entry_date}</td>
+        <td class="num">${fmt(r.lavage)} MAD</td>
+        <td class="num">${fmt(r.graissage)} MAD</td>
+        <td class="num fw8 c-g">${fmt(r.recette)} MAD</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">Aucune donnée</td></tr>';
+}
+
+// init
+document.getElementById('svc-date').value = today();
+loadDay();
+if (typeof lucide !== 'undefined') lucide.createIcons();
+</script>
+</body>
+</html>

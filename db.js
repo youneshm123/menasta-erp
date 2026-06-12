@@ -217,6 +217,14 @@ async function initDB() {
       recorded_by   INTEGER REFERENCES users(id),
       UNIQUE(usage_date, stock_item_id)
     );
+    CREATE TABLE IF NOT EXISTS service_entries (
+      id           SERIAL PRIMARY KEY,
+      entry_date   DATE NOT NULL DEFAULT CURRENT_DATE,
+      service_type TEXT NOT NULL,
+      montant      REAL NOT NULL DEFAULT 0,
+      recorded_by  INTEGER REFERENCES users(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `);
 
   // ── Seed fuel types ──

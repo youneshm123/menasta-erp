@@ -128,6 +128,8 @@ async function start() {
     'PUT /bank/:id/reconcile':       ['Banque',     'Pointer Transaction'],
     'PUT /bank/cheques/:id':         ['Banque',     'Modifier Chèque'],
     'DELETE /bank/cheques/:id':      ['Banque',     'Supprimer Chèque'],
+    'POST /service/entries':         ['Service',    'Saisie Service'],
+    'DELETE /service/entries/:id':   ['Service',    'Supprimer Service'],
     'POST /tabac/ventes':            ['Tabac',      'Saisie Ventes'],
     'POST /tabac/produits':          ['Tabac',      'Ajouter Produit'],
     'PUT /tabac/produits/:id':       ['Tabac',      'Modifier Produit'],
@@ -215,6 +217,7 @@ async function start() {
   app.use('/api/expenses',  requireAuth, requireMinRole('caissier'), require('./routes/expenses'));
   app.use('/api/cafe',      requireAuth, requireMinRole('caissier'), require('./routes/cafe'));
   app.use('/api/tabac',     requireAuth, requireMinRole('caissier'), require('./routes/tabac'));
+  app.use('/api/service',   requireAuth, requireMinRole('caissier'), require('./routes/service'));
   app.use('/api/cuves',     requireAuth, requireMinRole('caissier'), require('./routes/cuves'));
   app.use('/api/ai',        requireAuth, requireMinRole('caissier'), require('./routes/ai'));
 
@@ -269,6 +272,7 @@ async function start() {
   app.get('/cafe',     page('cafe.html'));
   app.get('/bank',     page('bank.html'));
   app.get('/tabac',    page('tabac.html'));
+  app.get('/service',  page('service.html'));
   app.get('/factures', page('factures.html'));
   app.get('/patron',   page('patron.html'));
   app.get('/admin',    page('admin.html'));
