@@ -6,12 +6,23 @@ const aiClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
-const IN_TYPES  = ['depot', 'virement_in', 'cheque_in'];
-const OUT_TYPES = ['retrait', 'virement_out', 'cheque_out'];
+const IN_TYPES  = ['depot', 'virement_in', 'cheque_in', 'effet_in'];
+const OUT_TYPES = ['retrait', 'virement_out', 'cheque_out', 'effet_out'];
 const sign = t => IN_TYPES.includes(t) ? 1 : -1;
 
 const BANK_CATS = ['Carburant','Salaires','Loyer','Maintenance','Fournisseur','Client','Banque','Impôts','Autre'];
-const TXN_TYPES = ['depot','retrait','virement_in','virement_out','cheque_in','cheque_out'];
+const TXN_TYPES = [...IN_TYPES, ...OUT_TYPES];
+
+// Types that carry an échéance + status (cheques AND effets) — same columns.
+const ECHEANCE_TYPES = ['cheque_in', 'cheque_out', 'effet_in', 'effet_out'];
+const isEcheance = t => ECHEANCE_TYPES.includes(t);
+
+// SQL IN-list fragments (built from our own constants — safe to interpolate).
+const SQL_IN       = IN_TYPES.map(t => `'${t}'`).join(',');
+const SQL_OUT      = OUT_TYPES.map(t => `'${t}'`).join(',');
+const SQL_ECHEANCE = ECHEANCE_TYPES.map(t => `'${t}'`).join(',');
+const SQL_PEND_OUT = OUT_TYPES.filter(isEcheance).map(t => `'${t}'`).join(',');
+const SQL_PEND_IN  = IN_TYPES.filter(isEcheance).map(t => `'${t}'`).join(',');
 
 // Normalised signature of a description (digits/punctuation stripped) — used to learn
 // "this kind of line → this category/type" so repeat imports auto-fill.
@@ -50,10 +61,10 @@ router.put('/settings', requireAuth, wrap(async (req, res) => {
 // ── balance ───────────────────────────────────────────────────
 router.get('/balance', requireAuth, wrap(async (_req, res) => {
   const { rows: [s] }        = await pool.query('SELECT * FROM bank_settings WHERE id=1');
-  const { rows: [{ t: ti }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type IN ('depot','virement_in','cheque_in')`);
-  const { rows: [{ t: to }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type IN ('retrait','virement_out','cheque_out')`);
-  const { rows: [{ t: po }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type='cheque_out' AND check_status='pending'`);
-  const { rows: [{ t: pi }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type='cheque_in'  AND check_status='pending'`);
+  const { rows: [{ t: ti }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type IN (${SQL_IN})`);
+  const { rows: [{ t: to }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type IN (${SQL_OUT})`);
+  const { rows: [{ t: po }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type IN (${SQL_PEND_OUT}) AND check_status='pending'`);
+  const { rows: [{ t: pi }] } = await pool.query(`SELECT COALESCE(SUM(amount),0) as t FROM bank_transactions WHERE type IN (${SQL_PEND_IN})  AND check_status='pending'`);
   const balance = parseFloat(s?.initial_balance ?? 0) + parseFloat(ti) - parseFloat(to);
   res.json({
     account_name:       s.account_name,
@@ -100,7 +111,7 @@ router.post('/transactions', requireAuth, wrap(async (req, res) => {
   const { txn_date, type, category, description, check_number, beneficiary, due_date, check_status, notes } = req.body || {};
   const amount = parseFloat(req.body.amount);
   if (!type || !description || !amount || amount <= 0) return res.status(400).json({ error: 'Type, description et montant valide requis' });
-  const isCheck = type === 'cheque_in' || type === 'cheque_out';
+  const isCheck = isEcheance(type);
   const { rows: [{ id }] } = await pool.query(`
     INSERT INTO bank_transactions (txn_date,type,category,description,amount,check_number,beneficiary,due_date,check_status,notes,recorded_by)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id
@@ -142,7 +153,7 @@ router.put('/transactions/:id', requireAuth, wrap(async (req, res) => {
   const type   = TXN_TYPES.includes(b.type) ? b.type : cur.type;
   const amount = b.amount != null ? parseFloat(b.amount) : parseFloat(cur.amount);
   if (!isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Montant valide requis' });
-  const isCheck = type === 'cheque_in' || type === 'cheque_out';
+  const isCheck = isEcheance(type);
   await pool.query(`
     UPDATE bank_transactions SET
       txn_date=$1, type=$2, category=$3, description=$4, amount=$5,
@@ -176,7 +187,7 @@ router.get('/checks', requireAuth, wrap(async (_req, res) => {
   const { rows } = await pool.query(`
     SELECT t.*, u.full_name as by_name FROM bank_transactions t
     LEFT JOIN users u ON u.id=t.recorded_by
-    WHERE t.type IN ('cheque_in','cheque_out')
+    WHERE t.type IN (${SQL_ECHEANCE})
     ORDER BY CASE check_status WHEN 'pending' THEN 0 WHEN 'cashed' THEN 1 ELSE 2 END, t.txn_date DESC
   `);
   res.json(rows);
@@ -191,7 +202,7 @@ router.get('/history', requireAuth, wrap(async (req, res) => {
   const cutoffStr = cutoff.toISOString().slice(0,10);
 
   const { rows: [{ t: before }] } = await pool.query(`
-    SELECT COALESCE(SUM(CASE WHEN type IN ('depot','virement_in','cheque_in') THEN amount ELSE -amount END),0) as t
+    SELECT COALESCE(SUM(CASE WHEN type IN (${SQL_IN}) THEN amount ELSE -amount END),0) as t
     FROM bank_transactions WHERE txn_date < $1
   `, [cutoffStr]);
 
@@ -199,7 +210,7 @@ router.get('/history', requireAuth, wrap(async (req, res) => {
 
   const { rows: daily } = await pool.query(`
     SELECT txn_date as day,
-      SUM(CASE WHEN type IN ('depot','virement_in','cheque_in') THEN amount ELSE -amount END) as net
+      SUM(CASE WHEN type IN (${SQL_IN}) THEN amount ELSE -amount END) as net
     FROM bank_transactions WHERE txn_date >= $1
     GROUP BY txn_date ORDER BY txn_date ASC
   `, [cutoffStr]);
@@ -220,12 +231,12 @@ router.get('/stats/categories', requireAuth, wrap(async (req, res) => {
   const month = req.query.month || new Date().toISOString().slice(0,7);
   const { rows: out } = await pool.query(`
     SELECT category, SUM(amount) as total FROM bank_transactions
-    WHERE TO_CHAR(txn_date,'YYYY-MM')=$1 AND type IN ('retrait','virement_out','cheque_out')
+    WHERE TO_CHAR(txn_date,'YYYY-MM')=$1 AND type IN (${SQL_OUT})
     GROUP BY category ORDER BY total DESC
   `, [month]);
   const { rows: inp } = await pool.query(`
     SELECT category, SUM(amount) as total FROM bank_transactions
-    WHERE TO_CHAR(txn_date,'YYYY-MM')=$1 AND type IN ('depot','virement_in','cheque_in')
+    WHERE TO_CHAR(txn_date,'YYYY-MM')=$1 AND type IN (${SQL_IN})
     GROUP BY category ORDER BY total DESC
   `, [month]);
   res.json({ out, in: inp });
@@ -236,8 +247,8 @@ router.get('/report', requireAuth, wrap(async (req, res) => {
   const month = req.query.month || new Date().toISOString().slice(0,7);
   const { rows } = await pool.query(`
     SELECT txn_date as day,
-      SUM(CASE WHEN type IN ('depot','virement_in','cheque_in')    THEN amount ELSE 0 END) as total_in,
-      SUM(CASE WHEN type IN ('retrait','virement_out','cheque_out') THEN amount ELSE 0 END) as total_out
+      SUM(CASE WHEN type IN (${SQL_IN})  THEN amount ELSE 0 END) as total_in,
+      SUM(CASE WHEN type IN (${SQL_OUT}) THEN amount ELSE 0 END) as total_out
     FROM bank_transactions WHERE TO_CHAR(txn_date,'YYYY-MM')=$1
     GROUP BY txn_date ORDER BY txn_date DESC
   `, [month]);
@@ -255,7 +266,7 @@ router.get('/reconcile/unreconciled', requireAuth, wrap(async (_req, res) => {
   for (const r of all) { bal += sign(r.type) * parseFloat(r.amount); balMap[r.id] = bal; }
 
   const { rows: [{ t: rn }] } = await pool.query(`
-    SELECT COALESCE(SUM(CASE WHEN type IN ('depot','virement_in','cheque_in') THEN amount ELSE -amount END),0) as t
+    SELECT COALESCE(SUM(CASE WHEN type IN (${SQL_IN}) THEN amount ELSE -amount END),0) as t
     FROM bank_transactions WHERE is_reconciled=1
   `);
   const reconciledBal = parseFloat(rn) + parseFloat(s.initial_balance);
@@ -379,7 +390,7 @@ router.post('/import/commit', requireAuth, wrap(async (req, res) => {
     for (const r of rows) {
       const amount = Math.abs(parseFloat(r.amount) || 0);
       if (!amount || !TXN_TYPES.includes(r.type)) continue;
-      const isCheck = r.type === 'cheque_in' || r.type === 'cheque_out';
+      const isCheck = isEcheance(r.type);
       await client.query(`
         INSERT INTO bank_transactions (txn_date,type,category,description,amount,check_number,beneficiary,check_status,bank_ref,recorded_by)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)

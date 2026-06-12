@@ -48,8 +48,8 @@
 .balance-pill{background:var(--blue);color:#fff;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700}
 .forecast-pill{background:var(--orange,#F59E0B);color:#fff;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700}
 .badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:600;background:var(--bg2)}
-.badge.depot,.badge.virement_in,.badge.cheque_in{background:#DCFCE7;color:#15803D}
-.badge.retrait,.badge.virement_out,.badge.cheque_out{background:#FEE2E2;color:#B91C1C}
+.badge.depot,.badge.virement_in,.badge.cheque_in,.badge.effet_in{background:#DCFCE7;color:#15803D}
+.badge.retrait,.badge.virement_out,.badge.cheque_out,.badge.effet_out{background:#FEE2E2;color:#B91C1C}
 .ir-table th,.ir-table td{padding:10px 12px;vertical-align:middle;line-height:1.35}
 .ir-table td{font-size:13.5px}
 .ir-table select{font-size:13px;padding:6px 7px;width:100%;border:1.5px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font)}
@@ -159,6 +159,8 @@
           <option value="virement_out">📤 Virement émis</option>
           <option value="cheque_in">✅ Chèque reçu</option>
           <option value="cheque_out">💳 Chèque émis</option>
+          <option value="effet_in">🧾 Effet reçu</option>
+          <option value="effet_out">📝 Effet émis</option>
         </select>
         <select id="txn-cat-filter" onchange="loadTransactions()">
           <option value="">Toutes catégories</option>
@@ -177,6 +179,8 @@
           <button class="qtype-btn out" onclick="setQType('virement_out',this)">📤 Vir-</button>
           <button class="qtype-btn ck" onclick="setQType('cheque_in',this)">✅ Chèque+</button>
           <button class="qtype-btn ck out" onclick="setQType('cheque_out',this)">💳 Chèque-</button>
+          <button class="qtype-btn ck" onclick="setQType('effet_in',this)">🧾 Effet+</button>
+          <button class="qtype-btn ck out" onclick="setQType('effet_out',this)">📝 Effet-</button>
         </div>
         <input class="qa-input" type="number" id="qa-amount" placeholder="Montant MAD" step="0.01" min="0"/>
         <input class="qa-input" type="date" id="qa-date"/>
@@ -308,6 +312,8 @@
             <option value="virement_out">📤 Virement émis</option>
             <option value="cheque_in">✅ Chèque reçu</option>
             <option value="cheque_out">💳 Chèque émis</option>
+            <option value="effet_in">🧾 Effet reçu</option>
+            <option value="effet_out">📝 Effet émis</option>
           </select>
         </div>
         <div class="fg"><label>Date *</label><input type="date" id="at-date"/></div>
@@ -485,7 +491,7 @@ async function loadDashboard() {
       <td><span class="badge ${t.type}">${txnLabel(t.type)}</span></td>
       <td>${t.description||''}</td>
       <td style="color:var(--muted);font-size:12px">${t.category||''}</td>
-      <td class="num ${['depot','virement_in','cheque_in'].includes(t.type)?'c-g':'c-r'}">${fmt(t.amount,2)}</td>
+      <td class="num ${['depot','virement_in','cheque_in','effet_in'].includes(t.type)?'c-g':'c-r'}">${fmt(t.amount,2)}</td>
       <td class="num">${t.running_balance!=null?fmt(t.running_balance,2):'—'}</td>
     </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Aucune transaction</td></tr>';
 
@@ -494,7 +500,7 @@ async function loadDashboard() {
     const checks = (await api('GET', '/bank/checks')).filter(c => c.check_status === 'pending');
     document.getElementById('db-pending-list').innerHTML = (checks||[]).slice(0,6).map(c => `
       <div style="padding:8px 0;border-bottom:1px solid var(--border-lt);font-size:12px">
-        <div style="font-weight:700">${c.type==='cheque_out'?'📤':'📥'} ${c.check_number||'—'} · ${fmt(c.amount,2)} MAD</div>
+        <div style="font-weight:700">${['cheque_out','effet_out'].includes(c.type)?'📤':'📥'} ${c.check_number||'—'} · ${fmt(c.amount,2)} MAD</div>
         <div style="color:var(--muted)">${c.beneficiary||''} · Éch. ${c.due_date||'—'}</div>
       </div>`).join('') || '<div style="padding:12px;color:var(--muted);font-size:12px">Aucun chèque en attente</div>';
   } catch(e) {}
@@ -535,7 +541,7 @@ async function loadTransactions() {
   _txns = items;
 
   document.getElementById('txn-body').innerHTML = items.map(t => {
-    const isIn = ['depot','virement_in','cheque_in'].includes(t.type);
+    const isIn = ['depot','virement_in','cheque_in','effet_in'].includes(t.type);
     return `<tr>
       <td>${ymd(t.txn_date)}</td>
       <td><span class="badge ${t.type}">${txnLabel(t.type)}</span></td>
@@ -548,7 +554,7 @@ async function loadTransactions() {
       <td class="num" style="font-weight:700">${t.running_balance!=null?fmt(t.running_balance,2):'—'}</td>
       <td style="font-size:11px;text-align:center">${t.is_reconciled?'✅':''}</td>
       <td style="white-space:nowrap">
-        ${['virement_in','virement_out','cheque_in','cheque_out'].includes(t.type)?`<button class="btn btn-ghost btn-sm" style="padding:3px 8px" title="Pièce comptable" onclick="printTxnVoucher(${t.id})">📄</button>`:''}
+        ${['virement_in','virement_out','cheque_in','cheque_out','effet_in','effet_out'].includes(t.type)?`<button class="btn btn-ghost btn-sm" style="padding:3px 8px" title="Pièce comptable" onclick="printTxnVoucher(${t.id})">📄</button>`:''}
         <button class="btn btn-ghost btn-sm" style="padding:3px 8px" title="Modifier" onclick="openEditTxn(${t.id})">✏️</button>
         <button class="btn btn-ghost btn-sm" style="color:var(--red);padding:3px 8px" title="Supprimer" onclick="deleteTxn(${t.id})">🗑</button></td>
     </tr>`;
@@ -592,7 +598,7 @@ function setQType(type, btn) {
   _qtype = type;
   document.querySelectorAll('.qtype-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const isCk = type === 'cheque_in' || type === 'cheque_out';
+  const isCk = ['cheque_in','cheque_out','effet_in','effet_out'].includes(type);
   const ckFields = document.getElementById('qa-ck-fields');
   if (ckFields) ckFields.style.display = isCk ? 'contents' : 'none';
 }
@@ -610,7 +616,7 @@ async function quickAddTxn() {
   const cat    = document.getElementById('qa-cat').value;
   if (!desc)   { toast('Description requise', 'er'); return; }
   if (!amount || amount <= 0) { toast('Montant invalide', 'er'); return; }
-  const isCk = _qtype === 'cheque_in' || _qtype === 'cheque_out';
+  const isCk = ['cheque_in','cheque_out','effet_in','effet_out'].includes(_qtype);
   const body = {
     type: _qtype, txn_date: date, amount, description: desc, category: cat,
     check_number: isCk ? (document.getElementById('qa-chknum').value || null) : null,
@@ -638,8 +644,8 @@ let _allCheques = [];
 async function loadCheques() {
   const checks = await api('GET', '/bank/checks');
   _allCheques = checks;
-  const out = checks.filter(c => c.type === 'cheque_out');
-  const inp = checks.filter(c => c.type === 'cheque_in');
+  const out = checks.filter(c => c.type === 'cheque_out' || c.type === 'effet_out');
+  const inp = checks.filter(c => c.type === 'cheque_in'  || c.type === 'effet_in');
   const outPend = out.filter(c => c.check_status === 'pending').reduce((s,c)=>s+parseFloat(c.amount||0),0);
   const inPend  = inp.filter(c => c.check_status === 'pending').reduce((s,c)=>s+parseFloat(c.amount||0),0);
   document.getElementById('ck-tiles').innerHTML = [
@@ -664,8 +670,8 @@ function filterCheques() {
     if (to   && c.txn_date > to)   return false;
     return true;
   };
-  const out = _allCheques.filter(c => c.type === 'cheque_out' && match(c));
-  const inp = _allCheques.filter(c => c.type === 'cheque_in'  && match(c));
+  const out = _allCheques.filter(c => (c.type === 'cheque_out' || c.type === 'effet_out') && match(c));
+  const inp = _allCheques.filter(c => (c.type === 'cheque_in'  || c.type === 'effet_in')  && match(c));
   document.getElementById('ck-out-body').innerHTML = out.map(c=>ckRow(c,'out')).join('')
     || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun résultat</td></tr>';
   document.getElementById('ck-in-body').innerHTML  = inp.map(c=>ckRow(c,'in')).join('')
@@ -679,7 +685,7 @@ function ckRow(c, dir) {
   const stColor = c.check_status==='pending'?'var(--orange)':isCashed?'var(--green)':'var(--red)';
   return `<tr>
     <td>${ymd(c.txn_date)}</td>
-    <td style="font-weight:700">${c.check_number||'—'}</td>
+    <td style="font-weight:700">${(c.type||'').startsWith('effet')?'🧾 ':'💳 '}${c.check_number||'—'}</td>
     <td>${c.beneficiary||'—'}</td>
     <td>${ymd(c.due_date)||'—'}</td>
     <td class="num" style="font-weight:700">${fmt(c.amount,2)} MAD</td>
@@ -777,15 +783,15 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function toggleCheckFields() {
   const t = document.getElementById('at-type').value;
-  const isCk = t === 'cheque_in' || t === 'cheque_out';
+  const isCk = ['cheque_in','cheque_out','effet_in','effet_out'].includes(t);
   const f = document.getElementById('txn-check-fields');
-  f.style.display = isCk ? '' : 'none';
+  f.style.display = isCk ? 'contents' : 'none';
 }
 
 // ── TYPE LABELS ────────────────────────────────────────────────────────────
 function txnLabel(type) {
   const MAP = { depot:'💰 Dépôt', retrait:'💸 Retrait', virement_in:'📥 Vir+', virement_out:'📤 Vir-',
-    cheque_in:'✅ Chèque+', cheque_out:'💳 Chèque-' };
+    cheque_in:'✅ Chèque+', cheque_out:'💳 Chèque-', effet_in:'🧾 Effet+', effet_out:'📝 Effet-' };
   return MAP[type] || type;
 }
 
@@ -795,13 +801,16 @@ const VOUCHER_TYPE = {
   virement_out: ['Virement émis',  'SORTIE'],
   cheque_in:    ['Chèque reçu',    'ENTRÉE'],
   cheque_out:   ['Chèque émis',    'SORTIE'],
+  effet_in:     ['Effet reçu',     'ENTRÉE'],
+  effet_out:    ['Effet émis',     'SORTIE'],
 };
 const VOUCHER_STATUS = { pending:'En attente', cashed:'Encaissé', 'encaissé':'Encaissé', cancelled:'Annulé', returned:'Retourné' };
 
 function printTxnVoucher(id) {
   const t = (_txns || []).concat(_allCheques || []).find(x => x.id === id);
   if (!t) { toast('Opération introuvable', 'er'); return; }
-  const isCheck = t.type === 'cheque_in' || t.type === 'cheque_out';
+  const isEffet = t.type === 'effet_in' || t.type === 'effet_out';
+  const isCheck = t.type === 'cheque_in' || t.type === 'cheque_out' || isEffet;
   const [label, sens] = VOUCHER_TYPE[t.type] || [txnLabel(t.type), ''];
   const sensColor = sens === 'ENTRÉE' ? '#188918' : '#BB0000';
   const row = (lbl, val) => val ? `<tr><td class="k">${lbl}</td><td class="v">${val}</td></tr>` : '';
@@ -827,7 +836,7 @@ function printTxnVoucher(id) {
 </style></head><body>
   <div class="doc">
     <div class="hd"><div class="co">${_bankAccountName}</div><div class="sub">Pièce comptable — Opération bancaire</div></div>
-    <div class="title"><span>${isCheck ? 'JUSTIFICATIF CHÈQUE' : 'JUSTIFICATIF VIREMENT'}</span></div>
+    <div class="title"><span>${isEffet ? 'JUSTIFICATIF EFFET' : isCheck ? 'JUSTIFICATIF CHÈQUE' : 'JUSTIFICATIF VIREMENT'}</span></div>
     <div class="sens">${sens} ${sens==='ENTRÉE'?'(+)':'(−)'}</div>
     <table>
       ${row('Nature de l\'opération', label)}
@@ -836,7 +845,7 @@ function printTxnVoucher(id) {
       ${row('Catégorie', t.category)}
       ${row('Description', t.description)}
       ${row(isCheck?'Bénéficiaire / Émetteur':'Bénéficiaire', t.beneficiary)}
-      ${isCheck ? row('N° de chèque', t.check_number) : ''}
+      ${isCheck ? row(isEffet?'N° d\'effet':'N° de chèque', t.check_number) : ''}
       ${isCheck ? row('Date d\'échéance', ymd(t.due_date)) : ''}
       ${isCheck ? row('Statut', VOUCHER_STATUS[t.check_status] || t.check_status) : ''}
       ${row('Notes', t.notes)}
@@ -857,7 +866,7 @@ function printTxnVoucher(id) {
 
 
 // ── IMPORT RELEVÉ (IA) ─────────────────────────────────────────────────────
-const IR_TYPES = [['depot','💰 Dépôt'],['retrait','💸 Retrait'],['virement_in','📥 Vir+'],['virement_out','📤 Vir-'],['cheque_in','✅ Chèque+'],['cheque_out','💳 Chèque-']];
+const IR_TYPES = [['depot','💰 Dépôt'],['retrait','💸 Retrait'],['virement_in','📥 Vir+'],['virement_out','📤 Vir-'],['cheque_in','✅ Chèque+'],['cheque_out','💳 Chèque-'],['effet_in','🧾 Effet+'],['effet_out','📝 Effet-']];
 const IR_CATS  = ['Carburant','Salaires','Loyer','Maintenance','Fournisseur','Client','Banque','Impôts','Autre'];
 let _irRows = [];
 
@@ -950,7 +959,7 @@ function renderImportPreview() {
       ? '<span style="color:var(--orange);font-size:11px;font-weight:700">⚠️ Doublon</span>'
       : (r.learned ? '<span style="color:var(--green);font-size:11px;font-weight:700">✅ Appris</span>'
                    : '<span style="color:var(--muted);font-size:11px">Nouveau</span>');
-    const isIn = ['depot','virement_in','cheque_in'].includes(r.type);
+    const isIn = ['depot','virement_in','cheque_in','effet_in'].includes(r.type);
     return `<tr style="${r.duplicate?'background:#FFF7ED':''}">
       <td><input type="checkbox" ${r.include?'checked':''} onchange="irSet(${i},'include',this.checked)"/></td>
       <td style="white-space:nowrap">${ymd(r.date)||'—'}</td>
@@ -1036,7 +1045,7 @@ async function submitAddTxn() {
   const amount = parseFloat(document.getElementById('at-amount').value);
   const desc   = document.getElementById('at-desc').value.trim();
   if (!desc || !amount || amount<=0) { toast('Remplissez tous les champs requis','er'); return; }
-  const isCheck = type==='cheque_in'||type==='cheque_out';
+  const isCheck = ['cheque_in','cheque_out','effet_in','effet_out'].includes(type);
   const payload = {
     type, txn_date:date, amount, description:desc,
     category: document.getElementById('at-cat').value,
@@ -1077,6 +1086,8 @@ const IMPORT_TYPE_MAP = {
   'virement émis':'virement_out','virement out':'virement_out','sortant':'virement_out',
   'chèque reçu':'cheque_in','cheque recu':'cheque_in','cheque in':'cheque_in',
   'chèque émis':'cheque_out','cheque emis':'cheque_out','cheque out':'cheque_out',
+  'effet reçu':'effet_in','effet recu':'effet_in','effet in':'effet_in',
+  'effet émis':'effet_out','effet emis':'effet_out','effet out':'effet_out',
 };
 
 let importRows = [];
