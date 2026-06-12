@@ -91,7 +91,6 @@
     <div class="nav-item" onclick="showTab('nouvelle',this)"><span class="ni"><i data-lucide="plus-circle"></i></span> Nouvelle Facture</div>
     <div class="nav-item" onclick="showTab('clients',this)"><span class="ni"><i data-lucide="users"></i></span> Clients</div>
     <div class="nav-item" onclick="showTab('tabac',this)"><span class="ni"><i data-lucide="cigarette"></i></span> Ventes Tabac</div>
-    <div class="nav-item" onclick="showTab('lub',this)"><span class="ni"><i data-lucide="droplets"></i></span> Produits Lubrifiant</div>
   </div>
   <div class="sb-foot">
     <a href="/home" class="sb-back">← Accueil</a>
@@ -261,34 +260,6 @@
       </div>
     </div>
 
-    <!-- PRODUITS LUBRIFIANT (catalogue) -->
-    <div id="tab-lub" class="tab-pane">
-      <div class="form-card">
-        <h3 id="lub-form-title">Ajouter un Produit (Huile / Filtre)</h3>
-        <div class="fgrid3" style="margin-bottom:12px">
-          <div class="fg"><label>Nom / Marque *</label><input type="text" id="lub-name" placeholder="Ex: TOTAL QUARTZ 5W30"/></div>
-          <div class="fg"><label>Type</label>
-            <select id="lub-type"><option value="huile">🛢️ Huile</option><option value="filtre">🔧 Filtre</option></select>
-          </div>
-          <div class="fg"><label>Prix U. TTC (MAD) *</label><input type="number" id="lub-prix" placeholder="0.00" step="0.01" min="0"/></div>
-        </div>
-        <div class="fgrid3" style="margin-bottom:12px">
-          <div class="fg"><label>Stock</label><input type="number" id="lub-stock" placeholder="0" step="1" min="0" value="0"/></div>
-        </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button class="btn btn-g" id="lub-cancel" onclick="resetLubForm()" style="display:none">Annuler</button>
-          <button class="btn btn-p" onclick="saveLubProduct()">💾 Enregistrer le Produit</button>
-        </div>
-      </div>
-      <div class="section">
-        <div class="s-head"><span class="s-title">Catalogue Lubrifiant</span></div>
-        <table class="t">
-          <thead><tr><th>Nom / Marque</th><th>Type</th><th class="num">Prix U. TTC</th><th class="num">Stock</th><th></th></tr></thead>
-          <tbody id="lub-body"></tbody>
-        </table>
-      </div>
-    </div>
-
   </div>
 </div>
 
@@ -347,101 +318,77 @@ function showTab(name, el) {
   if (name === 'nouvelle') initNouvelleFacture();
   if (name === 'clients')  loadClientsList();
   if (name === 'tabac')    loadTabacHistory();
-  if (name === 'lub')      loadLubProducts();
 }
 
-// ── LUBRIFIANT CATALOGUE ──────────────────────────────────────
-let _lubProducts = [];
-let _editingLubId = null;
+// ── LUBRIFIANT PRODUCTS — pulled from the shared /api/products stock ──
+let _lubProducts = []; // [{id,name,category,prix}]
 
 async function loadLubProductsList() {
-  try { _lubProducts = await A('/api/factures/lub-products') || []; }
-  catch (e) { _lubProducts = []; }
-  if (!Array.isArray(_lubProducts)) _lubProducts = [];
+  try {
+    const arr = await A('/api/products');
+    _lubProducts = (Array.isArray(arr) ? arr : []).map(p => ({
+      id: p.id, name: p.name, category: p.category || 'Autre', prix: parseFloat(p.price) || 0
+    }));
+  } catch (e) { _lubProducts = []; }
 }
 
-async function loadLubProducts() {
-  await loadLubProductsList();
-  const tbody = document.getElementById('lub-body');
-  if (!_lubProducts.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted)">Aucun produit — ajoutez vos huiles et filtres pour activer le remplissage auto</td></tr>'; return; }
-  tbody.innerHTML = _lubProducts.map(p => `<tr>
-    <td><strong>${esc(p.name)}</strong></td>
-    <td>${p.type === 'filtre' ? '🔧 Filtre' : '🛢️ Huile'}</td>
-    <td class="num">${fmt(p.prix)} MAD</td>
-    <td class="num">${fmt(p.stock, 0)}</td>
-    <td style="white-space:nowrap">
-      <button class="btn btn-g btn-xs" onclick="editLubProduct(${p.id})">✏️</button>
-      <button class="btn btn-d btn-xs" onclick="deleteLubProduct(${p.id})">🗑️</button>
-    </td>
-  </tr>`).join('');
-}
-
-async function saveLubProduct() {
-  const name = document.getElementById('lub-name').value.trim();
-  const type = document.getElementById('lub-type').value;
-  const prix = parseFloat(document.getElementById('lub-prix').value);
-  const stock = parseFloat(document.getElementById('lub-stock').value) || 0;
-  if (!name) { toast('Nom requis', 'er'); return; }
-  if (!isFinite(prix) || prix < 0) { toast('Prix invalide', 'er'); return; }
-  const body = { name, type, prix, stock };
-  let r;
-  if (_editingLubId) r = await A('/api/factures/lub-products/' + _editingLubId, { method: 'PUT', body: JSON.stringify(body) });
-  else               r = await A('/api/factures/lub-products', { method: 'POST', body: JSON.stringify(body) });
-  if (r && r.error) { toast(r.error, 'er'); return; }
-  toast(_editingLubId ? 'Produit modifié ✓' : 'Produit ajouté ✓');
-  resetLubForm();
-  loadLubProducts();
-}
-
-function editLubProduct(id) {
-  const p = _lubProducts.find(x => x.id === id);
-  if (!p) return;
-  _editingLubId = id;
-  document.getElementById('lub-name').value  = p.name;
-  document.getElementById('lub-type').value  = p.type;
-  document.getElementById('lub-prix').value  = p.prix;
-  document.getElementById('lub-stock').value = p.stock;
-  document.getElementById('lub-form-title').textContent = 'Modifier le Produit';
-  document.getElementById('lub-cancel').style.display = '';
-}
-
-function resetLubForm() {
-  _editingLubId = null;
-  document.getElementById('lub-name').value = '';
-  document.getElementById('lub-prix').value = '';
-  document.getElementById('lub-stock').value = '0';
-  document.getElementById('lub-type').value = 'huile';
-  document.getElementById('lub-form-title').textContent = 'Ajouter un Produit (Huile / Filtre)';
-  document.getElementById('lub-cancel').style.display = 'none';
-}
-
-async function deleteLubProduct(id) {
-  if (!confirm('Supprimer ce produit ?')) return;
-  await A('/api/factures/lub-products/' + id, { method: 'DELETE' });
-  toast('Produit supprimé');
-  loadLubProducts();
-}
-
-// Build the <select> options for a line's designation
-function desigOptions(selected) {
+// Options for the product sub-dropdown (shown when "Lubrifiant" is chosen),
+// grouped by category (Huiles, Lubrifiants, Filtres, …).
+function prodOptions(selected) {
   selected = selected || '';
-  const huiles  = _lubProducts.filter(p => p.type === 'huile');
-  const filtres = _lubProducts.filter(p => p.type === 'filtre');
-  const known = ['Gazoil', 'Essence', ..._lubProducts.map(p => p.name)];
-  const opt = (v, lbl) => `<option value="${esc(v)}"${selected === v ? ' selected' : ''}>${esc(lbl || v)}</option>`;
-  let html = '<option value="">— Choisir —</option>' + opt('Gazoil') + opt('Essence');
-  if (huiles.length)  html += `<optgroup label="🛢️ Huiles">`  + huiles.map(p => opt(p.name)).join('')  + `</optgroup>`;
-  if (filtres.length) html += `<optgroup label="🔧 Filtres">` + filtres.map(p => opt(p.name)).join('') + `</optgroup>`;
-  // Legacy / free-text designation not in catalogue: keep it selectable
-  if (selected && !known.includes(selected)) html = `<option value="${esc(selected)}" selected>${esc(selected)}</option>` + html;
+  const cats = {};
+  _lubProducts.forEach(p => { (cats[p.category] = cats[p.category] || []).push(p); });
+  let html = '<option value="">— Choisir le produit —</option>';
+  Object.keys(cats).sort().forEach(c => {
+    html += `<optgroup label="${esc(c)}">` +
+      cats[c].map(p => `<option value="${esc(p.name)}"${selected === p.name ? ' selected' : ''}>${esc(p.name)} — ${fmt(p.prix)} MAD</option>`).join('') +
+      `</optgroup>`;
+  });
+  if (selected && !_lubProducts.some(p => p.name === selected))
+    html = `<option value="${esc(selected)}" selected>${esc(selected)}</option>` + html;
   return html;
 }
 
-// When a designation is chosen, auto-fill the unit price from the catalogue
-function onDesignationChange(id) {
+// Full <td> content for a line's désignation (category select + product select + hidden value)
+function designationCell(id, sel) {
+  sel = sel || '';
+  const isFuel = (sel === 'Gazoil' || sel === 'Essence');
+  const cat = sel ? (isFuel ? sel : 'Lubrifiant') : '';
+  const showProd = (cat === 'Lubrifiant');
+  const ss = 'width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:#fff';
+  const catSel = `<select data-f="desig_cat" onchange="onCatChange(${id})" style="${ss}">
+      <option value="">— Choisir —</option>
+      <option value="Gazoil"${cat==='Gazoil'?' selected':''}>⛽ Gazoil</option>
+      <option value="Essence"${cat==='Essence'?' selected':''}>🟢 Essence</option>
+      <option value="Lubrifiant"${cat==='Lubrifiant'?' selected':''}>🛢️ Lubrifiant</option>
+    </select>`;
+  const prodSel = `<select data-f="desig_prod" onchange="onProdChange(${id})" style="${ss};margin-top:4px;display:${showProd?'':'none'}">${prodOptions(showProd ? sel : '')}</select>`;
+  const hidden = `<input type="hidden" data-f="designation" value="${esc(sel)}"/>`;
+  return catSel + prodSel + hidden;
+}
+
+function onCatChange(id) {
   const tr = document.getElementById('ligne-' + id);
   if (!tr) return;
-  const name = tr.querySelector('[data-f=designation]').value;
+  const cat = tr.querySelector('[data-f=desig_cat]').value;
+  const prodSel = tr.querySelector('[data-f=desig_prod]');
+  const hidden = tr.querySelector('[data-f=designation]');
+  if (cat === 'Lubrifiant') {
+    prodSel.style.display = '';
+    hidden.value = prodSel.value || '';
+    if (prodSel.value) onProdChange(id); else recalcLignes();
+  } else {
+    prodSel.style.display = 'none';
+    hidden.value = cat; // 'Gazoil' / 'Essence' / ''
+    recalcLignes();
+  }
+}
+
+function onProdChange(id) {
+  const tr = document.getElementById('ligne-' + id);
+  if (!tr) return;
+  const name = tr.querySelector('[data-f=desig_prod]').value;
+  tr.querySelector('[data-f=designation]').value = name;
   const p = _lubProducts.find(x => x.name === name);
   if (p) {
     tr.querySelector('[data-f=prix_ttc]').value = fmt(p.prix);
@@ -451,25 +398,22 @@ function onDesignationChange(id) {
   }
 }
 
-// Auto-fill lubrifiant lines (huiles + filtres) to roughly match a montant
+// Auto-fill lubrifiant lines (mix of stock products) to roughly match a montant
 function autoFillLub() {
   const target = parseFloat(document.getElementById('lub-montant').value) || 0;
   if (target <= 0) { toast('Entrez un montant', 'er'); return; }
   const pool = _lubProducts.filter(p => (parseFloat(p.prix) || 0) > 0);
-  if (!pool.length) { toast('Catalogue vide — ajoutez des produits dans "Produits Lubrifiant"', 'er'); return; }
+  if (!pool.length) { toast('Aucun produit en stock — ajoutez des produits (Huiles/Filtres) dans le stock', 'er'); return; }
   const minPrix = Math.min(...pool.map(p => parseFloat(p.prix)));
-  // Greedy random pick: accumulate qty per product until close to target
   const chosen = {}; // name -> { p, qty }
-  let remaining = target;
-  let guard = 0;
+  let remaining = target, guard = 0;
   while (remaining >= minPrix && guard < 500) {
     guard++;
     const affordable = pool.filter(p => parseFloat(p.prix) <= remaining + 0.001);
     if (!affordable.length) break;
     const p = affordable[Math.floor(Math.random() * affordable.length)];
-    const key = p.name;
-    if (!chosen[key]) chosen[key] = { p, qty: 0 };
-    chosen[key].qty += 1;
+    if (!chosen[p.name]) chosen[p.name] = { p, qty: 0 };
+    chosen[p.name].qty += 1;
     remaining -= parseFloat(p.prix);
   }
   const list = Object.values(chosen);
@@ -483,6 +427,10 @@ function autoFillLub() {
     addLigne();
     const id = ligneCount - 1;
     const tr = document.getElementById('ligne-' + id);
+    tr.querySelector('[data-f=desig_cat]').value = 'Lubrifiant';
+    const prodSel = tr.querySelector('[data-f=desig_prod]');
+    prodSel.style.display = '';
+    prodSel.value = p.name;
     tr.querySelector('[data-f=designation]').value = p.name;
     tr.querySelector('[data-f=prix_ttc]').value = fmt(p.prix);
     tr.querySelector('[data-f=montant_saisi]').value = fmt(qty * parseFloat(p.prix));
@@ -819,7 +767,7 @@ function addLigne() {
   tr.id = 'ligne-' + id;
   tr.innerHTML = `
     <td><input type="text" placeholder="100002" data-f="code" oninput="recalcLignes()"/></td>
-    <td><select data-f="designation" onchange="onDesignationChange(${id})" style="width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:#fff">${desigOptions('')}</select></td>
+    <td>${designationCell(id, '')}</td>
     <td><input type="number" min="0" step="0.01" data-f="montant_saisi" placeholder="ex: 5000.00" title="Entrez le montant TTC → quantité auto" style="background:#FFF7ED;border-color:#FB923C;font-weight:700;font-size:14px" oninput="calcQtyFromMontant(${id})"/></td>
     <td><input type="number" value="0" min="0" step="0.01" data-f="prix_ttc" oninput="calcQtyFromMontant(${id})"/></td>
     <td><input type="number" value="10" min="0" step="1" data-f="taux_tva" oninput="calcQtyFromMontant(${id})"/></td>
@@ -943,6 +891,8 @@ function resetFormKeepPrices() {
   document.querySelectorAll('#lignes-body tr').forEach(tr => {
     const codeEl = tr.querySelector('[data-f=code]');         if (codeEl) codeEl.value = '';
     const desEl  = tr.querySelector('[data-f=designation]');  if (desEl)  desEl.value = '';
+    const catEl  = tr.querySelector('[data-f=desig_cat]');    if (catEl)  catEl.value = '';
+    const prodEl = tr.querySelector('[data-f=desig_prod]');   if (prodEl) { prodEl.value = ''; prodEl.style.display = 'none'; }
     const mEl    = tr.querySelector('[data-f=montant_saisi]');if (mEl)    mEl.value = '';
     const qEl    = tr.querySelector('[data-f=quantite]');     if (qEl)    qEl.value = '0';
     // prix_ttc and taux_tva are intentionally kept
@@ -965,7 +915,7 @@ async function editFacture(id) {
     tr.id = 'ligne-' + id2;
     tr.innerHTML = `
       <td><input type="text" data-f="code" value="${l.code_produit||''}" oninput="recalcLignes()"/></td>
-      <td><select data-f="designation" onchange="onDesignationChange(${id2})" style="width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:#fff">${desigOptions(l.designation||'')}</select></td>
+      <td>${designationCell(id2, l.designation||'')}</td>
       <td><input type="number" step="0.01" data-f="montant_saisi" value="${fmt(l.montant_ttc)}" placeholder="ex: 5000.00" style="background:#FFF7ED;border-color:#FB923C;font-weight:700;font-size:14px" oninput="calcQtyFromMontant(${id2})"/></td>
       <td><input type="number" step="0.01" data-f="prix_ttc" value="${fmt((parseFloat(l.prix_ht) || 0) * (1 + (parseFloat(l.taux_tva) || 0) / 100))}" oninput="calcQtyFromMontant(${id2})"/></td>
       <td><input type="number" step="1" data-f="taux_tva" value="${l.taux_tva||10}" oninput="calcQtyFromMontant(${id2})"/></td>

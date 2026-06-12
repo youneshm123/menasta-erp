@@ -78,45 +78,8 @@ router.delete('/clients/:id', requireAuth, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// ── Lubrifiant catalogue (huiles & filtres) ──────────────────────
-router.get('/lub-products', requireAuth, wrap(async (_req, res) => {
-  const { rows } = await pool.query('SELECT * FROM facture_lub_products WHERE is_active=1 ORDER BY type, name');
-  res.json(rows);
-}));
-
-router.post('/lub-products', requireAuth, wrap(async (req, res) => {
-  const { name, type } = req.body || {};
-  const prix = parseFloat(req.body.prix), stock = parseFloat(req.body.stock);
-  if (!name || !name.trim()) return res.status(400).json({ error: 'Nom requis' });
-  if (!isFinite(prix) || prix < 0) return res.status(400).json({ error: 'Prix invalide' });
-  const t = (type === 'filtre') ? 'filtre' : 'huile';
-  const { rows: [p] } = await pool.query(
-    'INSERT INTO facture_lub_products (name,type,prix,stock) VALUES ($1,$2,$3,$4) RETURNING *',
-    [name.trim(), t, prix, isFinite(stock) ? stock : 0]
-  );
-  res.status(201).json(p);
-}));
-
-router.put('/lub-products/:id', requireAuth, wrap(async (req, res) => {
-  const { rows: [cur] } = await pool.query('SELECT * FROM facture_lub_products WHERE id=$1', [req.params.id]);
-  if (!cur) return res.status(404).json({ error: 'Produit introuvable' });
-  const b = req.body || {};
-  const prix  = b.prix  != null ? parseFloat(b.prix)  : parseFloat(cur.prix);
-  const stock = b.stock != null ? parseFloat(b.stock) : parseFloat(cur.stock);
-  const t = b.type ? ((b.type === 'filtre') ? 'filtre' : 'huile') : cur.type;
-  if (!isFinite(prix) || prix < 0) return res.status(400).json({ error: 'Prix invalide' });
-  await pool.query(
-    'UPDATE facture_lub_products SET name=$1,type=$2,prix=$3,stock=$4 WHERE id=$5',
-    [(b.name || cur.name).trim(), t, prix, isFinite(stock) ? stock : 0, cur.id]
-  );
-  const { rows: [p] } = await pool.query('SELECT * FROM facture_lub_products WHERE id=$1', [cur.id]);
-  res.json(p);
-}));
-
-router.delete('/lub-products/:id', requireAuth, wrap(async (req, res) => {
-  await pool.query('UPDATE facture_lub_products SET is_active=0 WHERE id=$1', [req.params.id]);
-  res.json({ ok: true });
-}));
+// ── Lubrifiant products are pulled from the shared /api/products stock ──
+// (Huiles, Lubrifiants, Filtres, etc.) — no separate facture catalogue.
 
 router.get('/:id', requireAuth, wrap(async (req, res) => {
   const { rows } = await pool.query("SELECT *, to_char(facture_date,'YYYY-MM-DD') AS facture_date FROM factures WHERE id=$1", [req.params.id]);
