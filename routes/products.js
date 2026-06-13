@@ -154,8 +154,24 @@ router.get('/shop-sales', requireAuth, staff, wrap(async (req, res) => {
 
 // QR scan sale — sells exactly 1 unit, no poste required, attributed to scanner.
 router.post('/scan-sell', requireAuth, wrap(async (req, res) => {
-  const { product_id } = req.body || {};
+  const { product_id, client_uid } = req.body || {};
   if (!product_id) return res.status(400).json({ error: 'Produit requis' });
+
+  // Idempotency: a replayed offline sale carries a client_uid already saved → return it, don't re-sell.
+  if (client_uid) {
+    const { rows: dup } = await pool.query(
+      `SELECT ps.id, ps.total_amount, p.name AS product_name, p.reference, p.price AS unit_price, p.stock_qty
+       FROM product_sales ps JOIN products p ON p.id=ps.product_id WHERE ps.client_uid=$1`, [client_uid]
+    );
+    if (dup[0]) {
+      return res.status(200).json({
+        ok: true, duplicate: true, sale_id: dup[0].id,
+        product_name: dup[0].product_name, reference: dup[0].reference,
+        unit_price: dup[0].unit_price, total_amount: dup[0].total_amount,
+        remaining_stock: dup[0].stock_qty,
+      });
+    }
+  }
 
   const { rows: pr } = await pool.query('SELECT * FROM products WHERE id=$1 AND is_active=1', [product_id]);
   const product = pr[0];
@@ -164,9 +180,9 @@ router.post('/scan-sell', requireAuth, wrap(async (req, res) => {
 
   const total = +product.price.toFixed(2);
   const { rows: [{ id }] } = await pool.query(`
-    INSERT INTO product_sales (shift_id, product_id, quantity, unit_price, total_amount, recorded_by)
-    VALUES (NULL, $1, 1, $2, $3, $4) RETURNING id
-  `, [product_id, product.price, total, req.user.id]);
+    INSERT INTO product_sales (shift_id, product_id, quantity, unit_price, total_amount, recorded_by, client_uid)
+    VALUES (NULL, $1, 1, $2, $3, $4, $5) RETURNING id
+  `, [product_id, product.price, total, req.user.id, client_uid || null]);
 
   await pool.query('UPDATE products SET stock_qty = stock_qty - 1 WHERE id=$1', [product_id]);
 

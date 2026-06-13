@@ -356,6 +356,9 @@ async function initDB() {
   try { await pgPool.query('ALTER TABLE product_sales ALTER COLUMN shift_id DROP NOT NULL'); } catch(_) {}
   // Credit sales can be recorded without an open poste too.
   try { await pgPool.query('ALTER TABLE credit_sales ALTER COLUMN shift_id DROP NOT NULL'); } catch(_) {}
+  // Offline QR scan sales carry a client-generated id so replays don't double-count.
+  await pgPool.query('ALTER TABLE product_sales ADD COLUMN IF NOT EXISTS client_uid TEXT');
+  try { await pgPool.query('CREATE UNIQUE INDEX IF NOT EXISTS product_sales_client_uid_idx ON product_sales(client_uid) WHERE client_uid IS NOT NULL'); } catch(_) {}
   await pgPool.query('ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS bank_ref TEXT');
   await pgPool.query(`
     CREATE TABLE IF NOT EXISTS bank_import_rules (

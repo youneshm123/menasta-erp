@@ -60,6 +60,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font
   <div class="brand">MENASTA <small>Vente Boutique</small></div>
 </div>
 
+<div id="net-banner" style="display:none;width:100%;max-width:440px;margin:-6px 0 12px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;text-align:center"></div>
+
 <div class="card" id="card">
   <div class="spin"></div>
 </div>
@@ -88,6 +90,33 @@ if (!TOKEN) { gotoLogin(); }
 if (!ID)    { card.innerHTML = '<div class="msg msg-er">QR invalide — aucun produit.</div>'; }
 
 let product = null;
+let offline = false;
+
+// ── Offline queue helpers ────────────────────────────────
+const QKEY  = 'scan_queue';
+const PKEY  = 'scan_prod_' + ID;
+const genUid = () => (crypto.randomUUID ? crypto.randomUUID()
+  : 'u-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+const getQueue = () => { try { return JSON.parse(localStorage.getItem(QKEY) || '[]'); } catch { return []; } };
+const setQueue = q => localStorage.setItem(QKEY, JSON.stringify(q));
+
+function banner() {
+  const b = document.getElementById('net-banner');
+  const pending = getQueue().length;
+  if (offline || pending) {
+    b.style.display = 'block';
+    if (offline) {
+      b.style.background = '#FEF2F2'; b.style.color = '#dc2626';
+      b.textContent = '📴 Hors ligne — les ventes sont enregistrées et seront envoyées au retour du réseau'
+        + (pending ? ' (' + pending + ' en attente)' : '');
+    } else {
+      b.style.background = '#FFFBEB'; b.style.color = '#b45309';
+      b.textContent = '🔄 Synchronisation… ' + pending + ' vente(s) en attente';
+    }
+  } else {
+    b.style.display = 'none';
+  }
+}
 
 async function loadProduct() {
   try {
@@ -96,9 +125,19 @@ async function loadProduct() {
     const d = await r.json();
     if (!r.ok) { card.innerHTML = '<div class="msg msg-er">' + (d.error || 'Produit introuvable') + '</div>'; return; }
     product = d;
+    localStorage.setItem(PKEY, JSON.stringify(d));   // cache for offline
+    offline = false; banner();
     renderProduct();
+    syncQueue();
   } catch (e) {
-    card.innerHTML = '<div class="msg msg-er">Connexion impossible. Vérifiez le réseau.</div>';
+    // No network — fall back to the cached product if we have one.
+    const cached = (() => { try { return JSON.parse(localStorage.getItem(PKEY) || 'null'); } catch { return null; } })();
+    if (cached) {
+      product = cached; offline = true; banner();
+      renderProduct();
+    } else {
+      card.innerHTML = '<div class="msg msg-er">📴 Hors ligne et produit jamais chargé. Connectez-vous une fois pour pouvoir le scanner sans réseau.</div>';
+    }
   }
 }
 
@@ -125,11 +164,12 @@ function renderProduct() {
 async function sell() {
   const b = document.getElementById('sell');
   b.disabled = true; b.textContent = 'Enregistrement…';
+  const uid = genUid();
   try {
     const r = await fetch('/api/products/scan-sell', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN },
-      body: JSON.stringify({ product_id: ID })
+      body: JSON.stringify({ product_id: ID, client_uid: uid })
     });
     if (r.status === 401) return gotoLogin();
     const d = await r.json();
@@ -138,10 +178,53 @@ async function sell() {
       card.insertAdjacentHTML('afterbegin', '<div class="msg msg-er">' + (d.error || 'Erreur') + '</div>');
       return;
     }
+    offline = false; banner();
     renderSuccess(d);
   } catch (e) {
-    b.disabled = false; b.textContent = 'Réessayer';
-    card.insertAdjacentHTML('afterbegin', '<div class="msg msg-er">Connexion impossible.</div>');
+    // No network → queue the sale, optimistically update stock, confirm to the user.
+    const q = getQueue();
+    q.push({ uid, product_id: ID, ts: Date.now() });
+    setQueue(q);
+    offline = true;
+    const remaining = (parseFloat(product.stock_qty) || 0) - 1;
+    product.stock_qty = remaining;
+    localStorage.setItem(PKEY, JSON.stringify(product));
+    banner();
+    renderQueued(remaining);
+  }
+}
+
+// Replay queued offline sales. Safe to call anytime — runs one at a time.
+let _syncing = false;
+async function syncQueue() {
+  if (_syncing) return;
+  let q = getQueue();
+  if (!q.length) return;
+  _syncing = true;
+  banner();
+  try {
+    while (q.length) {
+      const item = q[0];
+      let r;
+      try {
+        r = await fetch('/api/products/scan-sell', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN },
+          body: JSON.stringify({ product_id: item.product_id, client_uid: item.uid })
+        });
+      } catch (netErr) {
+        break;  // still offline — try again later
+      }
+      if (r.status === 401) { _syncing = false; return gotoLogin(); }
+      // 2xx (incl. duplicate) or a 4xx we can't recover from → drop it and move on.
+      q.shift();
+      setQueue(q);
+      q = getQueue();
+    }
+    offline = false;
+  } finally {
+    _syncing = false;
+    banner();
   }
 }
 
@@ -164,9 +247,33 @@ function renderSuccess(d) {
   if (a) a.addEventListener('click', () => { renderProduct(); });
 }
 
+function renderQueued(remaining) {
+  const low = remaining <= (product.stock_min||5);
+  card.innerHTML =
+    '<div class="result">' +
+      '<div class="big">🕓</div>' +
+      '<h2>Vente enregistrée</h2>' +
+      '<p>' + esc(product.name) + '</p>' +
+      '<p style="font-weight:700;color:var(--text);font-size:18px;margin-top:6px">' + fmt(product.price) + ' DH</p>' +
+      '<div class="rem ' + (low ? 'stock-low' : 'stock-ok') + '">Stock restant : ' + remaining + ' ' + esc(product.unit||'') + (low ? ' ⚠️' : '') + '</div>' +
+      '<div class="msg" style="background:#FFFBEB;color:#b45309">📴 Hors ligne — sera envoyée automatiquement au retour du réseau.</div>' +
+      (remaining > 0
+        ? '<button class="btn btn-go" id="again">Vendre encore 1</button>'
+        : '<div class="msg msg-er">Stock épuisé.</div>') +
+    '</div>';
+  const a = document.getElementById('again');
+  if (a) a.addEventListener('click', () => { renderProduct(); });
+}
+
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-if (TOKEN && ID) loadProduct();
+// Sync queued sales when the network comes back, and on a slow timer as a safety net.
+window.addEventListener('online', () => { offline = false; banner(); syncQueue(); });
+window.addEventListener('offline', () => { offline = true; banner(); });
+setInterval(() => { if (navigator.onLine) syncQueue(); }, 20000);
+
+if (TOKEN && ID) { banner(); loadProduct(); }
+else { banner(); }
 </script>
 </body>
 </html>

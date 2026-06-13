@@ -251,7 +251,16 @@ body.app-layout{overflow:auto}
     </div>
   </div>
 
-  <!-- DÉPENSES & CRÉANCES DÉTAIL -->
+  <!-- TOGGLE DÉTAILS -->
+  <div style="margin:4px 0 18px">
+    <button id="details-toggle" onclick="toggleDetails()" style="width:100%;padding:13px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <span id="details-toggle-ic">▾</span> <span id="details-toggle-lbl">Voir le détail complet (dépenses, créances, stock, postes…)</span>
+    </button>
+  </div>
+
+  <!-- DÉTAILS (repliable) -->
+  <div id="patron-details" style="display:none">
+
   <!-- DÉPENSES / CHARGES -->
   <div class="section" style="margin-bottom:20px">
     <div class="s-head">
@@ -346,6 +355,8 @@ body.app-layout{overflow:auto}
     </div>
   </div>
 
+  </div><!-- /#patron-details -->
+
 </div>
 
 <script>
@@ -361,6 +372,20 @@ if (user) {
 }
 
 function logout() { localStorage.clear(); location.href = '/'; }
+
+// ── Détails repliables (vue minimale par défaut) ──
+function setDetails(open) {
+  document.getElementById('patron-details').style.display = open ? 'block' : 'none';
+  document.getElementById('details-toggle-ic').textContent = open ? '▴' : '▾';
+  document.getElementById('details-toggle-lbl').textContent = open
+    ? 'Masquer le détail'
+    : 'Voir le détail complet (dépenses, créances, stock, postes…)';
+  localStorage.setItem('patron_details_open', open ? '1' : '0');
+}
+function toggleDetails() {
+  setDetails(document.getElementById('patron-details').style.display === 'none');
+}
+setDetails(localStorage.getItem('patron_details_open') === '1');
 
 const fmt = (n, d=2) => (parseFloat(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
 const ymd = v => v ? String(v).slice(0,10) : '';
