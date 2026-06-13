@@ -231,21 +231,12 @@
         <button class="btn btn-g btn-sm" onclick="document.getElementById('ck-search').value='';document.getElementById('ck-date-from').value='';document.getElementById('ck-date-to').value='';filterCheques()"↺ Reset</button>
       </div>
       <div class="tiles" id="ck-tiles"></div>
-      <div class="ck-cols">
-        <div class="section">
-          <div class="s-head"><div class="s-title">📤 Chèques Émis (sortants)</div></div>
-          <div style="overflow-x:auto"><table class="t">
-            <thead><tr><th>Date</th><th>N° Chèque</th><th>Bénéficiaire</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
-            <tbody id="ck-out-body"></tbody>
-          </table></div>
-        </div>
-        <div class="section">
-          <div class="s-head"><div class="s-title">📥 Chèques Reçus (entrants)</div></div>
-          <div style="overflow-x:auto"><table class="t">
-            <thead><tr><th>Date</th><th>N° Chèque</th><th>Émetteur</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
-            <tbody id="ck-in-body"></tbody>
-          </table></div>
-        </div>
+      <div class="section">
+        <div class="s-head"><div class="s-title">💳 Tous les Chèques & Effets</div></div>
+        <div style="overflow-x:auto"><table class="t" id="ck-table">
+          <thead><tr><th>Date</th><th>Sens</th><th>N° Chèque</th><th>Bénéficiaire / Émetteur</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="ck-all-body"></tbody>
+        </table></div>
       </div>
     </div>
 
@@ -670,12 +661,13 @@ function filterCheques() {
     if (to   && c.txn_date > to)   return false;
     return true;
   };
-  const out = _allCheques.filter(c => (c.type === 'cheque_out' || c.type === 'effet_out') && match(c));
-  const inp = _allCheques.filter(c => (c.type === 'cheque_in'  || c.type === 'effet_in')  && match(c));
-  document.getElementById('ck-out-body').innerHTML = out.map(c=>ckRow(c,'out')).join('')
-    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun résultat</td></tr>';
-  document.getElementById('ck-in-body').innerHTML  = inp.map(c=>ckRow(c,'in')).join('')
-    || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Aucun résultat</td></tr>';
+  const all = _allCheques
+    .filter(c => ['cheque_out','effet_out','cheque_in','effet_in'].includes(c.type) && match(c))
+    .sort((a,b) => String(b.txn_date||'').localeCompare(String(a.txn_date||'')));
+  document.getElementById('ck-all-body').innerHTML = all.map(c => {
+    const dir = (c.type === 'cheque_in' || c.type === 'effet_in') ? 'in' : 'out';
+    return ckRow(c, dir);
+  }).join('') || '<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--muted)">Aucun résultat</td></tr>';
 }
 
 const STATUS_LABELS = { pending:'⏳ En attente', cashed:'✅ Encaissé', 'encaissé':'✅ Encaissé', cancelled:'❌ Annulé', returned:'↩️ Retourné' };
@@ -683,8 +675,12 @@ function ckRow(c, dir) {
   const st = STATUS_LABELS[c.check_status] || c.check_status || '—';
   const isCashed = c.check_status==='cashed' || c.check_status==='encaissé';
   const stColor = c.check_status==='pending'?'var(--orange)':isCashed?'var(--green)':'var(--red)';
+  const dirBadge = dir === 'in'
+    ? '<span style="font-size:11px;font-weight:700;color:var(--green);background:#DCFCE7;padding:2px 8px;border-radius:20px;white-space:nowrap">📥 Reçu</span>'
+    : '<span style="font-size:11px;font-weight:700;color:var(--red);background:#FEE2E2;padding:2px 8px;border-radius:20px;white-space:nowrap">📤 Émis</span>';
   return `<tr>
     <td>${ymd(c.txn_date)}</td>
+    <td>${dirBadge}</td>
     <td style="font-weight:700">${(c.type||'').startsWith('effet')?'🧾 ':'💳 '}${c.check_number||'—'}</td>
     <td>${c.beneficiary||'—'}</td>
     <td>${ymd(c.due_date)||'—'}</td>
