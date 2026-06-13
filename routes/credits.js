@@ -79,11 +79,14 @@ router.get('/sales', requireAuth, wrap(async (req, res) => {
 router.post('/sales', requireAuth, wrap(async (req, res) => {
   const { shift_id, credit_client_id, pump_id, notes, product_type } = req.body || {};
   const amount = parseFloat(req.body.amount);
-  if (!shift_id || !credit_client_id || !amount || amount <= 0)
+  if (!credit_client_id || !amount || amount <= 0)
     return res.status(400).json({ error: 'Champs obligatoires manquants ou montant invalide' });
 
-  const { rows: sr } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='open'", [shift_id]);
-  if (!sr.length) return res.status(400).json({ error: 'Poste non trouvé ou déjà fermé' });
+  // A shift is optional — but if one is given it must be open.
+  if (shift_id) {
+    const { rows: sr } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='open'", [shift_id]);
+    if (!sr.length) return res.status(400).json({ error: 'Poste non trouvé ou déjà fermé' });
+  }
 
   let liters = 0, price_per_liter = 0;
   if (pump_id) {
@@ -123,11 +126,12 @@ router.post('/sales', requireAuth, wrap(async (req, res) => {
 
 router.delete('/sales/:id', requireAuth, wrap(async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT cs.*, s.status FROM credit_sales cs JOIN shifts s ON s.id=cs.shift_id WHERE cs.id=$1', [req.params.id]
+    'SELECT cs.*, s.status FROM credit_sales cs LEFT JOIN shifts s ON s.id=cs.shift_id WHERE cs.id=$1', [req.params.id]
   );
   const sale = rows[0];
   if (!sale) return res.status(404).json({ error: 'Vente introuvable' });
-  if (sale.status !== 'open') return res.status(400).json({ error: "Impossible d'annuler: poste fermé" });
+  // Block deletion only when it belongs to a poste that is already closed.
+  if (sale.shift_id && sale.status !== 'open') return res.status(400).json({ error: "Impossible d'annuler: poste fermé" });
   await pool.query('UPDATE credit_clients SET balance_due=GREATEST(balance_due-$1, 0) WHERE id=$2', [sale.amount, sale.credit_client_id]);
   await pool.query('DELETE FROM credit_sales WHERE id=$1', [sale.id]);
   res.json({ ok: true });

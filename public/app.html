@@ -1615,8 +1615,8 @@ function updateCsPendingUI() {
 function csRemovePending(i) { csPending.splice(i,1); updateCsPendingUI(); }
 
 async function csSubmitAll() {
-  if (!S.activeShift) { toast('Aucun poste ouvert', 'wn'); return; }
   if (!csPending.length) return;
+  const shiftId = S.activeShift ? S.activeShift.id : null;
   const btn = document.getElementById('cs-submit-btn');
   btn.disabled = true; btn.textContent = 'Enregistrement…';
   let saved = 0;
@@ -1624,12 +1624,12 @@ async function csSubmitAll() {
     try {
       if (c.mode === 'payment') {
         await api('POST', '/credits/payments', {
-          shift_id: S.activeShift.id, credit_client_id: c.client_id,
+          shift_id: shiftId, credit_client_id: c.client_id,
           amount: c.amount, notes: c.notes
         });
       } else {
         await api('POST', '/credits/sales', {
-          shift_id: S.activeShift.id, credit_client_id: c.client_id,
+          shift_id: shiftId, credit_client_id: c.client_id,
           pump_id: c.pump_id || null, amount: c.amount,
           notes: c.notes, product_type: c.product_type
         });
@@ -2783,6 +2783,21 @@ document.addEventListener('DOMContentLoaded', () => {
 // Close shift button in page actions (dynamic)
 document.getElementById('content').addEventListener('click', e => {
   if (e.target.closest('.btn-d') && e.target.textContent.includes('Fermer Poste')) prepareCloseShift();
+});
+
+// ── ↓ / ↑ jump to the next / previous field instead of changing the value
+document.addEventListener('keydown', e => {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  const el = e.target;
+  if (!el.matches || !el.matches('input:not([type=checkbox]):not([type=radio]):not([type=date]):not([type=time]):not([type=range])')) return;
+  // Search within the open modal if there is one, otherwise the whole document
+  const scope = el.closest('.modal-overlay, .modal, .modal-bd, #content, form') || document;
+  const fields = [...scope.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=date]):not([type=time]):not([type=range]), select, textarea')]
+    .filter(f => !f.disabled && !f.readOnly && f.offsetParent !== null);
+  const i = fields.indexOf(el);
+  if (i === -1) return;
+  const next = fields[i + (e.key === 'ArrowDown' ? 1 : -1)];
+  if (next) { e.preventDefault(); next.focus(); if (next.select) try { next.select(); } catch(_) {} }
 });
 
 // Set today's date on date inputs when modals open
