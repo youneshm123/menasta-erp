@@ -25,6 +25,7 @@
     '/ai':       'Assistant IA',
     '/admin':    'Administration',
     '/logs':     'Journal',
+    '/scanner':  'Scanner reçu',
   };
 
   const path  = location.pathname;
@@ -78,6 +79,7 @@
     navLink('cigarette',        'Tabac',      '/tabac') +
     navLink('droplets',         'Service',    '/service') +
     navLink('qr-code',          'Boutique QR','/boutique') +
+    navLink('scan-line',        'Scanner reçu','/scanner') +
     '    </div>' +
     '    <div class="ds-nav-grp">' +
     '      <div class="ds-nav-grp-lbl">Finances</div>' +

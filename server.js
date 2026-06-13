@@ -72,6 +72,8 @@ async function start() {
   // Bank statement PDFs are sent as base64 for AI reading — allow a larger body
   // on that route only (must be registered before the global 1mb parser).
   app.use('/api/bank/import', express.json({ limit: '25mb' }));
+  // Receipt photos are sent as base64 to the AI scanner — allow a larger body.
+  app.use('/api/ai/scan-receipt', express.json({ limit: '15mb' }));
   app.use(express.json({ limit: '1mb' }));
 
   // ── Rate limiting ──
@@ -280,6 +282,7 @@ async function start() {
   app.get('/logs',     page('logs.html'));
   app.get('/ai',       page('ai-chat.html'));
   app.get('/boutique', page('boutique.html'));
+  app.get('/scanner',  page('scanner.html'));
   app.get('/scan/:id', page('scan.html'));
 
   // ── Cache-buster route (token-protected) ──

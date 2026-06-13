@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MENASTA — Scanner de reçus</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#5b4fcf;--bg:#f4f5f9;--surface:#fff;--border:#e5e7eb;
+  --text:#111827;--muted:#6b7280;--green:#059669;--green-lt:#ecfdf5;
+  --orange:#d97706;--red:#dc2626;--red-lt:#fef2f2;--blue:#2563eb;
+  --font:'Inter',system-ui,sans-serif;--r:12px;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;padding:22px}
+.wrap{max-width:780px;margin:0 auto}
+.top{display:flex;align-items:center;gap:11px;margin-bottom:22px}
+.mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#7c6ee0);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px}
+.brand{font-weight:800;font-size:18px;letter-spacing:-.3px}
+.brand small{display:block;font-size:12px;font-weight:500;color:var(--muted)}
+.back{margin-left:auto;text-decoration:none;color:var(--muted);font-size:13px;font-weight:600;
+  border:1px solid var(--border);background:var(--surface);padding:8px 14px;border-radius:8px}
+.sec{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:20px}
+.btn{border:none;border-radius:9px;padding:11px 18px;font-size:14px;font-weight:700;font-family:var(--font);
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn-pri{background:var(--primary);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-gho{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-block{width:100%}
+/* Drop / capture zone */
+.drop{border:2px dashed #cbd5e1;border-radius:14px;padding:34px 20px;text-align:center;cursor:pointer;
+  transition:.15s;background:#fbfbfe}
+.drop:hover{border-color:var(--primary);background:#f7f6ff}
+.drop .ic{font-size:46px;margin-bottom:8px}
+.drop .t{font-weight:700;font-size:15px}
+.drop .s{font-size:13px;color:var(--muted);margin-top:4px}
+.preview{margin-top:14px;text-align:center}
+.preview img{max-width:100%;max-height:340px;border-radius:10px;border:1px solid var(--border)}
+.actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.actions .btn{flex:1;min-width:140px}
+/* Result */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;padding:4px 11px;border-radius:20px}
+.b-depense{background:#FEF3C7;color:#B45309}
+.b-tabac{background:#FFE4E6;color:#BE123C}
+.b-livraison_carburant{background:#DBEAFE;color:#1D4ED8}
+.b-produit{background:#DCFCE7;color:#15803D}
+.b-autre{background:#E5E7EB;color:#374151}
+.res-hd{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.res-sum{font-size:13.5px;color:var(--muted);margin-bottom:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fld label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.fld input,.fld select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;
+  font-size:14px;font-family:var(--font);outline:none;background:var(--surface);color:var(--text);font-weight:600}
+.fld input:focus,.fld select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,79,207,.12)}
+.fld.full{grid-column:1/-1}
+table{width:100%;border-collapse:collapse;margin-top:14px}
+th{text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.4px;padding:8px 10px;background:var(--bg);border-bottom:1px solid var(--border)}
+td{padding:9px 10px;font-size:13px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+.total-line{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 4px;padding-top:14px;border-top:2px solid var(--border)}
+.total-line .l{font-size:13px;font-weight:700;color:var(--muted)}
+.total-line .v{font-size:26px;font-weight:800;color:var(--green)}
+.hidden{display:none}
+.spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(120px);background:#111827;color:#fff;
+  padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;transition:.3s;z-index:50;opacity:0}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.ok{background:var(--green)}.toast.er{background:var(--red)}
+.hint{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="mark">📸</div>
+    <div class="brand">Scanner de reçus <small>L'IA lit le ticket et remplit tout</small></div>
+    <a href="/home" class="back">← Accueil</a>
+  </div>
+
+  <!-- Capture -->
+  <div class="sec">
+    <input type="file" id="file" accept="image/*" capture="environment" class="hidden"/>
+    <div class="drop" id="drop">
+      <div class="ic">🧾</div>
+      <div class="t">Prendre une photo ou choisir une image</div>
+      <div class="s">Tabac, café, fournisseur, bon de livraison… l'IA reconnaît automatiquement</div>
+    </div>
+    <div class="preview hidden" id="preview"><img id="preview-img" alt="reçu"/></div>
+    <div class="actions hidden" id="cap-actions">
+      <button class="btn btn-gho" id="retake">↺ Reprendre</button>
+      <button class="btn btn-pri" id="analyze">✨ Analyser le reçu</button>
+    </div>
+    <div class="hint">Astuce : cadrez bien le ticket, à plat et sans reflets, pour une meilleure lecture.</div>
+  </div>
+
+  <!-- Result -->
+  <div class="sec hidden" id="result">
+    <div class="res-hd">
+      <span class="badge" id="r-badge">—</span>
+      <strong id="r-vendor" style="font-size:15px"></strong>
+    </div>
+    <div class="res-sum" id="r-sum"></div>
+
+    <div class="grid">
+      <div class="fld full"><label>Description</label><input id="f-desc"/></div>
+      <div class="fld"><label>Catégorie</label>
+        <select id="f-cat"></select>
+      </div>
+      <div class="fld"><label>Date</label><input type="date" id="f-date"/></div>
+      <div class="fld"><label>Montant total (MAD)</label><input type="number" step="0.01" min="0" id="f-total"/></div>
+      <div class="fld"><label>Type détecté</label><input id="f-type" disabled/></div>
+    </div>
+
+    <div id="items-wrap" class="hidden">
+      <table>
+        <thead><tr><th>Article</th><th style="text-align:center">Qté</th><th style="text-align:right">Prix</th></tr></thead>
+        <tbody id="items-body"></tbody>
+      </table>
+    </div>
+
+    <div class="total-line"><span class="l">TOTAL À ENREGISTRER</span><span class="v" id="r-total">0,00 MAD</span></div>
+
+    <div class="actions">
+      <button class="btn btn-gho" id="rescan">📸 Scanner un autre</button>
+      <button class="btn btn-green" id="save">✅ Enregistrer comme dépense</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TOKEN = localStorage.getItem('fm_token');
+function goLogin(){ localStorage.removeItem('fm_token'); localStorage.removeItem('fm_user'); location.href='/?return='+encodeURIComponent('/scanner'); }
+if (!TOKEN) goLogin();
+const JH = { 'Content-Type':'application/json', Authorization:'Bearer '+TOKEN };
+const CATS = ['Maintenance','Salaires','Fournitures','Carburant','Loyer','Électricité','Eau','Télécom','Transport','Tabac','Café','Autre'];
+const TYPE_LABEL = { depense:'Dépense', tabac:'Tabac', livraison_carburant:'Livraison carburant', produit:'Produit boutique', autre:'Autre' };
+const fmt = n => (parseFloat(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let _dataUrl = null, _scan = null;
+
+const $ = id => document.getElementById(id);
+function toast(msg, kind){ const t=$('toast'); t.textContent=msg; t.className='toast show '+(kind||''); setTimeout(()=>t.className='toast',2600); }
+
+// populate category select
+CATS.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; $('f-cat').appendChild(o); });
+
+// ── File capture ────────────────────────────────────────
+$('drop').addEventListener('click', () => $('file').click());
+$('retake').addEventListener('click', () => $('file').click());
+$('rescan').addEventListener('click', resetAll);
+$('file').addEventListener('change', e => { const f=e.target.files[0]; if (f) loadImage(f); });
+
+function resetAll(){
+  _dataUrl=null; _scan=null;
+  $('file').value='';
+  $('preview').classList.add('hidden');
+  $('cap-actions').classList.add('hidden');
+  $('result').classList.add('hidden');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Downscale big camera photos to keep upload small and fast.
+function loadImage(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 1600;
+      let { width:w, height:h } = img;
+      if (w > max || h > max){ const r = Math.min(max/w, max/h); w=Math.round(w*r); h=Math.round(h*r); }
+      const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      _dataUrl = cv.toDataURL('image/jpeg', 0.82);
+      $('preview-img').src = _dataUrl;
+      $('preview').classList.remove('hidden');
+      $('cap-actions').classList.remove('hidden');
+      $('result').classList.add('hidden');
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Analyze ─────────────────────────────────────────────
+$('analyze').addEventListener('click', async () => {
+  if (!_dataUrl) return;
+  const btn = $('analyze');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Lecture en cours…';
+  try {
+    const r = await fetch('/api/ai/scan-receipt', { method:'POST', headers:JH, body: JSON.stringify({ image:_dataUrl }) });
+    if (r.status === 401) return goLogin();
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Erreur de lecture', 'er'); return; }
+    _scan = d;
+    fillResult(d);
+  } catch(e) {
+    toast('Connexion impossible', 'er');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '✨ Analyser le reçu';
+  }
+});
+
+function fillResult(d){
+  const badge = $('r-badge');
+  badge.className = 'badge b-' + d.type;
+  badge.textContent = TYPE_LABEL[d.type] || 'Reçu';
+  $('r-vendor').textContent = d.fournisseur || '';
+  $('r-sum').textContent = d.resume || '';
+  $('f-type').value = TYPE_LABEL[d.type] || d.type;
+  $('f-cat').value = CATS.includes(d.categorie) ? d.categorie : 'Autre';
+  $('f-date').value = d.date || new Date().toISOString().slice(0,10);
+  $('f-total').value = d.total != null ? d.total : '';
+  const descParts = [];
+  if (d.fournisseur) descParts.push(d.fournisseur);
+  if (d.resume && !d.fournisseur) descParts.push(d.resume);
+  $('f-desc').value = descParts.join(' — ') || (TYPE_LABEL[d.type] || 'Reçu');
+
+  // items
+  const body = $('items-body');
+  if (d.articles && d.articles.length){
+    body.innerHTML = d.articles.map(a =>
+      '<tr><td>'+esc(a.designation||'—')+'</td>'+
+      '<td style="text-align:center">'+(a.quantite!=null?a.quantite:'—')+'</td>'+
+      '<td style="text-align:right">'+(a.prix!=null?fmt(a.prix)+' MAD':'—')+'</td></tr>'
+    ).join('');
+    $('items-wrap').classList.remove('hidden');
+  } else { $('items-wrap').classList.add('hidden'); }
+
+  syncTotal();
+  $('result').classList.remove('hidden');
+  $('result').scrollIntoView({ behavior:'smooth' });
+}
+
+$('f-total').addEventListener('input', syncTotal);
+function syncTotal(){ $('r-total').textContent = fmt($('f-total').value) + ' MAD'; }
+
+// ── Save as expense ─────────────────────────────────────
+$('save').addEventListener('click', async () => {
+  const amount = parseFloat($('f-total').value);
+  const description = $('f-desc').value.trim();
+  if (!description) { toast('Ajoutez une description', 'er'); return; }
+  if (!isFinite(amount) || amount <= 0) { toast('Montant invalide', 'er'); return; }
+  const btn = $('save');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Enregistrement…';
+  // Build a notes line from the detected items
+  let notes = '📸 Scanné par IA';
+  if (_scan && _scan.articles && _scan.articles.length){
+    notes += ' — ' + _scan.articles.map(a => a.designation + (a.prix!=null?(' ('+fmt(a.prix)+')'):'')).join(', ');
+  }
+  try {
+    const r = await fetch('/api/expenses', { method:'POST', headers:JH, body: JSON.stringify({
+      category: $('f-cat').value, description, amount,
+      expense_date: $('f-date').value || new Date().toISOString().slice(0,10),
+      notes: notes.slice(0, 500)
+    })});
+    if (r.status === 401) return goLogin();
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Erreur', 'er'); return; }
+    toast('Dépense enregistrée ✓', 'ok');
+    setTimeout(resetAll, 900);
+  } catch(e) {
+    toast('Connexion impossible', 'er');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '✅ Enregistrer comme dépense';
+  }
+});
+</script>
+</body>
+</html>

@@ -797,4 +797,81 @@ router.post('/categorize', requireAuth, wrap(async (req, res) => {
   res.json({ category });
 }));
 
+// ── Smart Receipt Scanner ──────────────────────────────────────────────────
+// Snap a photo of any receipt (tabac, café, fournisseur, etc.). Claude Vision
+// detects what it is and extracts the structured fields automatically.
+const RECEIPT_CATEGORIES = ['Maintenance','Salaires','Fournitures','Carburant','Loyer','Électricité','Eau','Télécom','Transport','Tabac','Café','Autre'];
+
+router.post('/scan-receipt', requireAuth, wrap(async (req, res) => {
+  let { image, media_type } = req.body || {};
+  if (!image || typeof image !== 'string') return res.status(400).json({ error: 'Image requise' });
+
+  // Accept full data URLs ("data:image/jpeg;base64,....") or bare base64.
+  const m = image.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/);
+  if (m) { media_type = m[1]; image = m[2]; }
+  media_type = media_type || 'image/jpeg';
+  if (!/^image\/(jpeg|png|webp|gif)$/.test(media_type))
+    return res.status(400).json({ error: 'Format image non supporté (JPEG, PNG, WEBP, GIF)' });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const prompt = `Tu es l'assistant d'une station-service au Maroc. On te montre la PHOTO d'un reçu, ticket, facture, bon de livraison ou ticket de caisse (souvent en français ou arabe).
+
+Analyse l'image et réponds UNIQUEMENT avec un objet JSON valide (aucun texte autour, pas de markdown) avec EXACTEMENT cette structure:
+{
+  "type": "depense" | "tabac" | "livraison_carburant" | "produit" | "autre",
+  "fournisseur": "nom du commerçant/fournisseur ou null",
+  "date": "YYYY-MM-DD ou null",
+  "total": nombre (montant total TTC en MAD, ou null),
+  "categorie": une valeur parmi [${RECEIPT_CATEGORIES.join(', ')}],
+  "articles": [ { "designation": "...", "quantite": nombre ou null, "prix": nombre ou null } ],
+  "resume": "une phrase courte en français décrivant ce reçu"
+}
+
+Règles:
+- "type": "tabac" si c'est un achat de cigarettes/tabac ; "livraison_carburant" si c'est un bon de livraison de gasoil/essence ; "produit" si ce sont des produits boutique (huiles, filtres, accessoires) ; sinon "depense".
+- "categorie": choisis la plus adaptée parmi la liste. Tabac→Tabac, café/boissons→Café, gasoil/essence→Carburant.
+- "total": le montant final payé, en nombre (ex: 200.50). Si illisible, null.
+- "date": si absente sur le reçu, mets ${today}.
+- Maximum 15 articles. Si l'image n'est pas un reçu, type="autre" et resume explique pourquoi.
+- N'invente jamais de chiffres: si tu n'es pas sûr, mets null.`;
+
+  let parsed;
+  try {
+    const msg = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type, data: image } },
+          { type: 'text', text: prompt },
+        ],
+      }],
+    });
+    let text = (msg.content.find(b => b.type === 'text')?.text || '').trim()
+      .replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    parsed = JSON.parse(text);
+  } catch (e) {
+    console.error('[SCAN RECEIPT]', e.status, e.message);
+    return res.status(502).json({ error: "Lecture du reçu impossible. Reprenez la photo (plus nette, bien cadrée)." });
+  }
+
+  // Normalize / clamp
+  const num = v => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+  const out = {
+    type:        ['depense','tabac','livraison_carburant','produit','autre'].includes(parsed.type) ? parsed.type : 'depense',
+    fournisseur: parsed.fournisseur ? String(parsed.fournisseur).slice(0, 120) : null,
+    date:        /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : today,
+    total:       num(parsed.total),
+    categorie:   RECEIPT_CATEGORIES.includes(parsed.categorie) ? parsed.categorie : 'Autre',
+    articles:    Array.isArray(parsed.articles) ? parsed.articles.slice(0, 15).map(a => ({
+                   designation: a && a.designation ? String(a.designation).slice(0, 120) : '',
+                   quantite: a ? num(a.quantite) : null,
+                   prix: a ? num(a.prix) : null,
+                 })) : [],
+    resume:      parsed.resume ? String(parsed.resume).slice(0, 300) : '',
+  };
+  res.json(out);
+}));
+
 module.exports = router;
