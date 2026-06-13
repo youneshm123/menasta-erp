@@ -121,13 +121,16 @@ tr:last-child td{border-bottom:none}
   <div class="sec">
     <div class="sec-hd">
       <h2>Codes QR des produits</h2>
-      <button class="btn btn-pri no-print" id="print-btn" onclick="printLabels()">🖨️ Imprimer les étiquettes</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-gho no-print" id="print-sel-btn" onclick="printSelected()" style="display:none">🖨️ Imprimer la sélection (<span id="sel-count">0</span>)</button>
+        <button class="btn btn-pri no-print" id="print-btn" onclick="printAll()">🖨️ Imprimer tout</button>
+      </div>
     </div>
-    <p class="hint no-print">Pour chaque produit, indiquez le <strong>nombre d'étiquettes</strong> à imprimer, puis cliquez sur Imprimer. Chaque produit garde toujours le même QR — l'employé le scanne, la vente s'enregistre et le stock baisse automatiquement.</p>
+    <p class="hint no-print">Pour chaque produit, indiquez le <strong>nombre d'étiquettes</strong>, puis imprimez. Utilisez le bouton <strong>🖨️</strong> de la ligne pour un seul produit, cochez plusieurs cases pour imprimer une sélection, ou « Imprimer tout ». Chaque produit garde toujours le même QR — l'employé le scanne, la vente s'enregistre et le stock baisse automatiquement.</p>
     <div style="overflow-x:auto;margin-top:14px">
       <table>
-        <thead><tr><th>QR</th><th>Produit</th><th>Réf.</th><th style="text-align:right">Prix</th><th style="text-align:right">Stock</th><th style="text-align:center">Nb étiquettes</th></tr></thead>
-        <tbody id="qr-table-body"><tr><td colspan="6" class="empty">Chargement…</td></tr></tbody>
+        <thead><tr><th style="text-align:center"><input type="checkbox" id="check-all" title="Tout sélectionner"/></th><th>QR</th><th>Produit</th><th>Réf.</th><th style="text-align:right">Prix</th><th style="text-align:right">Stock</th><th style="text-align:center">Nb étiquettes</th><th style="text-align:center">Imprimer</th></tr></thead>
+        <tbody id="qr-table-body"><tr><td colspan="8" class="empty">Chargement…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -222,37 +225,59 @@ function qrLink(id) { return location.origin + '/scan/' + id; }
 
 async function loadProducts() {
   const body = document.getElementById('qr-table-body');
-  if (typeof QRCode === 'undefined') { body.innerHTML = '<tr><td colspan="6" class="empty">Librairie QR non chargée. Rechargez la page.</td></tr>'; return; }
+  if (typeof QRCode === 'undefined') { body.innerHTML = '<tr><td colspan="8" class="empty">Librairie QR non chargée. Rechargez la page.</td></tr>'; return; }
   try {
     const r = await fetch('/api/products', { headers: H });
     if (r.status === 401) { goLogin(); return; }
     _products = await r.json();
-    if (!_products.length) { body.innerHTML = '<tr><td colspan="6" class="empty">Aucun produit. Créez-en un ci-dessus 👆</td></tr>'; return; }
+    if (!_products.length) { body.innerHTML = '<tr><td colspan="8" class="empty">Aucun produit. Créez-en un ci-dessus 👆</td></tr>'; return; }
     body.innerHTML = '';
     _products.forEach(p => {
       const tr = document.createElement('tr');
       tr.innerHTML =
+        '<td style="text-align:center"><input type="checkbox" class="row-check" value="' + p.id + '" onchange="updateSelCount()"/></td>' +
         '<td><div class="qr-prev" id="prev-' + p.id + '"></div></td>' +
         '<td style="font-weight:600">' + esc(p.name) + '</td>' +
         '<td style="color:var(--muted)">' + esc(p.reference||'—') + '</td>' +
         '<td style="text-align:right;font-weight:700">' + fmt(p.price) + ' DH</td>' +
         '<td style="text-align:right">' + (parseFloat(p.stock_qty)||0) + ' ' + esc(p.unit||'') + '</td>' +
-        '<td style="text-align:center"><input class="qty-inp" type="number" min="0" step="1" value="1" id="qty-' + p.id + '"/></td>';
+        '<td style="text-align:center"><input class="qty-inp" type="number" min="0" step="1" value="1" id="qty-' + p.id + '"/></td>' +
+        '<td style="text-align:center"><button class="btn btn-gho no-print" onclick="printOne(' + p.id + ')" title="Imprimer ce produit">🖨️</button></td>';
       body.appendChild(tr);
       new QRCode(document.getElementById('prev-' + p.id), {
         text: qrLink(p.id), width: 54, height: 54,
         colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
       });
     });
-  } catch(e) { body.innerHTML = '<tr><td colspan="6" class="empty">Erreur de chargement.</td></tr>'; }
+    const ca = document.getElementById('check-all');
+    if (ca) ca.checked = false;
+    updateSelCount();
+  } catch(e) { body.innerHTML = '<tr><td colspan="8" class="empty">Erreur de chargement.</td></tr>'; }
+}
+
+// ── Selection helpers ────────────────────────────────────
+function updateSelCount() {
+  const n = document.querySelectorAll('.row-check:checked').length;
+  document.getElementById('sel-count').textContent = n;
+  document.getElementById('print-sel-btn').style.display = n ? 'inline-flex' : 'none';
+}
+
+// Print wrappers
+function printAll()      { printLabels(_products); }
+function printOne(id)    { const p = _products.find(x => x.id === id); if (p) printLabels([p]); }
+function printSelected() {
+  const ids = [...document.querySelectorAll('.row-check:checked')].map(c => parseInt(c.value, 10));
+  const list = _products.filter(p => ids.includes(p.id));
+  if (!list.length) { alert('Sélectionnez au moins un produit.'); return; }
+  printLabels(list);
 }
 
 // Build N labels per product (per the quantity inputs) then open the print dialog.
-function printLabels() {
+function printLabels(list) {
   const sheet = document.getElementById('print-sheet');
   sheet.innerHTML = '';
   let total = 0;
-  _products.forEach(p => {
+  (list || _products).forEach(p => {
     const n = parseInt((document.getElementById('qty-' + p.id) || {}).value, 10);
     const count = isFinite(n) && n > 0 ? n : 0;
     for (let i = 0; i < count; i++) {
@@ -278,6 +303,12 @@ function printLabels() {
   // Give QR canvases a tick to render before printing.
   setTimeout(() => { window.print(); }, 250);
 }
+
+// Select-all checkbox toggles every row checkbox
+document.getElementById('check-all').addEventListener('change', e => {
+  document.querySelectorAll('.row-check').forEach(c => { c.checked = e.target.checked; });
+  updateSelCount();
+});
 
 if (TOKEN) { loadSales(); loadProducts(); }
 </script>
