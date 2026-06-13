@@ -77,6 +77,7 @@
     navLink('coffee',           'Café',       '/cafe') +
     navLink('cigarette',        'Tabac',      '/tabac') +
     navLink('droplets',         'Service',    '/service') +
+    navLink('qr-code',          'Boutique QR','/boutique') +
     '    </div>' +
     '    <div class="ds-nav-grp">' +
     '      <div class="ds-nav-grp-lbl">Finances</div>' +
