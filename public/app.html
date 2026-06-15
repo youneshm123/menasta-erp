@@ -162,7 +162,14 @@
       <div class="page" id="p-credits">
         <div class="tiles" id="credit-tiles"></div>
         <div class="section mb4" id="recent-credits-section" style="display:none;">
-          <div class="s-head"><div class="s-title">🕒 Crédits Récents</div></div>
+          <div class="s-head">
+            <div class="s-title">🕒 Crédits Récents</div>
+            <div class="fxg">
+              <input id="rc-poste-search" type="number" min="1" placeholder="🔍 N° Poste…" oninput="filterRecentCredits()" style="width:140px;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;"/>
+              <button class="btn btn-w btn-sm" onclick="document.getElementById('rc-poste-search').value='';filterRecentCredits()">Tout</button>
+            </div>
+          </div>
+          <div id="rc-summary" style="padding:8px 16px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--border-lt);"></div>
           <div class="s-body-flush" style="overflow-x:auto">
             <table class="t"><thead><tr><th>Client</th><th>Détail</th><th>Poste</th><th>Quand</th><th class="num">Montant</th></tr></thead>
             <tbody id="recent-credits-body"></tbody></table>
@@ -1415,21 +1422,8 @@ async function loadCredits() {
   ].map(t => `<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
   // Recent credit sales (most recent first — /credits/sales is already sorted DESC)
-  const recentSec = document.getElementById('recent-credits-section');
-  const recent = sales.slice(0, 10);
-  if (recent.length) {
-    document.getElementById('recent-credits-body').innerHTML = recent.map(s => `
-      <tr>
-        <td class="fw7">${s.client_name||'?'}</td>
-        <td class="muted sm">${s.pump_name||'—'}${s.liters>0?' · '+parseFloat(s.liters).toFixed(2)+' L':''}</td>
-        <td class="muted sm">${s.shift_id?'#'+s.shift_id:'—'}</td>
-        <td class="muted sm">${fmtDT(s.sale_time)}</td>
-        <td class="num fw7 c-o">${fmt(s.amount)} MAD</td>
-      </tr>`).join('');
-    recentSec.style.display = '';
-  } else {
-    recentSec.style.display = 'none';
-  }
+  S.creditSales = sales;
+  filterRecentCredits();
 
   // Aggregate credit sales per client → total taken, count, last sale date
   const agg = {};
@@ -1462,6 +1456,34 @@ async function loadCredits() {
   }).join('') || '<tr><td colspan="8" class="tc muted" style="padding:20px">Aucun client</td></tr>';
 
   document.getElementById('nb-credits').textContent = clients.filter(c=>c.balance_due>0).length || 0;
+}
+
+// Render the "Crédits Récents" panel — filtered by poste N° when searched, else last 10.
+function filterRecentCredits() {
+  const sales = S.creditSales || [];
+  const sec = document.getElementById('recent-credits-section');
+  if (!sec) return;
+  if (!sales.length) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+
+  const q = (document.getElementById('rc-poste-search')?.value || '').trim();
+  let rows = sales;
+  if (q) rows = sales.filter(s => String(s.shift_id) === q);
+  else   rows = sales.slice(0, 10);
+
+  const total = rows.reduce((t, s) => t + (parseFloat(s.amount) || 0), 0);
+  const summary = document.getElementById('rc-summary');
+  if (q) summary.innerHTML = `Poste <strong>#${q}</strong> — <strong>${rows.length}</strong> crédit(s) · Total <strong class="c-o">${fmt(total)} MAD</strong>`;
+  else   summary.innerHTML = `10 derniers crédits`;
+
+  document.getElementById('recent-credits-body').innerHTML = rows.map(s => `
+    <tr>
+      <td class="fw7">${s.client_name||'?'}</td>
+      <td class="muted sm">${s.pump_name||'—'}${s.liters>0?' · '+parseFloat(s.liters).toFixed(2)+' L':''}</td>
+      <td class="muted sm">${s.shift_id?'#'+s.shift_id:'—'}</td>
+      <td class="muted sm">${fmtDT(s.sale_time)}</td>
+      <td class="num fw7 c-o">${fmt(s.amount)} MAD</td>
+    </tr>`).join('') || `<tr><td colspan="5" class="tc muted" style="padding:20px">Aucun crédit pour le poste #${q}</td></tr>`;
 }
 
 async function clientReleve(id, name) {
