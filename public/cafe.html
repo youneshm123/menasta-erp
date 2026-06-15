@@ -81,12 +81,13 @@
         <div class="s-head"><div class="s-title">☕ Articles vendus aujourd'hui</div></div>
         <div class="s-body">
           <table class="t">
-            <thead><tr><th>Article</th><th>Prix</th><th class="num">Quantité vendue</th><th class="num">Total</th></tr></thead>
+            <thead><tr><th>Article</th><th>Prix</th><th class="num">Quantité vendue</th><th class="num">Total</th><th></th></tr></thead>
             <tbody id="v-body"></tbody>
             <tfoot>
               <tr style="background:#FFF8F3">
                 <td colspan="3" style="padding:12px 14px;font-weight:800;font-size:14px">💰 Recette du Jour</td>
                 <td class="num fw8 c-g" style="font-size:18px;padding:12px 14px" id="v-total">0,00 MAD</td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
@@ -110,12 +111,13 @@
         </div>
         <div class="s-body">
           <table class="t">
-            <thead><tr><th>Article</th><th>Unité</th><th class="num">Coût/unité</th><th class="num">Quantité utilisée</th><th class="num">Coût Total</th></tr></thead>
+            <thead><tr><th>Article</th><th>Unité</th><th class="num">Coût/unité</th><th class="num">Quantité utilisée</th><th class="num">Coût Total</th><th></th></tr></thead>
             <tbody id="s-body"></tbody>
             <tfoot>
               <tr style="background:#FFF8F3">
                 <td colspan="4" style="padding:12px 14px;font-weight:800;font-size:14px">📦 Coût Stock Total</td>
                 <td class="num fw8 c-r" style="font-size:18px;padding:12px 14px" id="s-total">0,00 MAD</td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
@@ -147,7 +149,7 @@
         <div class="s-head"><div class="s-title">📅 Détail par Jour</div></div>
         <div style="overflow-x:auto">
           <table class="t">
-            <thead><tr><th>Date</th><th class="num">Recette</th><th class="num">Coût Stock</th><th class="num">Bénéfice Net</th></tr></thead>
+            <thead><tr><th>Date</th><th class="num">Recette</th><th class="num">Coût Stock</th><th class="num">Bénéfice Net</th><th></th></tr></thead>
             <tbody id="m-body"></tbody>
           </table>
         </div>
@@ -293,7 +295,9 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
 
 const fmt  = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const today = () => new Date().toISOString().slice(0,10);
+// Local calendar date (NOT UTC) — using toISOString() shifted the day near
+// midnight, so saves and the daily report could land on different days.
+const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
 const fmtDate = d => {
   if (!d) return '—';
   const day = String(d).slice(0, 10);   // accept "YYYY-MM-DD" or full ISO timestamp
@@ -337,6 +341,7 @@ function renderVentes() {
           value="${it.quantity||0}" min="0" step="1" oninput="updateVenteRow(this)"/>
       </td>
       <td class="num fw8 c-g" id="vrow-${i}">${fmt((it.quantity||0)*(it.default_price||it.unit_price||7))} MAD</td>
+      <td style="text-align:right">${(it.quantity||0)>0?`<button class="btn btn-d btn-xs" title="Supprimer cette ligne" onclick="deleteVenteLine(${i})">🗑️</button>`:''}</td>
     </tr>`).join('');
   updateVenteTotal();
 }
@@ -368,6 +373,19 @@ async function saveVentes() {
   } catch(e) { toast(e.message,'er'); }
 }
 
+async function deleteVenteLine(i) {
+  const it = ventesData[i];
+  if (!it) return;
+  if (!confirm('Supprimer la vente « ' + it.name + ' » de ce jour ?')) return;
+  const date = document.getElementById('v-date').value || today();
+  try {
+    await api('DELETE', '/sales?date=' + date + '&menu_item_id=' + it.id);
+    it.quantity = 0;
+    toast('Vente supprimée');
+    renderVentes();
+  } catch(e) { toast(e.message,'er'); }
+}
+
 // ── STOCK ─────────────────────────────────────────────────────
 let stockData = [];
 
@@ -390,6 +408,7 @@ function renderStock() {
           value="${it.quantity_used||0}" min="0" step="0.01" oninput="updateStockRow(this)"/>
       </td>
       <td class="num fw8 c-r" id="srow-${i}">${fmt((it.quantity_used||0)*it.cost_per_unit)} MAD</td>
+      <td style="text-align:right">${(it.quantity_used||0)>0?`<button class="btn btn-d btn-xs" title="Supprimer cette ligne" onclick="deleteStockLine(${i})">🗑️</button>`:''}</td>
     </tr>`).join('');
   updateStockTotal();
 }
@@ -418,6 +437,19 @@ async function saveStock() {
   try {
     await api('POST', '/stock/usage', { date, entries });
     toast('Stock enregistré ✓');
+  } catch(e) { toast(e.message,'er'); }
+}
+
+async function deleteStockLine(i) {
+  const it = stockData[i];
+  if (!it) return;
+  if (!confirm('Supprimer le stock « ' + it.name + ' » de ce jour ?')) return;
+  const date = document.getElementById('s-date').value || today();
+  try {
+    await api('DELETE', '/stock/usage?date=' + date + '&stock_item_id=' + it.id);
+    it.quantity_used = 0;
+    toast('Stock supprimé');
+    renderStock();
   } catch(e) { toast(e.message,'er'); }
 }
 
@@ -477,13 +509,36 @@ async function loadMensuel() {
 
   document.getElementById('m-body').innerHTML = d.days.map(r => {
     const c = r.net_profit>=0?'c-g':'c-r';
+    const day = String(r.day).slice(0,10);
     return `<tr>
       <td class="fw7">${fmtDate(r.day)}</td>
       <td class="num c-b">${fmt(r.revenue)} MAD</td>
       <td class="num c-r">-${fmt(r.stock_cost)} MAD</td>
       <td class="num fw8 ${c}">${fmt(r.net_profit)} MAD</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-g btn-xs" title="Modifier ce jour" onclick="editCafeDay('${day}')">✏️</button>
+        <button class="btn btn-d btn-xs" title="Supprimer ce jour" onclick="deleteCafeDay('${day}')">🗑️</button>
+      </td>
     </tr>`;
-  }).join('') || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted)">Aucune donnée</td></tr>';
+  }).join('') || '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--muted)">Aucune donnée</td></tr>';
+}
+
+// Edit a day → jump to Ventes (and Stock) for that date.
+function editCafeDay(day) {
+  document.getElementById('v-date').value = day;
+  document.getElementById('s-date').value = day;
+  navigate('ventes');
+  toast('Modifiez les ventes du ' + day + ', puis le stock si besoin');
+}
+
+// Delete an entire café day (sales + stock usage).
+async function deleteCafeDay(day) {
+  if (!confirm('Supprimer TOUTES les ventes et le stock du ' + day + ' ? Cette action est irréversible.')) return;
+  try {
+    await api('DELETE', '/day?date=' + day);
+    toast('Journée supprimée');
+    loadMensuel();
+  } catch(e) { toast(e.message,'er'); }
 }
 
 // ── PARAMÈTRES — MENU ─────────────────────────────────────────

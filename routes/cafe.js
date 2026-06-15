@@ -135,6 +135,32 @@ router.post('/stock/usage', requireAuth, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ── DELETE café records (lines + whole day) ───────────────────
+// Delete one sales line for a given day.
+router.delete('/sales', requireAuth, wrap(async (req, res) => {
+  const { date, menu_item_id } = req.query;
+  if (!date || !menu_item_id) return res.status(400).json({ error: 'date et menu_item_id requis' });
+  await pool.query('DELETE FROM cafe_sales WHERE sale_date=$1 AND menu_item_id=$2', [date, menu_item_id]);
+  res.json({ ok: true });
+}));
+
+// Delete one stock-usage line for a given day.
+router.delete('/stock/usage', requireAuth, wrap(async (req, res) => {
+  const { date, stock_item_id } = req.query;
+  if (!date || !stock_item_id) return res.status(400).json({ error: 'date et stock_item_id requis' });
+  await pool.query('DELETE FROM cafe_stock_usage WHERE usage_date=$1 AND stock_item_id=$2', [date, stock_item_id]);
+  res.json({ ok: true });
+}));
+
+// Delete an entire café day (sales + stock usage).
+router.delete('/day', requireAuth, wrap(async (req, res) => {
+  const { date } = req.query;
+  if (!date) return res.status(400).json({ error: 'date requise' });
+  await pool.query('DELETE FROM cafe_sales WHERE sale_date=$1', [date]);
+  await pool.query('DELETE FROM cafe_stock_usage WHERE usage_date=$1', [date]);
+  res.json({ ok: true });
+}));
+
 // ── RAPPORT JOURNALIER ────────────────────────────────────────
 router.get('/report/day', requireAuth, wrap(async (req, res) => {
   const date = req.query.date || new Date().toISOString().slice(0,10);
