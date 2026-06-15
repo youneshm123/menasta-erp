@@ -1242,8 +1242,16 @@ async function submitCloseShift() {
 function showShiftSummary(result) {
   const c = result.calc;
   const s = result;
+  const shiftDate = (s.opened_at || '').slice(0, 10);
   let html = `
     <div class="msg msg-s mb3">✅ Poste N° ${s.id} fermé avec succès — ${fmtDT(s.closed_at)}</div>
+    <div class="fxb mb3" style="background:var(--bg);border-radius:8px;padding:10px 14px;gap:10px;flex-wrap:wrap;">
+      <span class="fw7">📅 Date du poste</span>
+      <span style="display:flex;gap:8px;align-items:center;">
+        <input type="date" id="shift-date-edit" value="${shiftDate}" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-weight:700;font-family:var(--font);outline:none;">
+        <button class="btn btn-p btn-sm" onclick="saveShiftDate(${s.id})">Enregistrer</button>
+      </span>
+    </div>
     <h3 class="mb3">Récapitulatif Financier</h3>
     <table class="t mb4">
       <thead><tr><th>Pompe</th><th>Carburant</th><th class="num">Compteur Début</th><th class="num">Compteur Fin</th><th class="num">Litres</th><th class="num">CA (MAD)</th></tr></thead>
@@ -1349,6 +1357,17 @@ async function viewShift(id) {
   const s = await api('GET', '/shifts/' + id);
   const totalExpenses = (s.expenses || []).reduce((sum, e) => sum + parseFloat(e.amount), 0);
   showShiftSummary({ ...s, calc: { totalFuel: s.total_fuel_revenue||0, totalCredit: s.total_credit_deducted||0, totalProduct: s.total_product_sales||0, totalAvance: s.avance||0, totalExpenses, totalPayments: s.credit_paid||0, netCash: s.net_cash||0 } });
+}
+
+async function saveShiftDate(id) {
+  const date = document.getElementById('shift-date-edit')?.value;
+  if (!date) { toast('Choisissez une date', 'er'); return; }
+  try {
+    await api('POST', '/shifts/' + id + '/date', { date });
+    toast('Date du poste mise à jour ✓', 'g');
+    if (typeof loadHistory === 'function') loadHistory();
+    viewShift(id);
+  } catch (e) { toast(e.message, 'er'); }
 }
 
 async function reopenShift(id) {

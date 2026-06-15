@@ -260,6 +260,26 @@ router.post('/:id/price-change', requireAuth, wrap(async (req, res) => {
   res.json(await shiftDetail(shift));
 }));
 
+// ── Change the date of a shift (opened_at / closed_at) ──
+router.post('/:id/date', requireAuth, wrap(async (req, res) => {
+  const { date } = req.body || {};            // expected "YYYY-MM-DD"
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return res.status(400).json({ error: 'Date invalide (format AAAA-MM-JJ requis)' });
+
+  const { rows } = await pool.query('SELECT opened_at, closed_at FROM shifts WHERE id=$1', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Poste introuvable' });
+
+  // Keep the original time-of-day, only swap the calendar date.
+  await pool.query(`
+    UPDATE shifts SET
+      opened_at = $2::date + opened_at::time,
+      closed_at = CASE WHEN closed_at IS NULL THEN NULL ELSE $2::date + closed_at::time END
+    WHERE id=$1
+  `, [req.params.id, date]);
+
+  const { rows: [shift] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [req.params.id]);
+  res.json(await shiftDetail(shift));
+}));
+
 router.post('/:id/reopen', requireAuth, wrap(async (req, res) => {
   const { rows } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='closed'", [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Poste fermé introuvable' });
