@@ -406,6 +406,25 @@ async function initDB() {
     )
   `);
 
+  // Scanned supplier factures/receipts: archived photo + extracted data. When
+  // saved from the scanner, the detected articles are added to product stock
+  // (see stock_items), and the facture is kept here for the history.
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS scanned_factures (
+      id           SERIAL PRIMARY KEY,
+      type         TEXT,
+      fournisseur  TEXT,
+      description  TEXT,
+      total        NUMERIC(12,2),
+      facture_date DATE,
+      image_data   TEXT,
+      articles     JSONB DEFAULT '[]',
+      stock_items  JSONB DEFAULT '[]',
+      created_by   INTEGER REFERENCES users(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
   // Mid-shift fuel price changes: an intermediate meter reading per pump at the
   // moment the price changed, so revenue splits old-price vs new-price.
   await pgPool.query(`

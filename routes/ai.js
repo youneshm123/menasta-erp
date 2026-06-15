@@ -874,4 +874,82 @@ Règles:
   res.json(out);
 }));
 
+// ── Scanned factures archive (+ add detected articles to stock) ──
+// Save a scanned facture: archive the photo + data, and increment the stock of
+// each mapped product, logging every change in stock_adjustments.
+router.post('/factures', requireAuth, wrap(async (req, res) => {
+  const b = req.body || {};
+  const total = b.total != null && isFinite(parseFloat(b.total)) ? parseFloat(b.total) : null;
+  const date  = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : new Date().toISOString().slice(0, 10);
+  const articles    = Array.isArray(b.articles) ? b.articles.slice(0, 30) : [];
+  const stockItems  = Array.isArray(b.stock_items) ? b.stock_items
+    .map(s => ({ product_id: parseInt(s.product_id), qty: parseFloat(s.qty) }))
+    .filter(s => Number.isInteger(s.product_id) && isFinite(s.qty) && s.qty > 0) : [];
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [fac] } = await client.query(`
+      INSERT INTO scanned_factures (type, fournisseur, description, total, facture_date, image_data, articles, stock_items, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id
+    `, [
+      b.type || null,
+      b.fournisseur ? String(b.fournisseur).slice(0, 160) : null,
+      b.description ? String(b.description).slice(0, 300) : null,
+      total, date,
+      typeof b.image === 'string' ? b.image : null,
+      JSON.stringify(articles),
+      JSON.stringify(stockItems),
+      req.user.id,
+    ]);
+
+    // Add each mapped article to product stock + log it.
+    for (const s of stockItems) {
+      const { rows: [p] } = await client.query('SELECT id,name,stock_qty FROM products WHERE id=$1 AND is_active=1', [s.product_id]);
+      if (!p) continue;
+      const oldS = parseFloat(p.stock_qty) || 0;
+      const newS = oldS + s.qty;
+      await client.query('UPDATE products SET stock_qty=$1 WHERE id=$2', [newS, p.id]);
+      await client.query(`
+        INSERT INTO stock_adjustments (module, product_id, product_name, old_stock, new_stock, delta, action, note, recorded_by)
+        VALUES ('produit',$1,$2,$3,$4,$5,'modification',$6,$7)
+      `, [p.id, p.name, oldS, newS, s.qty, 'Facture scannée #' + fac.id + (b.fournisseur ? ' — ' + String(b.fournisseur).slice(0,60) : ''), req.user.id]);
+    }
+    await client.query('COMMIT');
+    res.status(201).json({ ok: true, id: fac.id, stocked: stockItems.length });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}));
+
+// List scanned factures (without the heavy image_data; count of items only).
+router.get('/factures', requireAuth, wrap(async (_req, res) => {
+  const { rows } = await pool.query(`
+    SELECT sf.id, sf.type, sf.fournisseur, sf.description, sf.total, sf.facture_date,
+           sf.created_at, (sf.image_data IS NOT NULL) AS has_image,
+           COALESCE(jsonb_array_length(sf.articles),0)   AS nb_articles,
+           COALESCE(jsonb_array_length(sf.stock_items),0) AS nb_stocked,
+           u.full_name AS by_name
+    FROM scanned_factures sf LEFT JOIN users u ON u.id=sf.created_by
+    ORDER BY sf.created_at DESC LIMIT 200
+  `);
+  res.json(rows);
+}));
+
+// Full scanned facture incl. image + articles (for the detail view).
+router.get('/factures/:id', requireAuth, wrap(async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM scanned_factures WHERE id=$1', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Facture introuvable' });
+  res.json(rows[0]);
+}));
+
+// Delete an archived facture (does NOT reverse the stock already added).
+router.delete('/factures/:id', requireAuth, wrap(async (req, res) => {
+  await pool.query('DELETE FROM scanned_factures WHERE id=$1', [req.params.id]);
+  res.json({ ok: true });
+}));
+
 module.exports = router;

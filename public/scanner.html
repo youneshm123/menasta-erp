@@ -84,6 +84,13 @@ tr:last-child td{border-bottom:none}
     <a href="/home" class="back">← Accueil</a>
   </div>
 
+  <!-- View switch -->
+  <div class="actions" style="margin-bottom:18px">
+    <button class="btn btn-pri" id="tab-scan" onclick="showView('scan')">📸 Scanner</button>
+    <button class="btn btn-gho" id="tab-hist" onclick="showView('hist')">🗂️ Historique des factures</button>
+  </div>
+
+  <div id="view-scan">
   <!-- Capture -->
   <div class="sec">
     <input type="file" id="file" accept="image/*" capture="environment" class="hidden"/>
@@ -119,19 +126,38 @@ tr:last-child td{border-bottom:none}
     </div>
 
     <div id="items-wrap" class="hidden">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 4px">Articles → Ajouter au stock</div>
       <table>
-        <thead><tr><th>Article</th><th style="text-align:center">Qté</th><th style="text-align:right">Prix</th></tr></thead>
+        <thead><tr><th>Article (reçu)</th><th style="text-align:right">Prix</th><th>Produit en stock</th><th style="text-align:center;width:90px">Qté +</th></tr></thead>
         <tbody id="items-body"></tbody>
       </table>
+      <div class="hint">Choisissez le produit correspondant pour chaque ligne. Laissez « — Ne pas stocker — » pour ignorer une ligne.</div>
     </div>
 
-    <div class="total-line"><span class="l">TOTAL À ENREGISTRER</span><span class="v" id="r-total">0,00 MAD</span></div>
+    <div class="total-line"><span class="l">TOTAL FACTURE</span><span class="v" id="r-total">0,00 MAD</span></div>
 
     <div class="actions">
       <button class="btn btn-gho" id="rescan">📸 Scanner un autre</button>
-      <button class="btn btn-green" id="save">✅ Enregistrer comme dépense</button>
+      <button class="btn btn-green" id="save">✅ Ajouter au stock + archiver</button>
     </div>
   </div>
+  </div><!-- /view-scan -->
+
+  <!-- History -->
+  <div id="view-hist" class="hidden">
+    <div class="sec">
+      <div class="res-hd" style="justify-content:space-between">
+        <strong style="font-size:15px">🗂️ Factures scannées</strong>
+        <button class="btn btn-gho" onclick="loadFactures()" style="padding:7px 12px">↻ Actualiser</button>
+      </div>
+      <div id="hist-list" style="margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Image viewer -->
+<div id="img-viewer" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:60;display:flex;align-items:center;justify-content:center;padding:24px" onclick="this.classList.add('hidden')">
+  <img id="img-viewer-img" style="max-width:96%;max-height:92%;border-radius:10px" alt="facture"/>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -146,7 +172,7 @@ const TYPE_LABEL = { depense:'Dépense', tabac:'Tabac', livraison_carburant:'Liv
 const fmt = n => (parseFloat(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-let _dataUrl = null, _scan = null;
+let _dataUrl = null, _scan = null, _products = [];
 
 const $ = id => document.getElementById(id);
 function toast(msg, kind){ const t=$('toast'); t.textContent=msg; t.className='toast show '+(kind||''); setTimeout(()=>t.className='toast',2600); }
@@ -225,14 +251,19 @@ function fillResult(d){
   if (d.resume && !d.fournisseur) descParts.push(d.resume);
   $('f-desc').value = descParts.join(' — ') || (TYPE_LABEL[d.type] || 'Reçu');
 
-  // items
+  // items → stock mapping rows
   const body = $('items-body');
   if (d.articles && d.articles.length){
-    body.innerHTML = d.articles.map(a =>
-      '<tr><td>'+esc(a.designation||'—')+'</td>'+
-      '<td style="text-align:center">'+(a.quantite!=null?a.quantite:'—')+'</td>'+
-      '<td style="text-align:right">'+(a.prix!=null?fmt(a.prix)+' MAD':'—')+'</td></tr>'
-    ).join('');
+    body.innerHTML = d.articles.map((a, i) => {
+      const guess = bestMatchProduct(a.designation);
+      const opts = '<option value="">— Ne pas stocker —</option>' + _products.map(p =>
+        '<option value="'+p.id+'"'+(guess && guess.id===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('');
+      const qty = a.quantite != null && a.quantite > 0 ? a.quantite : 1;
+      return '<tr><td>'+esc(a.designation||'—')+'</td>'+
+        '<td style="text-align:right">'+(a.prix!=null?fmt(a.prix)+' MAD':'—')+'</td>'+
+        '<td><select class="it-prod" data-i="'+i+'" style="width:100%;padding:7px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px;font-family:var(--font)">'+opts+'</select></td>'+
+        '<td style="text-align:center"><input type="number" class="it-qty" data-i="'+i+'" value="'+qty+'" min="0" step="1" style="width:70px;padding:7px;border:1.5px solid var(--border);border-radius:7px;text-align:center;font-weight:700;font-family:var(--font)"/></td></tr>';
+    }).join('');
     $('items-wrap').classList.remove('hidden');
   } else { $('items-wrap').classList.add('hidden'); }
 
@@ -244,36 +275,119 @@ function fillResult(d){
 $('f-total').addEventListener('input', syncTotal);
 function syncTotal(){ $('r-total').textContent = fmt($('f-total').value) + ' MAD'; }
 
-// ── Save as expense ─────────────────────────────────────
+// ── Save: add to stock + archive the facture ─────────────
 $('save').addEventListener('click', async () => {
-  const amount = parseFloat($('f-total').value);
   const description = $('f-desc').value.trim();
   if (!description) { toast('Ajoutez une description', 'er'); return; }
-  if (!isFinite(amount) || amount <= 0) { toast('Montant invalide', 'er'); return; }
+
+  // Collect the article → product mappings the user confirmed.
+  const stock_items = [];
+  document.querySelectorAll('.it-prod').forEach(sel => {
+    const pid = parseInt(sel.value);
+    if (!pid) return;
+    const qtyInp = document.querySelector('.it-qty[data-i="'+sel.dataset.i+'"]');
+    const qty = parseFloat(qtyInp && qtyInp.value);
+    if (isFinite(qty) && qty > 0) stock_items.push({ product_id: pid, qty });
+  });
+
   const btn = $('save');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Enregistrement…';
-  // Build a notes line from the detected items
-  let notes = '📸 Scanné par IA';
-  if (_scan && _scan.articles && _scan.articles.length){
-    notes += ' — ' + _scan.articles.map(a => a.designation + (a.prix!=null?(' ('+fmt(a.prix)+')'):'')).join(', ');
-  }
   try {
-    const r = await fetch('/api/expenses', { method:'POST', headers:JH, body: JSON.stringify({
-      category: $('f-cat').value, description, amount,
-      expense_date: $('f-date').value || new Date().toISOString().slice(0,10),
-      notes: notes.slice(0, 500)
+    const r = await fetch('/api/ai/factures', { method:'POST', headers:JH, body: JSON.stringify({
+      type: _scan && _scan.type, fournisseur: (_scan && _scan.fournisseur) || $('r-vendor').textContent,
+      description, total: parseFloat($('f-total').value) || null,
+      date: $('f-date').value || new Date().toISOString().slice(0,10),
+      image: _dataUrl,
+      articles: (_scan && _scan.articles) || [],
+      stock_items,
     })});
     if (r.status === 401) return goLogin();
     const d = await r.json();
     if (!r.ok) { toast(d.error || 'Erreur', 'er'); return; }
-    toast('Dépense enregistrée ✓', 'ok');
-    setTimeout(resetAll, 900);
+    toast(stock_items.length ? ('Facture archivée — ' + d.stocked + ' produit(s) ajouté(s) au stock ✓') : 'Facture archivée ✓', 'ok');
+    setTimeout(resetAll, 1100);
   } catch(e) {
     toast('Connexion impossible', 'er');
   } finally {
-    btn.disabled = false; btn.innerHTML = '✅ Enregistrer comme dépense';
+    btn.disabled = false; btn.innerHTML = '✅ Ajouter au stock + archiver';
   }
 });
+
+// ── Products (for the stock mapping) + fuzzy match ───────
+async function loadProducts(){
+  try {
+    const r = await fetch('/api/products', { headers: JH });
+    if (r.ok) _products = await r.json();
+  } catch(_) { _products = []; }
+}
+function normLabel(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
+function bestMatchProduct(designation){
+  const d = normLabel(designation);
+  if (!d || !_products.length) return null;
+  const dTokens = d.split(' ').filter(t => t.length > 1);
+  let best = null, bestScore = 0;
+  for (const p of _products){
+    const pn = normLabel(p.name);
+    let score = 0;
+    for (const t of dTokens) if (pn.includes(t)) score += t.length;
+    if (pn === d) score += 50;
+    if (score > bestScore){ bestScore = score; best = p; }
+  }
+  return bestScore >= 2 ? best : null;
+}
+
+// ── View switch ──────────────────────────────────────────
+function showView(v){
+  $('view-scan').classList.toggle('hidden', v !== 'scan');
+  $('view-hist').classList.toggle('hidden', v !== 'hist');
+  $('tab-scan').className = 'btn ' + (v==='scan' ? 'btn-pri' : 'btn-gho');
+  $('tab-hist').className = 'btn ' + (v==='hist' ? 'btn-pri' : 'btn-gho');
+  if (v === 'hist') loadFactures();
+}
+
+// ── History of scanned factures ──────────────────────────
+async function loadFactures(){
+  const host = $('hist-list');
+  host.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">Chargement…</div>';
+  try {
+    const r = await fetch('/api/ai/factures', { headers: JH });
+    if (r.status === 401) return goLogin();
+    const rows = await r.json();
+    if (!rows.length){ host.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">Aucune facture scannée.</div>'; return; }
+    host.innerHTML = rows.map(f => {
+      const dt = (f.facture_date ? String(f.facture_date).slice(0,10).split('-').reverse().join('/') : '');
+      return '<div style="display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid var(--border)">'
+        + '<div style="flex:1;min-width:0">'
+        +   '<div style="font-weight:700;font-size:14px">'+esc(f.fournisseur||f.description||'Facture')+'</div>'
+        +   '<div style="font-size:12px;color:var(--muted)">'+dt+' · '+f.nb_stocked+' produit(s) en stock · '+f.nb_articles+' article(s)'+(f.by_name?(' · '+esc(f.by_name)):'')+'</div>'
+        + '</div>'
+        + '<div style="font-weight:800;color:var(--green);white-space:nowrap">'+(f.total!=null?fmt(f.total)+' MAD':'—')+'</div>'
+        + (f.has_image ? '<button class="btn btn-gho" style="padding:7px 10px" onclick="viewFacture('+f.id+')">🖼️</button>' : '')
+        + '<button class="btn btn-gho" style="padding:7px 10px;color:var(--red)" onclick="deleteFacture('+f.id+')">🗑️</button>'
+        + '</div>';
+    }).join('');
+  } catch(e){ host.innerHTML = '<div style="color:var(--red);font-size:13px;padding:8px">Erreur de chargement</div>'; }
+}
+async function viewFacture(id){
+  try {
+    const r = await fetch('/api/ai/factures/'+id, { headers: JH });
+    const f = await r.json();
+    if (!r.ok || !f.image_data){ toast('Image indisponible','er'); return; }
+    $('img-viewer-img').src = f.image_data;
+    $('img-viewer').classList.remove('hidden');
+  } catch(e){ toast('Erreur','er'); }
+}
+async function deleteFacture(id){
+  if (!confirm('Supprimer cette facture archivée ? (le stock déjà ajouté ne change pas)')) return;
+  try {
+    const r = await fetch('/api/ai/factures/'+id, { method:'DELETE', headers: JH });
+    if (r.status === 401) return goLogin();
+    toast('Supprimée','ok');
+    loadFactures();
+  } catch(e){ toast('Erreur','er'); }
+}
+
+loadProducts();
 </script>
 </body>
 </html>

@@ -74,6 +74,8 @@ async function start() {
   app.use('/api/bank/import', express.json({ limit: '25mb' }));
   // Receipt photos are sent as base64 to the AI scanner — allow a larger body.
   app.use('/api/ai/scan-receipt', express.json({ limit: '15mb' }));
+  // Saving a scanned facture archives the base64 photo too — larger body.
+  app.use('/api/ai/factures', express.json({ limit: '15mb' }));
   app.use(express.json({ limit: '1mb' }));
 
   // ── Rate limiting ──
