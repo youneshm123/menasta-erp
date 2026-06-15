@@ -294,7 +294,12 @@ document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e
 
 const fmt  = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const today = () => new Date().toISOString().slice(0,10);
-const fmtDate = d => new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+const fmtDate = d => {
+  if (!d) return '—';
+  const day = String(d).slice(0, 10);   // accept "YYYY-MM-DD" or full ISO timestamp
+  const dt = new Date(day + 'T12:00:00');
+  return isNaN(dt) ? String(d) : dt.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+};
 
 const pageNames = { ventes:'Ventes du Jour', stock:'Stock du Jour', rapport:'Rapport Journalier', mensuel:'Rapport Mensuel', settings:'Paramètres' };
 function navigate(p) {
