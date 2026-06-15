@@ -2411,9 +2411,14 @@ function fmt(n) { return (n||0).toLocaleString('fr-MA', { minimumFractionDigits:
 function fmtDT(dt) {
   if (!dt) return '—';
   try {
-    const d = new Date(dt.replace(' ', 'T'));
+    // Postgres timestamptz comes as "2026-06-15 10:09:00+00" — normalize the
+    // space separator and the bare "+00" offset that new Date() can't parse.
+    let s = String(dt).trim().replace(' ', 'T');
+    if (s.includes('T')) s = s.replace(/([+-]\d{2})$/, '$1:00');
+    const d = new Date(s);
+    if (isNaN(d)) return String(dt);
     return d.toLocaleString('fr-MA', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-  } catch { return dt; }
+  } catch { return String(dt); }
 }
 function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
 function esc(s) { return (s||'').replace(/'/g, "\\'"); }
