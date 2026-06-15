@@ -163,17 +163,18 @@
         <div class="tiles" id="credit-tiles"></div>
         <div class="section mb4" id="recent-credits-section" style="display:none;">
           <div class="s-head">
-            <div class="s-title">🕒 Crédits Récents</div>
+            <div class="s-title">🕒 Crédits — Ventes</div>
             <div class="fxg">
-              <input id="rc-poste-search" type="number" min="1" placeholder="🔍 N° Poste…" oninput="filterRecentCredits()" style="width:140px;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;"/>
-              <button class="btn btn-w btn-sm" onclick="document.getElementById('rc-poste-search').value='';filterRecentCredits()">Tout</button>
+              <input id="rc-client-search" type="text" placeholder="🔍 Nom du client…" oninput="rcPage=1;filterRecentCredits()" style="width:220px;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;"/>
+              <button class="btn btn-w btn-sm" onclick="document.getElementById('rc-client-search').value='';rcPage=1;filterRecentCredits()">Tout</button>
             </div>
           </div>
           <div id="rc-summary" style="padding:8px 16px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--border-lt);"></div>
           <div class="s-body-flush" style="overflow-x:auto">
-            <table class="t"><thead><tr><th>Client</th><th>Détail</th><th>Poste</th><th>Quand</th><th class="num">Montant</th></tr></thead>
+            <table class="t"><thead><tr><th>Client</th><th>Type</th><th>Pompe</th><th class="num">Litres</th><th class="num">Prix/L</th><th>Poste</th><th>Date</th><th>Note</th><th class="num">Montant</th></tr></thead>
             <tbody id="recent-credits-body"></tbody></table>
           </div>
+          <div id="rc-pager" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:12px;border-top:1px solid var(--border-lt);"></div>
         </div>
         <div class="section">
           <div class="s-head">
@@ -1458,7 +1459,10 @@ async function loadCredits() {
   document.getElementById('nb-credits').textContent = clients.filter(c=>c.balance_due>0).length || 0;
 }
 
-// Render the "Crédits Récents" panel — filtered by poste N° when searched, else last 10.
+// Render the "Crédits — Ventes" panel — search by client name, paginated & detailed.
+let rcPage = 1;
+const RC_PER_PAGE = 15;
+
 function filterRecentCredits() {
   const sales = S.creditSales || [];
   const sec = document.getElementById('recent-credits-section');
@@ -1466,25 +1470,48 @@ function filterRecentCredits() {
   if (!sales.length) { sec.style.display = 'none'; return; }
   sec.style.display = '';
 
-  const q = (document.getElementById('rc-poste-search')?.value || '').trim();
-  let rows = sales;
-  if (q) rows = sales.filter(s => String(s.shift_id) === q);
-  else   rows = sales.slice(0, 10);
+  const q = (document.getElementById('rc-client-search')?.value || '').trim().toLowerCase();
+  const rows = q ? sales.filter(s => (s.client_name || '').toLowerCase().includes(q)) : sales;
 
   const total = rows.reduce((t, s) => t + (parseFloat(s.amount) || 0), 0);
-  const summary = document.getElementById('rc-summary');
-  if (q) summary.innerHTML = `Poste <strong>#${q}</strong> — <strong>${rows.length}</strong> crédit(s) · Total <strong class="c-o">${fmt(total)} MAD</strong>`;
-  else   summary.innerHTML = `10 derniers crédits`;
+  const pages = Math.max(1, Math.ceil(rows.length / RC_PER_PAGE));
+  if (rcPage > pages) rcPage = pages;
+  const start = (rcPage - 1) * RC_PER_PAGE;
+  const pageRows = rows.slice(start, start + RC_PER_PAGE);
 
-  document.getElementById('recent-credits-body').innerHTML = rows.map(s => `
+  const summary = document.getElementById('rc-summary');
+  summary.innerHTML = q
+    ? `Client <strong>« ${q} »</strong> — <strong>${rows.length}</strong> vente(s) · Total <strong class="c-o">${fmt(total)} MAD</strong>`
+    : `<strong>${rows.length}</strong> vente(s) crédit au total · <strong class="c-o">${fmt(total)} MAD</strong>`;
+
+  const typeBadge = t => {
+    const map = { carburant: ['#EFF6FF','#1D4ED8','⛽ Carburant'], lubrifiant: ['#FEF3C7','#B45309','🛢️ Lubrifiant'] };
+    const [bg, c, lbl] = map[t] || ['var(--bg2)','var(--muted)', t || '—'];
+    return `<span style="background:${bg};color:${c};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;">${lbl}</span>`;
+  };
+
+  document.getElementById('recent-credits-body').innerHTML = pageRows.map(s => `
     <tr>
       <td class="fw7">${s.client_name||'?'}</td>
-      <td class="muted sm">${s.pump_name||'—'}${s.liters>0?' · '+parseFloat(s.liters).toFixed(2)+' L':''}</td>
+      <td>${typeBadge(s.product_type)}</td>
+      <td class="muted sm">${s.pump_name||'—'}</td>
+      <td class="num sm">${s.liters>0?parseFloat(s.liters).toFixed(2)+' L':'—'}</td>
+      <td class="num sm">${s.price_per_liter>0?parseFloat(s.price_per_liter).toFixed(3):'—'}</td>
       <td class="muted sm">${s.shift_id?'#'+s.shift_id:'—'}</td>
       <td class="muted sm">${fmtDT(s.sale_time)}</td>
+      <td class="muted sm">${s.notes||'—'}</td>
       <td class="num fw7 c-o">${fmt(s.amount)} MAD</td>
-    </tr>`).join('') || `<tr><td colspan="5" class="tc muted" style="padding:20px">Aucun crédit pour le poste #${q}</td></tr>`;
+    </tr>`).join('') || `<tr><td colspan="9" class="tc muted" style="padding:20px">Aucune vente trouvée</td></tr>`;
+
+  const pager = document.getElementById('rc-pager');
+  if (pages <= 1) { pager.innerHTML = ''; }
+  else pager.innerHTML = `
+    <button class="btn btn-w btn-sm" ${rcPage<=1?'disabled style="opacity:.4;cursor:default;"':''} onclick="rcGoPage(${rcPage-1})">← Précédent</button>
+    <span class="muted sm">Page <strong>${rcPage}</strong> / ${pages}</span>
+    <button class="btn btn-w btn-sm" ${rcPage>=pages?'disabled style="opacity:.4;cursor:default;"':''} onclick="rcGoPage(${rcPage+1})">Suivant →</button>`;
 }
+
+function rcGoPage(p) { rcPage = p; filterRecentCredits(); }
 
 async function clientReleve(id, name) {
   toast('Génération du relevé…', 'i');
