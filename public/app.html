@@ -160,18 +160,35 @@
 
       <!-- ══ PAGE: CRÉANCES ══ -->
       <div class="page" id="p-credits">
+        <style>
+          .rc-lbl{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;}
+          .rc-inp{padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;outline:none;}
+          .rc-inp:focus{border-color:var(--blue);}
+        </style>
         <div class="tiles" id="credit-tiles"></div>
         <div class="section mb4" id="recent-credits-section" style="display:none;">
           <div class="s-head">
-            <div class="s-title">🕒 Crédits — Ventes</div>
-            <div class="fxg">
-              <input id="rc-client-search" type="text" placeholder="🔍 Nom du client…" oninput="rcPage=1;filterRecentCredits()" style="width:220px;padding:7px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;"/>
-              <button class="btn btn-w btn-sm" onclick="document.getElementById('rc-client-search').value='';rcPage=1;filterRecentCredits()">Tout</button>
+            <div class="s-title">🔎 Recherche Bons Crédit</div>
+            <div class="exp-btns">
+              <button class="exp-btn exp-pdf" onclick="rcExport('pdf')">📄 PDF</button>
+              <button class="exp-btn exp-xl" onclick="rcExport('excel')">📊 Excel</button>
+              <button class="btn btn-w btn-sm" onclick="rcReset()">↺ Réinitialiser</button>
             </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:12px 16px;border-bottom:1px solid var(--border-lt);">
+            <div><label class="rc-lbl">Client</label><input id="rc-q" type="text" placeholder="Nom du client…" oninput="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:180px"/></div>
+            <div><label class="rc-lbl">Bon N°</label><input id="rc-bon" type="number" min="1" placeholder="ex: 142" oninput="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:100px"/></div>
+            <div><label class="rc-lbl">Poste N°</label><input id="rc-poste" type="number" min="1" placeholder="ex: 11" oninput="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:100px"/></div>
+            <div><label class="rc-lbl">Type</label><select id="rc-type" onchange="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:130px"><option value="">Tous</option><option value="carburant">⛽ Carburant</option><option value="lubrifiant">🛢️ Lubrifiant</option><option value="espece">💵 Espèce</option></select></div>
+            <div><label class="rc-lbl">Du</label><input id="rc-from" type="date" onchange="rcPage=1;filterRecentCredits()" class="rc-inp"/></div>
+            <div><label class="rc-lbl">Au</label><input id="rc-to" type="date" onchange="rcPage=1;filterRecentCredits()" class="rc-inp"/></div>
+            <div><label class="rc-lbl">Montant min</label><input id="rc-min" type="number" min="0" step="0.01" placeholder="0" oninput="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:90px"/></div>
+            <div><label class="rc-lbl">Montant max</label><input id="rc-max" type="number" min="0" step="0.01" placeholder="∞" oninput="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:90px"/></div>
+            <div><label class="rc-lbl">Tri</label><select id="rc-sort" onchange="filterRecentCredits()" class="rc-inp" style="width:150px"><option value="date_desc">Date ↓ (récent)</option><option value="date_asc">Date ↑ (ancien)</option><option value="amount_desc">Montant ↓</option><option value="amount_asc">Montant ↑</option><option value="bon_desc">Bon N° ↓</option></select></div>
           </div>
           <div id="rc-summary" style="padding:8px 16px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--border-lt);"></div>
           <div class="s-body-flush" style="overflow-x:auto">
-            <table class="t"><thead><tr><th>Client</th><th>Type</th><th>Pompe</th><th class="num">Litres</th><th class="num">Prix/L</th><th>Poste</th><th>Date</th><th>Note</th><th class="num">Montant</th></tr></thead>
+            <table class="t" id="rc-table"><thead><tr><th>Bon N°</th><th>Client</th><th>Type</th><th>Pompe</th><th class="num">Litres</th><th class="num">Prix/L</th><th>Poste</th><th>Date</th><th>Note</th><th class="num">Montant</th></tr></thead>
             <tbody id="recent-credits-body"></tbody></table>
           </div>
           <div id="rc-pager" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:12px;border-top:1px solid var(--border-lt);"></div>
@@ -1459,41 +1476,82 @@ async function loadCredits() {
   document.getElementById('nb-credits').textContent = clients.filter(c=>c.balance_due>0).length || 0;
 }
 
-// Render the "Crédits — Ventes" panel — search by client name, paginated & detailed.
+// Advanced search over credit sales (bons) — multi-filter, sortable, paginated.
 let rcPage = 1;
+let _rcFiltered = [];
 const RC_PER_PAGE = 15;
 
-function filterRecentCredits() {
+const _rcTypeBadge = t => {
+  const map = { carburant: ['#EFF6FF','#1D4ED8','⛽ Carburant'], lubrifiant: ['#FEF3C7','#B45309','🛢️ Lubrifiant'], espece: ['#ECFDF5','#15803D','💵 Espèce'] };
+  const [bg, c, lbl] = map[t] || ['var(--bg2)','var(--muted)', t || '—'];
+  return `<span style="background:${bg};color:${c};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;">${lbl}</span>`;
+};
+const _rcVal = id => (document.getElementById(id)?.value || '').trim();
+
+// Apply all filters + sort to S.creditSales, returning the matching bons.
+function rcComputeFiltered() {
   const sales = S.creditSales || [];
+  const q     = _rcVal('rc-q').toLowerCase();
+  const bon   = _rcVal('rc-bon');
+  const poste = _rcVal('rc-poste');
+  const type  = _rcVal('rc-type');
+  const from  = _rcVal('rc-from');
+  const to    = _rcVal('rc-to');
+  const min   = _rcVal('rc-min'); const minN = parseFloat(min);
+  const max   = _rcVal('rc-max'); const maxN = parseFloat(max);
+  const sort  = _rcVal('rc-sort') || 'date_desc';
+
+  let rows = sales.filter(s => {
+    if (q && !(s.client_name || '').toLowerCase().includes(q)) return false;
+    if (bon && String(s.id) !== bon) return false;
+    if (poste && String(s.shift_id) !== poste) return false;
+    if (type && s.product_type !== type) return false;
+    const d = String(s.sale_time || '').slice(0, 10);
+    if (from && d < from) return false;
+    if (to   && d > to)   return false;
+    const amt = parseFloat(s.amount) || 0;
+    if (min !== '' && isFinite(minN) && amt < minN) return false;
+    if (max !== '' && isFinite(maxN) && amt > maxN) return false;
+    return true;
+  });
+
+  const amt = s => parseFloat(s.amount) || 0;
+  const tm  = s => String(s.sale_time || '');
+  rows.sort((a, b) => {
+    switch (sort) {
+      case 'date_asc':    return tm(a).localeCompare(tm(b));
+      case 'amount_desc': return amt(b) - amt(a);
+      case 'amount_asc':  return amt(a) - amt(b);
+      case 'bon_desc':    return (b.id||0) - (a.id||0);
+      default:            return tm(b).localeCompare(tm(a)); // date_desc
+    }
+  });
+  return rows;
+}
+
+function filterRecentCredits() {
   const sec = document.getElementById('recent-credits-section');
   if (!sec) return;
-  if (!sales.length) { sec.style.display = 'none'; return; }
+  if (!(S.creditSales || []).length) { sec.style.display = 'none'; return; }
   sec.style.display = '';
 
-  const q = (document.getElementById('rc-client-search')?.value || '').trim().toLowerCase();
-  const rows = q ? sales.filter(s => (s.client_name || '').toLowerCase().includes(q)) : sales;
-
+  const rows = rcComputeFiltered();
+  _rcFiltered = rows;
   const total = rows.reduce((t, s) => t + (parseFloat(s.amount) || 0), 0);
   const pages = Math.max(1, Math.ceil(rows.length / RC_PER_PAGE));
   if (rcPage > pages) rcPage = pages;
+  if (rcPage < 1) rcPage = 1;
   const start = (rcPage - 1) * RC_PER_PAGE;
   const pageRows = rows.slice(start, start + RC_PER_PAGE);
 
-  const summary = document.getElementById('rc-summary');
-  summary.innerHTML = q
-    ? `Client <strong>« ${q} »</strong> — <strong>${rows.length}</strong> vente(s) · Total <strong class="c-o">${fmt(total)} MAD</strong>`
-    : `<strong>${rows.length}</strong> vente(s) crédit au total · <strong class="c-o">${fmt(total)} MAD</strong>`;
-
-  const typeBadge = t => {
-    const map = { carburant: ['#EFF6FF','#1D4ED8','⛽ Carburant'], lubrifiant: ['#FEF3C7','#B45309','🛢️ Lubrifiant'] };
-    const [bg, c, lbl] = map[t] || ['var(--bg2)','var(--muted)', t || '—'];
-    return `<span style="background:${bg};color:${c};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;">${lbl}</span>`;
-  };
+  document.getElementById('rc-summary').innerHTML =
+    `<strong>${rows.length}</strong> bon(s) trouvé(s) · Total <strong class="c-o">${fmt(total)} MAD</strong>`;
 
   document.getElementById('recent-credits-body').innerHTML = pageRows.map(s => `
     <tr>
+      <td class="fw8 c-b">#${s.id}</td>
       <td class="fw7">${s.client_name||'?'}</td>
-      <td>${typeBadge(s.product_type)}</td>
+      <td>${_rcTypeBadge(s.product_type)}</td>
       <td class="muted sm">${s.pump_name||'—'}</td>
       <td class="num sm">${s.liters>0?parseFloat(s.liters).toFixed(2)+' L':'—'}</td>
       <td class="num sm">${s.price_per_liter>0?parseFloat(s.price_per_liter).toFixed(3):'—'}</td>
@@ -1501,17 +1559,56 @@ function filterRecentCredits() {
       <td class="muted sm">${fmtDT(s.sale_time)}</td>
       <td class="muted sm">${s.notes||'—'}</td>
       <td class="num fw7 c-o">${fmt(s.amount)} MAD</td>
-    </tr>`).join('') || `<tr><td colspan="9" class="tc muted" style="padding:20px">Aucune vente trouvée</td></tr>`;
+    </tr>`).join('') || `<tr><td colspan="10" class="tc muted" style="padding:20px">Aucun bon trouvé</td></tr>`;
 
   const pager = document.getElementById('rc-pager');
   if (pages <= 1) { pager.innerHTML = ''; }
   else pager.innerHTML = `
     <button class="btn btn-w btn-sm" ${rcPage<=1?'disabled style="opacity:.4;cursor:default;"':''} onclick="rcGoPage(${rcPage-1})">← Précédent</button>
-    <span class="muted sm">Page <strong>${rcPage}</strong> / ${pages}</span>
+    <span class="muted sm">Page <strong>${rcPage}</strong> / ${pages} · ${rows.length} bons</span>
     <button class="btn btn-w btn-sm" ${rcPage>=pages?'disabled style="opacity:.4;cursor:default;"':''} onclick="rcGoPage(${rcPage+1})">Suivant →</button>`;
 }
 
 function rcGoPage(p) { rcPage = p; filterRecentCredits(); }
+
+function rcReset() {
+  ['rc-q','rc-bon','rc-poste','rc-from','rc-to','rc-min','rc-max'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const t = document.getElementById('rc-type'); if (t) t.value = '';
+  const s = document.getElementById('rc-sort'); if (s) s.value = 'date_desc';
+  rcPage = 1;
+  filterRecentCredits();
+}
+
+// Export the FULL filtered result set (not just the visible page).
+function rcExport(kind) {
+  const rows = _rcFiltered || [];
+  if (!rows.length) { toast('Aucun bon à exporter', 'wn'); return; }
+  const headers = ['Bon N°','Client','Type','Pompe','Litres','Prix/L','Poste','Date','Note','Montant'];
+  const data = rows.map(s => [
+    '#' + s.id, s.client_name || '?', s.product_type || '—', s.pump_name || '—',
+    s.liters > 0 ? parseFloat(s.liters).toFixed(2) : '', s.price_per_liter > 0 ? parseFloat(s.price_per_liter).toFixed(3) : '',
+    s.shift_id ? '#' + s.shift_id : '', fmtDT(s.sale_time), s.notes || '', fmt(s.amount) + ' MAD'
+  ]);
+  const total = rows.reduce((t, s) => t + (parseFloat(s.amount) || 0), 0);
+  data.push(['', '', '', '', '', '', '', '', 'TOTAL', fmt(total) + ' MAD']);
+  const title = 'Bons_Credit';
+  try {
+    if (kind === 'excel') {
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Bons Crédit');
+      XLSX.writeFile(wb, title + '.xlsx');
+    } else {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape' });
+      doc.setFontSize(13);
+      doc.text('Bons Crédit — ' + new Date().toLocaleDateString('fr-FR'), 14, 14);
+      doc.autoTable({ head: [headers], body: data, startY: 20, styles: { fontSize: 8 }, headStyles: { fillColor: [99, 60, 180] } });
+      doc.save(title + '.pdf');
+    }
+    toast('Export téléchargé ✓', 'g');
+  } catch (e) { toast('Erreur export: ' + e.message, 'er'); }
+}
 
 async function clientReleve(id, name) {
   toast('Génération du relevé…', 'i');
