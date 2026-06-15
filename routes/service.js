@@ -38,15 +38,32 @@ router.delete('/entries/:id', requireAuth, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// ── Daily history (last 30 days) ──────────────────────────────
-router.get('/historique', requireAuth, wrap(async (_req, res) => {
-  const { rows } = await pool.query(`
-    SELECT entry_date,
-      COALESCE(SUM(montant) FILTER (WHERE service_type='lavage'),0)    AS lavage,
-      COALESCE(SUM(montant) FILTER (WHERE service_type='graissage'),0) AS graissage,
-      COALESCE(SUM(montant),0) AS recette
-    FROM service_entries GROUP BY entry_date ORDER BY entry_date DESC LIMIT 30
-  `);
+// ── Daily history — last 30 days, or a date range when from/to given ──
+router.get('/historique', requireAuth, wrap(async (req, res) => {
+  const { from, to } = req.query;
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  let rows;
+  if (dateRe.test(from || '') || dateRe.test(to || '')) {
+    const conds = [], params = [];
+    if (dateRe.test(from || '')) { params.push(from); conds.push(`entry_date >= $${params.length}`); }
+    if (dateRe.test(to   || '')) { params.push(to);   conds.push(`entry_date <= $${params.length}`); }
+    ({ rows } = await pool.query(`
+      SELECT entry_date,
+        COALESCE(SUM(montant) FILTER (WHERE service_type='lavage'),0)    AS lavage,
+        COALESCE(SUM(montant) FILTER (WHERE service_type='graissage'),0) AS graissage,
+        COALESCE(SUM(montant),0) AS recette
+      FROM service_entries WHERE ${conds.join(' AND ')}
+      GROUP BY entry_date ORDER BY entry_date DESC
+    `, params));
+  } else {
+    ({ rows } = await pool.query(`
+      SELECT entry_date,
+        COALESCE(SUM(montant) FILTER (WHERE service_type='lavage'),0)    AS lavage,
+        COALESCE(SUM(montant) FILTER (WHERE service_type='graissage'),0) AS graissage,
+        COALESCE(SUM(montant),0) AS recette
+      FROM service_entries GROUP BY entry_date ORDER BY entry_date DESC LIMIT 30
+    `));
+  }
   res.json(rows);
 }));
 

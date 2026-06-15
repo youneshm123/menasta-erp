@@ -10,6 +10,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/fiori.css?v=32"/>
 <script src="/js/sidebar.js?v=5" defer></script>
+<script src="/js/table-tools.js?v=1" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
 <link rel="stylesheet" href="/css/dashboard.css?v=1"/>
 <style>
@@ -116,12 +120,33 @@
 
     <!-- ══ HISTORIQUE ══ -->
     <div class="page" id="p-historique">
+      <div class="date-row" style="margin-bottom:14px;flex-wrap:wrap;gap:8px;align-items:flex-end">
+        <div><label style="display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:3px">Du</label><input type="date" id="hist-from"/></div>
+        <div><label style="display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:3px">Au</label><input type="date" id="hist-to"/></div>
+        <button class="btn btn-p btn-sm" onclick="loadHistorique()">🔍 Filtrer</button>
+        <button class="btn btn-g btn-sm" onclick="document.getElementById('hist-from').value='';document.getElementById('hist-to').value='';loadHistorique()">30 derniers jours</button>
+      </div>
       <div class="section">
-        <div class="s-head"><div class="s-title">📅 Historique (30 derniers jours)</div></div>
+        <div class="s-head">
+          <div class="s-title">📅 Historique Service</div>
+          <div class="exp-btns">
+            <button class="exp-btn exp-pdf" onclick="exportPDF('hist-table','Facture Service — STE MENASTA')">📄 PDF</button>
+            <button class="exp-btn exp-xl"  onclick="exportExcel('hist-table','Historique Service')">📊 Excel</button>
+            <button class="exp-btn exp-word" onclick="exportWord('hist-table','Historique Service')">📝 Word</button>
+          </div>
+        </div>
         <div class="s-body">
-          <table class="t">
+          <table class="t" id="hist-table">
             <thead><tr><th>Date</th><th class="num">Lavage</th><th class="num">Graissage</th><th class="num">Recette</th></tr></thead>
             <tbody id="hist-body"></tbody>
+            <tfoot>
+              <tr style="background:var(--bg2,#f5f5f7)">
+                <td style="font-weight:800">TOTAL</td>
+                <td class="num fw8" id="hist-tot-lavage">0,00 MAD</td>
+                <td class="num fw8" id="hist-tot-graissage">0,00 MAD</td>
+                <td class="num fw8 c-g" id="hist-tot-recette">0,00 MAD</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
@@ -153,7 +178,7 @@ function toast(msg, type='g') {
   setTimeout(() => el.remove(), 2600);
 }
 const fmt   = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const today = () => new Date().toISOString().slice(0,10);
+const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
 
 // Tabs
 const pageNames = { saisie:'Saisie du Jour', historique:'Historique' };
@@ -201,17 +226,96 @@ async function delEntry(id) {
 }
 
 // ── HISTORIQUE ──
+function fmtD(d) { return String(d).slice(0,10).split('-').reverse().join('/'); }
 async function loadHistorique() {
-  const rows = await api('GET', '/historique');
+  const from = document.getElementById('hist-from').value;
+  const to   = document.getElementById('hist-to').value;
+  const qs = [];
+  if (from) qs.push('from=' + from);
+  if (to)   qs.push('to=' + to);
+  const rows = await api('GET', '/historique' + (qs.length ? '?' + qs.join('&') : ''));
   const tb = document.getElementById('hist-body');
   tb.innerHTML = rows.length
     ? rows.map(r => `<tr>
-        <td>${r.entry_date}</td>
+        <td>${fmtD(r.entry_date)}</td>
         <td class="num">${fmt(r.lavage)} MAD</td>
         <td class="num">${fmt(r.graissage)} MAD</td>
         <td class="num fw8 c-g">${fmt(r.recette)} MAD</td>
       </tr>`).join('')
     : '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">Aucune donnée</td></tr>';
+  const tot = rows.reduce((a,r) => ({
+    lavage: a.lavage + parseFloat(r.lavage||0),
+    graissage: a.graissage + parseFloat(r.graissage||0),
+    recette: a.recette + parseFloat(r.recette||0),
+  }), { lavage:0, graissage:0, recette:0 });
+  document.getElementById('hist-tot-lavage').textContent    = fmt(tot.lavage) + ' MAD';
+  document.getElementById('hist-tot-graissage').textContent = fmt(tot.graissage) + ' MAD';
+  document.getElementById('hist-tot-recette').textContent   = fmt(tot.recette) + ' MAD';
+}
+
+// ── EXPORT (facture pour comptable) — PDF / Excel / Word ──
+function tableToData(tableId) {
+  const tbl = document.getElementById(tableId);
+  if (!tbl) return { headers: [], rows: [] };
+  const headers = [...tbl.querySelectorAll('thead th')].map(th => th.textContent.trim()).filter(h => h);
+  const body = [...tbl.querySelectorAll('tbody tr')];
+  const foot = [...tbl.querySelectorAll('tfoot tr')];
+  const rows = [...body, ...foot].map(tr =>
+    [...tr.querySelectorAll('td')].slice(0, headers.length).map(td => td.textContent.trim())
+  ).filter(r => r.length);
+  return { headers, rows };
+}
+function expNotify(msg, isErr) {
+  let host = document.getElementById('exp-notify');
+  if (!host) { host = document.createElement('div'); host.id = 'exp-notify';
+    host.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center'; document.body.appendChild(host); }
+  const d = document.createElement('div');
+  d.style.cssText = `padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.18);color:#fff;background:${isErr?'#DC2626':'#16A34A'}`;
+  d.textContent = msg; host.appendChild(d); setTimeout(() => d.remove(), 4000);
+}
+function exportPDF(tableId, title) {
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(14);
+    doc.text(title + ' — ' + new Date().toLocaleDateString('fr-FR'), 14, 15);
+    const { headers, rows } = tableToData(tableId);
+    if (!rows.length) { expNotify('Aucune donnée à exporter', true); return; }
+    doc.autoTable({ head: [headers], body: rows, startY: 22, styles: { fontSize: 9 }, headStyles: { fillColor: [99, 60, 180] } });
+    doc.save(title.replace(/\s+/g,'_') + '.pdf');
+    expNotify('📄 PDF téléchargé');
+  } catch(e) { expNotify('Erreur PDF : ' + e.message, true); }
+}
+function exportExcel(tableId, title) {
+  try {
+    const { headers, rows } = tableToData(tableId);
+    if (!rows.length) { expNotify('Aucune donnée à exporter', true); return; }
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, title.slice(0,31));
+    XLSX.writeFile(wb, title.replace(/\s+/g,'_') + '.xlsx');
+    expNotify('📊 Excel téléchargé');
+  } catch(e) { expNotify('Erreur Excel : ' + e.message, true); }
+}
+function exportWord(tableId, title) {
+  try {
+    const tbl = document.getElementById(tableId);
+    if (!tbl) { expNotify('Tableau introuvable', true); return; }
+    const clone = tbl.cloneNode(true);
+    clone.querySelectorAll('input,button').forEach(el => el.remove());
+    const css = ['body{font-family:Arial,sans-serif;font-size:12px}','h2{color:#333;margin-bottom:12px}','table{border-collapse:collapse;width:100%}','th{background:#6b21a8;color:#fff;padding:6px 10px;text-align:left}','td{border:1px solid #ddd;padding:5px 10px}'].join('');
+    const C = '<';
+    const html = '<html><head><meta charset="UTF-8"><style>' + css + C+'/style>'+C+'/head><body>'
+      + '<h2>' + title + C+'/h2>'
+      + '<p style="color:#666;font-size:11px">Exporté le ' + new Date().toLocaleDateString('fr-FR') + C+'/p>'
+      + clone.outerHTML + C+'/body>'+C+'/html>';
+    const blob = new Blob([html], { type: 'application/msword' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = title.replace(/\s+/g,'_') + '.doc';
+    a.click();
+    expNotify('📝 Word téléchargé');
+  } catch(e) { expNotify('Erreur Word : ' + e.message, true); }
 }
 
 // init
