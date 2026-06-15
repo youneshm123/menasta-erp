@@ -161,6 +161,13 @@
       <!-- ══ PAGE: CRÉANCES ══ -->
       <div class="page" id="p-credits">
         <div class="tiles" id="credit-tiles"></div>
+        <div class="section mb4" id="recent-credits-section" style="display:none;">
+          <div class="s-head"><div class="s-title">🕒 Crédits Récents</div></div>
+          <div class="s-body-flush" style="overflow-x:auto">
+            <table class="t"><thead><tr><th>Client</th><th>Détail</th><th>Poste</th><th>Quand</th><th class="num">Montant</th></tr></thead>
+            <tbody id="recent-credits-body"></tbody></table>
+          </div>
+        </div>
         <div class="section">
           <div class="s-head">
             <div class="s-title">👥 Clients Crédit</div>
@@ -1406,6 +1413,23 @@ async function loadCredits() {
     { ic:'✅', val: clients.filter(c=>c.balance_due===0).length, lbl:'Comptes À Jour', tc:'var(--green)' },
     { ic:'⚠️', val: clients.filter(c=>c.balance_due>0).length, lbl:'Comptes Débiteurs', tc:'var(--orange)' },
   ].map(t => `<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
+
+  // Recent credit sales (most recent first — /credits/sales is already sorted DESC)
+  const recentSec = document.getElementById('recent-credits-section');
+  const recent = sales.slice(0, 10);
+  if (recent.length) {
+    document.getElementById('recent-credits-body').innerHTML = recent.map(s => `
+      <tr>
+        <td class="fw7">${s.client_name||'?'}</td>
+        <td class="muted sm">${s.pump_name||'—'}${s.liters>0?' · '+parseFloat(s.liters).toFixed(2)+' L':''}</td>
+        <td class="muted sm">${s.shift_id?'#'+s.shift_id:'—'}</td>
+        <td class="muted sm">${fmtDT(s.sale_time)}</td>
+        <td class="num fw7 c-o">${fmt(s.amount)} MAD</td>
+      </tr>`).join('');
+    recentSec.style.display = '';
+  } else {
+    recentSec.style.display = 'none';
+  }
 
   // Aggregate credit sales per client → total taken, count, last sale date
   const agg = {};
