@@ -395,14 +395,13 @@ async function loadVentes() {
   produitsCache = data.produits;
   data.produits.forEach(p => {
     const tr = document.createElement('tr');
-    const q0 = p.quantite || 0;
     tr.innerHTML = `
       <td><strong>${p.name}</strong></td>
       <td class="num fw7 c-br">${fmt(p.prix_vente)} MAD</td>
       <td class="num" style="color:var(--muted)">${fmt(p.prix_achat)} MAD</td>
-      <td class="num"><input class="qty-inp" type="number" min="0" step="0.5" value="${q0}" data-id="${p.id}" oninput="recalc()"/></td>
-      <td class="num fw8 c-br" id="mont-${p.id}">${fmt(q0*p.prix_vente)} MAD</td>
-      <td class="num fw8 c-g" id="ben-${p.id}">${fmt(q0*(p.prix_vente-p.prix_achat))} MAD</td>
+      <td class="num"><input class="qty-inp" type="number" min="0" step="0.5" value="0" data-id="${p.id}" oninput="recalc()"/></td>
+      <td class="num fw8 c-br" id="mont-${p.id}">0.00 MAD</td>
+      <td class="num fw8 c-g" id="ben-${p.id}">0.00 MAD</td>
     `;
     tbody.appendChild(tr);
   });
@@ -436,8 +435,10 @@ async function saveVentes() {
   });
   if (!entries.length) { toast('Aucune quantité saisie', 'er'); return; }
   await A('/api/tabac/ventes', { method: 'POST', body: JSON.stringify({ date, entries }) });
-  toast('Ventes enregistrées ✓');
-  loadVentes();
+  toast('Ventes enregistrées ✓ (ajoutées au total du jour)');
+  // Clear every quantity box back to 0 for the next batch.
+  document.querySelectorAll('.qty-inp').forEach(inp => { inp.value = 0; });
+  recalc();
 }
 
 // ── HISTORIQUE ───────────────────────────────────────────────

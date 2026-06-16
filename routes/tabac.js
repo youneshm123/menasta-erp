@@ -114,8 +114,10 @@ router.post('/ventes', requireAuth, wrap(async (req, res) => {
       INSERT INTO tabac_ventes (vente_date,product_id,quantite,prix_vente,prix_achat,montant,benefice,recorded_by)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       ON CONFLICT(vente_date,product_id) DO UPDATE SET
-        quantite=EXCLUDED.quantite, montant=EXCLUDED.montant,
-        benefice=EXCLUDED.benefice, recorded_by=EXCLUDED.recorded_by
+        quantite=tabac_ventes.quantite + EXCLUDED.quantite,
+        montant =tabac_ventes.montant  + EXCLUDED.montant,
+        benefice=tabac_ventes.benefice + EXCLUDED.benefice,
+        recorded_by=EXCLUDED.recorded_by
     `, [d, e.product_id, q, p.prix_vente, p.prix_achat, montant, benefice, req.user.id]);
   }
   res.json({ ok: true });
