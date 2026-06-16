@@ -110,7 +110,11 @@
             <thead>
               <tr>
                 <th>Produit</th>
-                <th class="num">Prix Vente</th><th class="num">Quantit�</th><th class="num">Total TTC</th>
+                <th class="num">Prix Vente</th>
+                <th class="num">Prix Achat</th>
+                <th class="num">Quantité</th>
+                <th class="num">Total TTC</th>
+                <th class="num">Bénéfice</th>
               </tr>
             </thead>
             <tbody id="ventes-body"></tbody>
@@ -120,6 +124,10 @@
           <div class="tot-item">
             <div class="tot-lbl">💰 Total à Remettre au Patron</div>
             <div class="tot-val" id="tot-montant">0.00 MAD</div>
+          </div>
+          <div class="tot-item">
+            <div class="tot-lbl">📈 Bénéfice du Jour</div>
+            <div class="tot-val" id="tot-benefice" style="color:#15803d">0.00 MAD</div>
           </div>
         </div>
       </div>
@@ -137,9 +145,28 @@
           </div>
         </div>
         <div class="s-body">
+          <div style="margin-bottom:12px">
+            <input type="text" id="histo-search" placeholder="🔍 Rechercher une date (ex: 15/06 ou juin)…" oninput="renderHistorique()"
+              style="width:100%;max-width:420px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:var(--font)"/>
+          </div>
           <table class="t" id="histo-table">
-            <thead><tr><th>Date</th><th class="num">Total TTC</th></tr></thead>
+            <thead><tr>
+              <th>Date</th>
+              <th class="num">Quantité vendue</th>
+              <th class="num">Produits</th>
+              <th class="num">Total TTC</th>
+              <th class="num">Bénéfice</th>
+            </tr></thead>
             <tbody id="histo-body"></tbody>
+            <tfoot>
+              <tr style="background:#FFF8F3">
+                <td style="padding:12px 14px;font-weight:800">Total</td>
+                <td class="num fw8" id="histo-foot-qty" style="padding:12px 14px">0</td>
+                <td></td>
+                <td class="num fw8 c-br" id="histo-foot-total" style="padding:12px 14px">0.00 MAD</td>
+                <td class="num fw8 c-g" id="histo-foot-ben" style="padding:12px 14px">0.00 MAD</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
@@ -309,12 +336,12 @@
   <div class="modal">
     <div class="modal-hd">
       <h3 id="qs-title">Ajouter Stock</h3>
-      <button class="x" onclick="closeModal('modal-quick-stock')">�</button>
+      <button class="x" onclick="closeModal('modal-quick-stock')">×</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="qs-product-id"/>
       <div class="fgrid">
-        <div class="fg"><label>Quantit� � ajouter *</label><input type="number" id="qs-qty" step="0.5" min="0.5" placeholder="Ex: 10" style="font-size:22px;font-weight:800;color:#15803d;padding:10px;border:2px solid #86efac;border-radius:6px;"/></div>
+        <div class="fg"><label>Quantité à ajouter *</label><input type="number" id="qs-qty" step="0.5" min="0.5" placeholder="Ex: 10" style="font-size:22px;font-weight:800;color:#15803d;padding:10px;border:2px solid #86efac;border-radius:6px;"/></div>
         <div class="fg"><label>Prix Achat Unitaire (MAD)</label><input type="number" id="qs-prix" step="0.01" min="0" placeholder="facultatif"/></div>
       </div>
     </div>
@@ -368,12 +395,14 @@ async function loadVentes() {
   produitsCache = data.produits;
   data.produits.forEach(p => {
     const tr = document.createElement('tr');
+    const q0 = p.quantite || 0;
     tr.innerHTML = `
       <td><strong>${p.name}</strong></td>
       <td class="num fw7 c-br">${fmt(p.prix_vente)} MAD</td>
       <td class="num" style="color:var(--muted)">${fmt(p.prix_achat)} MAD</td>
-      <td class="num"><input class="qty-inp" type="number" min="0" step="0.5" value="${p.quantite||0}" data-id="${p.id}" oninput="recalc()"/></td>
-      <td class="num fw8 c-br" id="mont-${p.id}">${fmt((p.quantite||0)*p.prix_vente)} MAD</td>
+      <td class="num"><input class="qty-inp" type="number" min="0" step="0.5" value="${q0}" data-id="${p.id}" oninput="recalc()"/></td>
+      <td class="num fw8 c-br" id="mont-${p.id}">${fmt(q0*p.prix_vente)} MAD</td>
+      <td class="num fw8 c-g" id="ben-${p.id}">${fmt(q0*(p.prix_vente-p.prix_achat))} MAD</td>
     `;
     tbody.appendChild(tr);
   });
@@ -381,17 +410,21 @@ async function loadVentes() {
 }
 
 function recalc() {
-  let total = 0;
+  let total = 0, totalBen = 0;
   document.querySelectorAll('.qty-inp').forEach(inp => {
     const id = inp.dataset.id;
     const p = produitsCache.find(x => x.id == id);
     if (!p) return;
     const q = parseFloat(inp.value) || 0;
     const mont = q * p.prix_vente;
+    const ben  = q * (p.prix_vente - p.prix_achat);
     document.getElementById('mont-' + id).textContent = fmt(mont) + ' MAD';
+    document.getElementById('ben-' + id).textContent = fmt(ben) + ' MAD';
     total += mont;
+    totalBen += ben;
   });
   document.getElementById('tot-montant').textContent = fmt(total) + ' MAD';
+  document.getElementById('tot-benefice').textContent = fmt(totalBen) + ' MAD';
 }
 
 async function saveVentes() {
@@ -408,17 +441,50 @@ async function saveVentes() {
 }
 
 // ── HISTORIQUE ───────────────────────────────────────────────
+let _histoRows = [];
+const JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+// "2026-06-16T00:00:00.000Z" -> { jj, label } without timezone drift
+function histoDate(v) {
+  const d = String(v).slice(0, 10);                  // YYYY-MM-DD
+  const [y, m, day] = d.split('-');
+  const jj = `${day}/${m}/${y}`;
+  const wd = JOURS[new Date(+y, +m - 1, +day).getDay()];
+  return { jj, label: `${wd.charAt(0).toUpperCase()+wd.slice(1)} ${jj}` };
+}
+
 async function loadHistorique() {
-  const rows = await A('/api/tabac/historique');
+  const data = await A('/api/tabac/historique');
+  _histoRows = Array.isArray(data) ? data : [];
+  renderHistorique();
+}
+
+function renderHistorique() {
   const tbody = document.getElementById('histo-body');
-  tbody.innerHTML = '';
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:20px;color:var(--muted)">Aucun historique</td></tr>'; return; }
-  rows.forEach(r => {
-    tbody.innerHTML += `<tr>
-      <td>${r.vente_date}</td>
-      <td class="num fw7 c-br">${fmt(r.total)} MAD</td>
-    </tr>`;
+  const q = (document.getElementById('histo-search').value || '').trim().toLowerCase();
+  const rows = _histoRows.filter(r => {
+    if (!q) return true;
+    const { jj, label } = histoDate(r.vente_date);
+    return jj.includes(q) || label.toLowerCase().includes(q);
   });
+  tbody.innerHTML = '';
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)">Aucun historique</td></tr>';
+  } else {
+    rows.forEach(r => {
+      const { label } = histoDate(r.vente_date);
+      tbody.innerHTML += `<tr>
+        <td><strong>${label}</strong></td>
+        <td class="num">${fmt(r.quantite)}</td>
+        <td class="num" style="color:var(--muted)">${r.nb_produits || 0}</td>
+        <td class="num fw7 c-br">${fmt(r.total)} MAD</td>
+        <td class="num fw7 c-g">${fmt(r.benefice)} MAD</td>
+      </tr>`;
+    });
+  }
+  const sum = (k) => rows.reduce((s, r) => s + (parseFloat(r[k]) || 0), 0);
+  document.getElementById('histo-foot-qty').textContent = fmt(sum('quantite'));
+  document.getElementById('histo-foot-total').textContent = fmt(sum('total')) + ' MAD';
+  document.getElementById('histo-foot-ben').textContent = fmt(sum('benefice')) + ' MAD';
 }
 
 // ── STOCK ────────────────────────────────────────────────────
@@ -598,13 +664,13 @@ async function saveQuickStock() {
   const product_id = parseInt(document.getElementById('qs-product-id').value);
   const quantite   = parseFloat(document.getElementById('qs-qty').value);
   const prix_achat = parseFloat(document.getElementById('qs-prix').value) || 0;
-  if (!quantite || quantite <= 0) { toast('Quantit� invalide', 'er'); return; }
+  if (!quantite || quantite <= 0) { toast('Quantité invalide', 'er'); return; }
   await A('/api/tabac/achats', { method: 'POST', body: JSON.stringify({
     product_id, quantite, prix_achat,
     achat_date: new Date().toISOString().slice(0,10), notes: null
   })});
   closeModal('modal-quick-stock');
-  toast('Stock mis � jour ✓');
+  toast('Stock mis à jour ✓');
   loadStock();
 }
 

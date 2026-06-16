@@ -123,7 +123,11 @@ router.post('/ventes', requireAuth, wrap(async (req, res) => {
 
 router.get('/historique', requireAuth, wrap(async (req, res) => {
   const { rows } = await pool.query(`
-    SELECT vente_date, SUM(montant) as total, SUM(benefice) as benefice
+    SELECT vente_date,
+           SUM(montant)   as total,
+           SUM(benefice)  as benefice,
+           SUM(quantite)  as quantite,
+           COUNT(DISTINCT product_id) as nb_produits
     FROM tabac_ventes GROUP BY vente_date ORDER BY vente_date DESC LIMIT 30
   `);
   res.json(rows);
