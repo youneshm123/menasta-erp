@@ -255,9 +255,13 @@ function fillResult(d){
   const body = $('items-body');
   if (d.articles && d.articles.length){
     body.innerHTML = d.articles.map((a, i) => {
+      // Prefer the product the AI matched; fall back to a local fuzzy guess.
       const guess = bestMatchProduct(a.designation);
-      const optFor = mod => _products.filter(p => p.module===mod).map(p =>
-        '<option value="'+p.module+':'+p.id+'"'+(guess && guess.id===p.id && guess.module===p.module?' selected':'')+'>'+esc(p.name)+'</option>').join('');
+      const selVal = a.match || (guess ? (guess.module+':'+guess.id) : null);
+      const optFor = mod => _products.filter(p => p.module===mod).map(p => {
+        const val = p.module+':'+p.id;
+        return '<option value="'+val+'"'+(val===selVal?' selected':'')+'>'+esc(p.name)+'</option>';
+      }).join('');
       const tabacOpts = optFor('tabac'), boutiqueOpts = optFor('produit');
       const opts = '<option value="">— Ne pas stocker —</option>'
         + (tabacOpts ? '<optgroup label="🚬 Tabac">'+tabacOpts+'</optgroup>' : '')

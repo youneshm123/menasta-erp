@@ -813,6 +813,20 @@ router.post('/scan-receipt', requireAuth, wrap(async (req, res) => {
   if (!/^image\/(jpeg|png|webp|gif)$/.test(media_type))
     return res.status(400).json({ error: 'Format image non supporté (JPEG, PNG, WEBP, GIF)' });
 
+  // Stock catalogue (tabac + boutique) so the AI can map each article to an
+  // existing product and tell us which stock to feed.
+  const [tabacCat, prodCat] = await Promise.all([
+    pool.query('SELECT id, name FROM tabac_products WHERE is_active=1 ORDER BY name'),
+    pool.query('SELECT id, name FROM products WHERE is_active=1 ORDER BY name'),
+  ]);
+  const validMatch = new Set([
+    ...tabacCat.rows.map(r => 'tabac:' + r.id),
+    ...prodCat.rows.map(r => 'produit:' + r.id),
+  ]);
+  const catalogueTxt =
+    'TABAC:\n' + (tabacCat.rows.map(r => `- tabac:${r.id} = ${r.name}`).join('\n') || '(aucun)') +
+    '\n\nBOUTIQUE / HUILE:\n' + (prodCat.rows.map(r => `- produit:${r.id} = ${r.name}`).join('\n') || '(aucun)');
+
   const today = new Date().toISOString().slice(0, 10);
   const prompt = `Tu es l'assistant d'une station-service au Maroc. On te montre la PHOTO d'un reçu, ticket, facture, bon de livraison ou ticket de caisse (souvent en français ou arabe).
 
@@ -823,13 +837,17 @@ Analyse l'image et réponds UNIQUEMENT avec un objet JSON valide (aucun texte au
   "date": "YYYY-MM-DD ou null",
   "total": nombre (montant total TTC en MAD, ou null),
   "categorie": une valeur parmi [${RECEIPT_CATEGORIES.join(', ')}],
-  "articles": [ { "designation": "...", "quantite": nombre ou null, "prix": nombre ou null } ],
+  "articles": [ { "designation": "...", "quantite": nombre ou null, "prix": nombre ou null, "stock_match": "identifiant exact de la liste PRODUITS EN STOCK ou null" } ],
   "resume": "une phrase courte en français décrivant ce reçu"
 }
+
+PRODUITS EN STOCK (pour "stock_match", recopie l'identifiant EXACT, ex "tabac:5" ou "produit:14"):
+${catalogueTxt}
 
 Règles:
 - "type": "tabac" si c'est un achat de cigarettes/tabac ; "livraison_carburant" si c'est un bon de livraison de gasoil/essence ; "produit" si ce sont des produits boutique (huiles, filtres, accessoires) ; sinon "depense".
 - "categorie": choisis la plus adaptée parmi la liste. Tabac→Tabac, café/boissons→Café, gasoil/essence→Carburant.
+- "stock_match": pour CHAQUE article, trouve dans la liste PRODUITS EN STOCK le produit qui correspond (même marque/produit, malgré les abréviations) et recopie son identifiant exact. Un article de cigarettes ne peut correspondre qu'à un "tabac:...", un produit boutique qu'à un "produit:...". Si aucun ne correspond vraiment, mets null. N'invente jamais d'identifiant hors de la liste.
 - "total": le montant final payé, en nombre (ex: 200.50). Si illisible, null.
 - "date": si absente sur le reçu, mets ${today}.
 - Maximum 15 articles. Si l'image n'est pas un reçu, type="autre" et resume explique pourquoi.
@@ -868,6 +886,7 @@ Règles:
                    designation: a && a.designation ? String(a.designation).slice(0, 120) : '',
                    quantite: a ? num(a.quantite) : null,
                    prix: a ? num(a.prix) : null,
+                   match: a && typeof a.stock_match === 'string' && validMatch.has(a.stock_match) ? a.stock_match : null,
                  })) : [],
     resume:      parsed.resume ? String(parsed.resume).slice(0, 300) : '',
   };
