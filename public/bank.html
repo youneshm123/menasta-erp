@@ -802,55 +802,135 @@ const VOUCHER_TYPE = {
 };
 const VOUCHER_STATUS = { pending:'En attente', cashed:'Encaissé', 'encaissé':'Encaissé', cancelled:'Annulé', returned:'Retourné' };
 
+// Montant en toutes lettres (même rendu que la facture STE MENASTA).
+function montantEnLettres(n) {
+  const ones = ['','Un','Deux','Trois','Quatre','Cinq','Six','Sept','Huit','Neuf',
+    'Dix','Onze','Douze','Treize','Quatorze','Quinze','Seize','Dix-sept','Dix-huit','Dix-neuf'];
+  const tens = ['','','Vingt','Trente','Quarante','Cinquante','Soixante','Soixante','Quatre-vingt','Quatre-vingt'];
+  function conv(n) {
+    if (n === 0) return '';
+    if (n < 20) return ones[n];
+    const t = Math.floor(n/10), u = n%10;
+    if (t === 7 || t === 9) return tens[t] + '-' + ones[10+u];
+    return tens[t] + (u ? (t===8?'-':'-et-') + ones[u] : (t===8?'s':''));
+  }
+  function convSimple(n) {
+    if (n === 0) return 'Zéro';
+    let r = '';
+    if (n >= 1000000) { const m=Math.floor(n/1000000); r+=(m===1?'Un Million':convSimple(m)+' Millions')+' '; n%=1000000; }
+    if (n >= 1000) { const k=Math.floor(n/1000); r+=(k===1?'Mille':convSimple(k)+' Mille')+' '; n%=1000; }
+    if (n >= 100) { const h=Math.floor(n/100); r+=(h===1?'Cent':ones[h]+' Cent')+(n%100===0?'s ':' '); n%=100; }
+    if (n > 0) r += conv(n) + ' ';
+    return r.trim();
+  }
+  const d = Math.floor(n), c = Math.round((n-d)*100);
+  return '** ' + convSimple(d) + ' Dirhams ' + (c>0 ? convSimple(c)+' Centimes' : 'Zéro Centimes') + ' **';
+}
+
 function printTxnVoucher(id) {
   const t = (_txns || []).concat(_allCheques || []).find(x => x.id === id);
   if (!t) { toast('Opération introuvable', 'er'); return; }
+  const E = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const isEffet = t.type === 'effet_in' || t.type === 'effet_out';
   const isCheck = t.type === 'cheque_in' || t.type === 'cheque_out' || isEffet;
   const [label, sens] = VOUCHER_TYPE[t.type] || [txnLabel(t.type), ''];
   const sensColor = sens === 'ENTRÉE' ? '#188918' : '#BB0000';
-  const row = (lbl, val) => val ? `<tr><td class="k">${lbl}</td><td class="v">${val}</td></tr>` : '';
+  const titre = isEffet ? 'JUSTIFICATIF EFFET' : isCheck ? 'JUSTIFICATIF CHÈQUE' : 'JUSTIFICATIF VIREMENT';
+  const refNo = t.check_number || ('OP-' + String(t.id).padStart(4,'0'));
+
+  const TD  = 'border:1px solid #000;padding:7px 8px;font-size:11.5px';
+  const TDR = TD + ';text-align:right';
+  const TDC = TD + ';text-align:center';
+
+  // Info grid (2 columns) — same look as the facture client block.
+  const infoRows = [
+    [`<b>Justificatif N° :</b>&nbsp; ${E(refNo)}`, `<b>Date :</b>&nbsp; ${E(ymd(t.txn_date))}`],
+    [`<b>Bénéficiaire / Émetteur :</b>&nbsp; ${E(t.beneficiary || '')}`, `<b>Catégorie :</b>&nbsp; ${E(t.category || '')}`],
+  ];
+  if (isCheck) infoRows.push([
+    `<b>${isEffet ? "N° d'effet" : 'N° de chèque'} :</b>&nbsp; ${E(t.check_number || '')}`,
+    `<b>Date d'échéance :</b>&nbsp; ${E(ymd(t.due_date))}`,
+  ]);
+  if (isCheck) infoRows.push([
+    `<b>Statut :</b>&nbsp; ${E(VOUCHER_STATUS[t.check_status] || t.check_status || '')}`,
+    `<b>Sens :</b>&nbsp; <span style="color:${sensColor};font-weight:bold">${sens} ${sens==='ENTRÉE'?'(+)':'(−)'}</span>`,
+  ]);
+  const infoHtml = infoRows.map(([a,b]) =>
+    `<tr><td style="border:1px solid #000;padding:6px 10px;width:50%">${a}</td><td style="border:1px solid #000;padding:6px 10px">${b}</td></tr>`).join('');
+
+  // Main bordered table that stretches to fill the page (like the products table).
+  const bodyRow = `<tr style="height:30px">
+      <td style="${TD}">${E(t.description || label)}</td>
+      <td style="${TDC}">${E(refNo)}</td>
+      <td style="${TDC}">${isCheck ? E(ymd(t.due_date)) : '—'}</td>
+      <td style="${TDR};font-weight:bold">${fmt(t.amount,2)} MAD</td>
+    </tr>`;
+  const empties = Array(3).fill(`<tr style="height:26px"><td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td></tr>`).join('');
+  const spacer = `<tr style="height:100%"><td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td></tr>`;
+  const notesHtml = t.notes ? `<div style="margin-bottom:12px;font-size:11.5px"><b>Notes :</b> ${E(t.notes)}</div>` : '';
+
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/>
-<title>Pièce comptable - ${label} ${fmt(t.amount,2)} MAD</title>
-<style>
-  *{box-sizing:border-box} body{font-family:'Times New Roman',Times,serif;color:#000;background:#fff;margin:0;padding:26px 30px;font-size:13px}
-  .doc{max-width:620px;margin:0 auto;border:1.5px solid #000;padding:0}
-  .hd{text-align:center;padding:16px 14px 10px;border-bottom:1.5px solid #000}
-  .hd .co{font-size:22px;font-weight:bold;font-style:italic;letter-spacing:1px}
-  .hd .sub{font-size:12px;color:#333;margin-top:2px}
-  .title{text-align:center;margin:14px 0}
-  .title span{display:inline-block;border:2.5px solid #000;padding:6px 30px;font-size:14px;font-weight:bold;letter-spacing:2px}
-  .sens{text-align:center;font-size:16px;font-weight:bold;margin:6px 0 14px;color:${sensColor}}
-  table{width:100%;border-collapse:collapse;margin:0 14px 14px;width:calc(100% - 28px)}
-  td{padding:8px 10px;border:1px solid #999;font-size:13px;vertical-align:top}
-  td.k{background:#f3f3f3;font-weight:bold;width:38%}
-  .amt{font-size:20px;font-weight:bold}
-  .ft{display:flex;justify-content:space-between;margin:26px 16px 10px;font-size:12px}
-  .sig{margin-top:40px;border-top:1px solid #000;width:200px;text-align:center;padding-top:4px}
-  .note{text-align:center;font-size:10px;color:#777;margin-top:14px}
-  @media print{body{padding:0}}
-</style></head><body>
-  <div class="doc">
-    <div class="hd"><div class="co">${_bankAccountName}</div><div class="sub">Pièce comptable — Opération bancaire</div></div>
-    <div class="title"><span>${isEffet ? 'JUSTIFICATIF EFFET' : isCheck ? 'JUSTIFICATIF CHÈQUE' : 'JUSTIFICATIF VIREMENT'}</span></div>
-    <div class="sens">${sens} ${sens==='ENTRÉE'?'(+)':'(−)'}</div>
-    <table>
-      ${row('Nature de l\'opération', label)}
-      ${row('Date', ymd(t.txn_date))}
-      <tr><td class="k">Montant</td><td class="v amt">${fmt(t.amount,2)} MAD</td></tr>
-      ${row('Catégorie', t.category)}
-      ${row('Description', t.description)}
-      ${row(isCheck?'Bénéficiaire / Émetteur':'Bénéficiaire', t.beneficiary)}
-      ${isCheck ? row(isEffet?'N° d\'effet':'N° de chèque', t.check_number) : ''}
-      ${isCheck ? row('Date d\'échéance', ymd(t.due_date)) : ''}
-      ${isCheck ? row('Statut', VOUCHER_STATUS[t.check_status] || t.check_status) : ''}
-      ${row('Notes', t.notes)}
-    </table>
-    <div class="ft">
-      <div>Édité le ${new Date().toLocaleDateString('fr-FR')}</div>
-      <div class="sig">Signature / Cachet</div>
+<title>${titre} - ${E(label)} ${fmt(t.amount,2)} MAD</title>
+<style>@media print{@page{margin:8mm}}</style></head>
+<body style="margin:0">
+  <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:780px;margin:0 auto;display:flex;flex-direction:column;min-height:255mm;box-sizing:border-box">
+
+    <!-- EN-TÊTE -->
+    <div style="text-align:center;margin-bottom:8px;line-height:1.2">
+      <div style="font-size:26px;font-weight:bold;font-style:italic;letter-spacing:1px">STE MENASTA</div>
+      <div style="font-size:22px;font-weight:bold;font-style:italic;letter-spacing:1px">SARL AU</div>
     </div>
-    <div class="note">Document généré par MENASTA — à remettre au comptable</div>
+
+    <!-- TITRE -->
+    <div style="text-align:center;margin-bottom:6px">
+      <span style="display:inline-block;border:2.5px solid #000;padding:6px 40px;font-size:16px;font-weight:bold;letter-spacing:3px">${titre}</span>
+    </div>
+    <div style="text-align:center;font-size:15px;font-weight:bold;color:${sensColor};margin-bottom:14px">${sens} ${sens==='ENTRÉE'?'(+)':'(−)'}</div>
+
+    <!-- BLOC INFO -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11.5px">${infoHtml}</table>
+
+    <!-- TABLEAU OPÉRATION -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:10px;flex:1 1 auto;height:1px">
+      <thead>
+        <tr style="background:#ddd">
+          <th style="${TD};text-align:left">Désignation de l'opération</th>
+          <th style="${TDC};width:120px">Référence</th>
+          <th style="${TDC};width:100px">Échéance</th>
+          <th style="${TDR};width:120px">Montant TTC</th>
+        </tr>
+      </thead>
+      <tbody>${bodyRow}${empties}${spacer}</tbody>
+    </table>
+
+    <!-- TOTAL -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <table style="border-collapse:collapse;font-size:12px;min-width:300px">
+        <tr>
+          <td style="${TD};font-weight:bold;font-style:italic;width:170px">Nature de l'opération</td>
+          <td style="${TDR}">${E(label)}</td>
+        </tr>
+        <tr>
+          <td style="${TD};font-weight:bold;font-style:italic;font-size:13px">Montant total</td>
+          <td style="${TDR};font-weight:bold;font-size:14px">${fmt(t.amount,2)} MAD</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- ARRÊTÉ -->
+    <div style="margin-bottom:14px;font-size:11.5px">
+      <div style="font-style:italic">Arrêter le présent justificatif à la somme de :</div>
+      <div style="font-weight:bold;margin-top:6px">${montantEnLettres(parseFloat(t.amount)||0)}</div>
+    </div>
+    ${notesHtml}
+
+    <!-- PAGE -->
+    <div style="text-align:center;font-size:11px;margin-bottom:14px">1 / 1</div>
+
+    <!-- PIED DE PAGE -->
+    <div style="text-align:center;border-top:1.5px solid #000;padding-top:8px;font-size:10.5px;letter-spacing:.3px">
+      RC KENITRA 67019 &nbsp;&mdash;&nbsp; PATENTE 20113387 &nbsp;&mdash;&nbsp; IF 53221208 &nbsp;&mdash;&nbsp; ICE 003172239000062
+    </div>
   </div>
   <script>window.onload=function(){window.print();}<\/script>
 </body></html>`;
