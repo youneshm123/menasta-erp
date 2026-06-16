@@ -883,7 +883,7 @@ router.post('/factures', requireAuth, wrap(async (req, res) => {
   const date  = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : new Date().toISOString().slice(0, 10);
   const articles    = Array.isArray(b.articles) ? b.articles.slice(0, 30) : [];
   const stockItems  = Array.isArray(b.stock_items) ? b.stock_items
-    .map(s => ({ product_id: parseInt(s.product_id), qty: parseFloat(s.qty) }))
+    .map(s => ({ product_id: parseInt(s.product_id), qty: parseFloat(s.qty), module: s.module === 'tabac' ? 'tabac' : 'produit' }))
     .filter(s => Number.isInteger(s.product_id) && isFinite(s.qty) && s.qty > 0) : [];
 
   const client = await pool.connect();
@@ -903,8 +903,20 @@ router.post('/factures', requireAuth, wrap(async (req, res) => {
       req.user.id,
     ]);
 
-    // Add each mapped article to product stock + log it.
+    // Add each mapped article to its stock + log it.
+    const note = 'Facture scannée #' + fac.id + (b.fournisseur ? ' — ' + String(b.fournisseur).slice(0,60) : '');
     for (const s of stockItems) {
+      // Tabac products: stock is driven by tabac_achats rows, so record a purchase.
+      if (s.module === 'tabac') {
+        const { rows: [tp] } = await client.query('SELECT id,name,prix_achat FROM tabac_products WHERE id=$1 AND is_active=1', [s.product_id]);
+        if (!tp) continue;
+        await client.query(
+          'INSERT INTO tabac_achats (product_id,quantite,prix_achat,achat_date,notes,recorded_by) VALUES ($1,$2,$3,$4,$5,$6)',
+          [tp.id, s.qty, tp.prix_achat, date, note, req.user.id]
+        );
+        continue;
+      }
+      // Boutique/huile products: increment stock_qty + log the change.
       const { rows: [p] } = await client.query('SELECT id,name,stock_qty FROM products WHERE id=$1 AND is_active=1', [s.product_id]);
       if (!p) continue;
       const oldS = parseFloat(p.stock_qty) || 0;
@@ -913,7 +925,7 @@ router.post('/factures', requireAuth, wrap(async (req, res) => {
       await client.query(`
         INSERT INTO stock_adjustments (module, product_id, product_name, old_stock, new_stock, delta, action, note, recorded_by)
         VALUES ('produit',$1,$2,$3,$4,$5,'modification',$6,$7)
-      `, [p.id, p.name, oldS, newS, s.qty, 'Facture scannée #' + fac.id + (b.fournisseur ? ' — ' + String(b.fournisseur).slice(0,60) : ''), req.user.id]);
+      `, [p.id, p.name, oldS, newS, s.qty, note, req.user.id]);
     }
     await client.query('COMMIT');
     res.status(201).json({ ok: true, id: fac.id, stocked: stockItems.length });

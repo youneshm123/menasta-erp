@@ -256,8 +256,12 @@ function fillResult(d){
   if (d.articles && d.articles.length){
     body.innerHTML = d.articles.map((a, i) => {
       const guess = bestMatchProduct(a.designation);
-      const opts = '<option value="">— Ne pas stocker —</option>' + _products.map(p =>
-        '<option value="'+p.id+'"'+(guess && guess.id===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('');
+      const optFor = mod => _products.filter(p => p.module===mod).map(p =>
+        '<option value="'+p.module+':'+p.id+'"'+(guess && guess.id===p.id && guess.module===p.module?' selected':'')+'>'+esc(p.name)+'</option>').join('');
+      const tabacOpts = optFor('tabac'), boutiqueOpts = optFor('produit');
+      const opts = '<option value="">— Ne pas stocker —</option>'
+        + (tabacOpts ? '<optgroup label="🚬 Tabac">'+tabacOpts+'</optgroup>' : '')
+        + (boutiqueOpts ? '<optgroup label="🛢️ Boutique / Huile">'+boutiqueOpts+'</optgroup>' : '');
       const qty = a.quantite != null && a.quantite > 0 ? a.quantite : 1;
       return '<tr><td>'+esc(a.designation||'—')+'</td>'+
         '<td style="text-align:right">'+(a.prix!=null?fmt(a.prix)+' MAD':'—')+'</td>'+
@@ -283,11 +287,13 @@ $('save').addEventListener('click', async () => {
   // Collect the article → product mappings the user confirmed.
   const stock_items = [];
   document.querySelectorAll('.it-prod').forEach(sel => {
-    const pid = parseInt(sel.value);
+    if (!sel.value) return;
+    const [module, idStr] = sel.value.split(':');
+    const pid = parseInt(idStr);
     if (!pid) return;
     const qtyInp = document.querySelector('.it-qty[data-i="'+sel.dataset.i+'"]');
     const qty = parseFloat(qtyInp && qtyInp.value);
-    if (isFinite(qty) && qty > 0) stock_items.push({ product_id: pid, qty });
+    if (isFinite(qty) && qty > 0) stock_items.push({ product_id: pid, qty, module });
   });
 
   const btn = $('save');
@@ -314,11 +320,18 @@ $('save').addEventListener('click', async () => {
 });
 
 // ── Products (for the stock mapping) + fuzzy match ───────
+// Load BOTH the boutique/huile products and the tabac products, tagged with
+// their module so the save knows which stock to feed.
 async function loadProducts(){
+  _products = [];
   try {
-    const r = await fetch('/api/products', { headers: JH });
-    if (r.ok) _products = await r.json();
-  } catch(_) { _products = []; }
+    const [rb, rt] = await Promise.all([
+      fetch('/api/products', { headers: JH }),
+      fetch('/api/tabac/produits', { headers: JH }),
+    ]);
+    if (rb.ok) (await rb.json()).forEach(p => _products.push({ id:p.id, name:p.name, module:'produit', prix_achat:p.price }));
+    if (rt.ok) (await rt.json()).forEach(p => _products.push({ id:p.id, name:p.name, module:'tabac',   prix_achat:p.prix_achat }));
+  } catch(_) {}
 }
 function normLabel(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
 function bestMatchProduct(designation){
