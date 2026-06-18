@@ -88,7 +88,7 @@
   </div>
   <div class="sb-nav">
     <div class="nav-item active" onclick="showTab('liste',this)"><span class="ni"><i data-lucide="clipboard-list"></i></span> Liste Factures</div>
-    <div class="nav-item" onclick="showTab('nouvelle',this)"><span class="ni"><i data-lucide="plus-circle"></i></span> Nouvelle Facture</div>
+    <div class="nav-item" onclick="newFacture(this)"><span class="ni"><i data-lucide="plus-circle"></i></span> Nouvelle Facture</div>
     <div class="nav-item" onclick="showTab('clients',this)"><span class="ni"><i data-lucide="users"></i></span> Clients</div>
     <div class="nav-item" onclick="showTab('tabac',this)"><span class="ni"><i data-lucide="cigarette"></i></span> Ventes Tabac</div>
   </div>
@@ -102,7 +102,7 @@
   <div class="app-topbar">
     <div class="topbar-title">🧾 Factures — STE MENASTA SARL AU</div>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-p btn-sm" onclick="showTab('nouvelle',document.querySelectorAll('.nav-item')[1])">+ Nouvelle Facture</button>
+      <button class="btn btn-p btn-sm" onclick="newFacture(document.querySelectorAll('.nav-item')[1])">+ Nouvelle Facture</button>
     </div>
   </div>
   <div class="app-content">
@@ -754,13 +754,92 @@ async function deleteFacture(id) {
   loadListe();
 }
 
+// ── DRAFT AUTOSAVE — keep an unsaved "Nouvelle Facture" across page changes ──
+const DRAFT_KEY = 'fm_facture_draft';
+let _draftTimer = null;
+function scheduleDraft() { clearTimeout(_draftTimer); _draftTimer = setTimeout(captureDraft, 250); }
+
+function captureDraft() {
+  if (_editingFactureId) return; // don't draft while editing an existing facture
+  const g = id => { const e = document.getElementById(id); return e ? e.value : ''; };
+  const lignes = [...document.querySelectorAll('#lignes-body tr')].map(tr => ({
+    code:        tr.querySelector('[data-f=code]')?.value || '',
+    cat:         tr.querySelector('[data-f=desig_cat]')?.value || '',
+    prod:        tr.querySelector('[data-f=desig_prod]')?.value || '',
+    designation: tr.querySelector('[data-f=designation]')?.value || '',
+    montant:     tr.querySelector('[data-f=montant_saisi]')?.value || '',
+    prix_ttc:    tr.querySelector('[data-f=prix_ttc]')?.value || '',
+    taux_tva:    tr.querySelector('[data-f=taux_tva]')?.value || '',
+    quantite:    tr.querySelector('[data-f=quantite]')?.value || '',
+  }));
+  const draft = { date:g('f-date'), client:g('f-client'), ice:g('f-ice'), adresse:g('f-adresse'), lub:g('lub-montant'), lignes };
+  const hasData = draft.client || draft.ice || draft.adresse || draft.lub ||
+    lignes.some(l => l.designation || l.code || l.montant || l.cat);
+  if (hasData) localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  else localStorage.removeItem(DRAFT_KEY);
+}
+
+function clearDraft() { localStorage.removeItem(DRAFT_KEY); }
+
+function restoreDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) return false;
+  let d; try { d = JSON.parse(raw); } catch (_) { localStorage.removeItem(DRAFT_KEY); return false; }
+  if (!d || typeof d !== 'object') return false;
+  const setVal = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
+  if (d.date) setVal('f-date', d.date);
+  setVal('f-client', d.client); setVal('f-ice', d.ice); setVal('f-adresse', d.adresse);
+  setVal('lub-montant', d.lub);
+  document.getElementById('lignes-body').innerHTML = '';
+  ligneCount = 0;
+  const rows = (Array.isArray(d.lignes) && d.lignes.length) ? d.lignes : [null];
+  rows.forEach(l => {
+    addLigne();
+    const tr = document.getElementById('ligne-' + (ligneCount - 1));
+    if (!l) return;
+    const set = (f, v) => { const el = tr.querySelector('[data-f=' + f + ']'); if (el && v != null) el.value = v; };
+    set('code', l.code);
+    const catEl = tr.querySelector('[data-f=desig_cat]');
+    const prodEl = tr.querySelector('[data-f=desig_prod]');
+    if (catEl) catEl.value = l.cat || '';
+    if (prodEl) {
+      if (l.cat === 'Lubrifiant') { prodEl.innerHTML = prodOptions(l.prod || ''); prodEl.value = l.prod || ''; prodEl.style.display = ''; }
+      else prodEl.style.display = 'none';
+    }
+    set('designation', l.designation);
+    set('montant_saisi', l.montant);
+    set('prix_ttc', l.prix_ttc);
+    set('taux_tva', l.taux_tva);
+    set('quantite', l.quantite);
+  });
+  recalcLignes();
+  return true;
+}
+
+// Start a brand-new facture (used by the nav + the "+ Nouvelle" button): leave
+// edit mode so the draft (not an existing facture) drives the form.
+function newFacture(el) {
+  _editingFactureId = null;
+  const btn = document.querySelector('[onclick="saveFacture()"]');
+  if (btn) btn.textContent = '💾 Enregistrer la Facture';
+  showTab('nouvelle', el);
+}
+
+// Autosave on every edit inside the Nouvelle Facture tab.
+(function () {
+  const host = document.getElementById('tab-nouvelle');
+  if (host) { host.addEventListener('input', scheduleDraft); host.addEventListener('change', scheduleDraft); }
+})();
+
 // ── NOUVELLE FACTURE ──────────────────────────────────────────
 let ligneCount = 0;
 
 async function initNouvelleFacture() {
   await loadLubProductsList(); // make sure dropdowns have the latest catalogue
+  if (_editingFactureId) { recalcLignes(); return; } // edit form already built — keep it
   document.getElementById('lignes-body').innerHTML = '';
   ligneCount = 0;
+  if (restoreDraft()) return;  // bring back any unsaved work first
   addLigne();
   recalcLignes();
 }
@@ -836,6 +915,7 @@ function recalcLignes() {
   document.getElementById('tot-ht').textContent = fmt(ht) + ' MAD';
   document.getElementById('tot-tva').textContent = fmt(tva) + ' MAD';
   document.getElementById('tot-ttc').textContent = fmt(ttc) + ' MAD';
+  scheduleDraft(); // persist after any recompute (covers auto-fill)
 }
 
 let _editingFactureId = null;
@@ -888,6 +968,7 @@ async function saveFacture() {
 // After saving a new facture: clear client + quantities + montants, keep prices.
 function resetFormKeepPrices() {
   _editingFactureId = null;
+  clearDraft(); // the facture is saved — drop the autosaved draft
   document.getElementById('f-client').value  = '';
   document.getElementById('f-ice').value     = '';
   document.getElementById('f-adresse').value = '';
