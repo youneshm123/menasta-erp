@@ -280,6 +280,17 @@ router.post('/:id/date', requireAuth, wrap(async (req, res) => {
   res.json(await shiftDetail(shift));
 }));
 
+// Edit the pompiste advance of a shift (open or closed).
+router.post('/:id/avance', requireAuth, wrap(async (req, res) => {
+  const av = parseFloat(req.body && req.body.avance);
+  if (!isFinite(av) || av < 0) return res.status(400).json({ error: 'Avance invalide' });
+  const { rows } = await pool.query('SELECT id FROM shifts WHERE id=$1', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Poste introuvable' });
+  await pool.query('UPDATE shifts SET avance=$2 WHERE id=$1', [req.params.id, av]);
+  const { rows: [shift] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [req.params.id]);
+  res.json(await shiftDetail(shift));
+}));
+
 router.post('/:id/reopen', requireAuth, wrap(async (req, res) => {
   const { rows } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='closed'", [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Poste fermé introuvable' });
