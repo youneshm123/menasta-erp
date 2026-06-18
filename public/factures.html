@@ -405,28 +405,25 @@ function onProdChange(id) {
 function autoFillLub() {
   const target = parseFloat(document.getElementById('lub-montant').value) || 0;
   if (target <= 0) { toast('Entrez un montant', 'er'); return; }
-  const pool = _lubProducts.filter(p => (parseFloat(p.prix) || 0) > 0);
-  if (!pool.length) { toast('Aucun produit en stock — ajoutez des produits (Huiles/Filtres) dans le stock', 'er'); return; }
-  const minPrix = Math.min(...pool.map(p => parseFloat(p.prix)));
-  const chosen = {}; // name -> { p, qty }
-  let remaining = target, guard = 0;
-  while (remaining >= minPrix && guard < 500) {
-    guard++;
-    const affordable = pool.filter(p => parseFloat(p.prix) <= remaining + 0.001);
-    if (!affordable.length) break;
-    const p = affordable[Math.floor(Math.random() * affordable.length)];
-    if (!chosen[p.name]) chosen[p.name] = { p, qty: 0 };
-    chosen[p.name].qty += 1;
-    remaining -= parseFloat(p.prix);
-  }
-  const list = Object.values(chosen);
-  if (!list.length) { toast('Aucun produit ne rentre dans ce montant', 'er'); return; }
-  // Remove existing empty lines, then add one line per chosen product
-  document.querySelectorAll('#lignes-body tr').forEach(tr => {
-    const d = tr.querySelector('[data-f=designation]');
-    if (d && !d.value) tr.remove();
-  });
-  list.forEach(({ p, qty }) => {
+  const pool = _lubProducts.filter(p => (parseFloat(p.prix) || 0) > 0 && parseFloat(p.prix) <= target);
+  if (!pool.length) { toast('Aucun produit ≤ ce montant — ajoutez des produits (Huiles/Filtres) dans le stock', 'er'); return; }
+
+  // Use FEW distinct products (4–5) with BIGGER quantities, instead of many
+  // products at qty 1. Split the montant across the picks, and let the last
+  // line balance so the total equals the entered montant EXACTLY.
+  const k = Math.min(pool.length, Math.random() < 0.5 ? 4 : 5);
+  const picks = [...pool].sort(() => Math.random() - 0.5).slice(0, k);
+  const minPrix = Math.min(...picks.map(p => parseFloat(p.prix)));
+
+  // Replace whatever is in the table with the freshly generated lines, so the
+  // count stays at k (and a second "Générer" click doesn't stack lines).
+  document.getElementById('lignes-body').innerHTML = '';
+  ligneCount = 0;
+
+  let remaining = target;
+  picks.forEach((p, idx) => {
+    const isLast = idx === picks.length - 1;
+    const prix = parseFloat(p.prix);
     addLigne();
     const id = ligneCount - 1;
     const tr = document.getElementById('ligne-' + id);
@@ -436,13 +433,29 @@ function autoFillLub() {
     prodSel.value = p.name;
     tr.querySelector('[data-f=designation]').value = p.name;
     tr.querySelector('[data-f=taux_tva]').value = 20; // lubrifiant
-    tr.querySelector('[data-f=prix_ttc]').value = fmt(p.prix);
-    tr.querySelector('[data-f=montant_saisi]').value = fmt(qty * parseFloat(p.prix));
+    let lineMontant, unitPrice;
+    if (isLast) {
+      // Balancer: exact remainder. qty → 1 keeps the grand total exact.
+      lineMontant = +remaining.toFixed(2);
+      unitPrice = lineMontant;
+    } else {
+      // Bigger integer quantity: an even share of what's left, while reserving
+      // at least one cheap unit for each remaining pick.
+      const slots = picks.length - idx;
+      const reserve = (picks.length - idx - 1) * minPrix;
+      let qty = Math.max(1, Math.round((remaining / slots) / prix));
+      const maxQty = Math.max(1, Math.floor((remaining - reserve) / prix));
+      qty = Math.min(qty, maxQty);
+      lineMontant = +(qty * prix).toFixed(2);
+      unitPrice = prix;
+      remaining = +(remaining - lineMontant).toFixed(2);
+    }
+    tr.querySelector('[data-f=prix_ttc]').value = fmt(unitPrice);
+    tr.querySelector('[data-f=montant_saisi]').value = fmt(lineMontant);
     calcQtyFromMontant(id);
   });
   recalcLignes();
-  const got = list.reduce((s, x) => s + x.qty * parseFloat(x.p.prix), 0);
-  toast(`${list.length} produit(s) — total ${fmt(got)} MAD (cible ${fmt(target)})`);
+  toast(`${picks.length} produit(s), grosses quantités — total exact ${fmt(target)} MAD ✓`);
 }
 
 // ── CLIENTS MANAGEMENT ────────────────────────────────────────
