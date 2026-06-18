@@ -1002,7 +1002,7 @@ async function loadShiftPage() {
   _liveExp = totalExpenses;  _liveAvance = shift.avance || 0;  _livePayments = totalPayments;
 
   el.innerHTML = `
-    <div style="background:var(--sb-bg);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div style="background:var(--shell-bg);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
       <div style="font-size:20px;"><i data-lucide="clock"></i></div>
       <div style="flex:1;">
         <div style="font-size:15px;font-weight:800;color:#fff;">Poste N° ${shift.id} <span style="font-weight:400;opacity:.5;font-size:13px;">— En Cours</span></div>
@@ -1049,7 +1049,7 @@ async function loadShiftPage() {
       </div>
       <div class="tile" id="avance-tile" style="--tile-color:var(--blue);cursor:pointer;" onclick="editAvance(${shift.id}, ${shift.avance||0})" title="Cliquer pour modifier l'avance pompiste"><div class="tile-accent"></div><div class="tile-ic-wrap" style="background:#EFF6FF;">💵</div><div class="tile-val" style="color:var(--blue);">${fmt(shift.avance||0)} MAD</div><div class="tile-lbl">Avance Pompiste ✏️</div></div>
     </div>
-    <div style="background:var(--sb-bg);border-radius:var(--r);padding:12px 20px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
+    <div style="background:var(--shell-bg);border-radius:var(--r);padding:12px 20px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
       <span style="color:rgba(255,255,255,.7);font-size:13px;font-weight:700;">💵 Caisse Estimée (saisir les compteurs fin)</span>
       <span id="live-net" style="font-size:20px;font-weight:900;color:#4ADE80;">— MAD</span>
     </div>
