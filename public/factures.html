@@ -373,6 +373,9 @@ function onCatChange(id) {
   const cat = tr.querySelector('[data-f=desig_cat]').value;
   const prodSel = tr.querySelector('[data-f=desig_prod]');
   const hidden = tr.querySelector('[data-f=designation]');
+  // Lubrifiant → TVA 20 % ; carburant (Gazoil/Essence) → TVA 10 %.
+  const tvaInp = tr.querySelector('[data-f=taux_tva]');
+  if (tvaInp && cat) tvaInp.value = (cat === 'Lubrifiant') ? 20 : 10;
   if (cat === 'Lubrifiant') {
     prodSel.style.display = '';
     hidden.value = prodSel.value || '';
@@ -432,6 +435,7 @@ function autoFillLub() {
     prodSel.style.display = '';
     prodSel.value = p.name;
     tr.querySelector('[data-f=designation]').value = p.name;
+    tr.querySelector('[data-f=taux_tva]').value = 20; // lubrifiant
     tr.querySelector('[data-f=prix_ttc]').value = fmt(p.prix);
     tr.querySelector('[data-f=montant_saisi]').value = fmt(qty * parseFloat(p.prix));
     calcQtyFromMontant(id);
