@@ -440,6 +440,20 @@ async function initDB() {
     )
   `);
 
+  // Stock de départ par carburant pour le calcul du bénéfice en FIFO : les litres
+  // déjà en cuve à l'ancien prix d'achat. À partir de since_date, les ventes
+  // consomment d'abord ce stock (ancien prix) puis les livraisons (cuve_livraisons,
+  // chacune à son prix d'achat). Les ventes avant since_date gardent l'ancien coût.
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS fuel_opening_stock (
+      fuel_type_id   INTEGER PRIMARY KEY REFERENCES fuel_types(id),
+      liters         REAL NOT NULL DEFAULT 0,
+      cost_per_liter REAL NOT NULL DEFAULT 0,
+      since_date     DATE NOT NULL DEFAULT CURRENT_DATE,
+      updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
   // Seed cuves
   const { rows: [{ c: cuvc }] } = await pgPool.query('SELECT COUNT(*) as c FROM cuves');
   if (parseInt(cuvc) === 0) {

@@ -2836,10 +2836,16 @@ async function loadStock() {
             ⚠️ Total livré (pas de jauge). saisir une jauge (page Cuves) pour le stock réel.
            </div>`}
         <div style="margin-top:10px;font-size:13px;color:#6A6D70">
-          Prix d'achat : <strong style="color:#333">${(ft.cost_per_liter||0).toFixed(2)} MAD/L</strong>
-          <button onclick="setFuelCost(${ft.id},'${esc(ft.name)}',${ft.cost_per_liter||0})" title="Modifier le prix d'achat"
+          Prix d'achat actuel : <strong style="color:#333">${(ft.cost_per_liter_effective!=null?ft.cost_per_liter_effective:(ft.cost_per_liter||0)).toFixed(2)} MAD/L</strong>
+          <button onclick="setFuelCost(${ft.id},'${esc(ft.name)}',${ft.cost_per_liter||0})" title="Modifier le prix d'achat de base"
             style="margin-left:6px;border:1px solid #ddd;background:#fff;border-radius:5px;cursor:pointer;font-size:11px;padding:1px 6px">✏️</button>
+          <button onclick="setOpeningStock(${ft.id},'${esc(ft.name)}')" title="Stock de départ FIFO (ancien stock à l'ancien prix)"
+            style="margin-left:4px;border:1px solid #ddd;background:#fff;border-radius:5px;cursor:pointer;font-size:11px;padding:1px 6px">⚙️ FIFO</button>
         </div>
+        ${ft.opening ? `<div style="margin-top:6px;font-size:11.5px;color:#188918;line-height:1.5">
+          📦 Reste <strong>${Math.round(ft.old_stock_remaining).toLocaleString('fr-FR')} L</strong> à l'ancien prix <strong>${ft.opening.cost.toFixed(2)}</strong> (depuis ${ft.opening.since}),<br/>puis les livraisons à leur prix.
+          <button onclick="clearOpeningStock(${ft.id},'${esc(ft.name)}')" title="Désactiver le FIFO" style="border:none;background:none;color:#BB0000;cursor:pointer;font-size:11px">✕ retirer</button>
+        </div>` : ''}
         <div style="margin-top:8px">
           ${empty ? '<span style="color:#BB0000;font-weight:700;font-size:13px">🚨 Stock vide</span>'
                   : low  ? '<span style="color:#E65100;font-weight:700;font-size:13px">⚠️ Stock faible</span>'
@@ -2931,6 +2937,37 @@ async function setFuelCost(id, name, current) {
   try {
     await api('PUT', '/stock/fuel-cost/' + id, { cost_per_liter: c });
     toast('Prix d\'achat mis à jour ✓');
+    loadStock();
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+// Stock de départ FIFO : litres d'ancien stock encore en cuve, à l'ancien prix.
+// Les ventes à partir de la date choisie consomment d'abord ce stock (ancien prix),
+// puis les livraisons (chacune à son prix). Les ventes avant cette date ne changent pas.
+async function setOpeningStock(id, name) {
+  const lStr = prompt(`Stock de départ FIFO — « ${name} »\n\nLitres d'ANCIEN stock encore en cuve :`);
+  if (lStr === null) return;
+  const liters = parseFloat(String(lStr).replace(',', '.'));
+  if (!isFinite(liters) || liters < 0) { toast('Litres invalides', 'er'); return; }
+  const cStr = prompt(`Ancien prix d'achat (MAD/L) pour ces ${liters} L :`);
+  if (cStr === null) return;
+  const cost = parseFloat(String(cStr).replace(',', '.'));
+  if (!isFinite(cost) || cost <= 0) { toast('Prix invalide', 'er'); return; }
+  const since = prompt('Appliquer le FIFO à partir de quelle date ? (AAAA-MM-JJ)', new Date().toISOString().slice(0, 10));
+  if (since === null) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(since.trim())) { toast('Date invalide (AAAA-MM-JJ)', 'er'); return; }
+  try {
+    await api('PUT', '/stock/opening/' + id, { liters, cost_per_liter: cost, since_date: since.trim() });
+    toast('Stock de départ FIFO enregistré ✓');
+    loadStock();
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+async function clearOpeningStock(id, name) {
+  if (!confirm(`Désactiver le calcul FIFO pour « ${name} » ?\nLe bénéfice reviendra au prix d'achat unique.`)) return;
+  try {
+    await api('DELETE', '/stock/opening/' + id);
+    toast('FIFO désactivé');
     loadStock();
   } catch (e) { toast(e.message, 'er'); }
 }
