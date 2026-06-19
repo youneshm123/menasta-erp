@@ -1077,6 +1077,22 @@ async function loadShiftPage() {
       </div>
     </div>` : ''}
 
+    ${shift.credit_payments && shift.credit_payments.length ? `
+    <div class="section" style="margin-bottom:20px;">
+      <div class="s-head"><div class="s-title">💰 Paiements Crédit ce Poste</div><span class="badge badge-g">${shift.credit_payments.length}</span></div>
+      <div class="s-body-flush" style="overflow-x:auto">
+        <table class="t"><thead><tr><th>Client</th><th class="num">Montant</th><th>Heure</th><th></th></tr></thead>
+        <tbody>${shift.credit_payments.map(p => `
+          <tr>
+            <td class="fw7">${p.client_name}</td>
+            <td class="num fw7 c-g">+ ${fmt(p.amount)} MAD</td>
+            <td class="muted sm">${fmtDT(p.payment_time)}</td>
+            <td><button class="btn btn-d btn-xs" onclick="deleteCreditPayment(${p.id})">✕</button></td>
+          </tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>` : ''}
+
     ${shift.product_sales.length ? `
     <div class="section">
       <div class="s-head"><div class="s-title">🛢️ Ventes Produits ce Poste</div><span class="badge badge-g">${shift.product_sales.length}</span></div>
@@ -1895,6 +1911,12 @@ async function csSubmitAll() {
 async function deleteCreditSale(id) {
   if (!confirm('Annuler cette vente crédit ?')) return;
   try { await api('DELETE', '/credits/sales/' + id); toast('Vente annulée'); loadShiftPage(); }
+  catch (e) { toast(e.message, 'er'); }
+}
+
+async function deleteCreditPayment(id) {
+  if (!confirm('Annuler ce paiement crédit ? Le montant sera remis sur la dette du client.')) return;
+  try { await api('DELETE', '/credits/payments/' + id); toast('Paiement annulé'); loadShiftPage(); }
   catch (e) { toast(e.message, 'er'); }
 }
 

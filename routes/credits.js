@@ -176,6 +176,20 @@ router.post('/payments', requireAuth, wrap(async (req, res) => {
   res.status(201).json(p);
 }));
 
+router.delete('/payments/:id', requireAuth, wrap(async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT cp.*, s.status FROM credit_payments cp LEFT JOIN shifts s ON s.id=cp.shift_id WHERE cp.id=$1', [req.params.id]
+  );
+  const pay = rows[0];
+  if (!pay) return res.status(404).json({ error: 'Paiement introuvable' });
+  // Block deletion only when it belongs to a poste that is already closed.
+  if (pay.shift_id && pay.status !== 'open') return res.status(400).json({ error: "Impossible d'annuler: poste fermé" });
+  // Reverse the payment: the amount goes back onto the client's debt.
+  await pool.query('UPDATE credit_clients SET balance_due=balance_due+$1 WHERE id=$2', [pay.amount, pay.credit_client_id]);
+  await pool.query('DELETE FROM credit_payments WHERE id=$1', [pay.id]);
+  res.json({ ok: true });
+}));
+
 router.get('/payments', requireAuth, wrap(async (req, res) => {
   const { client_id } = req.query;
   let q, params;
