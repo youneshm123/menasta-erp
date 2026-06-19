@@ -344,6 +344,32 @@
   </div>
 </div>
 
+<!-- ══ MODAL: Facture (choix produit / TVA / ICE) ══ -->
+<div class="overlay" id="m-bank-fact">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-hd"><div class="mh-ic">🧾</div><h3>Générer la facture</h3><button class="x" onclick="closeModal('m-bank-fact')">✕</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg" style="grid-column:1/-1">
+          <label>Type de produit *</label>
+          <select id="bf-produit" onchange="bfSyncTva()">
+            <option value="gazoil">Gazoil — TVA 10%</option>
+            <option value="essence">Essence — TVA 10%</option>
+            <option value="lubrifiant">Lubrifiant — TVA 20%</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>ICE Client</label><input id="bf-ice" placeholder="002256198000012"/></div>
+        <div class="fg" style="grid-column:1/-1"><label>Adresse Client</label><input id="bf-adresse" placeholder="facultatif"/></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:10px;padding:8px 10px;background:var(--bg2,#f8fafc);border-radius:8px" id="bf-recap"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('m-bank-fact')">Annuler</button>
+      <button class="btn btn-s btn-sm" onclick="doGenerateBankFacture()">🧾 Générer & Imprimer</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: Import Excel ══ -->
 <div class="overlay" id="m-import-txn">
   <div class="modal" style="max-width:700px">
@@ -835,34 +861,103 @@ const PAY_METHOD = {
   depot:'Espèces',        retrait:'Espèces',
 };
 
-// Facture banque (chèque / virement / effet) — rendu identique à la facture
-// client STE MENASTA, avec le mode de paiement ajouté.
-function printTxnVoucher(id) {
+// Produits facturables et leur taux de TVA (Gazoil/Essence = 10%, Lubrifiant = 20%).
+const FACT_PRODUITS = {
+  gazoil:     { label:'GAZOIL',     tva:10 },
+  essence:    { label:'ESSENCE',    tva:10 },
+  lubrifiant: { label:'LUBRIFIANT', tva:20 },
+};
+let _bfTxn = null;          // opération en cours de facturation
+let _allFactures = null;    // cache des factures (pour le N° séquentiel)
+let _factClients = null;    // cache des clients facture (pour l'ICE)
+
+// Numéro de facture au même format que les factures client : F-AAMM M####.
+function nextFactureNumero(dateStr, all) {
+  const d = ymd(dateStr);
+  const prefix = `F-${d.slice(2,4)}${d.slice(5,7)}M`;
+  let max = 0;
+  for (const f of all || []) {
+    if (f.numero && String(f.numero).startsWith(prefix)) {
+      const m = String(f.numero).match(/(\d+)$/);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+  }
+  return prefix + String(max + 1).padStart(4, '0');
+}
+
+// Clic sur 📄 → ouvre le choix produit/TVA + ICE, puis génère la facture.
+async function printTxnVoucher(id) {
   const t = (_txns || []).concat(_allCheques || []).find(x => x.id === id);
   if (!t) { toast('Opération introuvable', 'er'); return; }
+  _bfTxn = t;
+  // Devine le produit d'après la catégorie/description (sinon Gazoil par défaut).
+  const hay = ((t.category || '') + ' ' + (t.description || '')).toLowerCase();
+  document.getElementById('bf-produit').value =
+    hay.includes('lubrifiant') || hay.includes('huile') ? 'lubrifiant'
+    : hay.includes('essence') ? 'essence' : 'gazoil';
+  document.getElementById('bf-ice').value = '';
+  document.getElementById('bf-adresse').value = '';
+  // Pré-remplit ICE + adresse si le bénéficiaire est un client facture connu.
+  try {
+    if (!_factClients) _factClients = await api('GET', '/factures/clients');
+    const bn = (t.beneficiary || '').trim().toLowerCase();
+    const c = (_factClients || []).find(x => (x.name || '').trim().toLowerCase() === bn);
+    if (c) { document.getElementById('bf-ice').value = c.ice || ''; document.getElementById('bf-adresse').value = c.adresse || ''; }
+  } catch (e) {}
+  bfSyncTva();
+  openModal('m-bank-fact');
+}
+
+// Aperçu HT / TVA / TTC dans le modal.
+function bfSyncTva() {
+  const t = _bfTxn; if (!t) return;
+  const prod = FACT_PRODUITS[document.getElementById('bf-produit').value] || FACT_PRODUITS.gazoil;
+  const ttc = parseFloat(t.amount) || 0;
+  const ht  = ttc / (1 + prod.tva / 100);
+  const el = document.getElementById('bf-recap');
+  if (el) el.innerHTML = `TTC <b>${fmt(ttc,2)}</b> = HT <b>${fmt(ht,2)}</b> + TVA ${prod.tva}% <b>${fmt(ttc-ht,2)}</b> MAD`;
+}
+
+async function doGenerateBankFacture() {
+  const t = _bfTxn; if (!t) { toast('Opération introuvable', 'er'); return; }
+  const prod    = FACT_PRODUITS[document.getElementById('bf-produit').value] || FACT_PRODUITS.gazoil;
+  const ice     = document.getElementById('bf-ice').value.trim();
+  const adresse = document.getElementById('bf-adresse').value.trim();
+  let numero;
+  try {
+    if (!_allFactures) _allFactures = await api('GET', '/factures');
+    numero = nextFactureNumero(t.txn_date, _allFactures);
+  } catch (e) { numero = nextFactureNumero(t.txn_date, []); }
+  closeModal('m-bank-fact');
+  buildAndPrintBankFacture(t, prod, ice, adresse, numero);
+}
+
+// Construit et imprime la facture banque — rendu identique à la facture client.
+function buildAndPrintBankFacture(t, prod, ice, adresse, numero) {
   const E = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const isEffet = t.type === 'effet_in' || t.type === 'effet_out';
   const isCheck = t.type === 'cheque_in' || t.type === 'cheque_out' || isEffet;
-  const [label] = VOUCHER_TYPE[t.type] || [txnLabel(t.type), ''];
-  const payMethod = PAY_METHOD[t.type] || label;
-  const refNo  = t.check_number || ('OP-' + String(t.id).padStart(4,'0'));
-  const amount = parseFloat(t.amount) || 0;
+  const payMethod = PAY_METHOD[t.type] || (VOUCHER_TYPE[t.type] || [txnLabel(t.type)])[0];
   const dateStr = ymd(t.txn_date);
+
+  const ttc = parseFloat(t.amount) || 0;     // le montant de l'opération = TTC
+  const ht  = ttc / (1 + prod.tva / 100);
+  const tva = ttc - ht;
 
   const TD  = 'border:1px solid #000;padding:7px 8px;font-size:11.5px';
   const TDR = TD + ';text-align:right';
   const TDC = TD + ';text-align:center';
 
-  // Ligne unique : le montant de l'opération (pas de TVA en banque → HT = TTC).
+  // Ligne unique : le produit choisi, avec sa TVA.
   const lignesHtml = `
     <tr>
-      <td style="${TD}">${E(t.category || '')}</td>
-      <td style="${TD}">${E(t.description || label)}</td>
+      <td style="${TD}"></td>
+      <td style="${TD}">${E(prod.label)}</td>
       <td style="${TDR}">${fmt(1,2)}</td>
-      <td style="${TDR}">${fmt(amount)}</td>
-      <td style="${TDC}">0.00 %</td>
-      <td style="${TDR}">${fmt(amount)}</td>
-      <td style="${TDR};font-weight:bold">${fmt(amount)}</td>
+      <td style="${TDR}">${fmt(ttc,2)}</td>
+      <td style="${TDC}">${fmt(prod.tva,0)}.00 %</td>
+      <td style="${TDR}">${fmt(ht,2)}</td>
+      <td style="${TDR};font-weight:bold">${fmt(ttc,2)}</td>
     </tr>`;
   const minRows = 4;
   const emptyHtml = Array(Math.max(0, minRows - 1)).fill(`
@@ -879,7 +974,7 @@ function printTxnVoucher(id) {
     </tr>`;
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/>
-<title>FACTURE - ${E(label)} ${fmt(amount,2)} MAD</title>
+<title>FACTURE ${E(numero)} - ${fmt(ttc,2)} MAD</title>
 <style>@media print{@page{margin:8mm}}</style></head>
 <body style="margin:0">
   <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:780px;margin:0 auto;display:flex;flex-direction:column;min-height:255mm;box-sizing:border-box">
@@ -898,12 +993,16 @@ function printTxnVoucher(id) {
     <!-- BLOC CLIENT -->
     <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11.5px">
       <tr>
-        <td style="border:1px solid #000;padding:6px 10px;width:40%"><b>Facture N° :</b>&nbsp; ${E(refNo)}</td>
+        <td style="border:1px solid #000;padding:6px 10px;width:40%"><b>Facture N° :</b>&nbsp; ${E(numero)}</td>
         <td style="border:1px solid #000;padding:6px 10px"><b>Client :</b>&nbsp; ${E(t.beneficiary || '')}</td>
       </tr>
       <tr>
         <td style="border:1px solid #000;padding:6px 10px"><b>Date Facture :</b>&nbsp;${E(dateStr)}</td>
+        <td style="border:1px solid #000;padding:6px 10px"><b>Adresse :</b>&nbsp; ${E(adresse)}</td>
+      </tr>
+      <tr>
         <td style="border:1px solid #000;padding:6px 10px"><b>Mode de Paiement :</b>&nbsp; ${E(payMethod)}</td>
+        <td style="border:1px solid #000;padding:6px 10px;text-align:right"><b>ICE :</b>&nbsp; ${E(ice)}</td>
       </tr>
       ${isCheck ? `
       <tr>
@@ -941,14 +1040,14 @@ function printTxnVoucher(id) {
         </thead>
         <tbody>
           <tr>
-            <td style="${TDC}">0.00 %</td>
-            <td style="${TDR}">${fmt(0)}</td>
+            <td style="${TDC}">${fmt(prod.tva,0)}.00 %</td>
+            <td style="${TDR}">${fmt(tva,2)}</td>
           </tr>
         </tbody>
         <tfoot>
           <tr style="font-weight:bold;background:#ddd">
             <td style="${TDC}">Total</td>
-            <td style="${TDR}">${fmt(0)}</td>
+            <td style="${TDR}">${fmt(tva,2)}</td>
           </tr>
         </tfoot>
       </table>
@@ -957,15 +1056,15 @@ function printTxnVoucher(id) {
       <table style="border-collapse:collapse;font-size:12px;min-width:270px">
         <tr>
           <td style="${TD};font-weight:bold;font-style:italic;width:150px">Total HT</td>
-          <td style="${TDR};width:120px;font-weight:bold">${fmt(amount)}</td>
+          <td style="${TDR};width:120px;font-weight:bold">${fmt(ht,2)}</td>
         </tr>
         <tr>
           <td style="${TD};font-weight:bold;font-style:italic">Montant TVA</td>
-          <td style="${TDR};font-weight:bold">${fmt(0)}</td>
+          <td style="${TDR};font-weight:bold">${fmt(tva,2)}</td>
         </tr>
         <tr>
           <td style="${TD};font-weight:bold;font-style:italic;font-size:13px">Total TTC</td>
-          <td style="${TDR};font-weight:bold;font-size:13px">${fmt(amount)}</td>
+          <td style="${TDR};font-weight:bold;font-size:13px">${fmt(ttc,2)}</td>
         </tr>
       </table>
     </div>
@@ -978,7 +1077,7 @@ function printTxnVoucher(id) {
     <!-- ARRÊTÉ -->
     <div style="margin-bottom:18px;font-size:11.5px">
       <div style="font-style:italic">Arrêter la présente facture à la somme de :</div>
-      <div style="font-weight:bold;margin-top:6px">${montantEnLettres(amount)}</div>
+      <div style="font-weight:bold;margin-top:6px">${montantEnLettres(ttc)}</div>
     </div>
 
     <!-- PAGE -->
