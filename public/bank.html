@@ -827,50 +827,59 @@ function montantEnLettres(n) {
   return '** ' + convSimple(d) + ' Dirhams ' + (c>0 ? convSimple(c)+' Centimes' : 'Zéro Centimes') + ' **';
 }
 
+// Mode de paiement affiché sur la facture, selon le type d'opération.
+const PAY_METHOD = {
+  virement_in:'Virement', virement_out:'Virement',
+  cheque_in:'Chèque',     cheque_out:'Chèque',
+  effet_in:'Effet',       effet_out:'Effet',
+  depot:'Espèces',        retrait:'Espèces',
+};
+
+// Facture banque (chèque / virement / effet) — rendu identique à la facture
+// client STE MENASTA, avec le mode de paiement ajouté.
 function printTxnVoucher(id) {
   const t = (_txns || []).concat(_allCheques || []).find(x => x.id === id);
   if (!t) { toast('Opération introuvable', 'er'); return; }
   const E = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const isEffet = t.type === 'effet_in' || t.type === 'effet_out';
   const isCheck = t.type === 'cheque_in' || t.type === 'cheque_out' || isEffet;
-  const [label, sens] = VOUCHER_TYPE[t.type] || [txnLabel(t.type), ''];
-  const sensColor = sens === 'ENTRÉE' ? '#188918' : '#BB0000';
-  const titre = isEffet ? 'JUSTIFICATIF EFFET' : isCheck ? 'JUSTIFICATIF CHÈQUE' : 'JUSTIFICATIF VIREMENT';
-  const refNo = t.check_number || ('OP-' + String(t.id).padStart(4,'0'));
+  const [label] = VOUCHER_TYPE[t.type] || [txnLabel(t.type), ''];
+  const payMethod = PAY_METHOD[t.type] || label;
+  const refNo  = t.check_number || ('OP-' + String(t.id).padStart(4,'0'));
+  const amount = parseFloat(t.amount) || 0;
+  const dateStr = ymd(t.txn_date);
 
   const TD  = 'border:1px solid #000;padding:7px 8px;font-size:11.5px';
   const TDR = TD + ';text-align:right';
   const TDC = TD + ';text-align:center';
 
-  // Info grid (2 columns) — same look as the facture client block.
-  const infoRows = [
-    [`<b>Justificatif N° :</b>&nbsp; ${E(refNo)}`, `<b>Date :</b>&nbsp; ${E(ymd(t.txn_date))}`],
-    [`<b>Bénéficiaire / Émetteur :</b>&nbsp; ${E(t.beneficiary || '')}`, `<b>Catégorie :</b>&nbsp; ${E(t.category || '')}`],
-  ];
-  if (isCheck) infoRows.push([
-    `<b>${isEffet ? "N° d'effet" : 'N° de chèque'} :</b>&nbsp; ${E(t.check_number || '')}`,
-    `<b>Date d'échéance :</b>&nbsp; ${E(ymd(t.due_date))}`,
-  ]);
-  if (isCheck) infoRows.push([
-    `<b>Statut :</b>&nbsp; ${E(VOUCHER_STATUS[t.check_status] || t.check_status || '')}`,
-    `<b>Sens :</b>&nbsp; <span style="color:${sensColor};font-weight:bold">${sens} ${sens==='ENTRÉE'?'(+)':'(−)'}</span>`,
-  ]);
-  const infoHtml = infoRows.map(([a,b]) =>
-    `<tr><td style="border:1px solid #000;padding:6px 10px;width:50%">${a}</td><td style="border:1px solid #000;padding:6px 10px">${b}</td></tr>`).join('');
-
-  // Main bordered table that stretches to fill the page (like the products table).
-  const bodyRow = `<tr style="height:30px">
+  // Ligne unique : le montant de l'opération (pas de TVA en banque → HT = TTC).
+  const lignesHtml = `
+    <tr>
+      <td style="${TD}">${E(t.category || '')}</td>
       <td style="${TD}">${E(t.description || label)}</td>
-      <td style="${TDC}">${E(refNo)}</td>
-      <td style="${TDC}">${isCheck ? E(ymd(t.due_date)) : '—'}</td>
-      <td style="${TDR};font-weight:bold">${fmt(t.amount,2)} MAD</td>
+      <td style="${TDR}">${fmt(1,2)}</td>
+      <td style="${TDR}">${fmt(amount)}</td>
+      <td style="${TDC}">0.00 %</td>
+      <td style="${TDR}">${fmt(amount)}</td>
+      <td style="${TDR};font-weight:bold">${fmt(amount)}</td>
     </tr>`;
-  const empties = Array(3).fill(`<tr style="height:26px"><td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td></tr>`).join('');
-  const spacer = `<tr style="height:100%"><td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td></tr>`;
-  const notesHtml = t.notes ? `<div style="margin-bottom:12px;font-size:11.5px"><b>Notes :</b> ${E(t.notes)}</div>` : '';
+  const minRows = 4;
+  const emptyHtml = Array(Math.max(0, minRows - 1)).fill(`
+    <tr style="height:26px">
+      <td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td>
+      <td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td>
+      <td style="${TD}"></td>
+    </tr>`).join('');
+  const spacerHtml = `
+    <tr style="height:100%">
+      <td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td>
+      <td style="${TD}"></td><td style="${TD}"></td><td style="${TD}"></td>
+      <td style="${TD}"></td>
+    </tr>`;
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/>
-<title>${titre} - ${E(label)} ${fmt(t.amount,2)} MAD</title>
+<title>FACTURE - ${E(label)} ${fmt(amount,2)} MAD</title>
 <style>@media print{@page{margin:8mm}}</style></head>
 <body style="margin:0">
   <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:780px;margin:0 auto;display:flex;flex-direction:column;min-height:255mm;box-sizing:border-box">
@@ -881,48 +890,96 @@ function printTxnVoucher(id) {
       <div style="font-size:22px;font-weight:bold;font-style:italic;letter-spacing:1px">SARL AU</div>
     </div>
 
-    <!-- TITRE -->
-    <div style="text-align:center;margin-bottom:6px">
-      <span style="display:inline-block;border:2.5px solid #000;padding:6px 40px;font-size:16px;font-weight:bold;letter-spacing:3px">${titre}</span>
+    <!-- TITRE FACTURE -->
+    <div style="text-align:center;margin-bottom:14px">
+      <span style="display:inline-block;border:2.5px solid #000;padding:6px 60px;font-size:16px;font-weight:bold;letter-spacing:4px;font-style:normal">FACTURE</span>
     </div>
-    <div style="text-align:center;font-size:15px;font-weight:bold;color:${sensColor};margin-bottom:14px">${sens} ${sens==='ENTRÉE'?'(+)':'(−)'}</div>
 
-    <!-- BLOC INFO -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11.5px">${infoHtml}</table>
+    <!-- BLOC CLIENT -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11.5px">
+      <tr>
+        <td style="border:1px solid #000;padding:6px 10px;width:40%"><b>Facture N° :</b>&nbsp; ${E(refNo)}</td>
+        <td style="border:1px solid #000;padding:6px 10px"><b>Client :</b>&nbsp; ${E(t.beneficiary || '')}</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #000;padding:6px 10px"><b>Date Facture :</b>&nbsp;${E(dateStr)}</td>
+        <td style="border:1px solid #000;padding:6px 10px"><b>Mode de Paiement :</b>&nbsp; ${E(payMethod)}</td>
+      </tr>
+      ${isCheck ? `
+      <tr>
+        <td style="border:1px solid #000;padding:6px 10px"><b>${isEffet ? "N° d'effet" : 'N° de chèque'} :</b>&nbsp; ${E(t.check_number || '')}</td>
+        <td style="border:1px solid #000;padding:6px 10px"><b>Date d'échéance :</b>&nbsp; ${E(ymd(t.due_date))}</td>
+      </tr>` : ''}
+    </table>
 
-    <!-- TABLEAU OPÉRATION -->
+    <!-- TABLEAU PRODUITS -->
     <table style="width:100%;border-collapse:collapse;margin-bottom:10px;flex:1 1 auto;height:1px">
       <thead>
         <tr style="background:#ddd">
-          <th style="${TD};text-align:left">Désignation de l'opération</th>
-          <th style="${TDC};width:120px">Référence</th>
-          <th style="${TDC};width:100px">Échéance</th>
-          <th style="${TDR};width:120px">Montant TTC</th>
+          <th style="${TD};width:76px;text-align:left;font-size:11px">Code Prod.</th>
+          <th style="${TD};text-align:left;font-size:11px">Désignation</th>
+          <th style="${TDC};width:72px;font-size:11px">Quantité</th>
+          <th style="${TDR};width:76px;font-size:11px">Prix U. TTC</th>
+          <th style="${TDC};width:72px;font-size:11px">Taux TVA</th>
+          <th style="${TDR};width:76px;font-size:11px">Total HT</th>
+          <th style="${TDR};width:82px;font-size:11px">Montant TTC</th>
         </tr>
       </thead>
-      <tbody>${bodyRow}${empties}${spacer}</tbody>
+      <tbody>${lignesHtml}${emptyHtml}${spacerHtml}</tbody>
     </table>
 
-    <!-- TOTAL -->
-    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
-      <table style="border-collapse:collapse;font-size:12px;min-width:300px">
+    <!-- TOTAUX -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:20px">
+
+      <!-- Récap TVA -->
+      <table style="border-collapse:collapse;font-size:11.5px;min-width:200px">
+        <thead>
+          <tr style="background:#ddd">
+            <th style="${TDC};width:100px">Taux TVA</th>
+            <th style="${TDR};width:100px">Total Tva</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="${TDC}">0.00 %</td>
+            <td style="${TDR}">${fmt(0)}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr style="font-weight:bold;background:#ddd">
+            <td style="${TDC}">Total</td>
+            <td style="${TDR}">${fmt(0)}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <!-- Montants HT / TVA / TTC -->
+      <table style="border-collapse:collapse;font-size:12px;min-width:270px">
         <tr>
-          <td style="${TD};font-weight:bold;font-style:italic;width:170px">Nature de l'opération</td>
-          <td style="${TDR}">${E(label)}</td>
+          <td style="${TD};font-weight:bold;font-style:italic;width:150px">Total HT</td>
+          <td style="${TDR};width:120px;font-weight:bold">${fmt(amount)}</td>
         </tr>
         <tr>
-          <td style="${TD};font-weight:bold;font-style:italic;font-size:13px">Montant total</td>
-          <td style="${TDR};font-weight:bold;font-size:14px">${fmt(t.amount,2)} MAD</td>
+          <td style="${TD};font-weight:bold;font-style:italic">Montant TVA</td>
+          <td style="${TDR};font-weight:bold">${fmt(0)}</td>
+        </tr>
+        <tr>
+          <td style="${TD};font-weight:bold;font-style:italic;font-size:13px">Total TTC</td>
+          <td style="${TDR};font-weight:bold;font-size:13px">${fmt(amount)}</td>
         </tr>
       </table>
     </div>
 
-    <!-- ARRÊTÉ -->
-    <div style="margin-bottom:14px;font-size:11.5px">
-      <div style="font-style:italic">Arrêter le présent justificatif à la somme de :</div>
-      <div style="font-weight:bold;margin-top:6px">${montantEnLettres(parseFloat(t.amount)||0)}</div>
+    <!-- MODE DE PAIEMENT -->
+    <div style="margin-bottom:12px;font-size:11.5px">
+      <b>Mode de paiement :</b>&nbsp; ${E(payMethod)}${isCheck && t.check_number ? ` &mdash; N° ${E(t.check_number)}` : ''}${isCheck && t.due_date ? ` &mdash; Échéance ${E(ymd(t.due_date))}` : ''}
     </div>
-    ${notesHtml}
+
+    <!-- ARRÊTÉ -->
+    <div style="margin-bottom:18px;font-size:11.5px">
+      <div style="font-style:italic">Arrêter la présente facture à la somme de :</div>
+      <div style="font-weight:bold;margin-top:6px">${montantEnLettres(amount)}</div>
+    </div>
 
     <!-- PAGE -->
     <div style="text-align:center;font-size:11px;margin-bottom:14px">1 / 1</div>
