@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="/js/pdf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -936,6 +937,8 @@ function bfSyncTva() {
   if (el) el.innerHTML = `TTC <b>${fmt(ttc,2)}</b> = HT <b>${fmt(ht,2)}</b> + TVA ${prod.tva}% <b>${fmt(ttc-ht,2)}</b> MAD`;
 }
 
+function _normTxt(s) { return String(s || '').trim().toLowerCase(); }
+
 async function doGenerateBankFacture() {
   const t = _bfTxn; if (!t) { toast('Opération introuvable', 'er'); return; }
   const prod    = FACT_PRODUITS[document.getElementById('bf-produit').value] || FACT_PRODUITS.gazoil;
@@ -944,17 +947,77 @@ async function doGenerateBankFacture() {
   const sel     = document.getElementById('bf-client');
   const picked  = (sel.value !== '' && _factClients) ? _factClients[sel.value] : null;
   const clientName = picked ? picked.name : (t.beneficiary || '');
+  if (!clientName) { toast('Nom du client requis', 'er'); return; }
+
+  const ttc = parseFloat(t.amount) || 0;
+  const ht  = ttc / (1 + prod.tva / 100);                 // le montant = TTC → on retrouve le HT
+  const dateStr = ymd(t.txn_date);
+  const payMethod = PAY_METHOD[t.type] || (VOUCHER_TYPE[t.type] || [txnLabel(t.type)])[0];
+  const noteParts = ['Banque · Mode de paiement: ' + payMethod];
+  if (t.check_number) noteParts.push('N° ' + t.check_number);
+  if (t.due_date)     noteParts.push('Échéance ' + ymd(t.due_date));
+
+  closeModal('m-bank-fact');
+
+  // 1) Enregistre la facture dans l'historique des factures (numéro séquentiel réel),
+  //    sauf si une facture identique (même client + date + montant) existe déjà.
   let numero;
   try {
-    if (!_allFactures) _allFactures = await api('GET', '/factures');
-    numero = nextFactureNumero(t.txn_date, _allFactures);
-  } catch (e) { numero = nextFactureNumero(t.txn_date, []); }
-  closeModal('m-bank-fact');
-  buildAndPrintBankFacture(t, prod, ice, adresse, numero, clientName);
+    _allFactures = await api('GET', '/factures');
+    const dup = (_allFactures || []).find(f =>
+      _normTxt(f.client_name) === _normTxt(clientName) &&
+      ymd(f.facture_date) === dateStr &&
+      Math.abs(parseFloat(f.total_ttc) - ttc) < 0.01);
+    if (dup) {
+      numero = dup.numero;
+      toast('Facture déjà dans l\'historique (' + numero + ')', 'wn');
+    } else {
+      const created = await api('POST', '/factures', {
+        facture_date: dateStr,
+        client_name: clientName,
+        client_adresse: adresse || null,
+        client_ice: ice || null,
+        notes: noteParts.join(' · '),
+        lignes: [{ code_produit: '', designation: prod.label, quantite: 1, prix_ht: ht, taux_tva: prod.tva }],
+      });
+      numero = created.numero;
+      _allFactures = null;     // invalide le cache
+      toast('Facture ajoutée à l\'historique (' + numero + ')', 'g');
+    }
+  } catch (e) {
+    toast('Erreur enregistrement: ' + (e.message || e), 'er');
+    numero = nextFactureNumero(dateStr, _allFactures || []);   // on imprime quand même
+  }
+
+  // 2) Génère le PDF (même méthode que la facture client → rendu impeccable).
+  await renderBankFacturePdf(t, prod, ice, adresse, numero, clientName);
 }
 
-// Construit et imprime la facture banque — rendu identique à la facture client.
-function buildAndPrintBankFacture(t, prod, ice, adresse, numero, clientName) {
+// Produit le PDF de la facture via html2canvas + jsPDF, exactement comme la
+// facture client (téléchargement Facture_<numero>.pdf).
+async function renderBankFacturePdf(t, prod, ice, adresse, numero, clientName) {
+  const inner = bankFactureInnerHtml(t, prod, ice, adresse, numero, clientName);
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;padding:20px';
+  container.innerHTML = inner;
+  document.body.appendChild(container);
+  try {
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ format: 'a4', unit: 'mm', orientation: 'portrait' });
+    const w = doc.internal.pageSize.getWidth();
+    const h = (canvas.height * w) / canvas.width;
+    doc.addImage(canvas.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, w, Math.min(h, doc.internal.pageSize.getHeight()));
+    doc.save(`Facture_${numero}.pdf`);
+  } catch (e) {
+    toast('Erreur PDF: ' + (e.message || e), 'er');
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
+// Contenu HTML de la facture banque — même mise en page que la facture client.
+function bankFactureInnerHtml(t, prod, ice, adresse, numero, clientName) {
   clientName = clientName || t.beneficiary || '';
   const E = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const isEffet = t.type === 'effet_in' || t.type === 'effet_out';
@@ -995,10 +1058,7 @@ function buildAndPrintBankFacture(t, prod, ice, adresse, numero, clientName) {
       <td style="${TD}"></td>
     </tr>`;
 
-  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/>
-<title>FACTURE ${E(numero)} - ${fmt(ttc,2)} MAD</title>
-<style>@media print{@page{margin:8mm}}</style></head>
-<body style="margin:0">
+  return `
   <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:780px;margin:0 auto;display:flex;flex-direction:column;min-height:255mm;box-sizing:border-box">
 
     <!-- EN-TÊTE -->
@@ -1109,13 +1169,7 @@ function buildAndPrintBankFacture(t, prod, ice, adresse, numero, clientName) {
     <div style="text-align:center;border-top:1.5px solid #000;padding-top:8px;font-size:10.5px;letter-spacing:.3px">
       RC KENITRA 67019 &nbsp;&mdash;&nbsp; PATENTE 20113387 &nbsp;&mdash;&nbsp; IF 53221208 &nbsp;&mdash;&nbsp; ICE 003172239000062
     </div>
-  </div>
-  <script>window.onload=function(){window.print();}<\/script>
-</body></html>`;
-  const w = window.open('', '_blank');
-  if (!w) { toast('Autorisez les pop-ups pour imprimer', 'er'); return; }
-  w.document.write(html);
-  w.document.close();
+  </div>`;
 }
 
 
