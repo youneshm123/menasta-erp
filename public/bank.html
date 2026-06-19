@@ -1079,12 +1079,12 @@ function bankFactureInnerHtml(t, prod, ice, adresse, numero, clientName) {
         <td style="border:1px solid #000;padding:6px 10px"><b>Client :</b>&nbsp; ${E(clientName)}</td>
       </tr>
       <tr>
-        <td style="border:1px solid #000;padding:6px 10px"><b>Date Facture :</b>&nbsp;${E(dateStr)}</td>
+        <td style="border:1px solid #000;padding:6px 10px"><b>ICE :</b>&nbsp; ${E(ice)}</td>
         <td style="border:1px solid #000;padding:6px 10px"><b>Adresse :</b>&nbsp; ${E(adresse)}</td>
       </tr>
       <tr>
         <td style="border:1px solid #000;padding:6px 10px"><b>Mode de Paiement :</b>&nbsp; ${E(payMethod)}</td>
-        <td style="border:1px solid #000;padding:6px 10px;text-align:right"><b>ICE :</b>&nbsp; ${E(ice)}</td>
+        <td style="border:1px solid #000;padding:6px 10px"></td>
       </tr>
       ${isCheck ? `
       <tr>
