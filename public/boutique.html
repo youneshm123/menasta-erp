@@ -73,12 +73,11 @@ tr:last-child td{border-bottom:none}
 @media print{
   body{background:#fff;padding:0;margin:0}
   .wrap > *{display:none!important}
-  /* One QR sticker per page, centered, full roll width. @page size + QR size
-     are injected at print time from the chosen roll width (see printLabels). */
+  /* One QR per die-cut label. The exact label size (width × height) and the QR
+     size are injected at print time from the inputs (see printLabels). */
   #print-sheet{display:block!important}
-  #print-sheet .lbl{width:100%;padding:0;margin:0;page-break-after:always;break-inside:avoid}
+  #print-sheet .lbl{page-break-after:always;break-inside:avoid}
   #print-sheet .lbl:last-child{page-break-after:auto}
-  #print-sheet .lbl .lbl-qr{width:100%}
 }
 </style>
 </head>
@@ -123,11 +122,10 @@ tr:last-child td{border-bottom:none}
     <div class="sec-hd">
       <h2>Codes QR des produits</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <label class="no-print" style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px">Largeur rouleau
-          <select id="roll-width" class="no-print" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font)">
-            <option value="80">80 mm</option>
-            <option value="58">58 mm</option>
-          </select>
+        <label class="no-print" style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px">Étiquette (mm)
+          <input id="lbl-w" type="number" min="10" max="120" value="50" title="Largeur d'une étiquette en mm" style="width:62px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);text-align:center">
+          <span style="font-weight:700">×</span>
+          <input id="lbl-h" type="number" min="10" max="120" value="40" title="Hauteur d'une étiquette en mm" style="width:62px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);text-align:center">
         </label>
         <button class="btn btn-gho no-print" id="print-sel-btn" onclick="printSelected()" style="display:none">🖨️ Imprimer la sélection (<span id="sel-count">0</span>)</button>
         <button class="btn btn-pri no-print" id="print-btn" onclick="printAll()">🖨️ Imprimer tout</button>
@@ -284,9 +282,11 @@ function printSelected() {
 function printLabels(list) {
   const sheet = document.getElementById('print-sheet');
   sheet.innerHTML = '';
-  const rollW = parseInt((document.getElementById('roll-width') || {}).value, 10) || 80;
-  const margin = 3;                       // mm de marge de chaque côté
-  const qrMm   = Math.max(20, rollW - margin * 2);  // côté du QR en mm
+  // Dimensions d'UNE étiquette pré-découpée (mm). Le QR remplit le plus petit côté.
+  const lblW = parseInt((document.getElementById('lbl-w') || {}).value, 10) || 50;
+  const lblH = parseInt((document.getElementById('lbl-h') || {}).value, 10) || 40;
+  const margin = 2;                                       // mm autour du QR
+  const qrMm   = Math.max(12, Math.min(lblW, lblH) - margin * 2);  // côté du QR en mm
   let total = 0;
   (list || _products).forEach(p => {
     const n = parseInt((document.getElementById('qty-' + p.id) || {}).value, 10);
@@ -308,13 +308,13 @@ function printLabels(list) {
   });
   if (!total) { alert('Indiquez le nombre d\'étiquettes à imprimer pour au moins un produit.'); return; }
 
-  // Page = largeur du rouleau, hauteur automatique ; QR dimensionné en mm.
+  // Page = UNE étiquette (largeur × hauteur fixes) → un QR par étiquette, centré.
   let dyn = document.getElementById('print-dyn');
   if (!dyn) { dyn = document.createElement('style'); dyn.id = 'print-dyn'; document.head.appendChild(dyn); }
   dyn.textContent =
     '@media print{' +
-      '@page{size:' + rollW + 'mm auto;margin:' + margin + 'mm}' +
-      '#print-sheet .lbl{padding:' + margin + 'mm 0}' +
+      '@page{size:' + lblW + 'mm ' + lblH + 'mm;margin:0}' +
+      '#print-sheet .lbl{width:' + lblW + 'mm;height:' + lblH + 'mm;display:flex;align-items:center;justify-content:center;padding:0;margin:0;overflow:hidden}' +
       '#print-sheet .lbl .lbl-qr canvas,#print-sheet .lbl .lbl-qr img{' +
         'width:' + qrMm + 'mm!important;height:' + qrMm + 'mm!important;image-rendering:pixelated}' +
     '}';
