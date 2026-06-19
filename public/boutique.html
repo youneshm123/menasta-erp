@@ -127,6 +127,7 @@ tr:last-child td{border-bottom:none}
           <span style="font-weight:700">×</span>
           <input id="lbl-h" type="number" min="10" max="120" value="40" title="Hauteur d'une étiquette en mm" style="width:62px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);text-align:center">
         </label>
+        <button class="btn btn-gho no-print" onclick="exportOpenLabelCsv()" title="Exporter tous les produits + liens QR (Excel/CSV) pour l'impression par lot dans OpenLabel">📄 Export OpenLabel</button>
         <button class="btn btn-gho no-print" id="print-sel-btn" onclick="printSelected()" style="display:none">🖨️ Imprimer la sélection (<span id="sel-count">0</span>)</button>
         <button class="btn btn-pri no-print" id="print-btn" onclick="printAll()">🖨️ Imprimer tout</button>
       </div>
@@ -227,6 +228,25 @@ async function loadSales() {
 let _products = [];
 
 function qrLink(id) { return location.origin + '/scan/' + id; }
+
+// Exporte tous les produits + leur lien QR en CSV, pour l'impression PAR LOT
+// dans OpenLabel (un modèle d'étiquette + import du fichier → tout imprimé d'un coup).
+function exportOpenLabelCsv() {
+  if (!_products || !_products.length) { alert('Aucun produit à exporter.'); return; }
+  const rows = [['Produit', 'Reference', 'Prix', 'Quantite', 'Lien_QR']];
+  _products.forEach(p => {
+    const n = parseInt((document.getElementById('qty-' + p.id) || {}).value, 10);
+    const qty = isFinite(n) && n > 0 ? n : 1;
+    rows.push([p.name || '', p.reference || '', (parseFloat(p.price) || 0).toFixed(2), String(qty), qrLink(p.id)]);
+  });
+  const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'produits_qr_openlabel.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
 
 // Télécharge le QR d'un produit en image PNG (à imprimer depuis l'app de
 // l'imprimante Bluetooth, qui n'imprime pas directement depuis le navigateur).
