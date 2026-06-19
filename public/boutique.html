@@ -65,19 +65,20 @@ tr:last-child td{border-bottom:none}
 .qr-prev canvas,.qr-prev img{width:54px!important;height:54px!important}
 .qty-inp{width:90px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;font-family:var(--font);text-align:center}
 .qty-inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,79,207,.12);outline:none}
-/* Print sheet (hidden on screen) */
+/* Print sheet (hidden on screen) — one QR per label, sized for a thermal roll */
 #print-sheet{display:none}
-.lbl{border:1px dashed #bbb;border-radius:8px;padding:10px;text-align:center;break-inside:avoid}
-.lbl .lbl-qr{width:150px;height:150px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center}
-.lbl .lbl-qr canvas,.lbl .lbl-qr img{width:150px!important;height:150px!important}
-.lbl .lbl-name{font-size:13px;font-weight:700;line-height:1.2}
-.lbl .lbl-ref{font-size:10px;color:#555;margin-top:1px}
-.lbl .lbl-price{font-size:12px;font-weight:700;color:#5b4fcf;margin-top:2px}
+.lbl{text-align:center;break-inside:avoid}
+.lbl .lbl-qr{display:flex;align-items:center;justify-content:center}
 @media(max-width:760px){.form-row{grid-template-columns:1fr 1fr}.form-row .fld--btn{grid-column:1/-1}}
 @media print{
-  body{background:#fff;padding:0}
+  body{background:#fff;padding:0;margin:0}
   .wrap > *{display:none!important}
-  #print-sheet{display:grid!important;grid-template-columns:repeat(3,1fr);gap:8px}
+  /* One QR sticker per page, centered, full roll width. @page size + QR size
+     are injected at print time from the chosen roll width (see printLabels). */
+  #print-sheet{display:block!important}
+  #print-sheet .lbl{width:100%;padding:0;margin:0;page-break-after:always;break-inside:avoid}
+  #print-sheet .lbl:last-child{page-break-after:auto}
+  #print-sheet .lbl .lbl-qr{width:100%}
 }
 </style>
 </head>
@@ -121,7 +122,13 @@ tr:last-child td{border-bottom:none}
   <div class="sec">
     <div class="sec-hd">
       <h2>Codes QR des produits</h2>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <label class="no-print" style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px">Largeur rouleau
+          <select id="roll-width" class="no-print" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font)">
+            <option value="80">80 mm</option>
+            <option value="58">58 mm</option>
+          </select>
+        </label>
         <button class="btn btn-gho no-print" id="print-sel-btn" onclick="printSelected()" style="display:none">🖨️ Imprimer la sélection (<span id="sel-count">0</span>)</button>
         <button class="btn btn-pri no-print" id="print-btn" onclick="printAll()">🖨️ Imprimer tout</button>
       </div>
@@ -272,10 +279,14 @@ function printSelected() {
   printLabels(list);
 }
 
-// Build N labels per product (per the quantity inputs) then open the print dialog.
+// Build N QR stickers per product (per the quantity inputs), size the page to the
+// chosen thermal roll width (one QR per page), then open the print dialog.
 function printLabels(list) {
   const sheet = document.getElementById('print-sheet');
   sheet.innerHTML = '';
+  const rollW = parseInt((document.getElementById('roll-width') || {}).value, 10) || 80;
+  const margin = 3;                       // mm de marge de chaque côté
+  const qrMm   = Math.max(20, rollW - margin * 2);  // côté du QR en mm
   let total = 0;
   (list || _products).forEach(p => {
     const n = parseInt((document.getElementById('qty-' + p.id) || {}).value, 10);
@@ -286,22 +297,30 @@ function printLabels(list) {
       const qr = document.createElement('div');
       qr.className = 'lbl-qr';
       lbl.appendChild(qr);
-      const meta = document.createElement('div');
-      meta.innerHTML = '<div class="lbl-name">' + esc(p.name) + '</div>' +
-        '<div class="lbl-ref">Réf. ' + esc(p.reference||'—') + '</div>' +
-        '<div class="lbl-price">' + fmt(p.price) + ' DH</div>';
-      lbl.appendChild(meta);
       sheet.appendChild(lbl);
+      // Rendu haute résolution (la taille réelle est fixée en mm pour l'impression).
       new QRCode(qr, {
-        text: qrLink(p.id), width: 150, height: 150,
-        colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
+        text: qrLink(p.id), width: 480, height: 480,
+        colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
       });
       total++;
     }
   });
   if (!total) { alert('Indiquez le nombre d\'étiquettes à imprimer pour au moins un produit.'); return; }
+
+  // Page = largeur du rouleau, hauteur automatique ; QR dimensionné en mm.
+  let dyn = document.getElementById('print-dyn');
+  if (!dyn) { dyn = document.createElement('style'); dyn.id = 'print-dyn'; document.head.appendChild(dyn); }
+  dyn.textContent =
+    '@media print{' +
+      '@page{size:' + rollW + 'mm auto;margin:' + margin + 'mm}' +
+      '#print-sheet .lbl{padding:' + margin + 'mm 0}' +
+      '#print-sheet .lbl .lbl-qr canvas,#print-sheet .lbl .lbl-qr img{' +
+        'width:' + qrMm + 'mm!important;height:' + qrMm + 'mm!important;image-rendering:pixelated}' +
+    '}';
+
   // Give QR canvases a tick to render before printing.
-  setTimeout(() => { window.print(); }, 250);
+  setTimeout(() => { window.print(); }, 300);
 }
 
 // Select-all checkbox toggles every row checkbox
