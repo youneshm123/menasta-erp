@@ -241,13 +241,18 @@ function downloadQR(id) {
     try {
       const src = holder.querySelector('canvas') || holder.querySelector('img');
       if (!src) throw new Error('QR non rendu');
-      // QR centré sur un carré blanc (zone de silence) → lecture fiable.
-      const SIZE = 640, pad = 40, inner = SIZE - pad * 2;
-      const out = document.createElement('canvas'); out.width = SIZE; out.height = SIZE;
+      // Image à la forme de l'étiquette (mm → px) : le QR remplit le petit côté,
+      // centré → quand l'app de l'imprimante l'ajuste à l'étiquette, il colle pile.
+      const lblW = parseInt((document.getElementById('lbl-w') || {}).value, 10) || 50;
+      const lblH = parseInt((document.getElementById('lbl-h') || {}).value, 10) || 40;
+      const PPMM = 12;                                  // px par mm (≈300 dpi)
+      const W = lblW * PPMM, H = lblH * PPMM;
+      const qr = Math.round(Math.min(W, H) * 0.92);     // QR = 92% du petit côté
+      const out = document.createElement('canvas'); out.width = W; out.height = H;
       const ctx = out.getContext('2d');
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, SIZE, SIZE);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(src, pad, pad, inner, inner);
+      ctx.drawImage(src, Math.round((W - qr) / 2), Math.round((H - qr) / 2), qr, qr);
       const a = document.createElement('a');
       a.href = out.toDataURL('image/png');
       a.download = 'QR_' + String(p.reference || p.id).replace(/[^A-Za-z0-9_-]+/g, '_') + '.png';
