@@ -351,6 +351,12 @@
     <div class="modal-body">
       <div class="fgrid">
         <div class="fg" style="grid-column:1/-1">
+          <label>Client (depuis vos clients factures)</label>
+          <select id="bf-client" onchange="bfPickClient()">
+            <option value="">— Choisir un client —</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1">
           <label>Type de produit *</label>
           <select id="bf-produit" onchange="bfSyncTva()">
             <option value="gazoil">Gazoil — TVA 10%</option>
@@ -358,7 +364,7 @@
             <option value="lubrifiant">Lubrifiant — TVA 20%</option>
           </select>
         </div>
-        <div class="fg" style="grid-column:1/-1"><label>ICE Client</label><input id="bf-ice" placeholder="002256198000012"/></div>
+        <div class="fg" style="grid-column:1/-1"><label>ICE Client <span style="font-weight:400;color:var(--muted)">— rempli automatiquement</span></label><input id="bf-ice" placeholder="Choisissez le client ci-dessus"/></div>
         <div class="fg" style="grid-column:1/-1"><label>Adresse Client</label><input id="bf-adresse" placeholder="facultatif"/></div>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:10px;padding:8px 10px;background:var(--bg2,#f8fafc);border-radius:8px" id="bf-recap"></div>
@@ -897,15 +903,27 @@ async function printTxnVoucher(id) {
     : hay.includes('essence') ? 'essence' : 'gazoil';
   document.getElementById('bf-ice').value = '';
   document.getElementById('bf-adresse').value = '';
-  // Pré-remplit ICE + adresse si le bénéficiaire est un client facture connu.
-  try {
-    if (!_factClients) _factClients = await api('GET', '/factures/clients');
-    const bn = (t.beneficiary || '').trim().toLowerCase();
-    const c = (_factClients || []).find(x => (x.name || '').trim().toLowerCase() === bn);
-    if (c) { document.getElementById('bf-ice').value = c.ice || ''; document.getElementById('bf-adresse').value = c.adresse || ''; }
-  } catch (e) {}
+  // Remplit la liste déroulante des clients facture, et sélectionne d'office
+  // celui dont le nom correspond au bénéficiaire — l'ICE se remplit tout seul.
+  try { if (!_factClients) _factClients = await api('GET', '/factures/clients'); } catch (e) { _factClients = _factClients || []; }
+  const sel = document.getElementById('bf-client');
+  sel.innerHTML = '<option value="">— Choisir un client —</option>' +
+    (_factClients || []).map((c, i) => `<option value="${i}">${esc(c.name)}${c.ice ? ' · ICE ' + esc(c.ice) : ''}</option>`).join('');
+  const bn = (t.beneficiary || '').trim().toLowerCase();
+  const matchIdx = (_factClients || []).findIndex(c => (c.name || '').trim().toLowerCase() === bn);
+  sel.value = matchIdx >= 0 ? String(matchIdx) : '';
+  bfPickClient();
   bfSyncTva();
   openModal('m-bank-fact');
+}
+
+// Remplit l'ICE + l'adresse à partir du client sélectionné dans la liste.
+function bfPickClient() {
+  const sel = document.getElementById('bf-client');
+  const c = (sel.value !== '' && _factClients) ? _factClients[sel.value] : null;
+  if (!c) return;   // aucun client choisi → on garde ce qui est saisi
+  document.getElementById('bf-ice').value = c.ice || '';
+  document.getElementById('bf-adresse').value = c.adresse || '';
 }
 
 // Aperçu HT / TVA / TTC dans le modal.
@@ -923,17 +941,21 @@ async function doGenerateBankFacture() {
   const prod    = FACT_PRODUITS[document.getElementById('bf-produit').value] || FACT_PRODUITS.gazoil;
   const ice     = document.getElementById('bf-ice').value.trim();
   const adresse = document.getElementById('bf-adresse').value.trim();
+  const sel     = document.getElementById('bf-client');
+  const picked  = (sel.value !== '' && _factClients) ? _factClients[sel.value] : null;
+  const clientName = picked ? picked.name : (t.beneficiary || '');
   let numero;
   try {
     if (!_allFactures) _allFactures = await api('GET', '/factures');
     numero = nextFactureNumero(t.txn_date, _allFactures);
   } catch (e) { numero = nextFactureNumero(t.txn_date, []); }
   closeModal('m-bank-fact');
-  buildAndPrintBankFacture(t, prod, ice, adresse, numero);
+  buildAndPrintBankFacture(t, prod, ice, adresse, numero, clientName);
 }
 
 // Construit et imprime la facture banque — rendu identique à la facture client.
-function buildAndPrintBankFacture(t, prod, ice, adresse, numero) {
+function buildAndPrintBankFacture(t, prod, ice, adresse, numero, clientName) {
+  clientName = clientName || t.beneficiary || '';
   const E = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const isEffet = t.type === 'effet_in' || t.type === 'effet_out';
   const isCheck = t.type === 'cheque_in' || t.type === 'cheque_out' || isEffet;
@@ -994,7 +1016,7 @@ function buildAndPrintBankFacture(t, prod, ice, adresse, numero) {
     <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11.5px">
       <tr>
         <td style="border:1px solid #000;padding:6px 10px;width:40%"><b>Facture N° :</b>&nbsp; ${E(numero)}</td>
-        <td style="border:1px solid #000;padding:6px 10px"><b>Client :</b>&nbsp; ${E(t.beneficiary || '')}</td>
+        <td style="border:1px solid #000;padding:6px 10px"><b>Client :</b>&nbsp; ${E(clientName)}</td>
       </tr>
       <tr>
         <td style="border:1px solid #000;padding:6px 10px"><b>Date Facture :</b>&nbsp;${E(dateStr)}</td>
