@@ -228,6 +228,35 @@ let _products = [];
 
 function qrLink(id) { return location.origin + '/scan/' + id; }
 
+// Télécharge le QR d'un produit en image PNG (à imprimer depuis l'app de
+// l'imprimante Bluetooth, qui n'imprime pas directement depuis le navigateur).
+function downloadQR(id) {
+  const p = (_products || []).find(x => x.id === id);
+  if (!p) { alert('Produit introuvable'); return; }
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:fixed;left:-9999px;top:0';
+  document.body.appendChild(holder);
+  new QRCode(holder, { text: qrLink(id), width: 560, height: 560, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  setTimeout(() => {
+    try {
+      const src = holder.querySelector('canvas') || holder.querySelector('img');
+      if (!src) throw new Error('QR non rendu');
+      // QR centré sur un carré blanc (zone de silence) → lecture fiable.
+      const SIZE = 640, pad = 40, inner = SIZE - pad * 2;
+      const out = document.createElement('canvas'); out.width = SIZE; out.height = SIZE;
+      const ctx = out.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, SIZE, SIZE);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(src, pad, pad, inner, inner);
+      const a = document.createElement('a');
+      a.href = out.toDataURL('image/png');
+      a.download = 'QR_' + String(p.reference || p.id).replace(/[^A-Za-z0-9_-]+/g, '_') + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { alert('Erreur image : ' + e.message); }
+    holder.remove();
+  }, 250);
+}
+
 async function loadProducts() {
   const body = document.getElementById('qr-table-body');
   if (typeof QRCode === 'undefined') { body.innerHTML = '<tr><td colspan="8" class="empty">Librairie QR non chargée. Rechargez la page.</td></tr>'; return; }
@@ -247,7 +276,10 @@ async function loadProducts() {
         '<td style="text-align:right;font-weight:700">' + fmt(p.price) + ' DH</td>' +
         '<td style="text-align:right">' + (parseFloat(p.stock_qty)||0) + ' ' + esc(p.unit||'') + '</td>' +
         '<td style="text-align:center"><input class="qty-inp" type="number" min="0" step="1" value="1" id="qty-' + p.id + '"/></td>' +
-        '<td style="text-align:center"><button class="btn btn-gho no-print" onclick="printOne(' + p.id + ')" title="Imprimer ce produit">🖨️</button></td>';
+        '<td style="text-align:center;white-space:nowrap">' +
+          '<button class="btn btn-gho no-print" onclick="downloadQR(' + p.id + ')" title="Télécharger l\'image QR (pour l\'app de l\'imprimante)">📥 Image</button> ' +
+          '<button class="btn btn-gho no-print" onclick="printOne(' + p.id + ')" title="Imprimer via le navigateur">🖨️</button>' +
+        '</td>';
       body.appendChild(tr);
       new QRCode(document.getElementById('prev-' + p.id), {
         text: qrLink(p.id), width: 54, height: 54,
