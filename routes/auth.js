@@ -18,7 +18,7 @@ router.post('/login', wrap(async (req, res) => {
 
   const token = jwt.sign(
     { id: user.id, username: user.username, full_name: user.full_name, role: user.role },
-    JWT_SECRET, { expiresIn: '12h' }
+    JWT_SECRET, { expiresIn: '24h' }
   );
   res.json({ token, user: { id: user.id, full_name: user.full_name, username: user.username, role: user.role } });
 }));
@@ -37,7 +37,7 @@ router.put('/password', requireAuth, wrap(async (req, res) => {
   if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
   if (!current_password || !(await bcrypt.compare(current_password, user.password_hash)))
     return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
-  const newHash = await bcrypt.hash(new_password, 10);
+  const newHash = await bcrypt.hash(new_password, 12);
   await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [newHash, req.user.id]);
   res.json({ message: 'Mot de passe mis à jour' });
 }));

@@ -1,6 +1,13 @@
 require('dotenv').config();
-const { Pool } = require('pg');
+const pg = require('pg');
+const { Pool } = pg;
 const bcrypt = require('bcryptjs');
+
+// node-postgres returns NUMERIC/DECIMAL (OID 1700) as strings to avoid precision
+// loss. Our money columns are NUMERIC(16,4) but the whole app does JS-number
+// arithmetic on them, so parse them back to numbers — storage stays exact, app
+// behaviour is unchanged. (REAL/float8 already come back as numbers.)
+pg.types.setTypeParser(1700, v => (v === null ? null : parseFloat(v)));
 
 // pg-connection-string warns that sslmode 'require' is currently treated as
 // 'verify-full' and will weaken to libpq semantics in pg v9. We pin TLS
