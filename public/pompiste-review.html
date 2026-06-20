@@ -40,6 +40,7 @@
 <script>
 const TK = localStorage.getItem('fm_token');
 if(!TK){ location.href='/?return=/pompiste-review'; }
+(function(){ let u=null; try{ u=JSON.parse(localStorage.getItem('fm_user')||'null'); }catch{} if(u && u.role==='pompiste') location.replace('/pompiste'); })();
 const KIND = { compteur:'⛽ Compteur', credit:'🤝 Crédit client', espece:'💵 Espèces', produit:'🛒 Produit' };
 
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),1800); }

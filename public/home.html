@@ -783,6 +783,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 const TOKEN = localStorage.getItem('fm_token');
 const USER  = (() => { try { return JSON.parse(localStorage.getItem('fm_user') || 'null'); } catch { return null; } })();
 if (!TOKEN || !USER) { location.href = '/'; }
+else if (USER.role === 'pompiste') { location.replace('/pompiste'); }
 
 const fmt     = n => Math.round(parseFloat(n)||0).toLocaleString('fr-FR');
 const fmtDate = s => s ? new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';

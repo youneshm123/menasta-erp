@@ -275,7 +275,8 @@ async function login() {
     if (!r.ok) { showErr(data.error || 'Identifiants incorrects.'); return; }
     localStorage.setItem('fm_token', data.token);
     localStorage.setItem('fm_user', JSON.stringify(data.user));
-    window.location.href = returnUrl();
+    // Pompistes only ever see their own simple screen.
+    window.location.href = data.user.role === 'pompiste' ? '/pompiste' : returnUrl();
   } catch {
     showErr('Impossible de contacter le serveur. Vérifiez votre connexion.');
   } finally {
@@ -295,7 +296,10 @@ function returnUrl() {
 
 btn.addEventListener('click', login);
 document.addEventListener('keydown', e => e.key === 'Enter' && login());
-if (localStorage.getItem('fm_token')) window.location.href = returnUrl();
+if (localStorage.getItem('fm_token')) {
+  let u = null; try { u = JSON.parse(localStorage.getItem('fm_user') || 'null'); } catch {}
+  window.location.href = (u && u.role === 'pompiste') ? '/pompiste' : returnUrl();
+}
 </script>
 <script>lucide.createIcons();</script>
 </body>
