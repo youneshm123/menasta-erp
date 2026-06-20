@@ -78,6 +78,7 @@
   <button class="big-btn b-orange" onclick="openCredit()">🤝 بيع بالكريدي</button>
   <button class="big-btn b-green"  onclick="openEspece()">💵 الصندوق (الكاش)</button>
   <button class="big-btn b-gray"   onclick="openProduit()">🛒 بيع منتج</button>
+  <button class="big-btn" id="btn-verify" style="display:none;background:#0f172a" onclick="loadVerify()">✅ التحقق / Valider les entrées</button>
   <button class="back" style="width:100%;margin-top:4px" onclick="loadMine()">📋 إدخالاتي الأخيرة</button>
 </div>
 
@@ -144,6 +145,13 @@
   </div>
 </div>
 
+<!-- VERIFY (admin/patron only — hidden from pompistes) -->
+<div class="screen" id="s-verify">
+  <div class="topbar"><button class="back" onclick="home()">‹ رجوع</button><b>✅ التحقق من الإدخالات</b></div>
+  <div class="err" id="vf-err"></div>
+  <div id="verify-list"></div>
+</div>
+
 <!-- MINE -->
 <div class="screen" id="s-mine">
   <div class="topbar"><button class="back" onclick="home()">‹ رجوع</button><b>📋 إدخالاتي</b></div>
@@ -197,10 +205,14 @@ document.getElementById('login-btn').onclick = async () => {
 function logout(){ localStorage.removeItem('fm_token'); localStorage.removeItem('fm_user'); show('s-login'); }
 document.getElementById('logout').onclick = logout;
 
+let ME = null;
 async function startApp(){
   try{
-    const me = await api('GET','/me');
-    document.getElementById('hello').textContent = 'مرحبا ' + (me.full_name||'');
+    ME = await api('GET','/me');
+    document.getElementById('hello').textContent = 'مرحبا ' + (ME.full_name||'');
+    // The "Valider" button (review queue) is only for non-pompiste roles
+    // (caissier / gérant / patron / admin) — hidden from pompistes.
+    document.getElementById('btn-verify').style.display = (ME.role && ME.role !== 'pompiste') ? 'flex' : 'none';
     REFS = await api('GET','/refs');
     home();
   }catch(e){ show('s-login'); }
@@ -346,6 +358,31 @@ async function sendAll(){
   show('s-ok');
 }
 
+// ── VERIFY (admin/patron) — confirm into the open carburant poste ──
+const KINDAR = { compteur:'⛽ عداد', credit:'🤝 كريدي', espece:'💵 صندوق', produit:'🛒 منتج' };
+async function loadVerify(){
+  show('s-verify'); err('vf-err','');
+  const el=document.getElementById('verify-list'); el.innerHTML='<p style="text-align:center">...</p>';
+  try{
+    const rows=await api('GET','/pending');
+    if(!rows.length){ el.innerHTML='<p style="text-align:center;color:#16a34a;font-weight:800;padding:30px">✅ لا توجد إدخالات في الانتظار</p>'; return; }
+    el.innerHTML = rows.map(r=>`
+      <div class="recap-item" id="vf-${r.id}" style="flex-direction:column;align-items:stretch;gap:10px">
+        <div><span class="tag" style="background:#e2e8f0;color:#0f172a">${KINDAR[r.kind]||r.kind}</span> <b>${r.label||''}</b><br><small style="color:#64748b">${r.pompiste_name||''} · ${new Date(r.created_at).toLocaleString('fr-FR')}</small></div>
+        <div style="display:flex;gap:8px">
+          <button class="add b-green" style="padding:13px" onclick="act(${r.id},'confirm')">✓ تأكيد</button>
+          <button class="add" style="padding:13px;background:#dc2626" onclick="act(${r.id},'reject')">✕ رفض</button>
+        </div>
+      </div>`).join('');
+  }catch(e){ err('vf-err', e.message); el.innerHTML=''; }
+}
+async function act(id, what){
+  const card=document.getElementById('vf-'+id); if(card) card.querySelectorAll('button').forEach(b=>b.disabled=true);
+  try{ await api('POST','/'+id+'/'+what); if(card) card.remove();
+    if(!document.querySelectorAll('[id^="vf-"]').length) loadVerify();
+  }catch(e){ err('vf-err', e.message); if(card) card.querySelectorAll('button').forEach(b=>b.disabled=false); }
+}
+
 // ── MINE ──
 async function loadMine(){
   show('s-mine');
@@ -360,7 +397,7 @@ async function loadMine(){
 // ── BOOT ──
 (async function(){
   let user=null; try{ user=JSON.parse(localStorage.getItem('fm_user')||'null'); }catch(_){}
-  if(TK() && user && user.role==='pompiste'){ await startApp(); }
+  if(TK() && user){ await startApp(); }   // pompiste enters; admin/patron enter + validate
   else { show('s-login'); }
 })();
 </script>
