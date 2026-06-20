@@ -47,7 +47,7 @@ router.get('/clients/:id/history', requireAuth, wrap(async (req, res) => {
     SELECT cs.*, COALESCE(p.name,'Lubrifiant') as pump_name, s.opened_at as shift_date
     FROM credit_sales cs
     LEFT JOIN pumps p ON p.id=cs.pump_id
-    JOIN shifts s ON s.id=cs.shift_id
+    LEFT JOIN shifts s ON s.id=cs.shift_id
     WHERE cs.credit_client_id=$1 ORDER BY cs.sale_time DESC
   `, [req.params.id]);
   const { rows: payments } = await pool.query(`

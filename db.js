@@ -461,6 +461,26 @@ async function initDB() {
     )
   `);
 
+  // Pompiste submissions: simple entries punched in by pump attendants from
+  // their phone (compteur, vente crédit, espèces, vente produit). They stay
+  // 'pending' until a caissier/patron confirms them into the open poste.
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS pompiste_submissions (
+      id           SERIAL PRIMARY KEY,
+      pompiste_id  INTEGER REFERENCES users(id),
+      pompiste_name TEXT,
+      kind         TEXT NOT NULL,            -- 'compteur' | 'credit' | 'espece' | 'produit'
+      data         JSONB NOT NULL DEFAULT '{}',
+      label        TEXT,                     -- human-readable summary for the review screen
+      status       TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'confirmed' | 'rejected'
+      shift_id     INTEGER REFERENCES shifts(id),
+      reviewed_by  INTEGER REFERENCES users(id),
+      reviewed_at  TIMESTAMPTZ,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_pompiste_sub_status ON pompiste_submissions(status, created_at DESC);
+  `);
+
   // Seed cuves
   const { rows: [{ c: cuvc }] } = await pgPool.query('SELECT COUNT(*) as c FROM cuves');
   if (parseInt(cuvc) === 0) {

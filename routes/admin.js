@@ -3,7 +3,7 @@ const bcrypt  = require('bcryptjs');
 const { pool } = require('../db');
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
-const VALID_ROLES = ['scan', 'caissier', 'gerant', 'patron', 'admin'];
+const VALID_ROLES = ['scan', 'pompiste', 'caissier', 'gerant', 'patron', 'admin'];
 
 async function countActiveAdmins() {
   const { rows } = await pool.query("SELECT COUNT(*)::int AS c FROM users WHERE role='admin' AND is_active=1");

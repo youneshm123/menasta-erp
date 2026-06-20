@@ -112,7 +112,13 @@
       <div class="section">
         <div class="s-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
           <span class="s-title">Toutes les Factures</span>
-          <button id="btn-print-sel" class="btn btn-p btn-sm" style="display:none;font-weight:700" onclick="printSelected()">🖨️ Imprimer la sélection (<span id="sel-count">0</span>)</button>
+          <div style="display:flex;align-items:center;gap:12px">
+            <label title="Ajoute le cachet et la signature sur les factures imprimées / PDF" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:700;font-size:13px;background:#eef2ff;color:#3730a3;padding:5px 10px;border-radius:7px;user-select:none">
+              <input type="checkbox" id="stamp-toggle" onchange="setStamp(this.checked)" style="width:16px;height:16px;cursor:pointer"/>
+              🟦 Cachet + Signature
+            </label>
+            <button id="btn-print-sel" class="btn btn-p btn-sm" style="display:none;font-weight:700" onclick="printSelected()">🖨️ Imprimer la sélection (<span id="sel-count">0</span>)</button>
+          </div>
         </div>
         <table class="t">
           <thead><tr><th style="width:34px"><input type="checkbox" id="sel-all" onclick="toggleSelectAll(this)" title="Tout sélectionner"/></th><th>N° Facture</th><th>Date</th><th>Client</th><th class="num">Total HT</th><th class="num">TVA</th><th class="num">Total TTC</th><th></th></tr></thead>
@@ -688,6 +694,8 @@ async function loadTabacHistory() {
 
 // ── LISTE ─────────────────────────────────────────────────────
 async function loadListe() {
+  const st = document.getElementById('stamp-toggle');
+  if (st) st.checked = stampEnabled;
   const rows = await A('/api/factures');
   const tbody = document.getElementById('liste-body');
   tbody.innerHTML = '';
@@ -1101,6 +1109,45 @@ function montantEnLettres(n) {
 }
 
 // ── Facture print — identique à la facture physique STE MENASTA ──
+// ── CACHET + SIGNATURE ────────────────────────────────────────
+// Toggle remembered across sessions. When ON, buildPrintHtml() stamps the
+// facture (print + PDF + impression groupée all share that function).
+let stampEnabled = localStorage.getItem('factureStamp') === '1';
+function setStamp(on) {
+  stampEnabled = !!on;
+  localStorage.setItem('factureStamp', stampEnabled ? '1' : '0');
+  toast(stampEnabled ? 'Cachet activé' : 'Cachet désactivé', 'ok');
+}
+
+// Clean vector reproduction of the MENASTA rubber stamp — oval, no corners,
+// sharper than a photo. (Signature is intentionally left blank for now — a real
+// signature image will be added once a clear picture is provided.)
+function cachetSvg() {
+  return `<svg width="250" height="160" viewBox="0 0 250 160" xmlns="http://www.w3.org/2000/svg" style="opacity:.85">
+    <g transform="rotate(-6 125 80)">
+      <ellipse cx="125" cy="80" rx="102" ry="60" fill="none" stroke="#1d4ed8" stroke-width="2.6"/>
+      <ellipse cx="125" cy="80" rx="94" ry="52" fill="none" stroke="#1d4ed8" stroke-width="1"/>
+      <g fill="#1d4ed8" text-anchor="middle" font-family="Arial,Helvetica,sans-serif">
+        <text x="125" y="58" font-size="26" font-weight="bold" font-style="italic" letter-spacing="1">MENASTA</text>
+        <text x="125" y="84" font-size="11.5">117 Avenue Mly Abdelaziz</text>
+        <text x="125" y="101" font-size="11.5">N&#176;3&#160;&#160;KENITRA</text>
+        <text x="125" y="118" font-size="11.5">T&#233;l: 06 08 47 23 42</text>
+      </g>
+    </g>
+  </svg>`;
+}
+
+function stampBlockHtml() {
+  if (!stampEnabled) return '';
+  return `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+      <div style="text-align:center;width:250px">
+        <div style="font-size:11px;font-weight:bold;margin-bottom:2px">Cachet et Signature</div>
+        <div style="display:flex;justify-content:center">${cachetSvg()}</div>
+      </div>
+    </div>`;
+}
+
 function buildPrintHtml(f) {
   const dateStr = fmtDate(f.facture_date);
 
@@ -1242,6 +1289,9 @@ function buildPrintHtml(f) {
       <div style="font-style:italic">Arrêter la présente facture à la somme de :</div>
       <div style="font-weight:bold;margin-top:6px">${montantEnLettres(f.total_ttc)}</div>
     </div>
+
+    <!-- CACHET + SIGNATURE -->
+    ${stampBlockHtml()}
 
     <!-- PAGE -->
     <div style="text-align:center;font-size:11px;margin-bottom:14px">1 / 1</div>

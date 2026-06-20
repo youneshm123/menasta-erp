@@ -16,9 +16,12 @@ router.post('/login', wrap(async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.password_hash)))
     return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' });
 
+  // Pompistes use a shared phone and shouldn't be asked to log in again — give
+  // them a long-lived token. Everyone else gets a normal 24h session.
+  const expiresIn = user.role === 'pompiste' ? '180d' : '24h';
   const token = jwt.sign(
     { id: user.id, username: user.username, full_name: user.full_name, role: user.role },
-    JWT_SECRET, { expiresIn: '24h' }
+    JWT_SECRET, { expiresIn }
   );
   res.json({ token, user: { id: user.id, full_name: user.full_name, username: user.username, role: user.role } });
 }));

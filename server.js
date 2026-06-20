@@ -225,6 +225,10 @@ async function start() {
   app.use('/api/cuves',     requireAuth, requireMinRole('caissier'), require('./routes/cuves'));
   app.use('/api/ai',        requireAuth, requireMinRole('caissier'), require('./routes/ai'));
 
+  // Pompiste app — submit routes allow the low-privilege pompiste role; review
+  // routes enforce caissier+ internally, so no min-role gate at the mount.
+  app.use('/api/pompiste',  require('./routes/pompiste'));
+
   // Gérant and above
 
   app.use('/api/reports',   requireAuth, requireMinRole('gerant'), require('./routes/reports'));
@@ -286,6 +290,8 @@ async function start() {
   app.get('/boutique', page('boutique.html'));
   app.get('/scanner',  page('scanner.html'));
   app.get('/scan/:id', page('scan.html'));
+  app.get('/pompiste',        page('pompiste.html'));
+  app.get('/pompiste-review', page('pompiste-review.html'));
 
   // ── Cache-buster route (token-protected) ──
   app.get('/clear', (req, res) => {

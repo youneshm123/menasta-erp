@@ -67,11 +67,27 @@
       }).join('');
     }
 
-    if (data.cuves && data.cuves.length) {
-      html += '<div class="al-sec-t">⛽ Cuves basses</div>';
-      html += data.cuves.map(c => `<a class="al-item red" href="/cuves">
-        <div class="t">${c.name} (${c.fuel})</div>
-        <div class="d">Niveau ${fmt(c.niveau)} L · seuil ${fmt(c.seuil)} L</div></a>`).join('');
+    if (data.fuel_stock && data.fuel_stock.length) {
+      html += '<div class="al-sec-t">⛽ Carburant en stock</div>';
+      html += data.fuel_stock.map(c => {
+        const cls = c.empty_soon ? 'red' : (c.low ? 'orange' : '');
+        const icon = (c.fuel || '').toLowerCase().includes('essence') ? '🟢' : '🔵';
+        let when = '';
+        if (c.level <= 0) {
+          when = '❌ <strong>Vide / rupture probable</strong>';
+        } else if (c.hours_to_empty != null) {
+          const h = c.hours_to_empty;
+          const txt = h <= 48 ? ('≈ ' + h + ' h') : ('≈ ' + Math.round(h / 24) + ' j');
+          when = (c.empty_soon ? '⚠️ <strong>Se vide dans ' + txt + '</strong>' : 'Autonomie ' + txt)
+               + (c.daily_liters ? ' · ' + fmt(c.daily_liters) + ' L/j' : '');
+        } else {
+          when = 'Consommation inconnue (pas de ventes récentes)';
+        }
+        const fresh = c.as_of_date ? ('maj ' + ymd(c.as_of_date)) : 'aucune lecture';
+        return `<a class="al-item ${cls}" href="/cuves">
+          <div class="t">${icon} ${c.fuel} — <strong>${fmt(c.level)} L</strong></div>
+          <div class="d">${when}<br>seuil bas ${fmt(c.seuil)} L · ${fresh}</div></a>`;
+      }).join('');
     }
 
     if (data.stock_produits && data.stock_produits.length) {

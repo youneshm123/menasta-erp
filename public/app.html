@@ -1879,7 +1879,11 @@ function csRemovePending(i) { csPending.splice(i,1); updateCsPendingUI(); }
 
 async function csSubmitAll() {
   if (!csPending.length) return;
-  const shiftId = S.activeShift ? S.activeShift.id : null;
+  // A credit sale/payment only counts in the open poste when it is entered from
+  // the poste page itself. Entered from the client module (Créances), it records
+  // against the client only (balance + historique) and is NOT added to the poste.
+  const onPostePage = !!document.querySelector('#p-shift.active');
+  const shiftId = (onPostePage && S.activeShift) ? S.activeShift.id : null;
   const btn = document.getElementById('cs-submit-btn');
   btn.disabled = true; btn.textContent = 'Enregistrement…';
   let saved = 0;

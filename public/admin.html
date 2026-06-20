@@ -184,6 +184,7 @@
     <div class="fg">
       <label>Rôle</label>
       <select id="cu-role">
+        <option value="pompiste">Pompiste — Saisie simple (compteur, crédit) à valider</option>
         <option value="caissier">Caissier — Ventes, postes, café, tabac</option>
         <option value="gerant">Gérant — + Factures, stocks, rapports, banque</option>
         <option value="patron">Patron — + Dashboard complet, sauvegardes</option>
@@ -303,6 +304,7 @@ function renderUsers() {
       </div>
       <div class="user-actions">
         <select class="role-select" onchange="changeRole(${u.id},this.value)" ${isSelf?'disabled title="Impossible de changer votre propre rôle"':''}>
+          <option value="pompiste" ${u.role==='pompiste'?'selected':''}>Pompiste</option>
           <option value="caissier" ${u.role==='caissier'?'selected':''}>Caissier</option>
           <option value="gerant"   ${u.role==='gerant'  ?'selected':''}>Gérant</option>
           <option value="patron"   ${u.role==='patron'  ?'selected':''}>Patron</option>

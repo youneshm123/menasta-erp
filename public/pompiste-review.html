@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validation Pompistes — MENASTA</title>
+<style>
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:'Segoe UI',Arial,sans-serif; background:#f1f5f9; color:#0f172a; }
+  header{ background:#0f172a; color:#fff; padding:16px 18px; display:flex; align-items:center; justify-content:space-between; }
+  header h1{ font-size:18px; margin:0; }
+  header a{ color:#cbd5e1; text-decoration:none; font-size:14px; }
+  .wrap{ max-width:680px; margin:0 auto; padding:16px; }
+  .hint{ color:#64748b; font-size:14px; margin:0 0 14px; }
+  .kind{ display:inline-block; font-size:12px; font-weight:800; padding:3px 9px; border-radius:20px; margin-bottom:6px; }
+  .k-compteur{ background:#dbeafe; color:#1e40af; } .k-credit{ background:#ffedd5; color:#9a3412; }
+  .k-espece{ background:#dcfce7; color:#166534; } .k-produit{ background:#ede9fe; color:#5b21b6; }
+  .card{ background:#fff; border-radius:14px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .card .lbl{ font-size:19px; font-weight:800; }
+  .card .meta{ color:#64748b; font-size:13px; margin-top:3px; }
+  .row{ display:flex; gap:10px; margin-top:12px; }
+  .btn{ flex:1; border:none; border-radius:12px; padding:14px; font-size:17px; font-weight:800; cursor:pointer; color:#fff; }
+  .ok{ background:#16a34a; } .no{ background:#dc2626; }
+  .empty{ text-align:center; color:#16a34a; font-weight:700; padding:50px 10px; font-size:18px; }
+  .toast{ position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#0f172a; color:#fff; padding:12px 20px; border-radius:30px; font-weight:700; opacity:0; transition:opacity .2s; }
+  .toast.on{ opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧾 Entrées des pompistes</h1>
+  <a href="/home">← Accueil</a>
+</header>
+<div class="wrap">
+  <p class="hint">Vérifiez chaque entrée avant qu'elle ne compte dans le poste. Actualisé automatiquement.</p>
+  <div id="list"><p class="hint">Chargement…</p></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const TK = localStorage.getItem('fm_token');
+if(!TK){ location.href='/?return=/pompiste-review'; }
+const KIND = { compteur:'⛽ Compteur', credit:'🤝 Crédit client', espece:'💵 Espèces', produit:'🛒 Produit' };
+
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),1800); }
+
+async function api(method, path){
+  const r = await fetch('/api/pompiste'+path, { method, headers:{ Authorization:'Bearer '+TK } });
+  if(r.status===401){ location.href='/?return=/pompiste-review'; return; }
+  if(r.status===403){ document.getElementById('list').innerHTML='<p class="empty">Accès réservé au caissier / patron.</p>'; throw new Error('403'); }
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error||'Erreur');
+  return d;
+}
+
+async function load(){
+  try{
+    const rows = await api('GET','/pending');
+    const el = document.getElementById('list');
+    if(!rows.length){ el.innerHTML='<div class="empty">✅ Aucune entrée en attente.</div>'; return; }
+    el.innerHTML = rows.map(r=>`
+      <div class="card" id="c-${r.id}">
+        <span class="kind k-${r.kind}">${KIND[r.kind]||r.kind}</span>
+        <div class="lbl">${r.label||''}</div>
+        <div class="meta">Par ${r.pompiste_name||'?'} · ${new Date(r.created_at).toLocaleString('fr-FR')}</div>
+        <div class="row">
+          <button class="btn ok" onclick="act(${r.id},'confirm')">✓ Valider</button>
+          <button class="btn no" onclick="act(${r.id},'reject')">✕ Rejeter</button>
+        </div>
+      </div>`).join('');
+  }catch(e){ /* handled */ }
+}
+
+async function act(id, what){
+  const card=document.getElementById('c-'+id);
+  card.querySelectorAll('button').forEach(b=>b.disabled=true);
+  try{
+    await api('POST','/'+id+'/'+what);
+    toast(what==='confirm'?'Validé ✓':'Rejeté');
+    card.remove();
+    if(!document.querySelectorAll('.card').length) load();
+  }catch(e){ toast(e.message); card.querySelectorAll('button').forEach(b=>b.disabled=false); }
+}
+
+load();
+setInterval(load, 20000);
+</script>
+</body>
+</html>
