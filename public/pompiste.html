@@ -5,40 +5,50 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>محطة ميناستا — البومبيست</title>
 <style>
-  :root{ --blue:#1d4ed8; --green:#16a34a; --orange:#ea580c; --red:#dc2626; --bg:#f1f5f9; --card:#fff; --ink:#0f172a; }
+  :root{ --blue:#1d4ed8; --green:#16a34a; --orange:#ea580c; --red:#dc2626; --bg:#f1f5f9; --ink:#0f172a; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  body{ margin:0; font-family:'Segoe UI',Tahoma,Arial,sans-serif; background:var(--bg); color:var(--ink); font-size:20px; }
+  body{ margin:0; font-family:'Segoe UI',Tahoma,Arial,sans-serif; background:var(--bg); color:var(--ink); font-size:20px; padding-bottom:90px; }
   .screen{ display:none; min-height:100vh; padding:18px; }
   .screen.on{ display:block; }
-  h1{ font-size:26px; margin:8px 0 18px; text-align:center; }
+  h1{ font-size:25px; margin:8px 0 16px; text-align:center; }
   .big-btn{ display:flex; align-items:center; justify-content:center; gap:12px; width:100%; border:none; border-radius:18px;
-    padding:26px 16px; font-size:26px; font-weight:800; color:#fff; margin-bottom:16px; cursor:pointer; }
+    padding:24px 16px; font-size:25px; font-weight:800; color:#fff; margin-bottom:14px; cursor:pointer; }
   .big-btn:active{ transform:scale(.98); }
   .b-blue{ background:var(--blue); } .b-green{ background:var(--green); } .b-orange{ background:var(--orange); } .b-gray{ background:#475569; }
-  .field{ width:100%; padding:16px; font-size:22px; border:2px solid #cbd5e1; border-radius:14px; margin-bottom:14px; text-align:center; }
+  .field{ width:100%; padding:15px; font-size:21px; border:2px solid #cbd5e1; border-radius:14px; margin-bottom:12px; text-align:center; }
   .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-  .back{ background:#e2e8f0; border:none; border-radius:12px; padding:12px 18px; font-size:22px; font-weight:800; cursor:pointer; }
+  .back{ background:#e2e8f0; border:none; border-radius:12px; padding:11px 16px; font-size:20px; font-weight:800; cursor:pointer; }
   .hello{ font-size:18px; color:#475569; }
-  .pick{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
-  .pick button{ border:3px solid transparent; border-radius:16px; padding:22px 10px; font-size:22px; font-weight:800; color:#fff; cursor:pointer; }
-  .pick button.sel{ border-color:#0f172a; }
-  .list{ max-height:46vh; overflow-y:auto; margin-bottom:14px; }
+  .grp-lbl{ font-size:16px; font-weight:800; color:#64748b; margin:6px 2px 8px; }
+  .pumps{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+  .pumps button{ position:relative; border:3px solid transparent; border-radius:16px; padding:20px 8px; font-size:20px; font-weight:800; color:#fff; cursor:pointer; }
+  .pumps button .val{ display:block; font-size:15px; margin-top:6px; background:rgba(255,255,255,.25); border-radius:8px; padding:3px; }
+  .pumps button.done{ border-color:#0f172a; }
+  .list{ max-height:42vh; overflow-y:auto; margin-bottom:12px; }
   .list button{ display:block; width:100%; text-align:right; background:#fff; border:2px solid #e2e8f0; border-radius:12px;
-    padding:16px; font-size:21px; font-weight:700; margin-bottom:8px; cursor:pointer; }
+    padding:14px; font-size:20px; font-weight:700; margin-bottom:8px; cursor:pointer; }
   .list button.sel{ border-color:var(--blue); background:#eff6ff; }
-  .amt{ font-size:40px; font-weight:900; text-align:center; background:#fff; border:2px solid #cbd5e1; border-radius:14px; padding:18px; margin-bottom:14px; min-height:74px; direction:ltr; }
-  .pad{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
-  .pad button{ font-size:30px; font-weight:800; padding:18px 0; border:none; border-radius:14px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.12); cursor:pointer; }
+  .amt{ font-size:38px; font-weight:900; text-align:center; background:#fff; border:2px solid #cbd5e1; border-radius:14px; padding:16px; margin-bottom:12px; min-height:70px; direction:ltr; }
+  .pad{ display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-bottom:12px; }
+  .pad button{ font-size:28px; font-weight:800; padding:16px 0; border:none; border-radius:14px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.12); cursor:pointer; }
   .pad button:active{ background:#e2e8f0; }
+  .add{ background:var(--blue); color:#fff; border:none; border-radius:16px; width:100%; padding:20px; font-size:22px; font-weight:900; cursor:pointer; }
+  .add:disabled{ opacity:.4; }
   .send{ background:var(--green); color:#fff; border:none; border-radius:16px; width:100%; padding:22px; font-size:24px; font-weight:900; cursor:pointer; }
-  .send:disabled{ opacity:.45; }
-  .ok-screen{ text-align:center; padding-top:22vh; }
+  .recap-item{ background:#fff; border-radius:12px; padding:13px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; font-size:19px; font-weight:700; }
+  .recap-item .x{ background:#fee2e2; color:#991b1b; border:none; border-radius:10px; padding:8px 12px; font-weight:900; cursor:pointer; }
+  .sec-title{ font-size:15px; font-weight:800; color:#475569; margin:14px 2px 6px; }
+  .cartbar{ position:fixed; bottom:0; left:0; right:0; background:#0f172a; color:#fff; padding:14px 18px; display:none;
+    align-items:center; justify-content:space-between; font-size:19px; font-weight:800; cursor:pointer; }
+  .cartbar.on{ display:flex; }
+  .cartbar .count{ background:#f59e0b; color:#0f172a; border-radius:20px; padding:3px 12px; }
+  .ok-screen{ text-align:center; padding-top:20vh; }
   .ok-screen .tick{ font-size:90px; }
   .ok-screen p{ font-size:24px; font-weight:800; }
   .mine-item{ background:#fff; border-radius:12px; padding:12px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; font-size:17px; }
   .tag{ font-size:14px; font-weight:800; padding:3px 10px; border-radius:20px; }
   .t-pending{ background:#fef3c7; color:#92400e; } .t-confirmed{ background:#dcfce7; color:#166534; } .t-rejected{ background:#fee2e2; color:#991b1b; }
-  .err{ background:#fee2e2; color:#991b1b; padding:12px; border-radius:12px; text-align:center; margin-bottom:12px; font-weight:700; display:none; }
+  .err{ background:#fee2e2; color:#991b1b; padding:11px; border-radius:12px; text-align:center; margin-bottom:12px; font-weight:700; display:none; }
   .err.on{ display:block; }
   .logo{ text-align:center; font-size:30px; font-weight:900; color:var(--blue); font-style:italic; margin-bottom:6px; }
 </style>
@@ -47,7 +57,7 @@
 
 <!-- LOGIN -->
 <div class="screen on" id="s-login">
-  <div style="max-width:420px;margin:14vh auto 0;">
+  <div style="max-width:420px;margin:13vh auto 0;">
     <div class="logo">MENASTA</div>
     <h1>دخول البومبيست</h1>
     <div class="err" id="login-err"></div>
@@ -64,21 +74,26 @@
     <button class="back" id="logout">خروج</button>
   </div>
   <h1>اختر العملية</h1>
-  <button class="big-btn b-blue"   onclick="go('compteur')">⛽ العداد</button>
-  <button class="big-btn b-orange" onclick="go('credit')">🤝 بيع بالكريدي</button>
-  <button class="big-btn b-green"  onclick="go('espece')">💵 الصندوق (الكاش)</button>
-  <button class="big-btn b-gray"   onclick="go('produit')">🛒 بيع منتج</button>
-  <button class="back" style="width:100%;margin-top:6px" onclick="loadMine()">📋 إدخالاتي الأخيرة</button>
+  <button class="big-btn b-blue"   onclick="openCompteur()">⛽ العداد</button>
+  <button class="big-btn b-orange" onclick="openCredit()">🤝 بيع بالكريدي</button>
+  <button class="big-btn b-green"  onclick="openEspece()">💵 الصندوق (الكاش)</button>
+  <button class="big-btn b-gray"   onclick="openProduit()">🛒 بيع منتج</button>
+  <button class="back" style="width:100%;margin-top:4px" onclick="loadMine()">📋 إدخالاتي الأخيرة</button>
 </div>
 
-<!-- COMPTEUR -->
-<div class="screen" id="s-compteur">
+<!-- COMPTEUR — pump grid (Gazoil first, then Essence) -->
+<div class="screen" id="s-cp-grid">
   <div class="topbar"><button class="back" onclick="home()">‹ رجوع</button><b>⛽ العداد</b></div>
+  <div id="cp-grid-body"></div>
+</div>
+
+<!-- COMPTEUR — numpad for selected pump -->
+<div class="screen" id="s-cp-entry">
+  <div class="topbar"><button class="back" onclick="show('s-cp-grid')">‹ رجوع</button><b id="cp-entry-title">العداد</b></div>
   <div class="err" id="cp-err"></div>
-  <div class="pick" id="cp-pumps"></div>
   <div class="amt" id="cp-amt">0</div>
   <div class="pad" id="cp-pad"></div>
-  <button class="send" id="cp-send" onclick="submitCompteur()">إرسال</button>
+  <button class="add b-blue" id="cp-add" onclick="addCompteur()">➕ أضف للقائمة</button>
 </div>
 
 <!-- CREDIT -->
@@ -89,7 +104,7 @@
   <div class="list" id="cr-clients"></div>
   <div class="amt" id="cr-amt">0</div>
   <div class="pad" id="cr-pad"></div>
-  <button class="send" id="cr-send" onclick="submitCredit()">إرسال</button>
+  <button class="add b-orange" onclick="addCredit()">➕ أضف للقائمة</button>
 </div>
 
 <!-- ESPECE -->
@@ -98,7 +113,7 @@
   <div class="err" id="es-err"></div>
   <div class="amt" id="es-amt">0</div>
   <div class="pad" id="es-pad"></div>
-  <button class="send" id="es-send" onclick="submitEspece()">إرسال</button>
+  <button class="add b-green" onclick="addEspece()">➕ أضف للقائمة</button>
 </div>
 
 <!-- PRODUIT -->
@@ -109,14 +124,21 @@
   <div class="list" id="pd-list"></div>
   <div class="amt" id="pd-amt">0</div>
   <div class="pad" id="pd-pad"></div>
-  <button class="send" id="pd-send" onclick="submitProduit()">إرسال</button>
+  <button class="add b-gray" onclick="addProduit()">➕ أضف للقائمة</button>
+</div>
+
+<!-- RECAP / RESULT -->
+<div class="screen" id="s-recap">
+  <div class="topbar"><button class="back" onclick="home()">‹ رجوع</button><b>✅ تحقق من النتيجة</b></div>
+  <div id="recap-body"></div>
+  <button class="send" id="recap-send" onclick="sendAll()" style="margin-top:8px">📤 إرسال الكل</button>
 </div>
 
 <!-- OK -->
 <div class="screen" id="s-ok">
   <div class="ok-screen">
     <div class="tick">✅</div>
-    <p>تم الإرسال</p>
+    <p id="ok-txt">تم الإرسال</p>
     <p style="color:#475569;font-weight:600;font-size:19px">في انتظار تأكيد المسؤول</p>
     <button class="big-btn b-blue" style="max-width:320px;margin:24px auto 0" onclick="home()">حسناً</button>
   </div>
@@ -128,14 +150,23 @@
   <div id="mine-list"></div>
 </div>
 
+<!-- CART BAR -->
+<div class="cartbar" id="cartbar" onclick="openRecap()">
+  <span>📋 القائمة</span>
+  <span class="count" id="cart-count">0</span>
+  <span>تحقق وإرسال ›</span>
+</div>
+
 <script>
 const TK = () => localStorage.getItem('fm_token');
 let REFS = { pumps:[], clients:[], products:[] };
-let sel = { pump:null, client:null, product:null };
-let amt = { compteur:'', credit:'', espece:'', produit:'' };
+let panier = [];                 // { kind, data, label, sub }
+let sel = { client:null, product:null, pump:null };
+let val = '';                    // current numpad value
 
-function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on')); document.getElementById(id).classList.add('on'); }
-function err(id,msg){ const e=document.getElementById(id); e.textContent=msg; e.classList.toggle('on',!!msg); }
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on')); document.getElementById(id).classList.add('on'); window.scrollTo(0,0); }
+function err(id,msg){ const e=document.getElementById(id); e.textContent=msg||''; e.classList.toggle('on',!!msg); }
+const fmt = n => (parseFloat(n)||0).toLocaleString('fr-FR',{maximumFractionDigits:2});
 
 async function api(method, path, body){
   const r = await fetch('/api/pompiste'+path, {
@@ -160,13 +191,13 @@ document.getElementById('login-btn').onclick = async () => {
     if(!r.ok){ err('login-err', d.error||'بيانات خاطئة'); return; }
     localStorage.setItem('fm_token', d.token);
     localStorage.setItem('fm_user', JSON.stringify(d.user));
-    await start();
+    await startApp();
   }catch(e){ err('login-err','تعذر الاتصال بالخادم'); }
 };
 function logout(){ localStorage.removeItem('fm_token'); localStorage.removeItem('fm_user'); show('s-login'); }
 document.getElementById('logout').onclick = logout;
 
-async function start(){
+async function startApp(){
   try{
     const me = await api('GET','/me');
     document.getElementById('hello').textContent = 'مرحبا ' + (me.full_name||'');
@@ -174,81 +205,148 @@ async function start(){
     home();
   }catch(e){ show('s-login'); }
 }
-function home(){ resetAll(); show('s-home'); }
+function home(){ sel={client:null,product:null,pump:null}; val=''; updateCart(); show('s-home'); }
 
-// ── NUMPAD builder ──
-function buildPad(padId, key, amtId){
+// ── CART ──
+function updateCart(){
+  const bar=document.getElementById('cartbar');
+  document.getElementById('cart-count').textContent = panier.length;
+  bar.classList.toggle('on', panier.length>0);
+}
+function openRecap(){ renderRecap(); }
+
+// ── NUMPAD ──
+function buildPad(padId, amtId){
   const pad = document.getElementById(padId);
   const keys = ['1','2','3','4','5','6','7','8','9','.','0','⌫'];
   pad.innerHTML = keys.map(k=>`<button data-k="${k}">${k}</button>`).join('');
   pad.querySelectorAll('button').forEach(b=>{
     b.onclick = () => {
       const k=b.dataset.k;
-      if(k==='⌫') amt[key]=amt[key].slice(0,-1);
-      else if(k==='.'){ if(!amt[key].includes('.')) amt[key]=(amt[key]||'0')+'.'; }
-      else amt[key]=(amt[key]+k).replace(/^0+(\d)/,'$1');
-      document.getElementById(amtId).textContent = amt[key]||'0';
+      if(k==='⌫') val=val.slice(0,-1);
+      else if(k==='.'){ if(!val.includes('.')) val=(val||'0')+'.'; }
+      else val=(val+k).replace(/^0+(\d)/,'$1');
+      document.getElementById(amtId).textContent = val||'0';
     };
   });
 }
 
 // ── COMPTEUR ──
-function go(kind){
-  if(kind==='compteur'){
-    const wrap=document.getElementById('cp-pumps');
-    wrap.innerHTML = REFS.pumps.map(p=>`<button style="background:${p.color_hex||'#1d4ed8'}" data-id="${p.id}" data-name="${p.name}">${p.name}<br><small>${p.fuel}</small></button>`).join('') || '<div>لا توجد مضخات</div>';
-    wrap.querySelectorAll('button').forEach(b=> b.onclick=()=>{ sel.pump={id:b.dataset.id,name:b.dataset.name}; wrap.querySelectorAll('button').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
-    buildPad('cp-pad','compteur','cp-amt'); err('cp-err',''); show('s-compteur');
-  } else if(kind==='credit'){
-    sel.client=null; document.getElementById('cr-search').value=''; renderClients();
-    buildPad('cr-pad','credit','cr-amt'); err('cr-err',''); show('s-credit');
-  } else if(kind==='espece'){
-    buildPad('es-pad','espece','es-amt'); err('es-err',''); show('s-espece');
-  } else if(kind==='produit'){
-    sel.product=null; document.getElementById('pd-search').value=''; renderProducts();
-    buildPad('pd-pad','produit','pd-amt'); err('pd-err',''); show('s-produit');
-  }
+function fuelRank(f){ f=(f||'').toLowerCase(); if(f.includes('gazoil')||f.includes('gasoil')||f.includes('diesel'))return 0; if(f.includes('essence'))return 1; return 2; }
+function orderedPumps(){ return [...REFS.pumps].sort((a,b)=> fuelRank(a.fuel)-fuelRank(b.fuel) || String(a.name).localeCompare(b.name)); }
+function compteurOf(pumpId){ const it=panier.find(p=>p.kind==='compteur'&&p.data.pump_id==pumpId); return it?it.data.meter_value:null; }
+
+function openCompteur(){ renderCpGrid(); show('s-cp-grid'); }
+function renderCpGrid(){
+  const pumps=orderedPumps();
+  const groups={0:[],1:[],2:[]};
+  pumps.forEach(p=>groups[fuelRank(p.fuel)].push(p));
+  const names={0:'⛽ غازوال (Gazoil)',1:'🟢 إيسانس (Essence)',2:'أخرى'};
+  let html='';
+  [0,1,2].forEach(g=>{
+    if(!groups[g].length) return;
+    html+=`<div class="grp-lbl">${names[g]}</div><div class="pumps">`;
+    html+=groups[g].map(p=>{
+      const v=compteurOf(p.id);
+      return `<button class="${v!=null?'done':''}" style="background:${p.color_hex||'#1d4ed8'}" onclick="pickPump(${p.id},'${String(p.name).replace(/'/g,'')}')">${p.name}${v!=null?`<span class="val">${fmt(v)} ✓</span>`:''}</button>`;
+    }).join('')+`</div>`;
+  });
+  html+=`<button class="send" onclick="openRecap()" style="margin-top:10px">✅ تحقق وإرسال (${panier.length})</button>`;
+  document.getElementById('cp-grid-body').innerHTML = html || '<div>لا توجد مضخات</div>';
+}
+function pickPump(id,name){
+  sel.pump={id,name}; val = compteurOf(id)!=null ? String(compteurOf(id)) : '';
+  document.getElementById('cp-entry-title').textContent = 'العداد — '+name;
+  document.getElementById('cp-amt').textContent = val||'0';
+  buildPad('cp-pad','cp-amt'); err('cp-err',''); show('s-cp-entry');
+}
+function addCompteur(){
+  if(!(parseFloat(val)>=0)) return err('cp-err','اكتب رقم العداد');
+  panier = panier.filter(p=>!(p.kind==='compteur'&&p.data.pump_id==sel.pump.id));
+  panier.push({ kind:'compteur', data:{ pump_id:+sel.pump.id, pump_name:sel.pump.name, meter_value:parseFloat(val) }, label:`⛽ ${sel.pump.name} : ${fmt(val)}` });
+  updateCart(); renderCpGrid(); show('s-cp-grid');
 }
 
+// ── CREDIT ──
+function openCredit(){ sel.client=null; val=''; document.getElementById('cr-search').value=''; renderClients(); document.getElementById('cr-amt').textContent='0'; buildPad('cr-pad','cr-amt'); err('cr-err',''); show('s-credit'); }
 function renderClients(){
   const q=(document.getElementById('cr-search').value||'').toLowerCase();
   const list=document.getElementById('cr-clients');
   list.innerHTML = REFS.clients.filter(c=>c.name.toLowerCase().includes(q)).map(c=>`<button data-id="${c.id}" data-name="${c.name}">${c.name}</button>`).join('') || '<div style="padding:10px">لا يوجد</div>';
   list.querySelectorAll('button').forEach(b=> b.onclick=()=>{ sel.client={id:b.dataset.id,name:b.dataset.name}; list.querySelectorAll('button').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
 }
+function addCredit(){
+  if(!sel.client) return err('cr-err','اختر الزبون');
+  if(!(parseFloat(val)>0)) return err('cr-err','اكتب المبلغ');
+  panier.push({ kind:'credit', data:{ credit_client_id:+sel.client.id, client_name:sel.client.name, amount:parseFloat(val) }, label:`🤝 ${sel.client.name} : ${fmt(val)} د` });
+  updateCart(); openRecap();
+}
+
+// ── ESPECE ──
+function openEspece(){ val=''; document.getElementById('es-amt').textContent='0'; buildPad('es-pad','es-amt'); err('es-err',''); show('s-espece'); }
+function addEspece(){
+  if(!(parseFloat(val)>=0)) return err('es-err','اكتب المبلغ');
+  panier = panier.filter(p=>p.kind!=='espece');
+  panier.push({ kind:'espece', data:{ amount:parseFloat(val) }, label:`💵 الصندوق : ${fmt(val)} د` });
+  updateCart(); openRecap();
+}
+
+// ── PRODUIT ──
+function openProduit(){ sel.product=null; val=''; document.getElementById('pd-search').value=''; renderProducts(); document.getElementById('pd-amt').textContent='0'; buildPad('pd-pad','pd-amt'); err('pd-err',''); show('s-produit'); }
 function renderProducts(){
   const q=(document.getElementById('pd-search').value||'').toLowerCase();
   const list=document.getElementById('pd-list');
   list.innerHTML = REFS.products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>`<button data-id="${p.id}" data-name="${p.name}">${p.name} <small>(${p.price} د)</small></button>`).join('') || '<div style="padding:10px">لا يوجد</div>';
   list.querySelectorAll('button').forEach(b=> b.onclick=()=>{ sel.product={id:b.dataset.id,name:b.dataset.name}; list.querySelectorAll('button').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
 }
-
-async function send(kind, data, errId, btnId){
-  const btn=document.getElementById(btnId); btn.disabled=true;
-  try{ await api('POST','/submit',{kind,data}); show('s-ok'); }
-  catch(e){ err(errId, e.message); }
-  finally{ btn.disabled=false; }
-}
-function submitCompteur(){
-  if(!sel.pump) return err('cp-err','اختر المضخة');
-  if(!(parseFloat(amt.compteur)>=0)) return err('cp-err','اكتب رقم العداد');
-  send('compteur',{ pump_id:+sel.pump.id, pump_name:sel.pump.name, meter_value:parseFloat(amt.compteur) },'cp-err','cp-send');
-}
-function submitCredit(){
-  if(!sel.client) return err('cr-err','اختر الزبون');
-  if(!(parseFloat(amt.credit)>0)) return err('cr-err','اكتب المبلغ');
-  send('credit',{ credit_client_id:+sel.client.id, client_name:sel.client.name, amount:parseFloat(amt.credit) },'cr-err','cr-send');
-}
-function submitEspece(){
-  if(!(parseFloat(amt.espece)>=0)) return err('es-err','اكتب المبلغ');
-  send('espece',{ amount:parseFloat(amt.espece) },'es-err','es-send');
-}
-function submitProduit(){
+function addProduit(){
   if(!sel.product) return err('pd-err','اختر المنتج');
-  if(!(parseFloat(amt.produit)>0)) return err('pd-err','اكتب الكمية');
-  send('produit',{ product_id:+sel.product.id, product_name:sel.product.name, quantity:parseFloat(amt.produit) },'pd-err','pd-send');
+  if(!(parseFloat(val)>0)) return err('pd-err','اكتب الكمية');
+  panier.push({ kind:'produit', data:{ product_id:+sel.product.id, product_name:sel.product.name, quantity:parseFloat(val) }, label:`🛒 ${sel.product.name} × ${fmt(val)}` });
+  updateCart(); openRecap();
 }
 
+// ── RECAP / RESULT ──
+function renderRecap(){
+  const body=document.getElementById('recap-body');
+  if(!panier.length){ body.innerHTML='<p style="text-align:center;color:#64748b">القائمة فارغة</p>'; document.getElementById('recap-send').style.display='none'; show('s-recap'); return; }
+  document.getElementById('recap-send').style.display='block';
+  const order={compteur:0,credit:1,espece:2,produit:3};
+  const titles={compteur:'⛽ العدادات (غازوال ثم إيسانس)',credit:'🤝 الكريدي',espece:'💵 الصندوق',produit:'🛒 المنتجات'};
+  // sort compteurs gazoil→essence within their group
+  const sorted=[...panier].map((it,i)=>({it,i})).sort((a,b)=>{
+    const ka=order[a.it.kind],kb=order[b.it.kind];
+    if(ka!==kb) return ka-kb;
+    if(a.it.kind==='compteur'){ const pa=REFS.pumps.find(p=>p.id==a.it.data.pump_id)||{}, pb=REFS.pumps.find(p=>p.id==b.it.data.pump_id)||{}; return fuelRank(pa.fuel)-fuelRank(pb.fuel); }
+    return 0;
+  });
+  let html=''; let lastKind=null; let creditTotal=0;
+  sorted.forEach(({it,i})=>{
+    if(it.kind!==lastKind){ html+=`<div class="sec-title">${titles[it.kind]}</div>`; lastKind=it.kind; }
+    if(it.kind==='credit') creditTotal+=parseFloat(it.data.amount)||0;
+    html+=`<div class="recap-item"><span>${it.label}</span><button class="x" onclick="removeItem(${i})">✕</button></div>`;
+  });
+  if(creditTotal>0) html+=`<div class="sec-title">مجموع الكريدي : ${fmt(creditTotal)} د</div>`;
+  body.innerHTML=html;
+  show('s-recap');
+}
+function removeItem(i){ panier.splice(i,1); updateCart(); renderRecap(); }
+
+async function sendAll(){
+  if(!panier.length) return;
+  const btn=document.getElementById('recap-send'); btn.disabled=true; btn.textContent='...جاري الإرسال';
+  let ok=0, fail=0;
+  for(const it of panier){
+    try{ await api('POST','/submit',{kind:it.kind, data:it.data}); ok++; }
+    catch(e){ fail++; }
+  }
+  panier=[]; updateCart();
+  document.getElementById('ok-txt').textContent = fail? `تم إرسال ${ok}، فشل ${fail}` : `تم إرسال ${ok} ✓`;
+  btn.disabled=false; btn.textContent='📤 إرسال الكل';
+  show('s-ok');
+}
+
+// ── MINE ──
 async function loadMine(){
   show('s-mine');
   const el=document.getElementById('mine-list'); el.innerHTML='<p>...</p>';
@@ -259,12 +357,10 @@ async function loadMine(){
   }catch(e){ el.innerHTML='<p>خطأ</p>'; }
 }
 
-function resetAll(){ sel={pump:null,client:null,product:null}; amt={compteur:'',credit:'',espece:'',produit:''}; }
-
-// ── BOOT: stay logged in if a pompiste token exists ──
+// ── BOOT ──
 (async function(){
   let user=null; try{ user=JSON.parse(localStorage.getItem('fm_user')||'null'); }catch(_){}
-  if(TK() && user && user.role==='pompiste'){ await start(); }
+  if(TK() && user && user.role==='pompiste'){ await startApp(); }
   else { show('s-login'); }
 })();
 </script>
