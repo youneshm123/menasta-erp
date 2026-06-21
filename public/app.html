@@ -1350,6 +1350,22 @@ function showShiftSummary(result) {
       <hr class="div"/>
       <div class="fxb"><span style="font-size:16px;font-weight:800">💵 CAISSE NETTE</span><span style="font-size:22px;font-weight:800;color:var(--green)">${fmt(c.netCash)} MAD</span></div>
     </div>
+    ${s.credit_sales && s.credit_sales.length ? `
+    <div style="margin-top:16px;background:var(--bg);border-radius:8px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">🤝 Ventes Crédit — Clients (${s.credit_sales.length})</div>
+      ${s.credit_sales.map(cs => `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border-lt);font-size:13px;">
+        <span><strong>${cs.client_name||'?'}</strong>${cs.product_type?` <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--bg2);color:var(--muted);margin-left:8px;">${cs.product_type}</span>`:''}${cs.pump_name && cs.pump_name!=='Lubrifiant'?` <span class="muted sm">— ${cs.pump_name}</span>`:''}</span>
+        <span style="color:var(--orange);font-weight:800;white-space:nowrap;">- ${fmt(cs.amount)} MAD</span>
+      </div>`).join('')}
+    </div>` : ''}
+    ${s.credit_payments && s.credit_payments.length ? `
+    <div style="margin-top:16px;background:var(--bg);border-radius:8px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">💰 Paiements Crédit reçus (${s.credit_payments.length})</div>
+      ${s.credit_payments.map(p => `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border-lt);font-size:13px;">
+        <span><strong>${p.client_name||'?'}</strong></span>
+        <span style="color:var(--green);font-weight:800;white-space:nowrap;">+ ${fmt(p.amount)} MAD</span>
+      </div>`).join('')}
+    </div>` : ''}
     ${s.expenses && s.expenses.length ? `
     <div style="margin-top:16px;background:var(--bg);border-radius:8px;padding:14px 16px;">
       <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">💸 Détail Dépenses (${s.expenses.length})</div>
