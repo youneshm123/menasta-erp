@@ -301,6 +301,23 @@ router.post('/:id/pompiste', requireAuth, wrap(async (req, res) => {
   res.json(await shiftDetail(shift));
 }));
 
+// Correct a start (Début) meter reading on a shift (fix a typo at opening).
+router.post('/:id/start-reading', requireAuth, wrap(async (req, res) => {
+  const pumpId = parseInt(req.body && req.body.pump_id);
+  const meter  = parseFloat(req.body && req.body.meter_value);
+  if (!pumpId || !isFinite(meter) || meter < 0) return res.status(400).json({ error: 'Pompe ou compteur invalide' });
+  const { rows } = await pool.query('SELECT id FROM shifts WHERE id=$1', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Poste introuvable' });
+  await pool.query(`
+    INSERT INTO pump_readings (shift_id,pump_id,reading_type,meter_value,recorded_by)
+    VALUES ($1,$2,'start',$3,$4)
+    ON CONFLICT (shift_id,pump_id,reading_type)
+    DO UPDATE SET meter_value=EXCLUDED.meter_value, recorded_by=EXCLUDED.recorded_by
+  `, [req.params.id, pumpId, meter, req.user.id]);
+  const { rows: [shift] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [req.params.id]);
+  res.json(await shiftDetail(shift));
+}));
+
 router.post('/:id/reopen', requireAuth, wrap(async (req, res) => {
   const { rows } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='closed'", [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Poste fermé introuvable' });
