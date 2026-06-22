@@ -111,8 +111,12 @@ async function shiftDetail(shift) {
 }
 
 router.get('/', requireAuth, wrap(async (_req, res) => {
+  // `seq` is a clean sequential poste number in chronological order (oldest = 1),
+  // shown in the history list. It is independent of the DB id, which has gaps
+  // from deleted postes and would read 3, 7, 10… instead of 1, 2, 3.
   const { rows } = await pool.query(`
-    SELECT s.*, u.full_name as opened_by_name
+    SELECT s.*, u.full_name as opened_by_name,
+           (ROW_NUMBER() OVER (ORDER BY s.opened_at ASC))::int AS seq
     FROM shifts s LEFT JOIN users u ON u.id=s.opened_by
     ORDER BY s.opened_at DESC LIMIT 50
   `);

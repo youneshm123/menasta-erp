@@ -1390,7 +1390,7 @@ function renderShiftRow(s) {
   const cls = s.status === 'open' ? 'st-g' : 'st-gr';
   const lbl = s.status === 'open' ? 'Ouvert' : 'Fermé';
   return `<tr>
-    <td class="fw7">#${s.id}</td>
+    <td class="fw7">#${s.seq != null ? s.seq : s.id}</td>
     <td>${s.opened_by_name||'?'}${s.pompiste?' <span class="muted sm">— '+s.pompiste+'</span>':''}</td>
     <td class="muted sm">${fmtDT(s.opened_at)}</td>
     <td class="muted sm">${s.closed_at ? fmtDT(s.closed_at) : '—'}</td>
