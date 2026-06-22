@@ -120,12 +120,17 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
 }));
 
 router.get('/last-readings', requireAuth, wrap(async (_req, res) => {
+  // For each pump, the "Début" of the next poste is the end reading of the most
+  // recent poste chronologically. Order by opened_at (the day the poste covers),
+  // NOT closed_at — postes get closed out of order (catch-up data entry, reopen
+  // bumping closed_at), so closed_at order can point at an older poste and pull a
+  // stale reading. DISTINCT ON per pump also survives a pump missing from one poste.
   const { rows } = await pool.query(`
-    SELECT pr.pump_id, pr.meter_value
+    SELECT DISTINCT ON (pr.pump_id) pr.pump_id, pr.meter_value
     FROM pump_readings pr
     JOIN shifts s ON s.id=pr.shift_id
     WHERE s.status='closed' AND pr.reading_type='end'
-    AND s.id=(SELECT id FROM shifts WHERE status='closed' ORDER BY closed_at DESC LIMIT 1)
+    ORDER BY pr.pump_id, s.opened_at DESC, s.id DESC
   `);
   const map = {};
   rows.forEach(r => { map[r.pump_id] = parseFloat(r.meter_value); });
