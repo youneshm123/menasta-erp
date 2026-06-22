@@ -15,6 +15,8 @@
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
 <style>
 .g-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.g-search{width:100%;max-width:380px;padding:11px 14px;margin-bottom:14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:var(--surface);color:inherit;box-sizing:border-box}
+.g-search:focus{outline:none;border-color:var(--blue,#0070F2)}
 .g-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
 .g-card img,.g-noimg{width:100%;height:140px;object-fit:cover;background:var(--bg2,#f0f0f4);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:34px}
 .g-bd{padding:12px 13px;display:flex;flex-direction:column;gap:7px;flex:1}
@@ -114,6 +116,7 @@
         <div class="muted" style="font-size:13px">Articles que l'employé vend. Chaque article a une photo et un QR à scanner.</div>
         <button class="btn btn-s" onclick="openProduct()">+ Nouvel article</button>
       </div>
+      <input id="cat-search" class="g-search" placeholder="🔍 Rechercher une référence…" oninput="renderCatalogue()" autocomplete="off"/>
       <div class="g-grid" id="cat-grid"></div>
     </div>
 
@@ -169,6 +172,7 @@
         </div>
         <div class="s-body">
           <p class="muted" style="font-size:13px;margin-bottom:14px">Un QR par article (collez-le sur le bac, pas sur chaque pièce). L'employé le scanne → la vente s'enregistre et le stock baisse. Astuce : plastifiez l'étiquette (zone grasse).</p>
+          <input id="qr-search" class="g-search" placeholder="🔍 Rechercher une référence…" oninput="renderQR()" autocomplete="off"/>
           <div class="g-grid" id="qr-grid"></div>
         </div>
       </div>
@@ -273,11 +277,21 @@ document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', 
 document.getElementById('top-date').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
 // ── CATALOGUE ──
+function searchFilter(boxId) {
+  const el = document.getElementById(boxId);
+  const q = (el && el.value || '').trim().toLowerCase();
+  return q ? _products.filter(p => (p.name||'').toLowerCase().includes(q)) : _products;
+}
 async function loadCatalogue() {
   _products = await api('GET', '/products');
+  renderCatalogue();
+}
+function renderCatalogue() {
   const grid = document.getElementById('cat-grid');
   if (!_products.length) { grid.innerHTML = '<div class="muted" style="padding:20px">Aucun article. Cliquez « Nouvel article ».</div>'; return; }
-  grid.innerHTML = _products.map(p => {
+  const list = searchFilter('cat-search');
+  if (!list.length) { grid.innerHTML = '<div class="muted" style="padding:20px">Aucune référence ne correspond.</div>'; return; }
+  grid.innerHTML = list.map(p => {
     const held = parseFloat(p.held_qty)||0, depot = parseFloat(p.depot_qty)||0;
     return `<div class="g-card">
       ${p.image_data ? `<img src="${esc(p.image_data)}" alt=""/>` : '<div class="g-noimg">🛢️</div>'}
@@ -446,10 +460,15 @@ async function delPayment(id) {
 // ── QR ──
 async function loadQR() {
   _products = await api('GET', '/products');
+  renderQR();
+}
+function renderQR() {
   const grid = document.getElementById('qr-grid');
   if (typeof QRCode === 'undefined') { grid.innerHTML = '<div class="muted">Librairie QR non chargée. Rechargez la page.</div>'; return; }
   if (!_products.length) { grid.innerHTML = '<div class="muted" style="padding:20px">Aucun article.</div>'; return; }
-  grid.innerHTML = _products.map(p => `
+  const list = searchFilter('qr-search');
+  if (!list.length) { grid.innerHTML = '<div class="muted" style="padding:20px">Aucune référence ne correspond.</div>'; return; }
+  grid.innerHTML = list.map(p => `
     <div class="g-card" style="padding:14px;align-items:center;text-align:center">
       <div class="g-nm" style="margin-bottom:8px">${esc(p.name)}</div>
       <div id="qr-${p.id}" style="display:flex;justify-content:center"></div>
@@ -459,7 +478,7 @@ async function loadQR() {
         <button class="btn btn-g" style="flex:1" onclick="downloadOne(${p.id})">🖼️ Image</button>
       </div>
     </div>`).join('');
-  _products.forEach(p => {
+  list.forEach(p => {
     new QRCode(document.getElementById('qr-' + p.id), {
       text: qrLink(p.id), width: 150, height: 150,
       colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
