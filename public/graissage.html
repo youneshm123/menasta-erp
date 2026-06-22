@@ -454,7 +454,10 @@ async function loadQR() {
       <div class="g-nm" style="margin-bottom:8px">${esc(p.name)}</div>
       <div id="qr-${p.id}" style="display:flex;justify-content:center"></div>
       <div class="g-price" style="margin-top:8px">${fmt(p.price)} DH</div>
-      <button class="btn btn-g" style="margin-top:10px" onclick="printOne(${p.id})">🖨️ Imprimer</button>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-g" style="flex:1" onclick="printOne(${p.id})">🖨️ Imprimer</button>
+        <button class="btn btn-g" style="flex:1" onclick="downloadOne(${p.id})">🖼️ Image</button>
+      </div>
     </div>`).join('');
   _products.forEach(p => {
     new QRCode(document.getElementById('qr-' + p.id), {
@@ -476,6 +479,31 @@ function printLabels(list) {
 }
 function printAll(){ printLabels(_products); }
 function printOne(id){ const p = _products.find(x => x.id===id); if (p) printLabels([p]); }
+
+// Télécharge le QR (avec nom + prix) comme image PNG
+function downloadOne(id){
+  const p = _products.find(x => x.id===id); if (!p) return;
+  const host = document.getElementById('qr-' + id);
+  const src = host && (host.querySelector('canvas') || host.querySelector('img'));
+  if (!src){ alert('QR pas encore prêt, réessayez dans un instant.'); return; }
+  const qrW = 300, pad = 28, topH = 60, botH = 56;
+  const c = document.createElement('canvas');
+  c.width = qrW + pad*2;
+  c.height = topH + qrW + botH;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,c.width,c.height);
+  ctx.fillStyle = '#111827'; ctx.textAlign = 'center';
+  let fs = 26; ctx.font = 'bold ' + fs + 'px Arial';
+  while (ctx.measureText(p.name).width > c.width - 16 && fs > 12){ fs--; ctx.font = 'bold ' + fs + 'px Arial'; }
+  ctx.fillText(p.name, c.width/2, 40);
+  ctx.drawImage(src, pad, topH, qrW, qrW);
+  ctx.font = 'bold 28px Arial';
+  ctx.fillText(fmt(p.price) + ' DH', c.width/2, topH + qrW + 36);
+  const a = document.createElement('a');
+  a.download = 'QR-' + p.name.replace(/[^\w\-]+/g,'_') + '.png';
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
 
 // ── JOURNAL ──
 const MVT = { reception:'📦 Réception', handout:'🤝 Remise', sale:'💰 Vente', return:'↩️ Retour', adjust:'✏️ Correction' };
