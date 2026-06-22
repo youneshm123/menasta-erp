@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<title>MENASTA — Graissage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/fiori.css?v=32"/>
+<link rel="stylesheet" href="/css/dashboard.css?v=1"/>
+<script src="/js/sidebar.js?v=5" defer></script>
+<script src="/js/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
+<style>
+.g-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.g-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.g-card img,.g-noimg{width:100%;height:140px;object-fit:cover;background:var(--bg2,#f0f0f4);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:34px}
+.g-bd{padding:12px 13px;display:flex;flex-direction:column;gap:7px;flex:1}
+.g-nm{font-weight:800;font-size:15px}
+.g-price{font-weight:800;color:var(--blue,#0070F2)}
+.g-stk{display:flex;gap:8px;margin-top:2px}
+.g-pill{flex:1;text-align:center;border-radius:8px;padding:6px 4px;font-size:12px;font-weight:700;background:var(--bg)}
+.g-pill b{display:block;font-size:17px;margin-top:2px}
+.g-low{color:var(--red)}
+.g-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
+.g-acts .btn{flex:1;font-size:12px;padding:7px 6px}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px}
+.kpi-box{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px}
+.kpi-box .l{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.kpi-box .v{font-size:26px;font-weight:900;margin-top:6px}
+.kpi-due{background:linear-gradient(135deg,#5b4fcf,#0070F2);color:#fff;border:none}
+.kpi-due .l{color:rgba(255,255,255,.85)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
+.ov.show{display:flex}
+.ov-card{background:var(--surface);border-radius:16px;max-width:460px;width:100%;max-height:92vh;overflow-y:auto;padding:22px}
+.ov-card h3{margin:0 0 14px;font-size:18px;font-weight:800}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px}
+.fld input,.fld textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:9px;font-size:15px;font-family:var(--font);outline:none;background:var(--bg)}
+.fld input:focus,.fld textarea:focus{border-color:var(--blue,#0070F2)}
+.ph-prev{width:100%;height:160px;object-fit:cover;border-radius:10px;border:1.5px dashed var(--border);background:var(--bg);margin-top:6px;display:none}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ho-row{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border-lt)}
+.ho-row .nm{flex:1;font-weight:700;font-size:14px}
+.ho-row .av{font-size:12px;color:var(--muted)}
+.ho-row input{width:90px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:center}
+#print-sheet{display:none}
+@media print{
+  body *{visibility:hidden}
+  #print-sheet,#print-sheet *{visibility:visible}
+  #print-sheet{display:block!important;position:absolute;left:0;top:0;width:100%}
+  .lbl{page-break-after:always;break-inside:avoid;text-align:center;padding:6mm 0}
+  .lbl:last-child{page-break-after:auto}
+  .lbl .nm{font-weight:800;font-size:14pt;margin-bottom:2mm}
+  .lbl .pr{font-size:12pt;margin-top:2mm}
+}
+</style>
+</head>
+<body class="app-layout">
+
+<header class="fiori-shell">
+  <a href="/home" class="fs-logo" style="text-decoration:none">
+    <div class="fs-mark"><i data-lucide="fuel"></i></div>
+    <div class="fs-brand">MENASTA</div>
+  </a>
+  <div class="fs-divider"></div>
+  <nav class="fs-nav">
+    <a href="/home"      class="fs-nav-item"><span class="fn-icon"><i data-lucide="home"></i></span> Launchpad</a>
+    <a href="/app"       class="fs-nav-item"><span class="fn-icon"><i data-lucide="fuel"></i></span> Carburant</a>
+    <a href="/service"   class="fs-nav-item"><span class="fn-icon"><i data-lucide="droplets"></i></span> Service</a>
+    <a href="/graissage" class="fs-nav-item active"><span class="fn-icon"><i data-lucide="droplet"></i></span> Graissage</a>
+    <a href="/bank"      class="fs-nav-item"><span class="fn-icon"><i data-lucide="landmark"></i></span> Banque</a>
+  </nav>
+  <div class="fs-actions">
+    <button class="dm-toggle fs-icon-btn" onclick="toggleDarkMode()" title="Mode sombre"><i data-lucide="moon"></i></button>
+    <div class="fs-avatar" id="fs-av" title="Mon compte">?</div>
+  </div>
+</header>
+
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo-row">
+      <div class="sb-mark"><i data-lucide="droplet"></i></div>
+      <div>
+        <div class="sb-name">Graissage</div>
+        <div class="sb-sub">Stock & Compte employé</div>
+      </div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <div class="nav-item active" data-p="catalogue"><span class="ni"><i data-lucide="package"></i></span> Catalogue</div>
+    <div class="nav-item" data-p="remise"><span class="ni"><i data-lucide="hand-coins"></i></span> Remise à l'employé</div>
+    <div class="nav-item" data-p="compte"><span class="ni"><i data-lucide="wallet"></i></span> Compte & Règlement</div>
+    <div class="nav-item" data-p="qr"><span class="ni"><i data-lucide="qr-code"></i></span> Imprimer QR</div>
+    <div class="nav-item" data-p="journal"><span class="ni"><i data-lucide="history"></i></span> Journal</div>
+  </div>
+  <div class="sb-foot">
+    <a href="/home" class="sb-back">← Retour Accueil</a>
+  </div>
+</aside>
+
+<div class="app-main">
+  <div class="app-topbar">
+    <div class="topbar-title" id="page-title">Catalogue</div>
+    <div class="topbar-meta" id="top-date"></div>
+  </div>
+  <div class="app-content">
+
+    <!-- ══ CATALOGUE ══ -->
+    <div class="page active" id="p-catalogue">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div class="muted" style="font-size:13px">Articles que l'employé vend. Chaque article a une photo et un QR à scanner.</div>
+        <button class="btn btn-s" onclick="openProduct()">+ Nouvel article</button>
+      </div>
+      <div class="g-grid" id="cat-grid"></div>
+    </div>
+
+    <!-- ══ REMISE ══ -->
+    <div class="page" id="p-remise">
+      <div class="section">
+        <div class="s-head"><div class="s-title">🤝 Remettre un lot à l'employé</div></div>
+        <div class="s-body">
+          <p class="muted" style="font-size:13px;margin-bottom:12px">Indiquez la quantité prise du <strong>dépôt</strong> pour chaque article. Elle passe « chez l'employé ».</p>
+          <div id="handout-list"></div>
+          <div class="fld" style="margin-top:14px"><label>Note (optionnel)</label><input id="handout-note" placeholder="ex: remise du 22/06"/></div>
+          <button class="btn btn-s" onclick="submitHandout()" style="margin-top:6px">✅ Valider la remise</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ COMPTE ══ -->
+    <div class="page" id="p-compte">
+      <div class="kpi-row">
+        <div class="kpi-box"><div class="l">Total vendu</div><div class="v" id="k-sold">0,00</div></div>
+        <div class="kpi-box"><div class="l">Total versé</div><div class="v c-g" id="k-paid">0,00</div></div>
+        <div class="kpi-box kpi-due"><div class="l">💰 Solde dû</div><div class="v" id="k-due">0,00</div></div>
+        <div class="kpi-box"><div class="l">Valeur stock chez lui</div><div class="v" id="k-held">0,00</div></div>
+      </div>
+
+      <div class="section" style="margin-bottom:18px">
+        <div class="s-head"><div class="s-title">💵 Enregistrer un règlement</div></div>
+        <div class="s-body">
+          <div class="row2">
+            <div class="fld" style="margin:0"><label>Montant versé (MAD)</label><input type="number" id="pay-amount" step="0.01" min="0" placeholder="0.00"/></div>
+            <div class="fld" style="margin:0"><label>Note</label><input id="pay-note" placeholder="optionnel"/></div>
+          </div>
+          <button class="btn btn-s" style="margin-top:12px" onclick="submitPayment()">+ Enregistrer le paiement</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="s-head"><div class="s-title">📜 Historique des règlements</div></div>
+        <div class="s-body">
+          <table class="t"><thead><tr><th>Date</th><th>Par</th><th>Note</th><th class="num">Montant</th><th></th></tr></thead>
+            <tbody id="pay-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ QR ══ -->
+    <div class="page" id="p-qr">
+      <div class="section">
+        <div class="s-head">
+          <div class="s-title">🏷️ Étiquettes QR</div>
+          <button class="btn btn-p btn-sm" onclick="printAll()">🖨️ Imprimer tout</button>
+        </div>
+        <div class="s-body">
+          <p class="muted" style="font-size:13px;margin-bottom:14px">Un QR par article (collez-le sur le bac, pas sur chaque pièce). L'employé le scanne → la vente s'enregistre et le stock baisse. Astuce : plastifiez l'étiquette (zone grasse).</p>
+          <div class="g-grid" id="qr-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ JOURNAL ══ -->
+    <div class="page" id="p-journal">
+      <div class="section">
+        <div class="s-head"><div class="s-title">📒 Mouvements de stock</div></div>
+        <div class="s-body">
+          <table class="t"><thead><tr><th>Date</th><th>Type</th><th>Article</th><th class="num">Qté</th><th class="num">Montant</th><th>Par</th><th>Note</th></tr></thead>
+            <tbody id="mv-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Product modal -->
+<div class="ov" id="ov-product">
+  <div class="ov-card">
+    <h3 id="ov-title">Nouvel article</h3>
+    <div class="fld"><label>Nom *</label><input id="f-name" placeholder="ex: Huile 5W30 1L"/></div>
+    <div class="row2">
+      <div class="fld"><label>Prix de vente (MAD) *</label><input type="number" id="f-price" step="0.01" min="0"/></div>
+      <div class="fld"><label>Prix d'achat (MAD)</label><input type="number" id="f-cost" step="0.01" min="0"/></div>
+    </div>
+    <div class="row2">
+      <div class="fld"><label>Unité</label><input id="f-unit" placeholder="unité / L / pièce"/></div>
+      <div class="fld" id="f-depot-wrap"><label>Stock initial (dépôt)</label><input type="number" id="f-depot" step="0.01" min="0" placeholder="0"/></div>
+    </div>
+    <div class="fld">
+      <label>Photo</label>
+      <input type="file" accept="image/*" capture="environment" id="f-photo" onchange="onPhoto(event)"/>
+      <img class="ph-prev" id="f-prev"/>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-g" style="flex:1" onclick="closeProduct()">Annuler</button>
+      <button class="btn btn-s" style="flex:1" onclick="saveProduct()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Réception modal -->
+<div class="ov" id="ov-recep">
+  <div class="ov-card">
+    <h3>📦 Réception au dépôt</h3>
+    <p class="muted" id="recep-name" style="font-size:14px;margin-bottom:12px"></p>
+    <div class="fld"><label>Quantité reçue</label><input type="number" id="recep-qty" step="0.01" min="0"/></div>
+    <div class="fld"><label>Note</label><input id="recep-note" placeholder="ex: achat fournisseur"/></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-g" style="flex:1" onclick="closeOv('ov-recep')">Annuler</button>
+      <button class="btn btn-s" style="flex:1" onclick="saveRecep()">+ Ajouter au dépôt</button>
+    </div>
+  </div>
+</div>
+
+<div id="print-sheet"></div>
+<div id="toasts" style="position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px"></div>
+
+<script>
+const TOKEN = localStorage.getItem('fm_token');
+if (!TOKEN) location.href = '/?return=' + encodeURIComponent('/graissage');
+async function api(method, path, body) {
+  const r = await fetch('/api/graissage' + path, {
+    method,
+    headers:{ 'Content-Type':'application/json','Authorization':'Bearer '+TOKEN },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || 'Erreur');
+  return data;
+}
+function toast(msg, type='g') {
+  const el = document.createElement('div');
+  el.style.cssText = 'background:'+(type==='er'?'#DC2626':'#15803D')+';color:#fff;padding:11px 16px;border-radius:9px;font-weight:700;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.18)';
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+}
+const fmt = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function qrLink(id){ return location.origin + '/gscan/' + id; }
+
+let _products = [];
+
+// Tabs
+const pageNames = { catalogue:'Catalogue', remise:"Remise à l'employé", compte:'Compte & Règlement', qr:'Imprimer QR', journal:'Journal' };
+function navigate(p) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.p===p));
+  document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('active', pg.id==='p-'+p));
+  document.getElementById('page-title').textContent = pageNames[p]||p;
+  if (p==='catalogue') loadCatalogue();
+  if (p==='remise')    loadRemise();
+  if (p==='compte')    loadCompte();
+  if (p==='qr')        loadQR();
+  if (p==='journal')   loadJournal();
+}
+document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => navigate(n.dataset.p)));
+document.getElementById('top-date').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+// ── CATALOGUE ──
+async function loadCatalogue() {
+  _products = await api('GET', '/products');
+  const grid = document.getElementById('cat-grid');
+  if (!_products.length) { grid.innerHTML = '<div class="muted" style="padding:20px">Aucun article. Cliquez « Nouvel article ».</div>'; return; }
+  grid.innerHTML = _products.map(p => {
+    const held = parseFloat(p.held_qty)||0, depot = parseFloat(p.depot_qty)||0;
+    return `<div class="g-card">
+      ${p.image_data ? `<img src="${esc(p.image_data)}" alt=""/>` : '<div class="g-noimg">🛢️</div>'}
+      <div class="g-bd">
+        <div class="g-nm">${esc(p.name)}</div>
+        <div class="g-price">${fmt(p.price)} DH <span class="muted" style="font-weight:500">/ ${esc(p.unit||'')}</span></div>
+        <div class="g-stk">
+          <div class="g-pill">Dépôt<b>${depot}</b></div>
+          <div class="g-pill ${held<=2?'g-low':''}">Chez lui<b>${held}</b></div>
+        </div>
+        <div class="g-acts">
+          <button class="btn btn-g" onclick="openRecep(${p.id})">📦 Réception</button>
+          <button class="btn btn-g" onclick="openProduct(${p.id})">✏️ Modifier</button>
+          <button class="btn btn-d" onclick="delProduct(${p.id})">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Product modal
+let editId = null;
+let photoData = null;
+function openProduct(id) {
+  editId = id || null;
+  photoData = null;
+  const p = id ? _products.find(x => x.id===id) : null;
+  document.getElementById('ov-title').textContent = p ? 'Modifier l\'article' : 'Nouvel article';
+  document.getElementById('f-name').value  = p ? p.name : '';
+  document.getElementById('f-price').value = p ? p.price : '';
+  document.getElementById('f-cost').value  = p ? p.cost : '';
+  document.getElementById('f-unit').value  = p ? (p.unit||'') : '';
+  document.getElementById('f-depot').value = '';
+  document.getElementById('f-depot-wrap').style.display = p ? 'none' : '';
+  const prev = document.getElementById('f-prev');
+  if (p && p.image_data) { prev.src = p.image_data; prev.style.display='block'; } else { prev.style.display='none'; }
+  document.getElementById('f-photo').value = '';
+  document.getElementById('ov-product').classList.add('show');
+}
+function closeProduct(){ document.getElementById('ov-product').classList.remove('show'); }
+
+// Resize photo client-side → small JPEG so the DB stays light.
+function onPhoto(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 600;
+      let { width, height } = img;
+      if (width > height && width > max) { height = height*max/width; width = max; }
+      else if (height > max) { width = width*max/height; height = max; }
+      const c = document.createElement('canvas');
+      c.width = width; c.height = height;
+      c.getContext('2d').drawImage(img, 0, 0, width, height);
+      photoData = c.toDataURL('image/jpeg', 0.7);
+      const prev = document.getElementById('f-prev');
+      prev.src = photoData; prev.style.display = 'block';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+async function saveProduct() {
+  const body = {
+    name:  document.getElementById('f-name').value.trim(),
+    price: document.getElementById('f-price').value,
+    cost:  document.getElementById('f-cost').value || 0,
+    unit:  document.getElementById('f-unit').value.trim() || 'unité',
+  };
+  if (photoData) body.image_data = photoData;
+  if (!editId) body.depot_qty = document.getElementById('f-depot').value || 0;
+  if (!body.name) { toast('Nom requis', 'er'); return; }
+  if (!(parseFloat(body.price) > 0)) { toast('Prix de vente requis', 'er'); return; }
+  try {
+    if (editId) await api('PUT', '/products/' + editId, body);
+    else        await api('POST', '/products', body);
+    closeProduct();
+    toast('Article enregistré ✓');
+    loadCatalogue();
+  } catch(e) { toast(e.message, 'er'); }
+}
+async function delProduct(id) {
+  if (!confirm('Supprimer cet article ?')) return;
+  try { await api('DELETE', '/products/' + id); toast('Supprimé ✓'); loadCatalogue(); }
+  catch(e) { toast(e.message, 'er'); }
+}
+
+// Réception
+let recepId = null;
+function openRecep(id) {
+  recepId = id;
+  const p = _products.find(x => x.id===id);
+  document.getElementById('recep-name').textContent = p ? p.name + ' — dépôt actuel : ' + (parseFloat(p.depot_qty)||0) : '';
+  document.getElementById('recep-qty').value = '';
+  document.getElementById('recep-note').value = '';
+  document.getElementById('ov-recep').classList.add('show');
+}
+function closeOv(id){ document.getElementById(id).classList.remove('show'); }
+async function saveRecep() {
+  const qty = parseFloat(document.getElementById('recep-qty').value);
+  if (!(qty > 0)) { toast('Quantité invalide', 'er'); return; }
+  try {
+    await api('POST', '/products/' + recepId + '/reception', { qty, note: document.getElementById('recep-note').value });
+    closeOv('ov-recep'); toast('Dépôt mis à jour ✓'); loadCatalogue();
+  } catch(e) { toast(e.message, 'er'); }
+}
+
+// ── REMISE ──
+async function loadRemise() {
+  _products = await api('GET', '/products');
+  const host = document.getElementById('handout-list');
+  host.innerHTML = _products.length ? _products.map(p => `
+    <div class="ho-row">
+      <div class="nm">${esc(p.name)} <span class="av">(dépôt : ${parseFloat(p.depot_qty)||0})</span></div>
+      <input type="number" min="0" step="0.01" id="ho-${p.id}" placeholder="0"/>
+    </div>`).join('') : '<div class="muted">Aucun article.</div>';
+}
+async function submitHandout() {
+  const items = _products.map(p => ({ product_id: p.id, qty: parseFloat(document.getElementById('ho-'+p.id).value) }))
+                         .filter(it => it.qty > 0);
+  if (!items.length) { toast('Indiquez au moins une quantité', 'er'); return; }
+  try {
+    await api('POST', '/handout', { items, note: document.getElementById('handout-note').value });
+    document.getElementById('handout-note').value = '';
+    toast('Remise validée ✓');
+    loadRemise();
+  } catch(e) { toast(e.message, 'er'); }
+}
+
+// ── COMPTE ──
+async function loadCompte() {
+  const acc = await api('GET', '/account');
+  document.getElementById('k-sold').textContent = fmt(acc.total_sold) + ' DH';
+  document.getElementById('k-paid').textContent = fmt(acc.total_paid) + ' DH';
+  document.getElementById('k-due').textContent  = fmt(acc.balance_due) + ' DH';
+  document.getElementById('k-held').textContent = fmt(acc.stock_value_held) + ' DH';
+  const pays = await api('GET', '/payments');
+  document.getElementById('pay-body').innerHTML = pays.length ? pays.map(p => `
+    <tr>
+      <td>${new Date(p.created_at).toLocaleDateString('fr-FR')}</td>
+      <td>${esc(p.by_name||'?')}</td>
+      <td>${esc(p.note||'—')}</td>
+      <td class="num fw8 c-g">${fmt(p.amount)} DH</td>
+      <td><button class="btn btn-d btn-xs" onclick="delPayment(${p.id})">🗑</button></td>
+    </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--muted)">Aucun règlement</td></tr>';
+}
+async function submitPayment() {
+  const amount = parseFloat(document.getElementById('pay-amount').value);
+  if (!(amount > 0)) { toast('Montant invalide', 'er'); return; }
+  try {
+    await api('POST', '/payments', { amount, note: document.getElementById('pay-note').value });
+    document.getElementById('pay-amount').value = '';
+    document.getElementById('pay-note').value = '';
+    toast('Paiement enregistré ✓');
+    loadCompte();
+  } catch(e) { toast(e.message, 'er'); }
+}
+async function delPayment(id) {
+  if (!confirm('Supprimer ce règlement ?')) return;
+  try { await api('DELETE', '/payments/' + id); toast('Supprimé ✓'); loadCompte(); }
+  catch(e) { toast(e.message, 'er'); }
+}
+
+// ── QR ──
+async function loadQR() {
+  _products = await api('GET', '/products');
+  const grid = document.getElementById('qr-grid');
+  if (typeof QRCode === 'undefined') { grid.innerHTML = '<div class="muted">Librairie QR non chargée. Rechargez la page.</div>'; return; }
+  if (!_products.length) { grid.innerHTML = '<div class="muted" style="padding:20px">Aucun article.</div>'; return; }
+  grid.innerHTML = _products.map(p => `
+    <div class="g-card" style="padding:14px;align-items:center;text-align:center">
+      <div class="g-nm" style="margin-bottom:8px">${esc(p.name)}</div>
+      <div id="qr-${p.id}" style="display:flex;justify-content:center"></div>
+      <div class="g-price" style="margin-top:8px">${fmt(p.price)} DH</div>
+      <button class="btn btn-g" style="margin-top:10px" onclick="printOne(${p.id})">🖨️ Imprimer</button>
+    </div>`).join('');
+  _products.forEach(p => {
+    new QRCode(document.getElementById('qr-' + p.id), {
+      text: qrLink(p.id), width: 150, height: 150,
+      colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
+    });
+  });
+}
+function printLabels(list) {
+  const sheet = document.getElementById('print-sheet');
+  sheet.innerHTML = list.map(p => `<div class="lbl"><div class="nm">${esc(p.name)}</div><div id="pq-${p.id}" style="display:flex;justify-content:center"></div><div class="pr">${fmt(p.price)} DH</div></div>`).join('');
+  list.forEach(p => {
+    new QRCode(document.getElementById('pq-' + p.id), {
+      text: qrLink(p.id), width: 240, height: 240,
+      colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
+    });
+  });
+  setTimeout(() => window.print(), 350);
+}
+function printAll(){ printLabels(_products); }
+function printOne(id){ const p = _products.find(x => x.id===id); if (p) printLabels([p]); }
+
+// ── JOURNAL ──
+const MVT = { reception:'📦 Réception', handout:'🤝 Remise', sale:'💰 Vente', return:'↩️ Retour', adjust:'✏️ Correction' };
+async function loadJournal() {
+  const rows = await api('GET', '/movements');
+  document.getElementById('mv-body').innerHTML = rows.length ? rows.map(m => `
+    <tr>
+      <td class="muted sm">${new Date(m.created_at).toLocaleString('fr-FR')}</td>
+      <td>${MVT[m.type]||m.type}</td>
+      <td>${esc(m.product_name||'—')}</td>
+      <td class="num">${m.qty}</td>
+      <td class="num">${m.amount!=null ? fmt(m.amount)+' DH' : '—'}</td>
+      <td class="muted sm">${esc(m.by_name||'?')}</td>
+      <td class="muted sm">${esc(m.note||'')}</td>
+    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--muted)">Aucun mouvement</td></tr>';
+}
+
+// init
+loadCatalogue();
+if (typeof lucide !== 'undefined') lucide.createIcons();
+</script>
+</body>
+</html>

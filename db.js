@@ -481,6 +481,47 @@ async function initDB() {
     CREATE INDEX IF NOT EXISTS idx_pompiste_sub_status ON pompiste_submissions(status, created_at DESC);
   `);
 
+  // ── Graissage stock (dépôt → vendeur consignment) ──
+  // Stock lives in two places: `depot_qty` (our warehouse) and `held_qty` (what
+  // the graissage employee currently holds). We hand him a batch (depot → held),
+  // he sells from what he holds (held − 1 per scan, and he owes price×qty), and
+  // he settles by paying. Every movement is logged for a full audit trail.
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS graissage_products (
+      id          SERIAL PRIMARY KEY,
+      name        TEXT NOT NULL,
+      price       REAL NOT NULL DEFAULT 0,   -- prix de vente
+      cost        REAL NOT NULL DEFAULT 0,   -- prix d'achat (optionnel, pour le bénéfice)
+      unit        TEXT NOT NULL DEFAULT 'unité',
+      image_data  TEXT,                      -- photo (base64, miniature)
+      depot_qty   REAL NOT NULL DEFAULT 0,   -- en dépôt (chez nous)
+      held_qty    REAL NOT NULL DEFAULT 0,   -- chez l'employé
+      is_active   INTEGER NOT NULL DEFAULT 1,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS graissage_movements (
+      id           SERIAL PRIMARY KEY,
+      product_id   INTEGER REFERENCES graissage_products(id),
+      type         TEXT NOT NULL,            -- 'reception' | 'handout' | 'sale' | 'return' | 'adjust'
+      qty          REAL NOT NULL DEFAULT 0,
+      unit_price   REAL,                     -- prix figé au moment de la vente
+      amount       REAL,                     -- qty × unit_price (ventes)
+      client_uid   TEXT,                     -- idempotence des ventes hors-ligne
+      note         TEXT,
+      recorded_by  INTEGER REFERENCES users(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS graissage_mv_uid_idx ON graissage_movements(client_uid) WHERE client_uid IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS graissage_mv_type_idx ON graissage_movements(type, created_at DESC);
+    CREATE TABLE IF NOT EXISTS graissage_payments (
+      id           SERIAL PRIMARY KEY,
+      amount       REAL NOT NULL,
+      note         TEXT,
+      recorded_by  INTEGER REFERENCES users(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
   // Seed cuves
   const { rows: [{ c: cuvc }] } = await pgPool.query('SELECT COUNT(*) as c FROM cuves');
   if (parseInt(cuvc) === 0) {

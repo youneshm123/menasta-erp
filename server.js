@@ -76,6 +76,8 @@ async function start() {
   app.use('/api/ai/scan-receipt', express.json({ limit: '15mb' }));
   // Saving a scanned facture archives the base64 photo too — larger body.
   app.use('/api/ai/factures', express.json({ limit: '15mb' }));
+  // Graissage product photos are sent as base64 — allow a larger body.
+  app.use('/api/graissage/products', express.json({ limit: '8mb' }));
   app.use(express.json({ limit: '1mb' }));
 
   // ── Rate limiting ──
@@ -134,6 +136,16 @@ async function start() {
     'DELETE /bank/cheques/:id':      ['Banque',     'Supprimer Chèque'],
     'POST /service/entries':         ['Service',    'Saisie Service'],
     'DELETE /service/entries/:id':   ['Service',    'Supprimer Service'],
+    'POST /graissage/products':            ['Graissage', 'Ajouter Produit'],
+    'PUT /graissage/products/:id':         ['Graissage', 'Modifier Produit'],
+    'DELETE /graissage/products/:id':      ['Graissage', 'Supprimer Produit'],
+    'POST /graissage/products/:id/reception': ['Graissage', 'Réception Dépôt'],
+    'POST /graissage/products/:id/adjust': ['Graissage', 'Correction Stock'],
+    'POST /graissage/handout':             ['Graissage', 'Remise à l\'employé'],
+    'POST /graissage/return':              ['Graissage', 'Retour Stock'],
+    'POST /graissage/scan-sell':           ['Graissage', 'Vente QR'],
+    'POST /graissage/payments':            ['Graissage', 'Règlement'],
+    'DELETE /graissage/payments/:id':      ['Graissage', 'Supprimer Règlement'],
     'POST /tabac/ventes':            ['Tabac',      'Saisie Ventes'],
     'POST /tabac/produits':          ['Tabac',      'Ajouter Produit'],
     'PUT /tabac/produits/:id':       ['Tabac',      'Modifier Produit'],
@@ -217,6 +229,7 @@ async function start() {
   app.use('/api/pumps',     requireAuth, requireMinRole('caissier'), require('./routes/pumps'));
   app.use('/api/credits',   requireAuth, requireMinRole('caissier'), require('./routes/credits'));
   app.use('/api/products',  requireAuth, require('./routes/products')); // scan role allowed on /:id + /scan-sell (guarded inside)
+  app.use('/api/graissage', requireAuth, require('./routes/graissage')); // scan role allowed on /:id + /scan-sell (guarded inside)
   app.use('/api/dashboard', requireAuth, requireMinRole('caissier'), require('./routes/dashboard'));
   app.use('/api/expenses',  requireAuth, requireMinRole('caissier'), require('./routes/expenses'));
   app.use('/api/cafe',      requireAuth, requireMinRole('caissier'), require('./routes/cafe'));
@@ -290,6 +303,8 @@ async function start() {
   app.get('/boutique', page('boutique.html'));
   app.get('/scanner',  page('scanner.html'));
   app.get('/scan/:id', page('scan.html'));
+  app.get('/graissage', page('graissage.html'));
+  app.get('/gscan/:id', page('gscan.html'));
   app.get('/pompiste',        page('pompiste.html'));
   app.get('/pompiste-review', page('pompiste-review.html'));
 
