@@ -136,9 +136,13 @@ async function loadProduct() {
   }
 }
 
+let qtySel = 1;
+
 function renderProduct() {
   const held = parseFloat(product.held_qty) || 0;
   const out = held < 1;
+  qtySel = 1;
+  const stepBtn = 'width:54px;height:54px;border-radius:14px;border:1.5px solid var(--border);background:var(--surface);color:var(--primary);font-size:30px;font-weight:800;cursor:pointer;line-height:1';
   card.innerHTML =
     (product.image_data ? '<img class="pimg" src="' + esc(product.image_data) + '" alt=""/>' : '') +
     '<div class="cat">Graissage</div>' +
@@ -149,26 +153,44 @@ function renderProduct() {
     '</div>' +
     (out
       ? '<div class="msg msg-er">⚠️ Stock épuisé chez vous — demandez une remise.</div>'
-      : '<button class="btn btn-go" id="sell">Confirmer la vente · 1 ' + esc(product.unit||'unité') + '</button>');
-  foot.textContent = 'Connecté — chaque scan vend 1 unité.';
-  const b = document.getElementById('sell');
-  if (b) b.addEventListener('click', sell);
+      : '<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Quantité vendue</div>' +
+        '<div style="display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:18px">' +
+          '<button id="qminus" style="' + stepBtn + '">−</button>' +
+          '<div id="qval" style="font-size:38px;font-weight:800;min-width:60px">1</div>' +
+          '<button id="qplus" style="' + stepBtn + '">+</button>' +
+        '</div>' +
+        '<button class="btn btn-go" id="sell"></button>');
+  foot.textContent = 'Connecté — choisissez la quantité puis confirmez.';
+  if (!out) { wireStepper(held); updateSellBtn(); document.getElementById('sell').addEventListener('click', sell); }
+}
+
+// Quantity stepper: clamp between 1 and the stock available chez l'employé.
+function wireStepper(max) {
+  const set = v => { qtySel = Math.min(Math.max(1, v), Math.max(1, max)); document.getElementById('qval').textContent = qtySel; updateSellBtn(); };
+  document.getElementById('qminus').addEventListener('click', () => set(qtySel - 1));
+  document.getElementById('qplus').addEventListener('click',  () => set(qtySel + 1));
+}
+function updateSellBtn() {
+  const b = document.getElementById('sell'); if (!b) return;
+  const u = esc(product.unit || 'unité');
+  b.textContent = 'Confirmer · ' + qtySel + ' ' + u + ' = ' + fmt(product.price * qtySel) + ' DH';
 }
 
 async function sell() {
   const b = document.getElementById('sell');
   b.disabled = true; b.textContent = 'Enregistrement…';
   const uid = genUid();
+  const qty = qtySel;
   try {
     const r = await fetch('/api/graissage/scan-sell', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN },
-      body: JSON.stringify({ product_id: ID, client_uid: uid })
+      body: JSON.stringify({ product_id: ID, client_uid: uid, qty })
     });
     if (r.status === 401) return gotoLogin();
     const d = await r.json();
     if (!r.ok) {
-      b.disabled = false; b.textContent = 'Réessayer';
+      b.disabled = false; updateSellBtn();
       card.insertAdjacentHTML('afterbegin', '<div class="msg msg-er">' + (d.error || 'Erreur') + '</div>');
       return;
     }
@@ -176,14 +198,14 @@ async function sell() {
     renderSuccess(d);
   } catch (e) {
     const q = getQueue();
-    q.push({ uid, product_id: ID, ts: Date.now() });
+    q.push({ uid, product_id: ID, qty, ts: Date.now() });
     setQueue(q);
     offline = true;
-    const remaining = (parseFloat(product.held_qty) || 0) - 1;
+    const remaining = (parseFloat(product.held_qty) || 0) - qty;
     product.held_qty = remaining;
     localStorage.setItem(PKEY, JSON.stringify(product));
     banner();
-    renderQueued(remaining);
+    renderQueued(remaining, qty);
   }
 }
 
@@ -202,7 +224,7 @@ async function syncQueue() {
         r = await fetch('/api/graissage/scan-sell', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN },
-          body: JSON.stringify({ product_id: item.product_id, client_uid: item.uid })
+          body: JSON.stringify({ product_id: item.product_id, client_uid: item.uid, qty: item.qty || 1 })
         });
       } catch (netErr) {
         break;
@@ -221,15 +243,16 @@ async function syncQueue() {
 
 function renderSuccess(d) {
   const low = d.remaining_stock <= 2;
+  const q = d.qty || 1;
   card.innerHTML =
     '<div class="result">' +
       '<div class="big">✅</div>' +
       '<h2>Vendu !</h2>' +
-      '<p>' + esc(d.product_name) + '</p>' +
+      '<p>' + esc(d.product_name) + (q > 1 ? ' · ' + q + ' ' + esc(product.unit||'unité') : '') + '</p>' +
       '<p style="font-weight:700;color:var(--text);font-size:18px;margin-top:6px">' + fmt(d.total_amount) + ' DH</p>' +
       '<div class="rem ' + (low ? 'stock-low' : 'stock-ok') + '">Reste chez vous : ' + d.remaining_stock + ' ' + esc(product.unit||'') + (low ? ' ⚠️' : '') + '</div>' +
       (d.remaining_stock > 0
-        ? '<button class="btn btn-go" id="again">Vendre encore 1</button>'
+        ? '<button class="btn btn-go" id="again">Nouvelle vente</button>'
         : '<div class="msg msg-er">Stock épuisé chez vous.</div>') +
       (CAN_MANAGE ? '<button class="btn btn-ghost" onclick="location.href=\'/graissage\'">Voir le compte graissage</button>' : '') +
     '</div>';
@@ -238,18 +261,19 @@ function renderSuccess(d) {
   if (a) a.addEventListener('click', () => { renderProduct(); });
 }
 
-function renderQueued(remaining) {
+function renderQueued(remaining, q) {
+  q = q || 1;
   const low = remaining <= 2;
   card.innerHTML =
     '<div class="result">' +
       '<div class="big">🕓</div>' +
       '<h2>Vente enregistrée</h2>' +
-      '<p>' + esc(product.name) + '</p>' +
-      '<p style="font-weight:700;color:var(--text);font-size:18px;margin-top:6px">' + fmt(product.price) + ' DH</p>' +
+      '<p>' + esc(product.name) + (q > 1 ? ' · ' + q + ' ' + esc(product.unit||'unité') : '') + '</p>' +
+      '<p style="font-weight:700;color:var(--text);font-size:18px;margin-top:6px">' + fmt(product.price * q) + ' DH</p>' +
       '<div class="rem ' + (low ? 'stock-low' : 'stock-ok') + '">Reste chez vous : ' + remaining + ' ' + esc(product.unit||'') + (low ? ' ⚠️' : '') + '</div>' +
       '<div class="msg" style="background:#FFFBEB;color:#b45309">📴 Hors ligne — sera envoyée automatiquement au retour du réseau.</div>' +
       (remaining > 0
-        ? '<button class="btn btn-go" id="again">Vendre encore 1</button>'
+        ? '<button class="btn btn-go" id="again">Nouvelle vente</button>'
         : '<div class="msg msg-er">Stock épuisé chez vous.</div>') +
     '</div>';
   const a = document.getElementById('again');

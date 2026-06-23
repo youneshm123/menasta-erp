@@ -212,18 +212,20 @@ router.delete('/payments/:id', requireAuth, staff, wrap(async (req, res) => {
 router.post('/scan-sell', requireAuth, wrap(async (req, res) => {
   const product_id = parseInt(req.body && req.body.product_id);
   const client_uid = req.body && req.body.client_uid;
+  // Quantity the seller picked (default 1). Whole units only, min 1.
+  const qty = Math.max(1, Math.floor(parseFloat(req.body && req.body.qty) || 1));
   if (!product_id) return res.status(400).json({ error: 'Produit requis' });
 
   // Idempotence : une vente hors-ligne rejouée (même client_uid) → on renvoie l'existante.
   if (client_uid) {
     const { rows: dup } = await pool.query(
-      `SELECT m.id, m.amount, p.name AS product_name, p.price AS unit_price, p.held_qty
+      `SELECT m.id, m.qty, m.amount, p.name AS product_name, p.price AS unit_price, p.held_qty
        FROM graissage_movements m JOIN graissage_products p ON p.id=m.product_id
        WHERE m.client_uid=$1`, [client_uid]
     );
     if (dup[0]) {
       return res.status(200).json({
-        ok: true, duplicate: true, sale_id: dup[0].id,
+        ok: true, duplicate: true, sale_id: dup[0].id, qty: dup[0].qty,
         product_name: dup[0].product_name, unit_price: dup[0].unit_price,
         total_amount: dup[0].amount, remaining_stock: dup[0].held_qty,
       });
@@ -232,19 +234,21 @@ router.post('/scan-sell', requireAuth, wrap(async (req, res) => {
 
   const { rows: [p] } = await pool.query('SELECT * FROM graissage_products WHERE id=$1 AND is_active=1', [product_id]);
   if (!p) return res.status(404).json({ error: 'Produit introuvable' });
-  if ((parseFloat(p.held_qty) || 0) < 1) return res.status(400).json({ error: 'Stock épuisé chez l\'employé — rien à vendre' });
+  const held = parseFloat(p.held_qty) || 0;
+  if (held < 1) return res.status(400).json({ error: 'Stock épuisé chez l\'employé — rien à vendre' });
+  if (held < qty) return res.status(400).json({ error: `Stock insuffisant : il reste ${held} ${p.unit || 'unité(s)'} chez l'employé` });
 
-  const total = +(+p.price).toFixed(2);
+  const total = +(+p.price * qty).toFixed(2);
   const { rows: [{ id }] } = await pool.query(`
     INSERT INTO graissage_movements (product_id, type, qty, unit_price, amount, client_uid, recorded_by)
-    VALUES ($1,'sale',1,$2,$3,$4,$5) RETURNING id
-  `, [p.id, p.price, total, client_uid || null, req.user.id]);
-  await pool.query('UPDATE graissage_products SET held_qty=held_qty-1 WHERE id=$1', [p.id]);
+    VALUES ($1,'sale',$2,$3,$4,$5,$6) RETURNING id
+  `, [p.id, qty, p.price, total, client_uid || null, req.user.id]);
+  await pool.query('UPDATE graissage_products SET held_qty=held_qty-$1 WHERE id=$2', [qty, p.id]);
 
   res.status(201).json({
-    ok: true, sale_id: id,
+    ok: true, sale_id: id, qty,
     product_name: p.name, unit: p.unit, unit_price: p.price,
-    total_amount: total, remaining_stock: (parseFloat(p.held_qty) || 0) - 1,
+    total_amount: total, remaining_stock: held - qty,
   });
 }));
 

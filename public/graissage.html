@@ -116,8 +116,9 @@
         <div class="muted" style="font-size:13px">Articles que l'employé vend. Chaque article a une photo et un QR à scanner.</div>
         <button class="btn btn-s" onclick="openProduct()">+ Nouvel article</button>
       </div>
-      <input id="cat-search" class="g-search" placeholder="🔍 Rechercher une référence…" oninput="renderCatalogue()" autocomplete="off"/>
+      <input id="cat-search" class="g-search" placeholder="🔍 Rechercher une référence…" oninput="onCatSearch()" autocomplete="off"/>
       <div class="g-grid" id="cat-grid"></div>
+      <div id="cat-pager" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap"></div>
     </div>
 
     <!-- ══ REMISE ══ -->
@@ -206,6 +207,11 @@
       <div class="fld"><label>Unité</label><input id="f-unit" placeholder="unité / L / pièce"/></div>
       <div class="fld" id="f-depot-wrap"><label>Stock initial (dépôt)</label><input type="number" id="f-depot" step="0.01" min="0" placeholder="0"/></div>
     </div>
+    <div class="fld" id="f-held-wrap" style="display:none">
+      <label>Stock « Chez lui » — corriger</label>
+      <input type="number" id="f-held" step="0.01" min="0" placeholder="0"/>
+      <div class="muted" style="font-size:11.5px;margin-top:3px">Change directement la quantité détenue par l'employé. La correction est tracée dans le journal.</div>
+    </div>
     <div class="fld">
       <label>Photo</label>
       <input type="file" accept="image/*" capture="environment" id="f-photo" onchange="onPhoto(event)"/>
@@ -245,6 +251,11 @@ async function api(method, path, body) {
     body: body ? JSON.stringify(body) : undefined
   });
   const data = await r.json().catch(() => ({}));
+  if (r.status === 401) {            // session expirée → retour login
+    localStorage.removeItem('fm_token');
+    location.href = '/?return=' + encodeURIComponent('/graissage');
+    throw new Error('Session expirée');
+  }
   if (!r.ok) throw new Error(data.error || 'Erreur');
   return data;
 }
@@ -260,6 +271,8 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;'
 function qrLink(id){ return location.origin + '/gscan/' + id; }
 
 let _products = [];
+let catPage = 1;
+const CAT_PER_PAGE = 12;
 
 // Tabs
 const pageNames = { catalogue:'Catalogue', remise:"Remise à l'employé", compte:'Compte & Règlement', qr:'Imprimer QR', journal:'Journal' };
@@ -283,15 +296,39 @@ function searchFilter(boxId) {
   return q ? _products.filter(p => (p.name||'').toLowerCase().includes(q)) : _products;
 }
 async function loadCatalogue() {
-  _products = await api('GET', '/products');
-  renderCatalogue();
+  const grid = document.getElementById('cat-grid');
+  try {
+    _products = await api('GET', '/products');
+    renderCatalogue();
+  } catch (e) {
+    grid.innerHTML = '<div class="muted" style="padding:20px;color:#c0392b">Impossible de charger les articles : ' + esc(e.message) + '</div>';
+  }
+}
+function onCatSearch(){ catPage = 1; renderCatalogue(); }
+function gotoCatPage(p){ catPage = p; renderCatalogue(); document.getElementById('cat-search').scrollIntoView({behavior:'smooth',block:'start'}); }
+function renderPager(pages, total){
+  const pager = document.getElementById('cat-pager');
+  if (pages <= 1) { pager.innerHTML = '<div class="muted" style="font-size:12px">'+total+' article(s)</div>'; return; }
+  const mk = (label, page, disabled) =>
+    '<button class="btn btn-g" '+(disabled?'disabled style="opacity:.4;padding:8px 14px"':'style="padding:8px 14px" onclick="gotoCatPage('+page+')"')+'>'+label+'</button>';
+  pager.innerHTML =
+    mk('‹ Préc', catPage-1, catPage<=1) +
+    '<div style="font-weight:700;font-size:13px;min-width:96px;text-align:center">Page '+catPage+' / '+pages+'</div>' +
+    mk('Suiv ›', catPage+1, catPage>=pages) +
+    '<div class="muted" style="font-size:12px;margin-left:6px">('+total+' article(s))</div>';
 }
 function renderCatalogue() {
   const grid = document.getElementById('cat-grid');
+  document.getElementById('cat-pager').innerHTML = '';
   if (!_products.length) { grid.innerHTML = '<div class="muted" style="padding:20px">Aucun article. Cliquez « Nouvel article ».</div>'; return; }
   const list = searchFilter('cat-search');
   if (!list.length) { grid.innerHTML = '<div class="muted" style="padding:20px">Aucune référence ne correspond.</div>'; return; }
-  grid.innerHTML = list.map(p => {
+  const pages = Math.ceil(list.length / CAT_PER_PAGE);
+  if (catPage > pages) catPage = pages;
+  if (catPage < 1) catPage = 1;
+  const start = (catPage - 1) * CAT_PER_PAGE;
+  const pageItems = list.slice(start, start + CAT_PER_PAGE);
+  grid.innerHTML = pageItems.map(p => {
     const held = parseFloat(p.held_qty)||0, depot = parseFloat(p.depot_qty)||0;
     return `<div class="g-card">
       ${p.image_data ? `<img src="${esc(p.image_data)}" alt=""/>` : '<div class="g-noimg">🛢️</div>'}
@@ -310,6 +347,7 @@ function renderCatalogue() {
       </div>
     </div>`;
   }).join('');
+  renderPager(pages, list.length);
 }
 
 // Product modal
@@ -326,6 +364,8 @@ function openProduct(id) {
   document.getElementById('f-unit').value  = p ? (p.unit||'') : '';
   document.getElementById('f-depot').value = '';
   document.getElementById('f-depot-wrap').style.display = p ? 'none' : '';
+  document.getElementById('f-held').value = p ? (parseFloat(p.held_qty)||0) : '';
+  document.getElementById('f-held-wrap').style.display = p ? '' : 'none';
   const prev = document.getElementById('f-prev');
   if (p && p.image_data) { prev.src = p.image_data; prev.style.display='block'; } else { prev.style.display='none'; }
   document.getElementById('f-photo').value = '';
@@ -368,8 +408,17 @@ async function saveProduct() {
   if (!body.name) { toast('Nom requis', 'er'); return; }
   if (!(parseFloat(body.price) > 0)) { toast('Prix de vente requis', 'er'); return; }
   try {
-    if (editId) await api('PUT', '/products/' + editId, body);
-    else        await api('POST', '/products', body);
+    if (editId) {
+      await api('PUT', '/products/' + editId, body);
+      // If the "Chez lui" stock was changed, push a correction (tracked in the journal).
+      const orig = _products.find(x => x.id===editId);
+      const newHeld = parseFloat(document.getElementById('f-held').value);
+      if (isFinite(newHeld) && newHeld >= 0 && orig && newHeld !== (parseFloat(orig.held_qty)||0)) {
+        await api('POST', '/products/' + editId + '/adjust', { where:'held', new_qty:newHeld, note:'Correction via Modifier' });
+      }
+    } else {
+      await api('POST', '/products', body);
+    }
     closeProduct();
     toast('Article enregistré ✓');
     loadCatalogue();

@@ -830,14 +830,22 @@ router.post('/scan-receipt', requireAuth, wrap(async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const prompt = `Tu es l'assistant d'une station-service au Maroc. On te montre la PHOTO d'un reçu, ticket, facture, bon de livraison ou ticket de caisse (souvent en français ou arabe).
 
-Analyse l'image et réponds UNIQUEMENT avec un objet JSON valide (aucun texte autour, pas de markdown) avec EXACTEMENT cette structure:
+Analyse l'image LIGNE PAR LIGNE et réponds UNIQUEMENT avec un objet JSON valide (aucun texte autour, pas de markdown) avec EXACTEMENT cette structure:
 {
   "type": "depense" | "tabac" | "livraison_carburant" | "produit" | "autre",
   "fournisseur": "nom du commerçant/fournisseur ou null",
   "date": "YYYY-MM-DD ou null",
   "total": nombre (montant total TTC en MAD, ou null),
   "categorie": une valeur parmi [${RECEIPT_CATEGORIES.join(', ')}],
-  "articles": [ { "designation": "...", "quantite": nombre ou null, "prix": nombre ou null, "stock_match": "identifiant exact de la liste PRODUITS EN STOCK ou null" } ],
+  "articles": [ {
+    "designation": "libellé exact de l'article tel qu'écrit",
+    "quantite_payee": nombre d'unités FACTURÉES/payées (entier) ou null,
+    "quantite_gratuite": nombre d'unités GRATUITES/offertes (entier) ou null,
+    "quantite": nombre TOTAL d'unités reçues = payée + gratuite (entier) ou null,
+    "prix_unitaire": prix d'achat d'UNE seule unité en MAD ou null,
+    "montant_ligne": montant TOTAL de la ligne en MAD ou null,
+    "stock_match": "identifiant exact de la liste PRODUITS EN STOCK ou null"
+  } ],
   "resume": "une phrase courte en français décrivant ce reçu"
 }
 
@@ -851,7 +859,15 @@ Règles:
 - "total": le montant final payé, en nombre (ex: 200.50). Si illisible, null.
 - "date": si absente sur le reçu, mets ${today}.
 - Maximum 15 articles. Si l'image n'est pas un reçu, type="autre" et resume explique pourquoi.
-- N'invente jamais de chiffres: si tu n'es pas sûr, mets null.`;
+- N'invente jamais de chiffres: si tu n'es pas sûr, mets null.
+
+⚠️ LECTURE DES COLONNES — TRÈS IMPORTANT (erreur fréquente):
+- Une facture a des colonnes DISTINCTES. Identifie bien la colonne QUANTITÉ et la colonne PRIX, ne les inverse JAMAIS.
+- La QUANTITÉ est un petit nombre d'unités (cartons, cartouches, paquets, bidons) — rarement plus de quelques centaines.
+- Le PRIX est un montant en dirhams, souvent avec des décimales et BEAUCOUP plus grand que la quantité.
+- "prix_unitaire" = prix d'UNE unité uniquement. Ne mets JAMAIS le montant total de la ligne dans "prix_unitaire" — le total va dans "montant_ligne".
+- QUANTITÉS PROMOTIONNELLES "A+B" : les distributeurs de tabac écrivent souvent la quantité sous la forme "A+B" (A payés + B gratuits, ex "16+9", "90+9"). Dans ce cas: quantite_payee=A, quantite_gratuite=B, quantite=A+B (c'est le total reçu à mettre en stock).
+- VÉRIFICATION CROISÉE OBLIGATOIRE: montant_ligne doit être ≈ quantite_payee × prix_unitaire. Calcule-le pour chaque ligne. Si ça ne colle pas, c'est que tu as probablement confondu quantité et prix — relis la ligne et corrige avant de répondre.`;
 
   let parsed;
   try {
@@ -876,18 +892,34 @@ Règles:
 
   // Normalize / clamp
   const num = v => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+  const intOrNull = v => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : null; };
   const out = {
     type:        ['depense','tabac','livraison_carburant','produit','autre'].includes(parsed.type) ? parsed.type : 'depense',
     fournisseur: parsed.fournisseur ? String(parsed.fournisseur).slice(0, 120) : null,
     date:        /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : today,
     total:       num(parsed.total),
     categorie:   RECEIPT_CATEGORIES.includes(parsed.categorie) ? parsed.categorie : 'Autre',
-    articles:    Array.isArray(parsed.articles) ? parsed.articles.slice(0, 15).map(a => ({
-                   designation: a && a.designation ? String(a.designation).slice(0, 120) : '',
-                   quantite: a ? num(a.quantite) : null,
-                   prix: a ? num(a.prix) : null,
-                   match: a && typeof a.stock_match === 'string' && validMatch.has(a.stock_match) ? a.stock_match : null,
-                 })) : [],
+    articles:    Array.isArray(parsed.articles) ? parsed.articles.slice(0, 15).map(a => {
+                   a = a || {};
+                   const payee    = intOrNull(a.quantite_payee);
+                   const gratuite = intOrNull(a.quantite_gratuite);
+                   // Total stocked = paid + free. Trust the breakdown when present;
+                   // otherwise fall back to the flat quantite the model returned.
+                   let qte = num(a.quantite);
+                   if (payee != null) qte = payee + (gratuite || 0);
+                   // Unit price: prefer prix_unitaire; fall back to legacy "prix".
+                   const prixU = num(a.prix_unitaire) != null ? num(a.prix_unitaire) : num(a.prix);
+                   return {
+                     designation: a.designation ? String(a.designation).slice(0, 120) : '',
+                     quantite: qte,
+                     quantite_payee: payee,
+                     quantite_gratuite: gratuite,
+                     prix: prixU,                       // unit price (kept for back-compat with UI)
+                     prix_unitaire: prixU,
+                     montant_ligne: num(a.montant_ligne),
+                     match: typeof a.stock_match === 'string' && validMatch.has(a.stock_match) ? a.stock_match : null,
+                   };
+                 }) : [],
     resume:      parsed.resume ? String(parsed.resume).slice(0, 300) : '',
   };
   res.json(out);

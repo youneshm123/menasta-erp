@@ -267,8 +267,15 @@ function fillResult(d){
         + (tabacOpts ? '<optgroup label="🚬 Tabac">'+tabacOpts+'</optgroup>' : '')
         + (boutiqueOpts ? '<optgroup label="🛢️ Boutique / Huile">'+boutiqueOpts+'</optgroup>' : '');
       const qty = a.quantite != null && a.quantite > 0 ? a.quantite : 1;
-      return '<tr><td>'+esc(a.designation||'—')+'</td>'+
-        '<td style="text-align:right">'+(a.prix!=null?fmt(a.prix)+' MAD':'—')+'</td>'+
+      // Paid + free breakdown (e.g. "16 + 9 offert") when the scanner detected it.
+      const bonus = (a.quantite_payee != null && a.quantite_gratuite)
+        ? '<div style="font-size:11px;color:var(--green);font-weight:700">'+a.quantite_payee+' + '+a.quantite_gratuite+' offert</div>' : '';
+      // Unit price on top, line total underneath (more detail than before).
+      const unit = a.prix_unitaire != null ? a.prix_unitaire : a.prix;
+      const priceCell = (unit!=null ? fmt(unit)+' MAD<span style="color:var(--muted)">/u</span>' : '—')
+        + (a.montant_ligne!=null ? '<div style="font-size:11px;color:var(--muted)">= '+fmt(a.montant_ligne)+' MAD</div>' : '');
+      return '<tr><td>'+esc(a.designation||'—')+bonus+'</td>'+
+        '<td style="text-align:right">'+priceCell+'</td>'+
         '<td><select class="it-prod" data-i="'+i+'" style="width:100%;padding:7px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px;font-family:var(--font)">'+opts+'</select></td>'+
         '<td style="text-align:center"><input type="number" class="it-qty" data-i="'+i+'" value="'+qty+'" min="0" step="1" style="width:70px;padding:7px;border:1.5px solid var(--border);border-radius:7px;text-align:center;font-weight:700;font-family:var(--font)"/></td></tr>';
     }).join('');
