@@ -178,6 +178,31 @@
         <button class="btn btn-p" onclick="openAddAchat()">+ Ajouter Approvisionnement</button>
         <button class="btn btn-g btn-sm" onclick="loadStock()">Actualiser</button>
       </div>
+
+      <!-- Combien j'achète : total des factures tabac scannées -->
+      <div class="section" style="margin-bottom:16px">
+        <div class="s-head"><span class="s-title">🧾 Achats Tabac (factures scannées)</span></div>
+        <div class="s-body">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+            <div style="flex:1;min-width:150px;background:#FFF8F3;border:1px solid #F0E0D2;border-radius:10px;padding:14px 16px">
+              <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Ce mois-ci</div>
+              <div class="c-br" style="font-size:24px;font-weight:800;margin-top:4px"><span id="af-mois">0,00</span> MAD</div>
+            </div>
+            <div style="flex:1;min-width:150px;background:#FFF8F3;border:1px solid #F0E0D2;border-radius:10px;padding:14px 16px">
+              <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Total (depuis le début)</div>
+              <div class="c-br" style="font-size:24px;font-weight:800;margin-top:4px"><span id="af-total">0,00</span> MAD</div>
+            </div>
+            <div style="flex:1;min-width:120px;background:#F8FAFC;border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+              <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Factures</div>
+              <div style="font-size:24px;font-weight:800;margin-top:4px" id="af-nb">0</div>
+            </div>
+          </div>
+          <table class="t" id="af-table">
+            <thead><tr><th>Date</th><th>Fournisseur</th><th class="num">Montant</th></tr></thead>
+            <tbody id="af-body"></tbody>
+          </table>
+        </div>
+      </div>
       <div class="section" style="margin-bottom:16px">
         <div class="s-head">
           <span class="s-title">📦 Ajouter au Stock</span>
@@ -489,7 +514,27 @@ function renderHistorique() {
 }
 
 // ── STOCK ────────────────────────────────────────────────────
+async function loadAchatsFactures() {
+  try {
+    const d = await A('/api/tabac/achats-factures');
+    document.getElementById('af-mois').textContent  = fmt(d.total_mois);
+    document.getElementById('af-total').textContent = fmt(d.total_all);
+    document.getElementById('af-nb').textContent    = d.nb;
+    const tb = document.getElementById('af-body');
+    if (!d.list || !d.list.length) {
+      tb.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--muted)">Aucune facture tabac scannée</td></tr>';
+      return;
+    }
+    tb.innerHTML = d.list.map(f => `<tr>
+      <td>${f.facture_date||'—'}</td>
+      <td><strong>${f.fournisseur||'—'}</strong></td>
+      <td class="num fw7 c-br">${f.total!=null?fmt(f.total)+' MAD':'—'}</td>
+    </tr>`).join('');
+  } catch (_) { /* table reste vide */ }
+}
+
 async function loadStock() {
+  loadAchatsFactures();
   const [stock, achats, hist] = await Promise.all([
     A('/api/tabac/stock'),
     A('/api/tabac/achats'),

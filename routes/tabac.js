@@ -182,6 +182,29 @@ router.get('/achats', requireAuth, wrap(async (_req, res) => {
   res.json(rows);
 }));
 
+// ── Total acheté via les factures scannées (type=tabac) ──
+// Le vrai montant payé au fournisseur, pour savoir "combien j'achète".
+router.get('/achats-factures', requireAuth, wrap(async (_req, res) => {
+  const ym = new Date().toISOString().slice(0, 7);
+  const { rows: [s] } = await pool.query(`
+    SELECT COALESCE(SUM(total),0) AS total_all,
+           COALESCE(SUM(total) FILTER (WHERE to_char(facture_date,'YYYY-MM')=$1),0) AS total_mois,
+           COUNT(*) AS nb
+    FROM scanned_factures WHERE type='tabac'
+  `, [ym]);
+  const { rows: list } = await pool.query(`
+    SELECT id, fournisseur, total, to_char(facture_date,'YYYY-MM-DD') AS facture_date
+    FROM scanned_factures WHERE type='tabac'
+    ORDER BY facture_date DESC, id DESC LIMIT 50
+  `);
+  res.json({
+    total_all:  parseFloat(s.total_all),
+    total_mois: parseFloat(s.total_mois),
+    nb:         parseInt(s.nb, 10),
+    list,
+  });
+}));
+
 router.post('/achats', requireAuth, wrap(async (req, res) => {
   const { product_id, quantite, prix_achat, achat_date, notes } = req.body || {};
   const q = parseFloat(quantite);
