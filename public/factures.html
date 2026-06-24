@@ -40,11 +40,11 @@
 #print-overlay.open{display:flex}
 #print-frame{background:#fff;width:794px;max-width:100%;border-radius:4px;padding:40px;font-family:"Times New Roman",serif}
 @media print{
-  @page{size:A4 portrait;margin:10mm}
+  @page{size:A4 portrait;margin:0}
   body>*{display:none!important}
   #print-overlay{display:block!important;position:static;background:none;padding:0;overflow:visible}
   #print-overlay .print-actions{display:none!important}
-  #print-frame{box-shadow:none;border-radius:0;width:100%;max-width:100%;padding:0;margin:0}
+  #print-frame{box-shadow:none;border-radius:0;width:100%;max-width:100%;padding:10mm;margin:0}
   #print-frame>div{max-width:100%!important;padding:0!important;margin:0!important}
 }
 </style>
@@ -752,7 +752,8 @@ async function printSelected() {
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
     iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8">`
-      + `<style>@page{size:A4 portrait;margin:10mm}html,body{margin:0;padding:0}`
+      + `<style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0}`
+      + `body>div{padding:10mm;box-sizing:border-box}`
       + `div[style*="page-break-after"]:last-child{page-break-after:auto}</style>`
       + `</head><body>${pages}</body></html>`;
     iframe.onload = () => {
@@ -1073,7 +1074,7 @@ async function printFacture(id) {
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
   iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8">`
-    + `<style>@page{size:A4 portrait;margin:10mm}html,body{margin:0;padding:0}</style>`
+    + `<style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0}body{padding:10mm;box-sizing:border-box}</style>`
     + `</head><body>${html}</body></html>`;
   iframe.onload = () => {
     try { iframe.contentWindow.focus(); iframe.contentWindow.print(); }
