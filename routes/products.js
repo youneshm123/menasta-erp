@@ -17,6 +17,23 @@ router.post('/', requireAuth, staff, wrap(async (req, res) => {
   const { reference, name, category, unit, price, stock_qty, stock_min } = req.body || {};
   const prix = parseFloat(price);
   if (!reference || !name || !isFinite(prix) || prix <= 0) return res.status(400).json({ error: 'Référence, nom et prix valide requis' });
+
+  // The "reference" column is UNIQUE. Handle conflicts cleanly instead of letting
+  // the DB throw a 500: block a duplicate of an active product with a clear message,
+  // and reuse (reactivate) the row if that reference belonged to a deleted product.
+  const { rows: dup } = await pool.query('SELECT id, name, is_active FROM products WHERE reference=$1', [reference]);
+  if (dup[0]) {
+    if (dup[0].is_active) {
+      return res.status(409).json({ error: `La référence « ${reference} » est déjà utilisée par « ${dup[0].name} ». Choisissez une référence différente.` });
+    }
+    await pool.query(
+      'UPDATE products SET name=$1,category=$2,unit=$3,price=$4,stock_qty=$5,stock_min=$6,is_active=1 WHERE id=$7',
+      [name, category||'Huiles', unit||'unité', prix, stock_qty||0, stock_min||5, dup[0].id]
+    );
+    const { rows: [p] } = await pool.query('SELECT * FROM products WHERE id=$1', [dup[0].id]);
+    return res.status(201).json(p);
+  }
+
   const { rows: [{ id }] } = await pool.query(`
     INSERT INTO products (reference,name,category,unit,price,stock_qty,stock_min)
     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id
