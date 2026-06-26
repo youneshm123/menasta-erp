@@ -32,9 +32,34 @@ router.post('/entries', requireAuth, wrap(async (req, res) => {
   res.status(201).json(e);
 }));
 
+// ── Set the day's total for a type (replaces existing) ────────
+router.post('/set', requireAuth, wrap(async (req, res) => {
+  const { date, service_type } = req.body || {};
+  const montant = parseFloat(req.body.montant);
+  if (!TYPES.includes(service_type)) return res.status(400).json({ error: 'Type de service invalide' });
+  if (!isFinite(montant) || montant < 0) return res.status(400).json({ error: 'Montant invalide' });
+  const d = date || new Date().toISOString().slice(0, 10);
+  await pool.query('DELETE FROM service_entries WHERE entry_date=$1 AND service_type=$2', [d, service_type]);
+  if (montant > 0) {
+    await pool.query(
+      'INSERT INTO service_entries (entry_date,service_type,montant,recorded_by) VALUES ($1,$2,$3,$4)',
+      [d, service_type, +montant.toFixed(2), req.user.id]
+    );
+  }
+  res.json({ ok: true });
+}));
+
 // ── Delete one entry ──────────────────────────────────────────
 router.delete('/entries/:id', requireAuth, wrap(async (req, res) => {
   await pool.query('DELETE FROM service_entries WHERE id=$1', [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ── Delete a whole day (from historique) ──────────────────────
+router.delete('/day/:date', requireAuth, wrap(async (req, res) => {
+  const date = req.params.date;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Date invalide' });
+  await pool.query('DELETE FROM service_entries WHERE entry_date=$1', [date]);
   res.json({ ok: true });
 }));
 

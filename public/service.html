@@ -93,22 +93,20 @@
         <div class="svc-card">
           <h3>🚿 Lavage</h3>
           <div class="svc-add">
-            <input type="number" id="in-lavage" placeholder="Montant MAD" step="0.01" min="0" onkeydown="if(event.key==='Enter')addEntry('lavage')"/>
-            <button class="btn btn-s" onclick="addEntry('lavage')">+ Ajouter</button>
+            <input type="number" id="in-lavage" placeholder="Montant MAD" step="0.01" min="0" onkeydown="if(event.key==='Enter')saveType('lavage')"/>
+            <button class="btn btn-p" onclick="saveType('lavage')">💾 Enregistrer</button>
           </div>
-          <ul class="svc-list" id="list-lavage"></ul>
-          <div class="svc-sub"><span>Sous-total Lavage</span><span id="sub-lavage" class="c-g">0,00 MAD</span></div>
+          <div class="svc-sub"><span>Total Lavage</span><span id="sub-lavage" class="c-g">0,00 MAD</span></div>
         </div>
 
         <!-- GRAISSAGE -->
         <div class="svc-card">
           <h3>🛢️ Graissage</h3>
           <div class="svc-add">
-            <input type="number" id="in-graissage" placeholder="Montant MAD" step="0.01" min="0" onkeydown="if(event.key==='Enter')addEntry('graissage')"/>
-            <button class="btn btn-s" onclick="addEntry('graissage')">+ Ajouter</button>
+            <input type="number" id="in-graissage" placeholder="Montant MAD" step="0.01" min="0" onkeydown="if(event.key==='Enter')saveType('graissage')"/>
+            <button class="btn btn-p" onclick="saveType('graissage')">💾 Enregistrer</button>
           </div>
-          <ul class="svc-list" id="list-graissage"></ul>
-          <div class="svc-sub"><span>Sous-total Graissage</span><span id="sub-graissage" class="c-g">0,00 MAD</span></div>
+          <div class="svc-sub"><span>Total Graissage</span><span id="sub-graissage" class="c-g">0,00 MAD</span></div>
         </div>
       </div>
 
@@ -137,7 +135,7 @@
         </div>
         <div class="s-body">
           <table class="t" id="hist-table">
-            <thead><tr><th>Date</th><th class="num">Lavage</th><th class="num">Graissage</th><th class="num">Recette</th></tr></thead>
+            <thead><tr><th>Date</th><th class="num">Lavage</th><th class="num">Graissage</th><th class="num">Recette</th><th></th></tr></thead>
             <tbody id="hist-body"></tbody>
             <tfoot>
               <tr style="background:var(--bg2,#f5f5f7)">
@@ -145,6 +143,7 @@
                 <td class="num fw8" id="hist-tot-lavage">0,00 MAD</td>
                 <td class="num fw8" id="hist-tot-graissage">0,00 MAD</td>
                 <td class="num fw8 c-g" id="hist-tot-recette">0,00 MAD</td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
@@ -197,36 +196,33 @@ document.getElementById('top-date').textContent = new Date().toLocaleDateString(
 async function loadDay() {
   const date = document.getElementById('svc-date').value || today();
   const data = await api('GET', '/?date='+date);
-  renderType('lavage',    data.entries.filter(e=>e.service_type==='lavage'),    data.lavage);
-  renderType('graissage', data.entries.filter(e=>e.service_type==='graissage'), data.graissage);
+  setVal('lavage',    data.lavage);
+  setVal('graissage', data.graissage);
   document.getElementById('recette').textContent = fmt(data.recette) + ' MAD';
 }
-function renderType(type, entries, sub) {
-  const ul = document.getElementById('list-'+type);
-  ul.innerHTML = entries.length
-    ? entries.map(e => `<li class="svc-li"><span>${fmt(e.montant)} MAD</span><button class="svc-x" title="Supprimer" onclick="delEntry(${e.id})">🗑</button></li>`).join('')
-    : '<li class="svc-li" style="color:var(--muted);justify-content:center">Aucune entrée</li>';
+function setVal(type, sub) {
+  document.getElementById('in-'+type).value = sub ? sub : '';
   document.getElementById('sub-'+type).textContent = fmt(sub) + ' MAD';
 }
-async function addEntry(type) {
+async function saveType(type) {
   const inp = document.getElementById('in-'+type);
-  const montant = parseFloat(inp.value);
-  if (!montant || montant <= 0) { toast('Montant invalide', 'er'); return; }
+  const montant = parseFloat(inp.value || 0);
+  if (isNaN(montant) || montant < 0) { toast('Montant invalide', 'er'); return; }
   const date = document.getElementById('svc-date').value || today();
   try {
-    await api('POST', '/entries', { date, service_type: type, montant });
-    inp.value = '';
-    inp.focus();
+    await api('POST', '/set', { date, service_type: type, montant });
+    toast('Enregistré ✓');
     loadDay();
   } catch(e) { toast(e.message, 'er'); }
-}
-async function delEntry(id) {
-  try { await api('DELETE', '/entries/'+id); loadDay(); }
-  catch(e) { toast(e.message, 'er'); }
 }
 
 // ── HISTORIQUE ──
 function fmtD(d) { return String(d).slice(0,10).split('-').reverse().join('/'); }
+async function delDay(date) {
+  if (!confirm('Supprimer toutes les entrées du ' + fmtD(date) + ' ?')) return;
+  try { await api('DELETE', '/day/'+date); toast('Journée supprimée'); loadHistorique(); }
+  catch(e) { toast(e.message, 'er'); }
+}
 async function loadHistorique() {
   const from = document.getElementById('hist-from').value;
   const to   = document.getElementById('hist-to').value;
@@ -236,13 +232,16 @@ async function loadHistorique() {
   const rows = await api('GET', '/historique' + (qs.length ? '?' + qs.join('&') : ''));
   const tb = document.getElementById('hist-body');
   tb.innerHTML = rows.length
-    ? rows.map(r => `<tr>
+    ? rows.map(r => {
+        const ds = String(r.entry_date).slice(0,10);
+        return `<tr>
         <td>${fmtD(r.entry_date)}</td>
         <td class="num">${fmt(r.lavage)} MAD</td>
         <td class="num">${fmt(r.graissage)} MAD</td>
         <td class="num fw8 c-g">${fmt(r.recette)} MAD</td>
-      </tr>`).join('')
-    : '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">Aucune donnée</td></tr>';
+        <td style="text-align:center"><button class="svc-x" title="Supprimer cette journée" onclick="delDay('${ds}')">🗑</button></td>
+      </tr>`; }).join('')
+    : '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)">Aucune donnée</td></tr>';
   const tot = rows.reduce((a,r) => ({
     lavage: a.lavage + parseFloat(r.lavage||0),
     graissage: a.graissage + parseFloat(r.graissage||0),
