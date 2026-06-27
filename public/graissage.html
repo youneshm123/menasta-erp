@@ -575,15 +575,15 @@ function buildLabelDataUrl(p, qrSrc){
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, S, S);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#111111'; ctx.font = '900 62px Arial';
-  ctx.fillText('M E N A S T A', S/2, 70);
-  let fs = 60; ctx.font = '800 ' + fs + 'px Arial';
+  ctx.fillStyle = '#111111'; ctx.font = '900 84px Arial';
+  ctx.fillText('M E N A S T A', S/2, 88);
+  let fs = 58; ctx.font = '800 ' + fs + 'px Arial';
   while (ctx.measureText(p.name).width > S - 90 && fs > 26){ fs--; ctx.font = '800 ' + fs + 'px Arial'; }
-  ctx.fillText(p.name, S/2, 190);
-  const q = 580, qx = (S - q)/2, qy = 255;
+  ctx.fillText(p.name, S/2, 215);
+  const q = 560, qx = (S - q)/2, qy = 285;
   if (qrSrc) ctx.drawImage(qrSrc, qx, qy, q, q);
   ctx.fillStyle = '#111111'; ctx.font = '900 96px Arial';
-  ctx.fillText(fmt(p.price) + ' DH', S/2, 920);
+  ctx.fillText(fmt(p.price) + ' DH', S/2, 935);
   return c.toDataURL('image/png');
 }
 // items = [{ p, qty }] — print one 100x100mm sticker per label image.
@@ -598,11 +598,11 @@ async function printLabels(items) {
     for (let k = 0; k < qty; k++) imgs.push(url);
   }
   const doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Etiquettes</title><style>'
-    + '@page{size:100mm 100mm;margin:0}'
+    + '@page{size:50mm 50mm;margin:0}'
     + 'html,body{margin:0;padding:0}'
-    + '.pg{width:100mm;height:100mm;display:flex;align-items:center;justify-content:center;page-break-after:always;overflow:hidden}'
+    + '.pg{width:50mm;height:50mm;display:flex;align-items:center;justify-content:center;page-break-after:always;overflow:hidden}'
     + '.pg:last-child{page-break-after:auto}'
-    + 'img{width:50mm;height:50mm;display:block}'
+    + 'img{width:48mm;height:48mm;display:block}'
     + '</style></head><body>'
     + imgs.map(u => '<div class="pg"><img src="' + u + '"></div>').join('')
     + '</body></html>';
