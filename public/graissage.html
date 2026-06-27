@@ -553,39 +553,67 @@ function getQty(id){
   const v = parseInt(document.getElementById('qty-' + id)?.value, 10);
   return Math.max(1, Math.min(200, isFinite(v) ? v : 1));
 }
-function labelHtml(p, qrId){
-  return `<div class="lbl">
-    <div class="lbl-head">MENASTA</div>
-    <div class="lbl-body">
-      <div class="lbl-name">${esc(p.name)}</div>
-      <div class="lbl-qr" id="${qrId}"></div>
-      <div class="lbl-price">${fmt(p.price)} DH</div>
-      <div class="lbl-foot">Scannez pour enregistrer la vente</div>
-    </div>
-  </div>`;
+// Render one product's QR onto an offscreen canvas.
+function makeQrCanvas(p){
+  return new Promise(resolve => {
+    const holder = document.createElement('div');
+    holder.style.cssText = 'position:fixed;left:-9999px;top:0';
+    document.body.appendChild(holder);
+    new QRCode(holder, { text: qrLink(p.id), width: 560, height: 560,
+      colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    setTimeout(() => {
+      resolve(holder.querySelector('canvas') || holder.querySelector('img'));
+      setTimeout(() => holder.remove(), 100);
+    }, 250);
+  });
 }
-// items = [{ p, qty }] — each product repeated qty times.
-function printLabels(items) {
+// Draw a complete square label (brand bar, name, QR, price, footer) as a PNG data URL.
+// One flat image per sticker → it can never reflow or split across two labels.
+function buildLabelDataUrl(p, qrSrc){
+  const S = 1000;
+  const c = document.createElement('canvas'); c.width = S; c.height = S;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, S, S);
+  ctx.fillStyle = '#5b4fcf'; ctx.fillRect(0, 0, S, 150);      // brand bar
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff'; ctx.font = '900 60px Arial';
+  ctx.fillText('M E N A S T A', S/2, 80);
+  ctx.fillStyle = '#111111'; let fs = 60; ctx.font = '800 ' + fs + 'px Arial';
+  while (ctx.measureText(p.name).width > S - 90 && fs > 26){ fs--; ctx.font = '800 ' + fs + 'px Arial'; }
+  ctx.fillText(p.name, S/2, 240);
+  const q = 520, qx = (S - q)/2, qy = 300;
+  if (qrSrc) ctx.drawImage(qrSrc, qx, qy, q, q);
+  ctx.fillStyle = '#111111'; ctx.font = '900 92px Arial';
+  ctx.fillText(fmt(p.price) + ' DH', S/2, 885);
+  ctx.fillStyle = '#666666'; ctx.font = '400 28px Arial';
+  ctx.fillText('Scannez pour enregistrer la vente', S/2, 958);
+  return c.toDataURL('image/png');
+}
+// items = [{ p, qty }] — print one 100x100mm sticker per label image.
+async function printLabels(items) {
   items = items.filter(it => it.qty > 0);
   if (!items.length) { toast('Quantité 0 — rien à imprimer', 'er'); return; }
-  const sheet = document.getElementById('print-sheet');
-  const renders = [];
-  let html = '';
-  items.forEach(({ p, qty }) => {
-    for (let k = 0; k < qty; k++) {
-      const qrId = `pq-${p.id}-${k}`;
-      html += labelHtml(p, qrId);
-      renders.push({ qrId, p });
-    }
-  });
-  sheet.innerHTML = html;
-  renders.forEach(({ qrId, p }) => {
-    new QRCode(document.getElementById(qrId), {
-      text: qrLink(p.id), width: 600, height: 600,
-      colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
-    });
-  });
-  setTimeout(() => window.print(), 400);
+  if (typeof QRCode === 'undefined') { toast('Librairie QR non chargée, rechargez la page', 'er'); return; }
+  const imgs = [];
+  for (const { p, qty } of items) {
+    const qr = await makeQrCanvas(p);
+    const url = buildLabelDataUrl(p, qr);
+    for (let k = 0; k < qty; k++) imgs.push(url);
+  }
+  const doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Etiquettes</title><style>'
+    + '@page{size:100mm 100mm;margin:0}'
+    + 'html,body{margin:0;padding:0}'
+    + 'img{width:100mm;height:100mm;display:block;page-break-after:always}'
+    + 'img:last-child{page-break-after:auto}'
+    + '</style></head><body>'
+    + imgs.map(u => '<img src="' + u + '">').join('')
+    + '</body></html>';
+  const ifr = document.createElement('iframe');
+  ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  document.body.appendChild(ifr);
+  const w = ifr.contentWindow, d = w.document;
+  d.open(); d.write(doc); d.close();
+  setTimeout(() => { try { w.focus(); w.print(); } catch(_){} setTimeout(() => ifr.remove(), 1500); }, 500);
 }
 function printAll(){ printLabels(_products.map(p => ({ p, qty: getQty(p.id) }))); }
 function printOne(id){ const p = _products.find(x => x.id===id); if (p) printLabels([{ p, qty: getQty(id) }]); }
