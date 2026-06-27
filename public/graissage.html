@@ -50,9 +50,10 @@
 .ho-row input{width:90px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:center}
 #print-sheet{display:none}
 @media print{
-  body *{visibility:hidden}
-  #print-sheet,#print-sheet *{visibility:visible}
-  #print-sheet{display:block!important;position:absolute;left:0;top:0;width:100%}
+  /* Remove everything except the label sheet from the layout, so the printer
+     does not emit blank "rest" pages from the hidden app behind it. */
+  body.app-layout > *{display:none!important}
+  #print-sheet{display:block!important;position:static!important;width:100%;margin:0}
   .lbl{page-break-after:always;break-inside:avoid;text-align:center;padding:6mm 0}
   .lbl:last-child{page-break-after:auto}
   .lbl .nm{font-weight:800;font-size:14pt;margin-bottom:2mm}
