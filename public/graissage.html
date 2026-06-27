@@ -574,6 +574,18 @@ function buildLabelDataUrl(p, qrSrc){
   const c = document.createElement('canvas'); c.width = S; c.height = S;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, S, S);
+  // Rounded border frame
+  (function(){
+    const m = 24, r = 60, w = S - m * 2;
+    ctx.strokeStyle = '#111111'; ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(m + r, m);
+    ctx.arcTo(m + w, m,     m + w, m + w, r);
+    ctx.arcTo(m + w, m + w, m,     m + w, r);
+    ctx.arcTo(m,     m + w, m,     m,     r);
+    ctx.arcTo(m,     m,     m + w, m,     r);
+    ctx.closePath(); ctx.stroke();
+  })();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#111111'; ctx.font = '900 84px Arial';
   ctx.fillText('M E N A S T A', S/2, 72);
