@@ -576,14 +576,14 @@ function buildLabelDataUrl(p, qrSrc){
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, S, S);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#111111'; ctx.font = '900 84px Arial';
-  ctx.fillText('M E N A S T A', S/2, 88);
+  ctx.fillText('M E N A S T A', S/2, 72);
   let fs = 58; ctx.font = '800 ' + fs + 'px Arial';
   while (ctx.measureText(p.name).width > S - 90 && fs > 26){ fs--; ctx.font = '800 ' + fs + 'px Arial'; }
-  ctx.fillText(p.name, S/2, 215);
-  const q = 560, qx = (S - q)/2, qy = 285;
+  ctx.fillText(p.name, S/2, 165);
+  const q = 560, qx = (S - q)/2, qy = (S - q)/2;   // QR vertically centered
   if (qrSrc) ctx.drawImage(qrSrc, qx, qy, q, q);
   ctx.fillStyle = '#111111'; ctx.font = '900 96px Arial';
-  ctx.fillText(fmt(p.price) + ' DH', S/2, 935);
+  ctx.fillText(fmt(p.price) + ' DH', S/2, 865);
   return c.toDataURL('image/png');
 }
 // items = [{ p, qty }] — print one 100x100mm sticker per label image.
