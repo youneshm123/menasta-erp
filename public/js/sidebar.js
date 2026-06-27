@@ -78,7 +78,6 @@
     navLink('coffee',           'Café',       '/cafe') +
     navLink('cigarette',        'Tabac',      '/tabac') +
     navLink('droplets',         'Service',    '/service') +
-    navLink('qr-code',          'Boutique QR','/boutique') +
     navLink('scan-line',        'Scanner reçu','/scanner') +
     '    </div>' +
     '    <div class="ds-nav-grp">' +

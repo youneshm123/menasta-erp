@@ -149,14 +149,21 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
       consumed() { return cursor; },
     };
   }
+  // FIFO is now AUTOMATIC: every priced delivery is a layer. An opening stock is
+  // OPTIONAL — it only declares stock that existed before the first delivery.
+  // (Previously FIFO ran only when an opening-stock row existed; deleting it
+  //  silently reverted the whole history to a single flat cost.)
   const consumers = {};
   for (const f of result) {
     const op = opening[f.id];
-    if (!op) continue;
-    const ls = [{ date: op.since, liters: op.liters, cost: op.cost }];
-    for (const dlv of (deliveriesByFuel[f.id] || [])) if (dlv.date >= op.since) ls.push(dlv);
+    const ls = [];
+    if (op) ls.push({ date: op.since, liters: op.liters, cost: op.cost });
+    for (const dlv of (deliveriesByFuel[f.id] || [])) {
+      if (!op || dlv.date >= op.since) ls.push(dlv);
+    }
+    if (!ls.length) continue;  // no priced layers at all → fall back to legacy cost
     ls.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-    consumers[f.id] = makeConsumer(ls, legacyCost[f.id] || op.cost);
+    consumers[f.id] = makeConsumer(ls, legacyCost[f.id] || (op ? op.cost : 0));
   }
 
   // Parcours chronologique : coût FIFO à partir de la date de départ, ancien coût avant.
@@ -164,8 +171,9 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
   const dayCostMap = {}, dayLitersMap = {};
   for (const r of allDay) {
     const ftid = r.ftid, liters = Math.max(0, parseFloat(r.liters)), day = r.d;
-    const op = opening[ftid];
-    const dayCost = (op && day >= op.since && consumers[ftid])
+    // consume() respects each layer's date (sales before any layer overflow to
+    // legacy cost), so call it whenever layers exist for this fuel.
+    const dayCost = consumers[ftid]
       ? consumers[ftid].consume(day, liters)
       : liters * (legacyCost[ftid] || 0);
     grandCost += dayCost;
@@ -176,10 +184,12 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
   // Coût d'achat effectif (prochain litre vendu) + reste d'ancien stock, par carburant.
   for (const f of result) {
     const op = opening[f.id], cons = consumers[f.id];
-    if (op && cons) {
+    if (cons) {
       f.cost_per_liter_effective = cons.currentCost();
-      f.old_stock_remaining = Math.max(0, op.liters - cons.consumed());
-      f.opening = op;
+      if (op) {
+        f.old_stock_remaining = Math.max(0, op.liters - cons.consumed());
+        f.opening = op;
+      }
     } else {
       f.cost_per_liter_effective = legacyCost[f.id] || 0;
     }
