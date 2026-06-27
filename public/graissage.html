@@ -50,14 +50,23 @@
 .ho-row input{width:90px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:center}
 #print-sheet{display:none}
 @media print{
+  /* 100mm x 100mm label roll — one branded label per page. */
+  @page{ size:100mm 100mm; margin:0 }
   /* Remove everything except the label sheet from the layout, so the printer
      does not emit blank "rest" pages from the hidden app behind it. */
   body.app-layout > *{display:none!important}
   #print-sheet{display:block!important;position:static!important;width:100%;margin:0}
-  .lbl{page-break-after:always;break-inside:avoid;text-align:center;padding:6mm 0}
+  .lbl{width:100mm;height:100mm;box-sizing:border-box;page-break-after:always;break-inside:avoid;
+       display:flex;flex-direction:column;font-family:Arial,Helvetica,sans-serif;overflow:hidden}
   .lbl:last-child{page-break-after:auto}
-  .lbl .nm{font-weight:800;font-size:14pt;margin-bottom:2mm}
-  .lbl .pr{font-size:12pt;margin-top:2mm}
+  .lbl-head{background:#5b4fcf;color:#fff;font-weight:900;font-size:17pt;letter-spacing:3px;
+            text-align:center;padding:4mm 0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .lbl-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3mm;padding:3mm}
+  .lbl-name{font-weight:800;font-size:16pt;text-align:center;line-height:1.15;max-width:94mm;color:#111}
+  .lbl-qr{display:flex;align-items:center;justify-content:center}
+  .lbl-qr canvas,.lbl-qr img{width:50mm!important;height:50mm!important;image-rendering:pixelated}
+  .lbl-price{font-weight:900;font-size:22pt;color:#111}
+  .lbl-foot{font-size:8pt;color:#666;letter-spacing:.3px}
 }
 </style>
 </head>
@@ -523,6 +532,11 @@ function renderQR() {
       <div class="g-nm" style="margin-bottom:8px">${esc(p.name)}</div>
       <div id="qr-${p.id}" style="display:flex;justify-content:center"></div>
       <div class="g-price" style="margin-top:8px">${fmt(p.price)} DH</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px">
+        <label style="font-size:12px;color:var(--muted);font-weight:700">Quantité</label>
+        <input type="number" id="qty-${p.id}" value="1" min="1" max="200" onclick="this.select()"
+               style="width:66px;padding:7px;border:1.5px solid var(--border);border-radius:8px;text-align:center;font-weight:800;font-size:15px"/>
+      </div>
       <div style="display:flex;gap:8px;margin-top:10px">
         <button class="btn btn-g" style="flex:1" onclick="printOne(${p.id})">🖨️ Imprimer</button>
         <button class="btn btn-g" style="flex:1" onclick="downloadOne(${p.id})">🖼️ Image</button>
@@ -535,19 +549,46 @@ function renderQR() {
     });
   });
 }
-function printLabels(list) {
+function getQty(id){
+  const v = parseInt(document.getElementById('qty-' + id)?.value, 10);
+  return Math.max(1, Math.min(200, isFinite(v) ? v : 1));
+}
+function labelHtml(p, qrId){
+  return `<div class="lbl">
+    <div class="lbl-head">MENASTA</div>
+    <div class="lbl-body">
+      <div class="lbl-name">${esc(p.name)}</div>
+      <div class="lbl-qr" id="${qrId}"></div>
+      <div class="lbl-price">${fmt(p.price)} DH</div>
+      <div class="lbl-foot">Scannez pour enregistrer la vente</div>
+    </div>
+  </div>`;
+}
+// items = [{ p, qty }] — each product repeated qty times.
+function printLabels(items) {
+  items = items.filter(it => it.qty > 0);
+  if (!items.length) { toast('Quantité 0 — rien à imprimer', 'er'); return; }
   const sheet = document.getElementById('print-sheet');
-  sheet.innerHTML = list.map(p => `<div class="lbl"><div class="nm">${esc(p.name)}</div><div id="pq-${p.id}" style="display:flex;justify-content:center"></div><div class="pr">${fmt(p.price)} DH</div></div>`).join('');
-  list.forEach(p => {
-    new QRCode(document.getElementById('pq-' + p.id), {
-      text: qrLink(p.id), width: 240, height: 240,
+  const renders = [];
+  let html = '';
+  items.forEach(({ p, qty }) => {
+    for (let k = 0; k < qty; k++) {
+      const qrId = `pq-${p.id}-${k}`;
+      html += labelHtml(p, qrId);
+      renders.push({ qrId, p });
+    }
+  });
+  sheet.innerHTML = html;
+  renders.forEach(({ qrId, p }) => {
+    new QRCode(document.getElementById(qrId), {
+      text: qrLink(p.id), width: 600, height: 600,
       colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
     });
   });
-  setTimeout(() => window.print(), 350);
+  setTimeout(() => window.print(), 400);
 }
-function printAll(){ printLabels(_products); }
-function printOne(id){ const p = _products.find(x => x.id===id); if (p) printLabels([p]); }
+function printAll(){ printLabels(_products.map(p => ({ p, qty: getQty(p.id) }))); }
+function printOne(id){ const p = _products.find(x => x.id===id); if (p) printLabels([{ p, qty: getQty(id) }]); }
 
 // Télécharge le QR (avec nom + prix) comme image PNG
 function downloadOne(id){
