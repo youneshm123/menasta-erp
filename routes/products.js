@@ -113,10 +113,15 @@ router.get('/sales', requireAuth, staff, wrap(async (req, res) => {
 router.post('/sales', requireAuth, staff, wrap(async (req, res) => {
   const { shift_id, product_id, quantity } = req.body || {};
   const qty = parseFloat(quantity);
-  if (!shift_id || !product_id || !isFinite(qty) || qty <= 0) return res.status(400).json({ error: 'Quantité valide et champs obligatoires requis' });
+  if (!product_id || !isFinite(qty) || qty <= 0) return res.status(400).json({ error: 'Quantité valide et produit requis' });
 
-  const { rows: sr } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='open'", [shift_id]);
-  if (!sr.length) return res.status(400).json({ error: 'Poste non trouvé ou déjà fermé' });
+  // Poste optionnel : s'il est fourni il doit être ouvert, sinon vente boutique (shift_id NULL).
+  let sid = null;
+  if (shift_id) {
+    const { rows: sr } = await pool.query("SELECT * FROM shifts WHERE id=$1 AND status='open'", [shift_id]);
+    if (!sr.length) return res.status(400).json({ error: 'Poste non trouvé ou déjà fermé' });
+    sid = shift_id;
+  }
 
   const { rows: pr } = await pool.query('SELECT * FROM products WHERE id=$1 AND is_active=1', [product_id]);
   const product = pr[0];
@@ -127,7 +132,7 @@ router.post('/sales', requireAuth, staff, wrap(async (req, res) => {
   const { rows: [{ id }] } = await pool.query(`
     INSERT INTO product_sales (shift_id,product_id,quantity,unit_price,total_amount,recorded_by)
     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id
-  `, [shift_id, product_id, qty, product.price, total, req.user.id]);
+  `, [sid, product_id, qty, product.price, total, req.user.id]);
 
   await pool.query('UPDATE products SET stock_qty=stock_qty-$1 WHERE id=$2', [qty, product_id]);
 
@@ -139,11 +144,11 @@ router.post('/sales', requireAuth, staff, wrap(async (req, res) => {
 
 router.delete('/sales/:id', requireAuth, staff, wrap(async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT ps.*,s.status as shift_status FROM product_sales ps JOIN shifts s ON s.id=ps.shift_id WHERE ps.id=$1', [req.params.id]
+    'SELECT ps.*,s.status as shift_status FROM product_sales ps LEFT JOIN shifts s ON s.id=ps.shift_id WHERE ps.id=$1', [req.params.id]
   );
   const sale = rows[0];
   if (!sale) return res.status(404).json({ error: 'Vente introuvable' });
-  if (sale.shift_status !== 'open') return res.status(400).json({ error: 'Poste déjà fermé' });
+  if (sale.shift_id && sale.shift_status !== 'open') return res.status(400).json({ error: 'Poste déjà fermé' });
   await pool.query('UPDATE products SET stock_qty=stock_qty+$1 WHERE id=$2', [sale.quantity, sale.product_id]);
   await pool.query('DELETE FROM product_sales WHERE id=$1', [sale.id]);
   res.json({ ok: true });

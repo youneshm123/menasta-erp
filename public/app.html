@@ -2386,14 +2386,14 @@ function spRemovePending(i) { sppPending.splice(i, 1); updateSpPendingUI(); }
 function spCancel() { sppPending = []; updateSpPendingUI(); closeModal('m-sell-product'); }
 
 async function spSubmitAll() {
-  if (!S.activeShift) { toast('Aucun poste ouvert', 'wn'); return; }
   if (!sppPending.length) { toast('Ajoutez au moins un produit', 'wn'); return; }
   const btn = document.getElementById('sp-submit-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+  const shiftId = S.activeShift ? S.activeShift.id : null;   // poste optionnel — vente boutique si aucun
   let saved = 0;
   for (const p of sppPending) {
     try {
-      await api('POST', '/products/sales', { shift_id: S.activeShift.id, product_id: p.product_id, quantity: p.quantity });
+      await api('POST', '/products/sales', { shift_id: shiftId, product_id: p.product_id, quantity: p.quantity });
       saved++;
     } catch (e) { toast(`${p.name}: ${e.message}`, 'er'); }
   }
