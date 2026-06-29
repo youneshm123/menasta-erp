@@ -497,6 +497,17 @@
   </div>
 </div>
 
+<!-- CLIENT HISTORY -->
+<div class="overlay" id="m-client-history">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-hd"><span>🕑</span><h3 id="ch-title">Historique Client</h3><button class="x" onclick="closeModal('m-client-history')">×</button></div>
+    <div class="modal-body" id="ch-body" style="max-height:62vh;overflow-y:auto">Chargement…</div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-client-history')">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD CLIENT -->
 <div class="overlay" id="m-add-client">
   <div class="modal">
@@ -1559,6 +1570,7 @@ async function loadCredits() {
         ${c.balance_due > 0 ? `<button class="btn btn-s btn-xs" onclick="openPayment(${c.id},'${esc(c.name)}',${c.balance_due})">💰 Payer</button>` : ''}
         <button class="btn btn-w btn-xs" onclick="openEditClient(${c.id},'${esc(c.name)}','${esc(c.phone||'')}','${esc(c.company||'')}',${c.credit_limit||'null'})">✏️</button>
         <button class="btn btn-d btn-xs" onclick="deleteClient(${c.id},'${esc(c.name)}')">🗑️</button>
+        <button class="btn btn-xs" style="background:#F0FDF4;color:#15803D;" onclick="openClientHistory(${c.id},'${esc(c.name)}')">🕑 Historique</button>
         <button class="btn btn-xs" style="background:#EFF6FF;color:#1D4ED8;" onclick="clientReleve(${c.id},'${esc(c.name)}')">📄 Relevé</button>
       </td>
     </tr>`;
@@ -1699,6 +1711,37 @@ function rcExport(kind) {
     }
     toast('Export téléchargé ✓', 'g');
   } catch (e) { toast('Erreur export: ' + e.message, 'er'); }
+}
+
+async function openClientHistory(id, name) {
+  openModal('m-client-history');
+  document.getElementById('ch-title').textContent = 'Historique — ' + name;
+  const body = document.getElementById('ch-body');
+  body.innerHTML = 'Chargement…';
+  try {
+    const { client, sales, payments } = await api('GET', '/credits/clients/' + id + '/history');
+    const payRows = payments.length ? payments.map(p => `
+      <tr>
+        <td class="muted sm">${fmtDT(p.payment_time)}</td>
+        <td class="num fw7 c-g">+ ${fmt(p.amount)} MAD</td>
+        <td class="muted sm">${esc(p.received_by_name||'—')}</td>
+        <td class="muted sm">${esc(p.notes||'')}</td>
+      </tr>`).join('') : '<tr><td colspan="4" class="tc muted" style="padding:14px">Aucun paiement</td></tr>';
+    const saleRows = sales.length ? sales.map(s => `
+      <tr>
+        <td class="muted sm">${fmtDT(s.sale_time)}</td>
+        <td>${esc(s.pump_name||'—')}</td>
+        <td class="num fw7 c-r">${fmt(s.amount)} MAD</td>
+      </tr>`).join('') : '<tr><td colspan="3" class="tc muted" style="padding:14px">Aucun achat</td></tr>';
+    body.innerHTML = `
+      <div class="fxb" style="margin-bottom:6px"><span class="fw7">Solde dû</span><span class="fw7 ${client.balance_due>0?'c-r':'c-g'}">${fmt(client.balance_due)} MAD</span></div>
+      <div style="font-size:12px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">💰 Paiements reçus (${payments.length})</div>
+      <table class="t"><thead><tr><th>Date</th><th class="num">Montant</th><th>Reçu par</th><th>Note</th></tr></thead><tbody>${payRows}</tbody></table>
+      <div style="font-size:12px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 6px">🛒 Achats à crédit (${sales.length})</div>
+      <table class="t"><thead><tr><th>Date</th><th>Type</th><th class="num">Montant</th></tr></thead><tbody>${saleRows}</tbody></table>`;
+  } catch (e) {
+    body.innerHTML = '<div class="muted" style="padding:14px">Erreur : ' + esc(e.message) + '</div>';
+  }
 }
 
 async function clientReleve(id, name) {
