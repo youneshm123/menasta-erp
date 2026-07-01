@@ -294,7 +294,7 @@
           <div class="s-head"><div class="s-title">📅 Détail par Mois</div><div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('rpt-tbl','Rapports Mensuels')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('rpt-tbl','Rapports Mensuels')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('rpt-tbl','Rapports Mensuels')">📝 Word</button></div></div>
           <div class="s-body-flush" style="overflow-x:auto">
             <table class="t" id="rpt-tbl">
-              <thead><tr><th>Mois</th><th class="num">Postes</th><th class="num">CA Carburant</th><th class="num">Crédits</th><th class="num">Produits</th><th class="num">Dépenses</th><th class="num">Caisse Nette</th><th class="num">Bénéfice</th></tr></thead>
+              <thead><tr><th>Mois</th><th class="num">Postes</th><th class="num">Litres</th><th class="num">CA Carburant</th><th class="num">Coût Achats</th><th class="num">Marge Brute</th><th class="num">Dépenses</th><th class="num">Bénéfice Net</th></tr></thead>
               <tbody id="rpt-body"></tbody>
             </table>
           </div>
@@ -2686,31 +2686,36 @@ async function loadReports() {
     api('GET', '/stock')
   ]);
 
-  const totFuel = data.reduce((s,r)=>s+r.fuel_revenue,0);
-  const totNet  = data.reduce((s,r)=>s+r.net_cash,0);
-  const totExp  = data.reduce((s,r)=>s+r.expenses,0);
-  const totProf = data.reduce((s,r)=>s+r.profit,0);
-  const stockCost = stockData.total_cost || 0;
-  const stockCA   = stockData.total_revenue || 0;
-  const stockProfit = stockData.profit || 0;
+  const totFuel   = data.reduce((s,r)=>s+r.fuel_revenue,0);
+  const totCost   = data.reduce((s,r)=>s+(r.fuel_cost||0),0);
+  const totMargin = data.reduce((s,r)=>s+(r.gross_margin||0),0);
+  const totExp    = data.reduce((s,r)=>s+r.expenses,0);
+  const totProf   = data.reduce((s,r)=>s+r.profit,0);      // Σ (marge brute − dépenses) = bénéfice net exact
+  const pcYear    = totFuel > 0 ? ((totMargin/totFuel)*100).toFixed(1) : '0.0';
 
   document.getElementById('rpt-tiles').innerHTML = [
-    { ic:'💰', val: fmt(totFuel)+' MAD', lbl:'CA Carburant Total', tc:'var(--blue)' },
-    { ic:'🏦', val: fmt(totNet)+' MAD',  lbl:'Caisse Nette Totale', tc:'var(--green)' },
-    { ic:'💸', val: fmt(totExp)+' MAD',  lbl:'Dépenses Totales', tc:'var(--red)' },
-    { ic:'📈', val: fmt(totProf)+' MAD', lbl:'Bénéfice Net', tc: totProf>=0?'var(--green)':'var(--red)' },
+    { ic:'💰', val: fmt(totFuel)+' MAD',  lbl:'CA Carburant', tc:'var(--blue)' },
+    { ic:'🛢️', val: fmt(totCost)+' MAD',  lbl:'Coût Achats (vendu)', tc:'var(--orange)' },
+    { ic:'📊', val: fmt(totMargin)+' MAD', lbl:'Marge Brute ('+pcYear+'%)', tc:'var(--green)' },
+    { ic:'💸', val: fmt(totExp)+' MAD',    lbl:'Dépenses', tc:'var(--red)' },
+    { ic:'📈', val: fmt(totProf)+' MAD',   lbl:'Bénéfice Net', tc: totProf>=0?'var(--green)':'var(--red)' },
   ].map(t=>`<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
   const stockSummaryEl = document.getElementById('rpt-stock-summary');
   if (stockSummaryEl) {
+    // All-time snapshot from /stock (cost of fuel SOLD, not fuel purchased).
+    const stockCost   = stockData.total_cost || 0;
+    const stockCA     = stockData.total_revenue || 0;
+    const stockProfit = stockData.profit || 0;
     const pc = stockCA > 0 ? ((stockProfit/stockCA)*100).toFixed(1) : '0.0';
-    const netReel = totProf - stockCost;
+    // Correct net = gross fuel margin − expenses (of the selected year).
+    const netReel = totMargin - totExp;
     const netReelColor = netReel >= 0 ? '#188918' : '#BB0000';
     stockSummaryEl.innerHTML = `
       <div class="s-head" style="margin-top:24px"><div class="s-title">🛢️ Rentabilité Carburant (Tout Stock)</div></div>
       <div style="display:flex;gap:14px;flex-wrap:wrap;padding:16px 0">
         <div style="flex:1;min-width:140px;background:#fff;border-radius:10px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.07);border-left:4px solid #E65100">
-          <div style="font-size:11px;font-weight:700;color:#6A6D70;text-transform:uppercase;margin-bottom:4px">Coût Achats Carburant</div>
+          <div style="font-size:11px;font-weight:700;color:#6A6D70;text-transform:uppercase;margin-bottom:4px">Coût des ventes (carburant vendu)</div>
           <div style="font-size:20px;font-weight:900;color:#E65100">${fmt(stockCost)} MAD</div>
         </div>
         <div style="flex:1;min-width:140px;background:#fff;border-radius:10px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.07);border-left:4px solid #0070F2">
@@ -2723,9 +2728,9 @@ async function loadReports() {
         </div>
         <div style="flex:1;min-width:140px;background:#fff;border-radius:10px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.07);border:2px solid ${netReelColor};position:relative">
           <div style="position:absolute;top:-1px;right:10px;background:${netReelColor};color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:0 0 6px 6px;letter-spacing:.5px">RÉSULTAT FINAL</div>
-          <div style="font-size:11px;font-weight:700;color:#6A6D70;text-transform:uppercase;margin-bottom:4px">Bénéfice Net après Stock</div>
+          <div style="font-size:11px;font-weight:700;color:#6A6D70;text-transform:uppercase;margin-bottom:4px">Bénéfice Net (${year})</div>
           <div style="font-size:22px;font-weight:900;color:${netReelColor}">${fmt(netReel)} MAD</div>
-          <div style="font-size:11px;color:#6A6D70;margin-top:4px">Caisse Nette − Coût Achats</div>
+          <div style="font-size:11px;color:#6A6D70;margin-top:4px">Marge Brute − Dépenses</div>
         </div>
       </div>`;
   }
@@ -2733,14 +2738,15 @@ async function loadReports() {
   const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
   document.getElementById('rpt-body').innerHTML = data.map(r => {
     const m = parseInt(r.month.split('-')[1])-1;
+    const marginPct = r.fuel_revenue > 0 ? ((r.gross_margin / r.fuel_revenue) * 100).toFixed(1) : '0.0';
     return `<tr>
       <td class="fw7">${months[m]} ${r.month.split('-')[0]}</td>
       <td class="num">${r.shift_count}</td>
+      <td class="num">${fmt(r.liters_sold)} L</td>
       <td class="num c-b">${fmt(r.fuel_revenue)} MAD</td>
-      <td class="num c-r">-${fmt(r.credits)} MAD</td>
-      <td class="num c-g">+${fmt(r.products)} MAD</td>
+      <td class="num c-o">-${fmt(r.fuel_cost)} MAD</td>
+      <td class="num fw7 ${r.gross_margin>=0?'c-g':'c-r'}">${fmt(r.gross_margin)} MAD <span class="muted sm">(${marginPct}%)</span></td>
       <td class="num c-r">-${fmt(r.expenses)} MAD</td>
-      <td class="num fw7">${fmt(r.net_cash)} MAD</td>
       <td class="num fw8 ${r.profit>=0?'c-g':'c-r'}">${fmt(r.profit)} MAD</td>
     </tr>`;
   }).join('') || '<tr><td colspan="8" class="tc muted" style="padding:20px">Aucune donnée pour cette année</td></tr>';
