@@ -166,33 +166,6 @@
           .rc-inp:focus{border-color:var(--blue);}
         </style>
         <div class="tiles" id="credit-tiles"></div>
-        <div class="section mb4" id="recent-credits-section" style="display:none;">
-          <div class="s-head">
-            <div class="s-title">🔎 Recherche Bons Crédit</div>
-            <div class="exp-btns">
-              <button class="exp-btn exp-pdf" onclick="rcExport('pdf')">📄 PDF</button>
-              <button class="exp-btn exp-xl" onclick="rcExport('excel')">📊 Excel</button>
-              <button class="btn btn-w btn-sm" onclick="rcReset()">↺ Réinitialiser</button>
-            </div>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:12px 16px;border-bottom:1px solid var(--border-lt);">
-            <div><label class="rc-lbl">Client</label><input id="rc-q" type="text" placeholder="Nom du client…" oninput="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:180px"/></div>
-            <div><label class="rc-lbl">Bon N°</label><input id="rc-bon" type="number" min="1" placeholder="ex: 142" oninput="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:100px"/></div>
-            <div><label class="rc-lbl">Poste N°</label><input id="rc-poste" type="number" min="1" placeholder="ex: 11" oninput="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:100px"/></div>
-            <div><label class="rc-lbl">Type</label><select id="rc-type" onchange="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:130px"><option value="">Tous</option><option value="carburant">⛽ Carburant</option><option value="lubrifiant">🛢️ Lubrifiant</option><option value="espece">💵 Espèce</option></select></div>
-            <div><label class="rc-lbl">Du</label><input id="rc-from" type="date" onchange="rcPage=1;filterRecentCredits()" class="rc-inp"/></div>
-            <div><label class="rc-lbl">Au</label><input id="rc-to" type="date" onchange="rcPage=1;filterRecentCredits()" class="rc-inp"/></div>
-            <div><label class="rc-lbl">Montant min</label><input id="rc-min" type="number" min="0" step="0.01" placeholder="0" oninput="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:90px"/></div>
-            <div><label class="rc-lbl">Montant max</label><input id="rc-max" type="number" min="0" step="0.01" placeholder="∞" oninput="rcPage=1;filterRecentCredits()" class="rc-inp" style="width:90px"/></div>
-            <div><label class="rc-lbl">Tri</label><select id="rc-sort" onchange="filterRecentCredits()" class="rc-inp" style="width:150px"><option value="date_desc">Date ↓ (récent)</option><option value="date_asc">Date ↑ (ancien)</option><option value="amount_desc">Montant ↓</option><option value="amount_asc">Montant ↑</option><option value="bon_desc">Bon N° ↓</option></select></div>
-          </div>
-          <div id="rc-summary" style="padding:8px 16px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--border-lt);"></div>
-          <div class="s-body-flush" style="overflow-x:auto">
-            <table class="t" id="rc-table"><thead><tr><th>Bon N°</th><th>Client</th><th>Type</th><th>Pompe</th><th class="num">Litres</th><th class="num">Prix/L</th><th>Poste</th><th>Date</th><th>Note</th><th class="num">Montant</th></tr></thead>
-            <tbody id="recent-credits-body"></tbody></table>
-          </div>
-          <div id="rc-pager" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:12px;border-top:1px solid var(--border-lt);"></div>
-        </div>
         <div class="section">
           <div class="s-head">
             <div class="s-title">👥 Clients Crédit</div>
