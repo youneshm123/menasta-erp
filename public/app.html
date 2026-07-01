@@ -1779,32 +1779,50 @@ async function clientReleve(id, name) {
     doc.text(fmt(client.balance_due) + ' MAD', 163, 50, { align: 'center' });
     doc.setTextColor(0, 0, 0);
 
-    // Sales table
+    // Unified chronological ledger with running balance (oldest → newest)
+    const ledger = [
+      ...sales.map(s => ({
+        t: s.sale_time,
+        desc: 'Achat ' + (s.product_type || 'crédit') + (s.pump_name && s.pump_name !== 'Lubrifiant' ? ' (' + s.pump_name + ')' : ''),
+        debit: parseFloat(s.amount) || 0, credit: 0
+      })),
+      ...payments.map(p => ({
+        t: p.payment_time,
+        desc: 'Paiement reçu' + (p.notes ? ' — ' + p.notes : ''),
+        debit: 0, credit: parseFloat(p.amount) || 0
+      })),
+    ].sort((a, b) => new Date(a.t) - new Date(b.t));
+
+    let running = 0;
+    const bodyRows = ledger.map(e => {
+      running += e.debit - e.credit;
+      return [fmtDT(e.t), e.desc, e.debit ? fmt(e.debit) : '', e.credit ? fmt(e.credit) : '', fmt(running) + ' MAD'];
+    });
+    const totDebit  = sales.reduce((a, s) => a + (parseFloat(s.amount) || 0), 0);
+    const totCredit = payments.reduce((a, p) => a + (parseFloat(p.amount) || 0), 0);
+
     doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-    doc.text('Ventes Crédit (' + sales.length + ')', 14, 64);
+    doc.text('Relevé de compte', 14, 64);
     doc.autoTable({
       startY: 67,
-      head: [['Date', 'Type', 'Pompe', 'Montant']],
-      body: sales.length ? sales.map(s => [fmtDT(s.sale_time), s.product_type||'—', s.pump_name||'—', fmt(s.amount) + ' MAD']) : [['Aucune vente','','','']],
+      head: [['Date', 'Désignation', 'Débit (achat)', 'Crédit (paiement)', 'Solde']],
+      body: bodyRows.length ? bodyRows : [['—', 'Aucune opération', '', '', fmt(0) + ' MAD']],
+      foot: [['', 'TOTAUX', fmt(totDebit) + ' MAD', fmt(totCredit) + ' MAD', fmt(client.balance_due) + ' MAD']],
       styles: { fontSize: 9, cellPadding: 3 },
       headStyles: { fillColor: [91, 79, 207], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [245, 245, 255] },
-      columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } }
+      footStyles: { fillColor: [237, 237, 250], textColor: 0, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 248, 255] },
+      columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' } }
     });
 
-    // Payments table
-    const y2 = doc.lastAutoTable.finalY + 10;
+    // Closing note
+    const fy = doc.lastAutoTable.finalY + 12;
     doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-    doc.text('Paiements (' + payments.length + ')', 14, y2);
-    doc.autoTable({
-      startY: y2 + 3,
-      head: [['Date', 'Montant', 'Reçu par', 'Notes']],
-      body: payments.length ? payments.map(p => [fmtDT(p.payment_time), fmt(p.amount) + ' MAD', p.received_by_name||'—', p.notes||'—']) : [['Aucun paiement','','','']],
-      styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [34, 197, 94], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [240, 255, 245] },
-      columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } }
-    });
+    doc.setTextColor(...(client.balance_due > 0 ? [220, 38, 38] : [34, 197, 94]));
+    doc.text('Reste à payer : ' + fmt(client.balance_due) + ' MAD', 14, fy);
+    doc.setTextColor(120, 120, 120); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text('STE MENASTA — Merci de votre confiance.', 14, fy + 7);
+    doc.setTextColor(0, 0, 0);
 
     doc.save('Releve_' + name.replace(/\s+/g, '_') + '.pdf');
     toast('Relevé PDF généré ✓', 'g');
