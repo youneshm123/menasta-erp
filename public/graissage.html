@@ -567,23 +567,28 @@ function makeQrCanvas(p){
     }, 250);
   });
 }
-// Draw a complete square label (brand bar, name, QR, price, footer) as a PNG data URL.
+// Draw a 50x25mm label (QR left, product name + price right) as a PNG data URL.
 // One flat image per sticker → it can never reflow or split across two labels.
 function buildLabelDataUrl(p, qrSrc){
-  const S = 1000;
-  const c = document.createElement('canvas'); c.width = S; c.height = S;
+  const W = 1000, H = 500;   // 50 x 25 mm (2:1)
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, S, S);
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#111111'; ctx.font = '900 84px Arial';
-  ctx.fillText('M E N A S T A', S/2, 72);
-  let fs = 58; ctx.font = '800 ' + fs + 'px Arial';
-  while (ctx.measureText(p.name).width > S - 90 && fs > 26){ fs--; ctx.font = '800 ' + fs + 'px Arial'; }
-  ctx.fillText(p.name, S/2, 165);
-  const q = 560, qx = (S - q)/2, qy = (S - q)/2;   // QR vertically centered
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+  // QR on the left
+  const q = 440, qx = 30, qy = (H - q) / 2;
   if (qrSrc) ctx.drawImage(qrSrc, qx, qy, q, q);
-  ctx.fillStyle = '#111111'; ctx.font = '900 96px Arial';
-  ctx.fillText(fmt(p.price) + ' DH', S/2, 865);
+  // Product name + price on the right
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#111111';
+  const rx = (qx + q + W) / 2;      // center of the right area
+  const rw = W - (qx + q) - 40;     // available width on the right
+  let fs = 66; ctx.font = '800 ' + fs + 'px Arial';
+  while (ctx.measureText(p.name).width > rw && fs > 24){ fs--; ctx.font = '800 ' + fs + 'px Arial'; }
+  ctx.fillText(p.name, rx, 175);
+  const priceTxt = fmt(p.price) + ' DH';
+  let pf = 90; ctx.font = '900 ' + pf + 'px Arial';
+  while (ctx.measureText(priceTxt).width > rw && pf > 28){ pf--; ctx.font = '900 ' + pf + 'px Arial'; }
+  ctx.fillText(priceTxt, rx, 335);
   return c.toDataURL('image/png');
 }
 // items = [{ p, qty }] — print one 100x100mm sticker per label image.
@@ -598,11 +603,11 @@ async function printLabels(items) {
     for (let k = 0; k < qty; k++) imgs.push(url);
   }
   const doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Etiquettes</title><style>'
-    + '@page{size:50mm 50mm;margin:0}'
+    + '@page{size:50mm 25mm;margin:0}'
     + 'html,body{margin:0;padding:0}'
-    + '.pg{width:50mm;height:50mm;display:flex;align-items:center;justify-content:center;page-break-after:always;overflow:hidden}'
+    + '.pg{width:50mm;height:25mm;display:flex;align-items:center;justify-content:center;page-break-after:always;overflow:hidden}'
     + '.pg:last-child{page-break-after:auto}'
-    + 'img{width:50mm;height:50mm;display:block}'
+    + 'img{width:50mm;height:25mm;display:block}'
     + '</style></head><body>'
     + imgs.map(u => '<div class="pg"><img src="' + u + '"></div>').join('')
     + '</body></html>';
