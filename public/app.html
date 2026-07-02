@@ -1233,8 +1233,10 @@ async function loadShiftPage() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
           <div>
             <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Catégorie</label>
-            <select id="sd-cat" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13.5px;font-family:var(--font);background:var(--surface);">
-              <option>Maintenance</option><option>Salaires</option><option>Fournitures</option><option>Carburant</option><option>Loyer</option><option>Autre</option>
+            <select id="sd-cat" onchange="sdCatChange()" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13.5px;font-family:var(--font);background:var(--surface);">
+              <option value="Maintenance">Maintenance</option><option value="Salaires">Salaires</option><option value="Fournitures">Fournitures</option><option value="Carburant">Carburant</option><option value="Loyer">Loyer</option><option value="Électricité">Électricité</option><option value="Autre">Autre</option>
+              <option value="__FREEFUEL__">⛽ Gazoil Gratuit (hors dépenses)</option>
+              <option value="__EMPADV__">👷 Avance Employé (hors dépenses)</option>
             </select>
           </div>
           <div>
@@ -1249,6 +1251,10 @@ async function loadShiftPage() {
               style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13.5px;font-family:var(--font);background:var(--surface);box-sizing:border-box;"
               onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"
               onkeydown="if(event.key==='Enter') shiftAddDepense()"/>
+          </div>
+          <div id="sd-emp-wrap" style="grid-column:1/-1;display:none;">
+            <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Employé *</label>
+            <select id="sd-emp" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13.5px;font-family:var(--font);background:var(--surface);"></select>
           </div>
         </div>
         <button class="btn btn-p" style="width:100%;font-size:14px;" onclick="shiftAddDepense()">💸 Enregistrer la Dépense</button>
@@ -1286,26 +1292,51 @@ async function shiftLoadDepenses() {
   } catch(e) { /* silent */ }
 }
 
+// Show the employee picker only for the "Avance Employé" category.
+function sdCatChange() {
+  const cat  = document.getElementById('sd-cat')?.value;
+  const wrap = document.getElementById('sd-emp-wrap');
+  if (!wrap) return;
+  if (cat === '__EMPADV__') { wrap.style.display = ''; populateSdEmployees(); }
+  else { wrap.style.display = 'none'; }
+}
+async function populateSdEmployees() {
+  const sel = document.getElementById('sd-emp');
+  if (!sel || sel.dataset.loaded) return;
+  try {
+    const emps = await api('GET', '/employees');
+    sel.innerHTML = emps.length ? emps.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('')
+                                : '<option value="">Aucun employé — créez-en un</option>';
+    sel.dataset.loaded = '1';
+  } catch(_) { sel.innerHTML = '<option value="">Erreur de chargement</option>'; }
+}
+
 async function shiftAddDepense() {
   const desc   = (document.getElementById('sd-desc')?.value || '').trim();
   const amount = parseFloat(document.getElementById('sd-amount')?.value || 0);
   const cat    = document.getElementById('sd-cat')?.value || 'Autre';
-  if (!desc)            { toast('Description requise', 'wn'); return; }
+  const today10 = new Date().toISOString().slice(0,10);
   if (!amount || amount <= 0) { toast('Montant invalide', 'er'); return; }
   try {
-    await api('POST', '/expenses', {
-      category: cat,
-      description: desc,
-      amount,
-      expense_date: new Date().toISOString().slice(0,10),
-      notes: '',
-      shift_id: S.activeShift?.id || null
-    });
+    if (cat === '__FREEFUEL__') {
+      // Gazoil gratuit → tracked in Carburant Gratuit, NOT in Dépenses.
+      if (!desc) { toast('Indiquez le bénéficiaire dans la description', 'wn'); return; }
+      await api('POST', '/fuelwd', { taker_name: desc, category: 'Autre', amount, liters: 0, wdate: today10, note: 'via poste' });
+      toast('⛽ Gazoil gratuit enregistré (hors dépenses) ✓');
+    } else if (cat === '__EMPADV__') {
+      // Avance employé → coupée du salaire, NOT in Dépenses.
+      const empId = document.getElementById('sd-emp')?.value;
+      if (!empId) { toast('Choisissez un employé', 'wn'); return; }
+      await api('POST', '/employees/' + empId + '/advances', { amount, note: desc || 'via poste', advance_date: today10 });
+      toast('👷 Avance employé enregistrée (hors dépenses) ✓');
+    } else {
+      if (!desc) { toast('Description requise', 'wn'); return; }
+      await api('POST', '/expenses', { category: cat, description: desc, amount, expense_date: today10, notes: '', shift_id: S.activeShift?.id || null });
+      toast('Dépense enregistrée ✓');
+    }
     document.getElementById('sd-desc').value   = '';
     document.getElementById('sd-amount').value = '';
-    toast('Dépense enregistrée ✓');
     shiftLoadDepenses();
-    // Refresh main expenses page if it's active
     if (document.querySelector('#p-expenses.active')) loadExpenses();
   } catch(e) { toast(e.message, 'er'); }
 }
