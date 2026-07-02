@@ -522,6 +522,50 @@ async function initDB() {
     );
   `);
 
+  // ── Employés + salaires ──
+  // Each employee has a monthly salary. When they take money in advance we log
+  // an "avance" — the reste à payer for a month = salaire − avances du mois.
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS employees (
+      id             SERIAL PRIMARY KEY,
+      name           TEXT NOT NULL,
+      monthly_salary NUMERIC(16,4) NOT NULL DEFAULT 0,
+      phone          TEXT,
+      notes          TEXT,
+      is_active      INTEGER NOT NULL DEFAULT 1,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS employee_advances (
+      id           SERIAL PRIMARY KEY,
+      employee_id  INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      amount       NUMERIC(16,4) NOT NULL,
+      advance_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      note         TEXT,
+      recorded_by  INTEGER REFERENCES users(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_emp_adv ON employee_advances(employee_id, advance_date DESC);
+  `);
+
+  // ── Prélèvements carburant (gazoil gratuit famille / employés) ──
+  // Fuel taken for free (family, staff, patron). Tracked separately — NOT an
+  // expense, so it never pollutes the "Dépenses" totals.
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS fuel_withdrawals (
+      id           SERIAL PRIMARY KEY,
+      taker_name   TEXT NOT NULL,
+      category     TEXT NOT NULL DEFAULT 'Famille',   -- Famille | Employé | Patron | Autre
+      fuel_type_id INTEGER REFERENCES fuel_types(id),
+      liters       NUMERIC(16,4) NOT NULL DEFAULT 0,
+      amount       NUMERIC(16,4) NOT NULL DEFAULT 0,  -- valeur MAD
+      wdate        DATE NOT NULL DEFAULT CURRENT_DATE,
+      note         TEXT,
+      recorded_by  INTEGER REFERENCES users(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_fuelwd_date ON fuel_withdrawals(wdate DESC);
+  `);
+
   // Seed cuves
   const { rows: [{ c: cuvc }] } = await pgPool.query('SELECT COUNT(*) as c FROM cuves');
   if (parseInt(cuvc) === 0) {

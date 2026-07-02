@@ -81,6 +81,8 @@
     <div class="nav-section">Analyses</div>
     <div class="nav-item" data-p="reports"><span class="ni"><i data-lucide="bar-chart-2"></i></span>Rapports Mensuels</div>
     <div class="nav-item" data-p="expenses"><span class="ni"><i data-lucide="wallet"></i></span>Dépenses</div>
+    <div class="nav-item" data-p="employees"><span class="ni"><i data-lucide="users"></i></span>Employés & Salaires</div>
+    <div class="nav-item" data-p="freefuel"><span class="ni"><i data-lucide="fuel"></i></span>Carburant Gratuit</div>
     <div class="nav-item" data-p="stock"><span class="ni"><i data-lucide="gauge"></i></span>Stock Carburant</div>
 
     <div class="nav-divider"></div>
@@ -292,6 +294,51 @@
             <table class="t" id="exp-tbl">
               <thead><tr><th>Date</th><th>Catégorie</th><th>Description</th><th class="num">Montant</th><th></th></tr></thead>
               <tbody id="exp-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PAGE: EMPLOYÉS & SALAIRES ══ -->
+      <div class="page" id="p-employees">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+          <input type="month" id="emp-month" class="sel" onchange="loadEmployees()"/>
+          <button class="btn btn-p btn-sm" onclick="openAddEmployee()">+ Nouvel Employé</button>
+        </div>
+        <div class="tiles" id="emp-tiles"></div>
+        <div class="section mt4">
+          <div class="s-head">
+            <div class="s-title">👥 Employés — Salaires & Avances</div>
+            <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('emp-tbl','Salaires Employes')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('emp-tbl','Salaires Employes')">📊 Excel</button></div>
+          </div>
+          <div class="s-body-flush" style="overflow-x:auto">
+            <table class="t" id="emp-tbl">
+              <thead><tr><th>Employé</th><th class="num">Salaire</th><th class="num">Avances (mois)</th><th class="num">Reste à Payer</th><th>Actions</th></tr></thead>
+              <tbody id="emp-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PAGE: CARBURANT GRATUIT ══ -->
+      <div class="page" id="p-freefuel">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+          <input type="month" id="ff-month" class="sel" onchange="loadFreeFuel()"/>
+          <button class="btn btn-p btn-sm" onclick="openAddFreeFuel()">+ Prélèvement</button>
+        </div>
+        <div style="padding:10px 14px;margin-bottom:14px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;font-size:13px;color:#1E40AF">
+          ℹ️ Le carburant pris gratuitement (famille, employés) est suivi ici — <strong>il n'entre PAS dans les Dépenses</strong>.
+        </div>
+        <div class="tiles" id="ff-tiles"></div>
+        <div class="section mt4">
+          <div class="s-head">
+            <div class="s-title">⛽ Prélèvements Carburant Gratuit</div>
+            <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('ff-tbl','Carburant Gratuit')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('ff-tbl','Carburant Gratuit')">📊 Excel</button></div>
+          </div>
+          <div class="s-body-flush" style="overflow-x:auto">
+            <table class="t" id="ff-tbl">
+              <thead><tr><th>Date</th><th>Bénéficiaire</th><th>Catégorie</th><th>Carburant</th><th class="num">Litres</th><th class="num">Valeur</th><th></th></tr></thead>
+              <tbody id="ff-body"></tbody>
             </table>
           </div>
         </div>
@@ -687,6 +734,79 @@
   </div>
 </div>
 
+<!-- ADD / EDIT EMPLOYEE -->
+<div class="overlay" id="m-add-employee">
+  <div class="modal">
+    <div class="modal-hd"><span>👤</span><h3 id="emp-modal-title">Nouvel Employé</h3><button class="x" onclick="closeModal('m-add-employee')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="emp-id"/>
+      <div class="fgrid">
+        <div class="fg"><label>Nom *</label><input id="emp-name" placeholder="Nom de l'employé"/></div>
+        <div class="fg"><label>Salaire Mensuel (MAD) *</label><input type="number" id="emp-salary" placeholder="0.00" step="0.01" min="0"/></div>
+        <div class="fg"><label>Téléphone</label><input id="emp-phone" placeholder="facultatif"/></div>
+        <div class="fg"><label>Notes</label><input id="emp-notes" placeholder="facultatif"/></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-add-employee')">Annuler</button>
+      <button class="btn btn-p" onclick="submitEmployee()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ADVANCE -->
+<div class="overlay" id="m-add-advance">
+  <div class="modal">
+    <div class="modal-hd"><span>💵</span><h3 id="adv-title">Avance</h3><button class="x" onclick="closeModal('m-add-advance')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="adv-emp-id"/>
+      <div class="fgrid">
+        <div class="fg" style="grid-column:1/-1"><label style="font-size:15px;font-weight:700">Montant pris (MAD) *</label>
+          <input type="number" id="adv-amount" placeholder="0.00" step="0.01" min="0" style="font-size:26px;font-weight:900;text-align:center;padding:12px;border:3px solid var(--orange);border-radius:8px;"/></div>
+        <div class="fg"><label>Date</label><input type="date" id="adv-date"/></div>
+        <div class="fg"><label>Note</label><input id="adv-note" placeholder="facultatif"/></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-add-advance')">Annuler</button>
+      <button class="btn btn-s" onclick="submitAdvance()">✅ Enregistrer l'avance</button>
+    </div>
+  </div>
+</div>
+
+<!-- EMPLOYEE HISTORY -->
+<div class="overlay" id="m-emp-history">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-hd"><span>🕑</span><h3 id="emph-title">Historique</h3><button class="x" onclick="closeModal('m-emp-history')">×</button></div>
+    <div class="modal-body" id="emph-body" style="max-height:62vh;overflow-y:auto">Chargement…</div>
+    <div class="modal-ft"><button class="btn btn-g" onclick="closeModal('m-emp-history')">Fermer</button></div>
+  </div>
+</div>
+
+<!-- ADD FREE FUEL WITHDRAWAL -->
+<div class="overlay" id="m-add-freefuel">
+  <div class="modal">
+    <div class="modal-hd"><span>⛽</span><h3>Prélèvement Carburant Gratuit</h3><button class="x" onclick="closeModal('m-add-freefuel')">×</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label>Bénéficiaire *</label><input id="ff-name" placeholder="Ex: Famille / Nom employé"/></div>
+        <div class="fg"><label>Catégorie</label>
+          <select id="ff-cat"><option>Famille</option><option>Employé</option><option>Patron</option><option>Autre</option></select>
+        </div>
+        <div class="fg"><label>Carburant</label><select id="ff-fuel"></select></div>
+        <div class="fg"><label>Date</label><input type="date" id="ff-date"/></div>
+        <div class="fg"><label>Litres</label><input type="number" id="ff-liters" placeholder="0.00" step="0.01" min="0" oninput="ffAutoAmount()"/></div>
+        <div class="fg"><label>Valeur (MAD) *</label><input type="number" id="ff-amount" placeholder="0.00" step="0.01" min="0"/></div>
+        <div class="fg" style="grid-column:1/-1"><label>Note</label><input id="ff-note" placeholder="facultatif"/></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-add-freefuel')">Annuler</button>
+      <button class="btn btn-p" onclick="submitFreeFuel()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD DELIVERY -->
 <div class="overlay" id="m-add-delivery">
   <div class="modal">
@@ -840,6 +960,8 @@ async function loadPage(p) {
     case 'pumps':          await loadPumps();       break;
     case 'reports':        await initReportsYear(); break;
     case 'expenses':       await loadExpenses();    break;
+    case 'employees':      await loadEmployees();   break;
+    case 'freefuel':       await loadFreeFuel();    break;
     case 'stock':          await loadStock();       break;
     case 'settings':       loadSettings();          break;
   }
@@ -2758,6 +2880,181 @@ async function loadExpenses() {
       <td class="num fw7 c-r">${fmt(e.amount)} MAD</td>
       <td><button class="btn btn-d btn-xs" onclick="deleteExpense(${e.id})">✕</button></td>
     </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucune dépense enregistrée</td></tr>';
+}
+
+// ─── EMPLOYÉS & SALAIRES ────────────────────────────────────
+function empMonth() {
+  const el = document.getElementById('emp-month');
+  if (el && !el.value) el.value = new Date().toISOString().slice(0,7);
+  return el ? el.value : new Date().toISOString().slice(0,7);
+}
+async function loadEmployees() {
+  const month = empMonth();
+  const data = await api('GET', '/employees?month=' + month);
+  const totSal = data.reduce((s,e)=>s+e.monthly_salary,0);
+  const totAdv = data.reduce((s,e)=>s+e.advances_month,0);
+  const totRest= data.reduce((s,e)=>s+e.reste,0);
+  document.getElementById('emp-tiles').innerHTML = [
+    { ic:'👥', val: data.length, lbl:'Employés', tc:'var(--blue)' },
+    { ic:'💰', val: fmt(totSal)+' MAD', lbl:'Total Salaires', tc:'var(--purple)' },
+    { ic:'💵', val: fmt(totAdv)+' MAD', lbl:'Avances (mois)', tc:'var(--orange)' },
+    { ic:'🧾', val: fmt(totRest)+' MAD', lbl:'Reste à Payer', tc: totRest>=0?'var(--green)':'var(--red)' },
+  ].map(t=>`<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
+  document.getElementById('emp-body').innerHTML = data.map(e=>`
+    <tr>
+      <td class="fw7">${esc(e.name)}${e.phone?` <span class="muted sm">· ${esc(e.phone)}</span>`:''}</td>
+      <td class="num">${fmt(e.monthly_salary)} MAD</td>
+      <td class="num c-o">${e.advances_month>0?'-':''}${fmt(e.advances_month)} MAD</td>
+      <td class="num fw8 ${e.reste>=0?'c-g':'c-r'}">${fmt(e.reste)} MAD</td>
+      <td style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn btn-s btn-xs" onclick="openAdvance(${e.id},'${esc(e.name)}')">💵 Avance</button>
+        <button class="btn btn-xs" style="background:#F0FDF4;color:#15803D" onclick="openEmpHistory(${e.id},'${esc(e.name)}')">🕑 Historique</button>
+        <button class="btn btn-w btn-xs" onclick='openEditEmployee(${JSON.stringify(e)})'>✏️</button>
+        <button class="btn btn-d btn-xs" onclick="deleteEmployee(${e.id},'${esc(e.name)}')">🗑️</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucun employé</td></tr>';
+}
+function openAddEmployee() {
+  document.getElementById('emp-modal-title').textContent = 'Nouvel Employé';
+  document.getElementById('emp-id').value = '';
+  ['emp-name','emp-salary','emp-phone','emp-notes'].forEach(id=>document.getElementById(id).value='');
+  openModal('m-add-employee');
+}
+function openEditEmployee(e) {
+  document.getElementById('emp-modal-title').textContent = 'Modifier Employé';
+  document.getElementById('emp-id').value = e.id;
+  document.getElementById('emp-name').value = e.name || '';
+  document.getElementById('emp-salary').value = e.monthly_salary || 0;
+  document.getElementById('emp-phone').value = e.phone || '';
+  document.getElementById('emp-notes').value = e.notes || '';
+  openModal('m-add-employee');
+}
+async function submitEmployee() {
+  const id = document.getElementById('emp-id').value;
+  const name = document.getElementById('emp-name').value.trim();
+  const monthly_salary = parseFloat(document.getElementById('emp-salary').value) || 0;
+  if (!name) { toast('Nom requis', 'er'); return; }
+  const body = { name, monthly_salary, phone: document.getElementById('emp-phone').value, notes: document.getElementById('emp-notes').value };
+  try {
+    if (id) await api('PUT', '/employees/' + id, body);
+    else    await api('POST', '/employees', body);
+    closeModal('m-add-employee'); toast('Employé enregistré ✓'); loadEmployees();
+  } catch(e) { toast(e.message, 'er'); }
+}
+async function deleteEmployee(id, name) {
+  if (!confirm('Retirer « ' + name + ' » de la liste ?')) return;
+  try { await api('DELETE', '/employees/' + id); toast('Employé retiré'); loadEmployees(); }
+  catch(e) { toast(e.message, 'er'); }
+}
+function openAdvance(id, name) {
+  document.getElementById('adv-title').textContent = 'Avance — ' + name;
+  document.getElementById('adv-emp-id').value = id;
+  document.getElementById('adv-amount').value = '';
+  document.getElementById('adv-note').value = '';
+  document.getElementById('adv-date').value = today;
+  openModal('m-add-advance');
+}
+async function submitAdvance() {
+  const id = document.getElementById('adv-emp-id').value;
+  const amount = parseFloat(document.getElementById('adv-amount').value);
+  if (!isFinite(amount) || amount <= 0) { toast('Montant invalide', 'er'); return; }
+  try {
+    await api('POST', '/employees/' + id + '/advances', { amount, advance_date: document.getElementById('adv-date').value, note: document.getElementById('adv-note').value });
+    closeModal('m-add-advance'); toast('Avance enregistrée ✓'); loadEmployees();
+  } catch(e) { toast(e.message, 'er'); }
+}
+async function openEmpHistory(id, name) {
+  openModal('m-emp-history');
+  document.getElementById('emph-title').textContent = 'Avances — ' + name;
+  const body = document.getElementById('emph-body');
+  body.innerHTML = 'Chargement…';
+  try {
+    const rows = await api('GET', '/employees/' + id + '/advances');
+    const total = rows.reduce((s,r)=>s+parseFloat(r.amount||0),0);
+    body.innerHTML = `
+      <div class="fxb" style="margin-bottom:8px"><span class="fw7">Total avances</span><span class="fw7 c-o">${fmt(total)} MAD</span></div>
+      <table class="t"><thead><tr><th>Date</th><th class="num">Montant</th><th>Note</th><th>Par</th><th></th></tr></thead><tbody>${
+        rows.length ? rows.map(r=>`<tr>
+          <td class="muted sm">${fmtDate(r.advance_date)}</td>
+          <td class="num fw7 c-o">${fmt(r.amount)} MAD</td>
+          <td class="muted sm">${esc(r.note||'')}</td>
+          <td class="muted sm">${esc(r.recorded_by_name||'?')}</td>
+          <td><button class="btn btn-d btn-xs" onclick="deleteAdvance(${r.id},${id},'${esc(name)}')">✕</button></td>
+        </tr>`).join('') : '<tr><td colspan="5" class="tc muted" style="padding:14px">Aucune avance</td></tr>'
+      }</tbody></table>`;
+  } catch(e) { body.innerHTML = '<div class="muted" style="padding:14px">Erreur : ' + esc(e.message) + '</div>'; }
+}
+async function deleteAdvance(id, empId, name) {
+  if (!confirm('Supprimer cette avance ?')) return;
+  try { await api('DELETE', '/employees/advances/' + id); toast('Avance supprimée'); openEmpHistory(empId, name); loadEmployees(); }
+  catch(e) { toast(e.message, 'er'); }
+}
+
+// ─── CARBURANT GRATUIT (prélèvements) ───────────────────────
+function ffMonth() {
+  const el = document.getElementById('ff-month');
+  if (el && !el.value) el.value = new Date().toISOString().slice(0,7);
+  return el ? el.value : new Date().toISOString().slice(0,7);
+}
+async function loadFreeFuel() {
+  const month = ffMonth();
+  const [rows, summary] = await Promise.all([
+    api('GET', '/fuelwd?month=' + month),
+    api('GET', '/fuelwd/summary?month=' + month),
+  ]);
+  const byCat = Object.fromEntries((summary.by_cat||[]).map(c=>[c.category, parseFloat(c.total)]));
+  document.getElementById('ff-tiles').innerHTML = [
+    { ic:'⛽', val: fmt(summary.liters)+' L', lbl:'Litres Gratuits (mois)', tc:'var(--blue)' },
+    { ic:'💸', val: fmt(summary.total)+' MAD', lbl:'Valeur Totale (mois)', tc:'var(--red)' },
+    { ic:'👨‍👩‍👧', val: fmt(byCat['Famille']||0)+' MAD', lbl:'Famille', tc:'var(--purple)' },
+    { ic:'👷', val: fmt(byCat['Employé']||0)+' MAD', lbl:'Employés', tc:'var(--orange)' },
+  ].map(t=>`<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
+  document.getElementById('ff-body').innerHTML = rows.map(w=>`
+    <tr>
+      <td class="muted sm">${fmtDate(w.wdate)}</td>
+      <td class="fw7">${esc(w.taker_name)}</td>
+      <td><span class="st st-gr">${esc(w.category)}</span></td>
+      <td>${esc(w.fuel_name||'—')}</td>
+      <td class="num">${fmt(w.liters)} L</td>
+      <td class="num fw7 c-r">${fmt(w.amount)} MAD</td>
+      <td><button class="btn btn-d btn-xs" onclick="deleteFreeFuel(${w.id})">✕</button></td>
+    </tr>`).join('') || '<tr><td colspan="7" class="tc muted" style="padding:20px">Aucun prélèvement</td></tr>';
+}
+function openAddFreeFuel() {
+  ['ff-name','ff-liters','ff-amount','ff-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ff-cat').value = 'Famille';
+  document.getElementById('ff-date').value = today;
+  const sel = document.getElementById('ff-fuel');
+  const fuels = (S.fuelTypes || []);
+  sel.innerHTML = '<option value="">—</option>' + fuels.map(f=>`<option value="${f.id}" data-price="${f.price_per_liter||0}">${f.name}</option>`).join('');
+  openModal('m-add-freefuel');
+}
+function ffAutoAmount() {
+  const sel = document.getElementById('ff-fuel');
+  const opt = sel.options[sel.selectedIndex];
+  const price = opt ? parseFloat(opt.getAttribute('data-price')) || 0 : 0;
+  const liters = parseFloat(document.getElementById('ff-liters').value) || 0;
+  if (price > 0 && liters > 0) document.getElementById('ff-amount').value = (price * liters).toFixed(2);
+}
+async function submitFreeFuel() {
+  const taker_name = document.getElementById('ff-name').value.trim();
+  if (!taker_name) { toast('Bénéficiaire requis', 'er'); return; }
+  const liters = parseFloat(document.getElementById('ff-liters').value) || 0;
+  const amount = parseFloat(document.getElementById('ff-amount').value) || 0;
+  if (amount <= 0 && liters <= 0) { toast('Litres ou valeur requis', 'er'); return; }
+  try {
+    await api('POST', '/fuelwd', {
+      taker_name, category: document.getElementById('ff-cat').value,
+      fuel_type_id: document.getElementById('ff-fuel').value || null,
+      liters, amount, wdate: document.getElementById('ff-date').value, note: document.getElementById('ff-note').value,
+    });
+    closeModal('m-add-freefuel'); toast('Prélèvement enregistré ✓'); loadFreeFuel();
+  } catch(e) { toast(e.message, 'er'); }
+}
+async function deleteFreeFuel(id) {
+  if (!confirm('Supprimer ce prélèvement ?')) return;
+  try { await api('DELETE', '/fuelwd/' + id); toast('Supprimé'); loadFreeFuel(); }
+  catch(e) { toast(e.message, 'er'); }
 }
 
 // ─── AI SMART INPUT ─────────────────────────────────────────

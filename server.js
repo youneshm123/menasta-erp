@@ -232,6 +232,8 @@ async function start() {
   app.use('/api/graissage', requireAuth, require('./routes/graissage')); // scan role allowed on /:id + /scan-sell (guarded inside)
   app.use('/api/dashboard', requireAuth, requireMinRole('caissier'), require('./routes/dashboard'));
   app.use('/api/expenses',  requireAuth, requireMinRole('caissier'), require('./routes/expenses'));
+  app.use('/api/employees', requireAuth, requireMinRole('gerant'),   require('./routes/employees'));
+  app.use('/api/fuelwd',    requireAuth, requireMinRole('gerant'),   require('./routes/fuelwd'));
   app.use('/api/cafe',      requireAuth, requireMinRole('caissier'), require('./routes/cafe'));
   app.use('/api/tabac',     requireAuth, requireMinRole('caissier'), require('./routes/tabac'));
   app.use('/api/service',   requireAuth, requireMinRole('caissier'), require('./routes/service'));
