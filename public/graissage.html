@@ -570,24 +570,20 @@ function makeQrCanvas(p){
 // Draw a 50x25mm label (QR left, product name + price right) as a PNG data URL.
 // One flat image per sticker → it can never reflow or split across two labels.
 function buildLabelDataUrl(p, qrSrc){
-  const W = 1000, H = 600;   // 50 x 30 mm (5:3)
+  const W = 1000, H = 1000;   // 100 x 100 mm (1:1)
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
-  // Smaller QR with safe margins so nothing is clipped at the label edges.
-  const q = 400, qx = 70, qy = 80;
+  // Large centred QR with safe margins so nothing is clipped at the edges.
+  const q = 640, qx = (W - q) / 2, qy = 150;
   if (qrSrc) ctx.drawImage(qrSrc, qx, qy, q, q);
-  // Price on the right, aligned with the QR centre
-  const cy = qy + q / 2;
+  // Price below, centred
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#111111';
-  const rMargin = 70;
-  const rx = (qx + q + (W - rMargin)) / 2;   // centre of the right area (with right margin)
-  const rw = (W - rMargin) - (qx + q) - 20;  // available width
   const priceTxt = fmt(p.price) + ' DH';
-  let pf = 100; ctx.font = '900 ' + pf + 'px Arial';
-  while (ctx.measureText(priceTxt).width > rw && pf > 26){ pf--; ctx.font = '900 ' + pf + 'px Arial'; }
-  ctx.fillText(priceTxt, rx, cy);
+  let pf = 130; ctx.font = '900 ' + pf + 'px Arial';
+  while (ctx.measureText(priceTxt).width > W - 120 && pf > 30){ pf--; ctx.font = '900 ' + pf + 'px Arial'; }
+  ctx.fillText(priceTxt, W / 2, 900);
   return c.toDataURL('image/png');
 }
 // items = [{ p, qty }] — print one 100x100mm sticker per label image.
@@ -602,11 +598,11 @@ async function printLabels(items) {
     for (let k = 0; k < qty; k++) imgs.push(url);
   }
   const doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Etiquettes</title><style>'
-    + '@page{size:50mm 30mm;margin:0}'
+    + '@page{size:100mm 100mm;margin:0}'
     + 'html,body{margin:0;padding:0}'
-    + '.pg{width:50mm;height:30mm;display:flex;align-items:center;justify-content:center;page-break-after:always;overflow:hidden}'
+    + '.pg{width:100mm;height:100mm;display:flex;align-items:center;justify-content:center;page-break-after:always;overflow:hidden}'
     + '.pg:last-child{page-break-after:auto}'
-    + 'img{width:50mm;height:30mm;display:block}'
+    + 'img{width:100mm;height:100mm;display:block}'
     + '</style></head><body>'
     + imgs.map(u => '<div class="pg"><img src="' + u + '"></div>').join('')
     + '</body></html>';
