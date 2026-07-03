@@ -47,13 +47,18 @@ async function calcShift(shiftId, db = pool) {
   const { rows: [{ avance }] } = await db.query('SELECT avance FROM shifts WHERE id=$1', [shiftId]);
   const { rows: [{ t: te }] } = await db.query('SELECT COALESCE(SUM(amount),0) as t FROM expenses WHERE shift_id=$1', [shiftId]);
   const { rows: [{ t: tpay }] } = await db.query('SELECT COALESCE(SUM(amount),0) as t FROM credit_payments WHERE shift_id=$1', [shiftId]);
-  const totalCredit   = parseFloat(tc);
-  const totalProduct  = parseFloat(tp);
-  const totalAvance   = parseFloat(avance) || 0;
-  const totalExpenses = parseFloat(te) || 0;
-  const totalPayments = parseFloat(tpay) || 0;
+  const { rows: [{ t: tff }] } = await db.query('SELECT COALESCE(SUM(amount),0) as t FROM fuel_withdrawals WHERE shift_id=$1', [shiftId]);
+  const { rows: [{ t: tea }] } = await db.query('SELECT COALESCE(SUM(amount),0) as t FROM employee_advances WHERE shift_id=$1', [shiftId]);
+  const totalCredit    = parseFloat(tc);
+  const totalProduct   = parseFloat(tp);
+  const totalAvance    = parseFloat(avance) || 0;
+  const totalExpenses  = parseFloat(te) || 0;
+  const totalPayments  = parseFloat(tpay) || 0;
+  const totalFreeFuel  = parseFloat(tff) || 0;   // gazoil gratuit pris ce poste
+  const totalEmpAdvance = parseFloat(tea) || 0;  // avances employé prises ce poste
   return { totalLiters, totalFuel, totalCredit, totalProduct, totalAvance, totalExpenses, totalPayments,
-           netCash: totalFuel - totalCredit + totalProduct - totalAvance - totalExpenses + totalPayments };
+           totalFreeFuel, totalEmpAdvance,
+           netCash: totalFuel - totalCredit + totalProduct - totalAvance - totalExpenses + totalPayments - totalFreeFuel - totalEmpAdvance };
 }
 
 async function shiftDetail(shift) {
@@ -97,6 +102,19 @@ async function shiftDetail(shift) {
     [shift.id]
   );
   shift.expenses = exp;
+
+  const { rows: ffw } = await pool.query(
+    'SELECT * FROM fuel_withdrawals WHERE shift_id=$1 ORDER BY id',
+    [shift.id]
+  );
+  shift.fuel_withdrawals = ffw;
+
+  const { rows: eadv } = await pool.query(`
+    SELECT a.*, e.name AS employee_name
+    FROM employee_advances a JOIN employees e ON e.id=a.employee_id
+    WHERE a.shift_id=$1 ORDER BY a.id
+  `, [shift.id]);
+  shift.employee_advances = eadv;
 
   const { rows: pc } = await pool.query(`
     SELECT pc.*, p.name as pump_name, ft.name as fuel_name

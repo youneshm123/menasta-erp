@@ -35,17 +35,17 @@ router.get('/summary', wrap(async (req, res) => {
 }));
 
 router.post('/', wrap(async (req, res) => {
-  const { taker_name, category, fuel_type_id, wdate, note } = req.body || {};
+  const { taker_name, category, fuel_type_id, wdate, note, shift_id } = req.body || {};
   const liters = parseFloat(req.body.liters) || 0;
   const amount = parseFloat(req.body.amount) || 0;
   if (!taker_name || !taker_name.trim()) return res.status(400).json({ error: 'Nom requis' });
   if (amount <= 0 && liters <= 0) return res.status(400).json({ error: 'Litres ou montant requis' });
   const cat = CATS.includes(category) ? category : 'Autre';
   const { rows: [{ id }] } = await pool.query(`
-    INSERT INTO fuel_withdrawals (taker_name,category,fuel_type_id,liters,amount,wdate,note,recorded_by)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id
+    INSERT INTO fuel_withdrawals (taker_name,category,fuel_type_id,liters,amount,wdate,note,recorded_by,shift_id)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id
   `, [taker_name.trim(), cat, fuel_type_id || null, +liters.toFixed(2), +amount.toFixed(2),
-      wdate || new Date().toISOString().slice(0, 10), note || null, req.user.id]);
+      wdate || new Date().toISOString().slice(0, 10), note || null, req.user.id, shift_id || null]);
   const { rows: [w] } = await pool.query('SELECT * FROM fuel_withdrawals WHERE id=$1', [id]);
   res.status(201).json(w);
 }));

@@ -566,6 +566,11 @@ async function initDB() {
     CREATE INDEX IF NOT EXISTS idx_fuelwd_date ON fuel_withdrawals(wdate DESC);
   `);
 
+  // Link free-fuel & employee advances to the poste they were taken during, so
+  // they reduce that poste's net cash (money/fuel left the drawer that shift).
+  await pgPool.query('ALTER TABLE fuel_withdrawals  ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shifts(id)');
+  await pgPool.query('ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shifts(id)');
+
   // Seed cuves
   const { rows: [{ c: cuvc }] } = await pgPool.query('SELECT COUNT(*) as c FROM cuves');
   if (parseInt(cuvc) === 0) {

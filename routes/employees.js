@@ -70,8 +70,8 @@ router.post('/:id/advances', wrap(async (req, res) => {
   const { rows: emp } = await pool.query('SELECT id FROM employees WHERE id=$1 AND is_active=1', [req.params.id]);
   if (!emp.length) return res.status(404).json({ error: 'Employé introuvable' });
   const { rows: [{ id }] } = await pool.query(
-    'INSERT INTO employee_advances (employee_id,amount,advance_date,note,recorded_by) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-    [req.params.id, +amount.toFixed(2), req.body.advance_date || new Date().toISOString().slice(0, 10), req.body.note || null, req.user.id]
+    'INSERT INTO employee_advances (employee_id,amount,advance_date,note,recorded_by,shift_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
+    [req.params.id, +amount.toFixed(2), req.body.advance_date || new Date().toISOString().slice(0, 10), req.body.note || null, req.user.id, req.body.shift_id || null]
   );
   const { rows: [a] } = await pool.query('SELECT * FROM employee_advances WHERE id=$1', [id]);
   res.status(201).json(a);

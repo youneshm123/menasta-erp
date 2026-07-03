@@ -872,7 +872,7 @@ const pageNames = { dashboard:'Tableau de Bord', shift:'Poste en Cours', 'shifts
 let paymentClientId = null;
 let chartWeekly = null, chartSplit = null;
 // Live shift calculation state
-let _liveCredit = 0, _liveProduct = 0, _liveExp = 0, _liveAvance = 0, _livePayments = 0;
+let _liveCredit = 0, _liveProduct = 0, _liveExp = 0, _liveAvance = 0, _livePayments = 0, _liveFreeFuel = 0, _liveEmpAdvance = 0;
 
 // ─── AUTH ───────────────────────────────────────────────────
 const token = () => localStorage.getItem('fm_token');
@@ -1109,8 +1109,11 @@ async function loadShiftPage() {
   const totalProduct   = shift.product_sales.reduce((s, r) => s + r.total_amount, 0);
   const totalExpenses  = (shift.expenses || []).reduce((s, e) => s + parseFloat(e.amount), 0);
   const totalPayments  = (shift.credit_payments || []).reduce((s, p) => s + parseFloat(p.amount), 0);
+  const totalFreeFuel   = (shift.fuel_withdrawals || []).reduce((s, w) => s + parseFloat(w.amount), 0);
+  const totalEmpAdvance = (shift.employee_advances || []).reduce((s, a) => s + parseFloat(a.amount), 0);
   _liveCredit = totalCredit; _liveProduct = totalProduct;
   _liveExp = totalExpenses;  _liveAvance = shift.avance || 0;  _livePayments = totalPayments;
+  _liveFreeFuel = totalFreeFuel; _liveEmpAdvance = totalEmpAdvance;
 
   el.innerHTML = `
     <div style="background:var(--shell-bg);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
@@ -1318,25 +1321,28 @@ async function shiftAddDepense() {
   const today10 = new Date().toISOString().slice(0,10);
   if (!amount || amount <= 0) { toast('Montant invalide', 'er'); return; }
   try {
+    const sid = S.activeShift?.id || null;
+    const special = (cat === '__FREEFUEL__' || cat === '__EMPADV__');
     if (cat === '__FREEFUEL__') {
-      // Gazoil gratuit → tracked in Carburant Gratuit, NOT in Dépenses.
+      // Gazoil gratuit → tracked in Carburant Gratuit + déduit du poste, NOT in Dépenses.
       if (!desc) { toast('Indiquez le bénéficiaire dans la description', 'wn'); return; }
-      await api('POST', '/fuelwd', { taker_name: desc, category: 'Autre', amount, liters: 0, wdate: today10, note: 'via poste' });
-      toast('⛽ Gazoil gratuit enregistré (hors dépenses) ✓');
+      await api('POST', '/fuelwd', { taker_name: desc, category: 'Autre', amount, liters: 0, wdate: today10, note: 'via poste', shift_id: sid });
+      toast('⛽ Gazoil gratuit enregistré (déduit du poste, hors dépenses) ✓');
     } else if (cat === '__EMPADV__') {
-      // Avance employé → coupée du salaire, NOT in Dépenses.
+      // Avance employé → coupée du salaire + déduite du poste, NOT in Dépenses.
       const empId = document.getElementById('sd-emp')?.value;
       if (!empId) { toast('Choisissez un employé', 'wn'); return; }
-      await api('POST', '/employees/' + empId + '/advances', { amount, note: desc || 'via poste', advance_date: today10 });
-      toast('👷 Avance employé enregistrée (hors dépenses) ✓');
+      await api('POST', '/employees/' + empId + '/advances', { amount, note: desc || 'via poste', advance_date: today10, shift_id: sid });
+      toast('👷 Avance employé enregistrée (déduite du poste, hors dépenses) ✓');
     } else {
       if (!desc) { toast('Description requise', 'wn'); return; }
-      await api('POST', '/expenses', { category: cat, description: desc, amount, expense_date: today10, notes: '', shift_id: S.activeShift?.id || null });
+      await api('POST', '/expenses', { category: cat, description: desc, amount, expense_date: today10, notes: '', shift_id: sid });
       toast('Dépense enregistrée ✓');
     }
     document.getElementById('sd-desc').value   = '';
     document.getElementById('sd-amount').value = '';
     shiftLoadDepenses();
+    if (special && typeof loadShiftPage === 'function') loadShiftPage();  // refresh poste net
     if (document.querySelector('#p-expenses.active')) loadExpenses();
   } catch(e) { toast(e.message, 'er'); }
 }
@@ -1484,6 +1490,8 @@ function showShiftSummary(result) {
       <div class="fxb"><span class="fw7">(+) Ventes Produits</span><span class="fw7 c-g">+ ${fmt(c.totalProduct)} MAD</span></div>
       ${(c.totalAvance||0) > 0 ? `<div class="fxb"><span class="fw7">(-) Avance Pompiste</span><span class="fw7" style="color:var(--orange)">- ${fmt(c.totalAvance)} MAD</span></div>` : ''}
       <div class="fxb"><span class="fw7">(-) Dépenses du Poste</span><span class="fw7 c-r">- ${fmt(c.totalExpenses||0)} MAD</span></div>
+      ${(c.totalFreeFuel||0) > 0 ? `<div class="fxb"><span class="fw7">(-) Gazoil Gratuit</span><span class="fw7" style="color:var(--orange)">- ${fmt(c.totalFreeFuel)} MAD</span></div>` : ''}
+      ${(c.totalEmpAdvance||0) > 0 ? `<div class="fxb"><span class="fw7">(-) Avance Employé</span><span class="fw7" style="color:var(--orange)">- ${fmt(c.totalEmpAdvance)} MAD</span></div>` : ''}
       <hr class="div"/>
       <div class="fxb"><span style="font-size:16px;font-weight:800">💵 CAISSE NETTE</span><span style="font-size:22px;font-weight:800;color:var(--green)">${fmt(c.netCash)} MAD</span></div>
     </div>
@@ -1571,8 +1579,10 @@ function clearHistoryFilter() {
 
 async function viewShift(id) {
   const s = await api('GET', '/shifts/' + id);
-  const totalExpenses = (s.expenses || []).reduce((sum, e) => sum + parseFloat(e.amount), 0);
-  showShiftSummary({ ...s, calc: { totalFuel: s.total_fuel_revenue||0, totalCredit: s.total_credit_deducted||0, totalProduct: s.total_product_sales||0, totalAvance: s.avance||0, totalExpenses, totalPayments: s.credit_paid||0, netCash: s.net_cash||0 } });
+  const totalExpenses   = (s.expenses || []).reduce((sum, e) => sum + parseFloat(e.amount), 0);
+  const totalFreeFuel   = (s.fuel_withdrawals || []).reduce((sum, w) => sum + parseFloat(w.amount), 0);
+  const totalEmpAdvance = (s.employee_advances || []).reduce((sum, a) => sum + parseFloat(a.amount), 0);
+  showShiftSummary({ ...s, calc: { totalFuel: s.total_fuel_revenue||0, totalCredit: s.total_credit_deducted||0, totalProduct: s.total_product_sales||0, totalAvance: s.avance||0, totalExpenses, totalFreeFuel, totalEmpAdvance, totalPayments: s.credit_paid||0, netCash: s.net_cash||0 } });
 }
 
 async function saveShiftDate(id) {
@@ -2277,7 +2287,7 @@ function calcLiveCA() {
   const netEl = document.getElementById('live-net');
   if (caEl) caEl.textContent = fmt(ca) + ' MAD';
   if (netEl) {
-    const net = ca - _liveCredit + _liveProduct - _liveExp - _liveAvance + _livePayments;
+    const net = ca - _liveCredit + _liveProduct - _liveExp - _liveAvance + _livePayments - _liveFreeFuel - _liveEmpAdvance;
     netEl.textContent = fmt(net) + ' MAD';
     netEl.style.color = net >= 0 ? '#4ADE80' : '#F87171';
   }
