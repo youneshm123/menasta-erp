@@ -1326,7 +1326,10 @@ async function shiftAddDepense() {
     if (cat === '__FREEFUEL__') {
       // Gazoil gratuit → tracked in Carburant Gratuit + déduit du poste, NOT in Dépenses.
       if (!desc) { toast('Indiquez le bénéficiaire dans la description', 'wn'); return; }
-      await api('POST', '/fuelwd', { taker_name: desc, category: 'Autre', amount, liters: 0, wdate: today10, note: 'via poste', shift_id: sid });
+      const gaz = (S.fuelTypes || []).find(f => /gazoil|gasoil|diesel/i.test(f.name));
+      const gPrice = parseFloat(gaz?.price_per_liter) || 0;
+      const gLiters = gPrice > 0 ? +(amount / gPrice).toFixed(2) : 0;
+      await api('POST', '/fuelwd', { taker_name: desc, category: 'Autre', fuel_type_id: gaz?.id || null, liters: gLiters, amount, wdate: today10, note: 'via poste', shift_id: sid });
       toast('⛽ Gazoil gratuit enregistré (déduit du poste, hors dépenses) ✓');
     } else if (cat === '__EMPADV__') {
       // Avance employé → coupée du salaire + déduite du poste, NOT in Dépenses.
