@@ -56,9 +56,11 @@ async function calcShift(shiftId, db = pool) {
   const totalPayments  = parseFloat(tpay) || 0;
   const totalFreeFuel  = parseFloat(tff) || 0;   // gazoil gratuit pris ce poste
   const totalEmpAdvance = parseFloat(tea) || 0;  // avances employé prises ce poste
+  // Credit payments (client settling debt) only reduce the client's balance_due;
+  // they do NOT enter the poste cash.
   return { totalLiters, totalFuel, totalCredit, totalProduct, totalAvance, totalExpenses, totalPayments,
            totalFreeFuel, totalEmpAdvance,
-           netCash: totalFuel - totalCredit + totalProduct - totalAvance - totalExpenses + totalPayments - totalFreeFuel - totalEmpAdvance };
+           netCash: totalFuel - totalCredit + totalProduct - totalAvance - totalExpenses - totalFreeFuel - totalEmpAdvance };
 }
 
 async function shiftDetail(shift) {
