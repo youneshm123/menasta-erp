@@ -455,7 +455,7 @@
           <label>Opération</label>
           <div class="fuel-toggle">
             <button type="button" class="fuel-btn active" id="cs-mode-credit" onclick="csSelectMode('credit')">🤝 Crédit (− Caisse)</button>
-            <button type="button" class="fuel-btn" id="cs-mode-payment" onclick="csSelectMode('payment')">💰 Paiement (réduit la dette)</button>
+            <button type="button" class="fuel-btn" id="cs-mode-payment" onclick="csSelectMode('payment')">💰 Paiement (+ Caisse)</button>
           </div>
         </div>
         <div class="fg" style="grid-column:1/-1">
@@ -2119,7 +2119,7 @@ async function csSubmitAll() {
     try {
       if (c.mode === 'payment') {
         await api('POST', '/credits/payments', {
-          shift_id: null, credit_client_id: c.client_id,   // paiement = réduit la dette, hors poste
+          shift_id: shiftId, credit_client_id: c.client_id,
           amount: c.amount, notes: c.notes
         });
       } else {
@@ -2290,7 +2290,7 @@ function calcLiveCA() {
   const netEl = document.getElementById('live-net');
   if (caEl) caEl.textContent = fmt(ca) + ' MAD';
   if (netEl) {
-    const net = ca - _liveCredit + _liveProduct - _liveExp - _liveAvance - _liveFreeFuel - _liveEmpAdvance;
+    const net = ca - _liveCredit + _liveProduct - _liveExp - _liveAvance + _livePayments - _liveFreeFuel - _liveEmpAdvance;
     netEl.textContent = fmt(net) + ' MAD';
     netEl.style.color = net >= 0 ? '#4ADE80' : '#F87171';
   }

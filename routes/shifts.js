@@ -56,11 +56,12 @@ async function calcShift(shiftId, db = pool) {
   const totalPayments  = parseFloat(tpay) || 0;
   const totalFreeFuel  = parseFloat(tff) || 0;   // gazoil gratuit pris ce poste
   const totalEmpAdvance = parseFloat(tea) || 0;  // avances employé prises ce poste
-  // Credit payments (client settling debt) only reduce the client's balance_due;
-  // they do NOT enter the poste cash.
+  // Payments COUNT in the poste only when attached to it (shift_id set, e.g. the
+  // Vente Crédit "+ Caisse" mode). The client "Payer" button records them with no
+  // shift_id, so they just reduce balance_due without touching the poste.
   return { totalLiters, totalFuel, totalCredit, totalProduct, totalAvance, totalExpenses, totalPayments,
            totalFreeFuel, totalEmpAdvance,
-           netCash: totalFuel - totalCredit + totalProduct - totalAvance - totalExpenses - totalFreeFuel - totalEmpAdvance };
+           netCash: totalFuel - totalCredit + totalProduct - totalAvance - totalExpenses + totalPayments - totalFreeFuel - totalEmpAdvance };
 }
 
 async function shiftDetail(shift) {
