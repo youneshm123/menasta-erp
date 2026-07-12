@@ -961,9 +961,11 @@ router.post('/factures', requireAuth, wrap(async (req, res) => {
       if (s.module === 'tabac') {
         const { rows: [tp] } = await client.query('SELECT id,name,prix_achat FROM tabac_products WHERE id=$1 AND is_active=1', [s.product_id]);
         if (!tp) continue;
+        // Tobacco factures are in TERS; 1 ters = 10 pieces. Store pieces so it
+        // matches sales (which are counted in pieces).
         await client.query(
           'INSERT INTO tabac_achats (product_id,quantite,prix_achat,achat_date,notes,recorded_by) VALUES ($1,$2,$3,$4,$5,$6)',
-          [tp.id, s.qty, tp.prix_achat, date, note, req.user.id]
+          [tp.id, s.qty * 10, tp.prix_achat, date, note, req.user.id]
         );
         continue;
       }
