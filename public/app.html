@@ -278,6 +278,10 @@
 
       <!-- ══ PAGE: DÉPENSES ══ -->
       <div class="page" id="p-expenses">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+          <input type="month" id="exp-month" class="sel" onchange="loadExpenses()"/>
+          <span class="muted sm">Dépenses du mois sélectionné (chaque mois séparé)</span>
+        </div>
         <div class="tiles" id="exp-tiles"></div>
         <div class="section mt4">
           <div class="s-head">
@@ -2941,7 +2945,10 @@ async function initReportsYear() {
 
 // ─── EXPENSES ───────────────────────────────────────────────
 async function loadExpenses() {
-  const data = await api('GET', '/expenses');
+  const monthEl = document.getElementById('exp-month');
+  if (monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0,7);
+  const month = monthEl ? monthEl.value : new Date().toISOString().slice(0,7);
+  const data = await api('GET', '/expenses?month=' + month);
   _allExpensesCache = data; // cache for duplicate detection
   const total = data.reduce((s,e)=>s+e.amount,0);
   const cats  = {};
@@ -2949,8 +2956,8 @@ async function loadExpenses() {
   const topCat = Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];
 
   document.getElementById('exp-tiles').innerHTML = [
-    { ic:'💸', val: fmt(total)+' MAD', lbl:'Total Dépenses', tc:'var(--red)' },
-    { ic:'📋', val: data.length, lbl:'Nombre Dépenses', tc:'var(--blue)' },
+    { ic:'💸', val: fmt(total)+' MAD', lbl:'Total Dépenses (mois)', tc:'var(--red)' },
+    { ic:'📋', val: data.length, lbl:'Nombre Dépenses (mois)', tc:'var(--blue)' },
     { ic:'🏷️', val: topCat?topCat[0]:'—', lbl:'Catégorie Principale', tc:'var(--orange)' },
   ].map(t=>`<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
 
