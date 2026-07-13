@@ -1263,9 +1263,14 @@ async function loadShiftPage() {
         <button class="btn btn-p" style="width:100%;font-size:14px;" onclick="shiftAddDepense()">💸 Enregistrer la Dépense</button>
       </div>
       <div id="sd-list" style="max-height:220px;overflow-y:auto;"></div>
+    </div>
+    <div class="section" id="sd-freefuel-section" style="margin-top:16px;">
+      <div class="s-head"><div class="s-title">⛽ Gazoil Gratuit ce Poste</div></div>
+      <div id="sd-freefuel-list"></div>
     </div>`;
-  // Load shift expenses list then refresh live tiles
+  // Load shift expenses + free-fuel lists then refresh live tiles
   shiftLoadDepenses();
+  shiftLoadFreeFuel();
   calcLiveCA();
 }
 
@@ -1293,6 +1298,32 @@ async function shiftLoadDepenses() {
         <button class="btn btn-d btn-xs" onclick="shiftDeleteDepense(${e.id})">✕</button>
       </div>`).join('');
   } catch(e) { /* silent */ }
+}
+
+// ─── GAZOIL GRATUIT DU POSTE ────────────────────────────────
+async function shiftLoadFreeFuel() {
+  const list = document.getElementById('sd-freefuel-list');
+  if (!list) return;
+  const shiftId = S.activeShift?.id;
+  if (!shiftId) { list.innerHTML = '<div style="padding:14px 16px;color:var(--muted);font-size:13px;text-align:center;">—</div>'; return; }
+  try {
+    const rows = await api('GET', '/fuelwd?shift_id=' + shiftId);
+    if (!rows.length) {
+      list.innerHTML = '<div style="padding:14px 16px;color:var(--muted);font-size:13px;text-align:center;">Aucun gazoil gratuit ce poste</div>';
+      return;
+    }
+    list.innerHTML = rows.map(w => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-lt);">
+        <span style="flex:1;font-size:13px;font-weight:600;color:var(--text);">${esc(w.taker_name)}${parseFloat(w.liters)>0 ? ' · ' + fmt(w.liters) + ' L' : ''}</span>
+        <span style="font-size:13px;font-weight:800;color:var(--orange);white-space:nowrap;">-${fmt(w.amount)} MAD</span>
+        <button class="btn btn-d btn-xs" onclick="shiftDeleteFreeFuel(${w.id})">✕</button>
+      </div>`).join('');
+  } catch(e) { /* silent */ }
+}
+async function shiftDeleteFreeFuel(id) {
+  if (!confirm('Supprimer ce prélèvement de gazoil gratuit ?')) return;
+  try { await api('DELETE', '/fuelwd/' + id); toast('Prélèvement supprimé'); loadShiftPage(); if (document.querySelector('#p-freefuel.active')) loadFreeFuel(); }
+  catch(e) { toast(e.message, 'er'); }
 }
 
 // Show the employee picker only for the "Avance Employé" category.

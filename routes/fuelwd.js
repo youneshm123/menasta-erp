@@ -7,9 +7,10 @@ const CUR_MONTH = () => new Date().toISOString().slice(0, 7);
 
 // ── List fuel withdrawals (free fuel), optionally by month ──
 router.get('/', wrap(async (req, res) => {
-  const { month } = req.query;
+  const { month, shift_id } = req.query;
   let where = '', params = [];
-  if (/^\d{4}-\d{2}$/.test(month || '')) { where = "WHERE TO_CHAR(w.wdate,'YYYY-MM')=$1"; params = [month]; }
+  if (shift_id) { where = 'WHERE w.shift_id=$1'; params = [shift_id]; }
+  else if (/^\d{4}-\d{2}$/.test(month || '')) { where = "WHERE TO_CHAR(w.wdate,'YYYY-MM')=$1"; params = [month]; }
   const { rows } = await pool.query(`
     SELECT w.*, ft.name AS fuel_name, u.full_name AS recorded_by_name
     FROM fuel_withdrawals w
