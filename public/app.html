@@ -1077,7 +1077,8 @@ async function loadShiftPage() {
   const readMap = {};
   for (const r of shift.pump_readings) {
     if (!readMap[r.pump_id]) readMap[r.pump_id] = { name: r.pump_name, fuel: r.fuel_name, price: r.price_per_liter };
-    if (r.reading_type === 'start') readMap[r.pump_id].start = r.meter_value;
+    // The price locked at poste open lives on the START reading — prefer it.
+    if (r.reading_type === 'start') { readMap[r.pump_id].start = r.meter_value; readMap[r.pump_id].price = r.price_per_liter; }
     if (r.reading_type === 'end')   readMap[r.pump_id].end   = r.meter_value;
   }
 
