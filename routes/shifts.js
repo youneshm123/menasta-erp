@@ -67,8 +67,7 @@ async function calcShift(shiftId, db = pool) {
 
 async function shiftDetail(shift) {
   const { rows: pr } = await pool.query(`
-    SELECT pr.id, pr.shift_id, pr.pump_id, pr.reading_type, pr.meter_value, pr.recorded_by, pr.created_at,
-           p.name as pump_name, ft.name as fuel_name,
+    SELECT pr.*, p.name as pump_name, ft.name as fuel_name,
            COALESCE(NULLIF(pr.price_per_liter,0), ft.price_per_liter) as price_per_liter
     FROM pump_readings pr
     JOIN pumps p     ON p.id=pr.pump_id
