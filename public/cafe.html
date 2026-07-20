@@ -78,21 +78,14 @@
         <button class="btn btn-p btn-sm" onclick="loadVentes()">Charger</button>
       </div>
       <div class="section">
-        <div class="s-head"><div class="s-title">☕ Articles vendus aujourd'hui</div></div>
+        <div class="s-head"><div class="s-title">☕ Recette Café du Jour</div></div>
         <div class="s-body">
-          <table class="t">
-            <thead><tr><th>Article</th><th>Prix</th><th class="num">Quantité vendue</th><th class="num">Total</th><th></th></tr></thead>
-            <tbody id="v-body"></tbody>
-            <tfoot>
-              <tr style="background:#FFF8F3">
-                <td colspan="3" style="padding:12px 14px;font-weight:800;font-size:14px">💰 Recette du Jour</td>
-                <td class="num fw8 c-g" style="font-size:18px;padding:12px 14px" id="v-total">0,00 MAD</td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
-          <div style="margin-top:16px;display:flex;justify-content:flex-end">
-            <button class="btn btn-s" style="padding:12px 32px;font-size:14px" onclick="saveVentes()">✅ Enregistrer les Ventes</button>
+          <div style="display:flex;flex-direction:column;gap:8px;max-width:380px">
+            <label style="font-size:13px;font-weight:700;color:var(--muted)">💰 Recette du Jour (MAD)</label>
+            <input type="number" id="v-recette" placeholder="0.00" step="0.01" min="0"
+              style="font-size:28px;font-weight:900;text-align:center;padding:16px;border:2.5px solid var(--green);border-radius:10px;font-family:var(--font);outline:none"
+              onkeydown="if(event.key==='Enter')saveRecette()"/>
+            <button class="btn btn-s" style="padding:12px;font-size:14px;margin-top:6px" onclick="saveRecette()">✅ Enregistrer la Recette</button>
           </div>
         </div>
       </div>
@@ -325,65 +318,21 @@ let ventesData = [];
 
 async function loadVentes() {
   const date = document.getElementById('v-date').value || today();
-  const data = await api('GET', '/sales?date='+date);
-  ventesData = data.items;
-  renderVentes();
-}
-
-function renderVentes() {
-  const tbody = document.getElementById('v-body');
-  tbody.innerHTML = ventesData.map((it, i) => `
-    <tr>
-      <td class="fw7">${it.emoji||'☕'} ${it.name}</td>
-      <td class="c-br fw7">${fmt(it.default_price||it.unit_price||7)} MAD</td>
-      <td class="num">
-        <input type="number" class="qty-inp" data-idx="${i}" data-price="${it.default_price||it.unit_price||7}"
-          value="${it.quantity||0}" min="0" step="1" oninput="updateVenteRow(this)"/>
-      </td>
-      <td class="num fw8 c-g" id="vrow-${i}">${fmt((it.quantity||0)*(it.default_price||it.unit_price||7))} MAD</td>
-      <td style="text-align:right">${(it.quantity||0)>0?`<button class="btn btn-d btn-xs" title="Supprimer cette ligne" onclick="deleteVenteLine(${i})">🗑️</button>`:''}</td>
-    </tr>`).join('');
-  updateVenteTotal();
-}
-
-function updateVenteRow(inp) {
-  const i = inp.dataset.idx;
-  const qty = parseInt(inp.value)||0;
-  const price = parseFloat(inp.dataset.price)||7;
-  ventesData[i].quantity = qty;
-  document.getElementById('vrow-'+i).textContent = fmt(qty*price) + ' MAD';
-  updateVenteTotal();
-}
-
-function updateVenteTotal() {
-  const total = ventesData.reduce((s,it) => s + (it.quantity||0)*(it.default_price||it.unit_price||7), 0);
-  document.getElementById('v-total').textContent = fmt(total) + ' MAD';
-}
-
-async function saveVentes() {
-  const date = document.getElementById('v-date').value || today();
-  const entries = ventesData.map(it => ({
-    menu_item_id: it.id,
-    quantity: it.quantity||0,
-    unit_price: it.default_price||it.unit_price||7
-  }));
   try {
-    await api('POST', '/sales', { date, entries });
-    toast('Ventes enregistrées ✓');
-  } catch(e) { toast(e.message,'er'); }
+    const data = await api('GET', '/recette?date=' + date);
+    const inp = document.getElementById('v-recette');
+    if (inp) inp.value = data.recette ? data.recette : '';
+  } catch(e) { /* silent */ }
 }
 
-async function deleteVenteLine(i) {
-  const it = ventesData[i];
-  if (!it) return;
-  if (!confirm('Supprimer la vente « ' + it.name + ' » de ce jour ?')) return;
+async function saveRecette() {
   const date = document.getElementById('v-date').value || today();
+  const amount = parseFloat(document.getElementById('v-recette').value || 0);
+  if (isNaN(amount) || amount < 0) { toast('Recette invalide', 'er'); return; }
   try {
-    await api('DELETE', '/sales?date=' + date + '&menu_item_id=' + it.id);
-    it.quantity = 0;
-    toast('Vente supprimée');
-    renderVentes();
-  } catch(e) { toast(e.message,'er'); }
+    await api('POST', '/recette', { date, amount });
+    toast('Recette enregistrée ✓');
+  } catch(e) { toast(e.message, 'er'); }
 }
 
 // ── STOCK ─────────────────────────────────────────────────────

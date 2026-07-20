@@ -70,6 +70,38 @@ router.post('/sales', requireAuth, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ── RECETTE (daily café revenue, no per-item counting) ────────
+// Stored as a single cafe_sales row against a catch-all "Recette" menu item,
+// so every existing report that sums cafe_sales.total keeps working.
+async function recetteItemId(db = pool) {
+  const { rows } = await db.query("SELECT id FROM cafe_menu WHERE name='Recette' LIMIT 1");
+  if (rows.length) return rows[0].id;
+  const { rows: [{ id }] } = await db.query(
+    "INSERT INTO cafe_menu (name,emoji,price,is_active) VALUES ('Recette','💰',1,1) RETURNING id");
+  return id;
+}
+
+router.get('/recette', requireAuth, wrap(async (req, res) => {
+  const date = req.query.date || new Date().toISOString().slice(0, 10);
+  const id = await recetteItemId();
+  const { rows } = await pool.query('SELECT total FROM cafe_sales WHERE sale_date=$1 AND menu_item_id=$2', [date, id]);
+  res.json({ date, recette: rows.length ? parseFloat(rows[0].total) : 0 });
+}));
+
+router.post('/recette', requireAuth, wrap(async (req, res) => {
+  const amount = parseFloat(req.body && req.body.amount);
+  if (!isFinite(amount) || amount < 0) return res.status(400).json({ error: 'Recette invalide' });
+  const d = (req.body && req.body.date) || new Date().toISOString().slice(0, 10);
+  const id = await recetteItemId();
+  await pool.query(`
+    INSERT INTO cafe_sales (sale_date,menu_item_id,quantity,unit_price,total,recorded_by)
+    VALUES ($1,$2,1,$3,$3,$4)
+    ON CONFLICT(sale_date,menu_item_id) DO UPDATE SET
+      quantity=1, unit_price=EXCLUDED.unit_price, total=EXCLUDED.total, recorded_by=EXCLUDED.recorded_by
+  `, [d, id, amount, req.user.id]);
+  res.json({ ok: true, recette: amount });
+}));
+
 // ── STOCK ITEMS ───────────────────────────────────────────────
 router.get('/stock/items', requireAuth, wrap(async (_req, res) => {
   const { rows } = await pool.query('SELECT * FROM cafe_stock_items WHERE is_active=1 ORDER BY id');
