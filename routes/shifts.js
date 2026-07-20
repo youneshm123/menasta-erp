@@ -9,7 +9,8 @@ const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 // client so the just-inserted end readings are visible (they aren't committed yet).
 async function calcShift(shiftId, db = pool) {
   const { rows: readings } = await db.query(`
-    SELECT s.pump_id, s.meter_value as start_val, e.meter_value as end_val, ft.price_per_liter
+    SELECT s.pump_id, s.meter_value as start_val, e.meter_value as end_val,
+           COALESCE(NULLIF(s.price_per_liter,0), ft.price_per_liter) as price_per_liter
     FROM pump_readings s
     JOIN pump_readings e ON e.shift_id=s.shift_id AND e.pump_id=s.pump_id AND e.reading_type='end'
     JOIN pumps p         ON p.id=s.pump_id
@@ -66,7 +67,9 @@ async function calcShift(shiftId, db = pool) {
 
 async function shiftDetail(shift) {
   const { rows: pr } = await pool.query(`
-    SELECT pr.*, p.name as pump_name, ft.name as fuel_name, ft.price_per_liter
+    SELECT pr.id, pr.shift_id, pr.pump_id, pr.reading_type, pr.meter_value, pr.recorded_by, pr.created_at,
+           p.name as pump_name, ft.name as fuel_name,
+           COALESCE(NULLIF(pr.price_per_liter,0), ft.price_per_liter) as price_per_liter
     FROM pump_readings pr
     JOIN pumps p     ON p.id=pr.pump_id
     JOIN fuel_types ft ON ft.id=p.fuel_type_id
@@ -197,11 +200,16 @@ router.post('/', requireAuth, wrap(async (req, res) => {
       'INSERT INTO shifts (opened_by,notes,avance,pompiste,heure_debut,heure_fin) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
       [req.user.id, notes || '', parseFloat(avance) || 0, pompiste||null, heure_debut||null, heure_fin||null]
     );
-    for (const r of readings)
+    for (const r of readings) {
+      // Lock in the current fuel price for this pump at the moment the poste opens.
+      const { rows: [pp] } = await client.query(
+        'SELECT ft.price_per_liter FROM pumps p JOIN fuel_types ft ON ft.id=p.fuel_type_id WHERE p.id=$1', [r.pump_id]);
+      const price = pp ? parseFloat(pp.price_per_liter) : 0;
       await client.query(
-        "INSERT INTO pump_readings (shift_id,pump_id,reading_type,meter_value,recorded_by) VALUES ($1,$2,'start',$3,$4)",
-        [shiftId, r.pump_id, r.meter_value, req.user.id]
+        "INSERT INTO pump_readings (shift_id,pump_id,reading_type,meter_value,recorded_by,price_per_liter) VALUES ($1,$2,'start',$3,$4,$5)",
+        [shiftId, r.pump_id, r.meter_value, req.user.id, price]
       );
+    }
     await client.query('COMMIT');
 
     const { rows: [shift] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [shiftId]);

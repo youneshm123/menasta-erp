@@ -571,6 +571,10 @@ async function initDB() {
   await pgPool.query('ALTER TABLE fuel_withdrawals  ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shifts(id)');
   await pgPool.query('ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shifts(id)');
 
+  // Snapshot the fuel price into each poste's start reading, so changing the
+  // price later never rewrites an old poste's CA. NULL/0 falls back to current.
+  await pgPool.query('ALTER TABLE pump_readings ADD COLUMN IF NOT EXISTS price_per_liter REAL');
+
   // Seed cuves
   const { rows: [{ c: cuvc }] } = await pgPool.query('SELECT COUNT(*) as c FROM cuves');
   if (parseInt(cuvc) === 0) {
