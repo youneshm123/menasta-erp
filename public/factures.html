@@ -120,6 +120,13 @@
             <button id="btn-print-sel" class="btn btn-p btn-sm" style="display:none;font-weight:700" onclick="printSelected()">🖨️ Imprimer la sélection (<span id="sel-count">0</span>)</button>
           </div>
         </div>
+        <div style="padding:10px 4px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <input id="liste-search" type="text" placeholder="🔍 Rechercher par date (ex: 2026-06 ou 15/06), client ou N°…" oninput="renderListe()"
+            style="flex:1;min-width:240px;padding:9px 13px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-family:var(--font);outline:none"/>
+          <input id="liste-month" type="month" onchange="renderListe()" title="Filtrer par mois"
+            style="padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-family:var(--font)"/>
+          <button class="btn btn-g btn-sm" onclick="document.getElementById('liste-search').value='';document.getElementById('liste-month').value='';renderListe()">↺ Effacer</button>
+        </div>
         <table class="t">
           <thead><tr><th style="width:34px"><input type="checkbox" id="sel-all" onclick="toggleSelectAll(this)" title="Tout sélectionner"/></th><th>N° Facture</th><th>Date</th><th>Client</th><th class="num">Total HT</th><th class="num">TVA</th><th class="num">Total TTC</th><th></th></tr></thead>
           <tbody id="liste-body"></tbody>
@@ -693,10 +700,26 @@ async function loadTabacHistory() {
 }
 
 // ── LISTE ─────────────────────────────────────────────────────
+let _listeFactures = [];
 async function loadListe() {
   const st = document.getElementById('stamp-toggle');
   if (st) st.checked = stampEnabled;
-  const rows = await A('/api/factures');
+  _listeFactures = await A('/api/factures');
+  renderListe();
+}
+
+function renderListe() {
+  const q     = (document.getElementById('liste-search')?.value || '').trim().toLowerCase();
+  const month = document.getElementById('liste-month')?.value || '';   // YYYY-MM
+  const rows = _listeFactures.filter(f => {
+    const iso = String(f.facture_date).slice(0, 10);           // 2026-06-15
+    const fr  = iso.split('-').reverse().join('/');            // 15/06/2026
+    if (month && !iso.startsWith(month)) return false;
+    if (!q) return true;
+    return iso.includes(q) || fr.includes(q)
+        || (f.client_name || '').toLowerCase().includes(q)
+        || (f.numero || '').toLowerCase().includes(q);
+  });
   const tbody = document.getElementById('liste-body');
   tbody.innerHTML = '';
   if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Aucune facture</td></tr>'; document.getElementById('btn-print-sel').style.display='none'; return; }
@@ -1121,8 +1144,7 @@ function setStamp(on) {
 }
 
 // Clean vector reproduction of the MENASTA rubber stamp — oval, no corners,
-// sharper than a photo. (Signature is intentionally left blank for now — a real
-// signature image will be added once a clear picture is provided.)
+// sharper than a photo.
 function cachetSvg() {
   return `<svg width="250" height="160" viewBox="0 0 250 160" xmlns="http://www.w3.org/2000/svg" style="opacity:.85">
     <g transform="rotate(-6 125 80)">
@@ -1138,13 +1160,29 @@ function cachetSvg() {
   </svg>`;
 }
 
+// Vector tracing of the handwritten signature (blue ballpoint), drawn over the
+// cachet like a real signed document.
+function signatureSvg() {
+  return `<svg width="210" height="95" viewBox="0 0 240 110" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="#1c2bb0" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12,66 L32,82 L55,18"/>
+      <path d="M76,84 L101,22 L122,84"/>
+      <path d="M92,73 C140,75 198,40 236,13"/>
+    </g>
+    <circle cx="70" cy="55" r="2.3" fill="#1c2bb0"/>
+  </svg>`;
+}
+
 function stampBlockHtml() {
   if (!stampEnabled) return '';
   return `
     <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
       <div style="text-align:center;width:250px">
         <div style="font-size:11px;font-weight:bold;margin-bottom:2px">Cachet et Signature</div>
-        <div style="display:flex;justify-content:center">${cachetSvg()}</div>
+        <div style="position:relative;display:flex;justify-content:center;height:160px">
+          <div>${cachetSvg()}</div>
+          <div style="position:absolute;left:50%;top:48px;transform:translateX(-48%) rotate(-4deg)">${signatureSvg()}</div>
+        </div>
       </div>
     </div>`;
 }
