@@ -91,7 +91,8 @@
     <div class="nav-item" onclick="newFacture(this)"><span class="ni"><i data-lucide="plus-circle"></i></span> Nouvelle Facture</div>
     <div class="nav-item" onclick="showTab('clients',this)"><span class="ni"><i data-lucide="users"></i></span> Clients</div>
     <div class="nav-item" onclick="showTab('tabac',this)"><span class="ni"><i data-lucide="cigarette"></i></span> Ventes Tabac</div>
-    <div class="nav-item" onclick="showTab('cafe',this)"><span class="ni"><i data-lucide="coffee"></i></span> Ventes Café</div>
+    <div class="nav-item" onclick="showTab('cafe',this)"><span class="ni"><i data-lucide="coffee"></i></span> Relevé Café</div>
+    <div class="nav-item" onclick="showTab('service',this)"><span class="ni"><i data-lucide="droplets"></i></span> Relevé Service</div>
   </div>
   <div class="sb-foot">
     <a href="/home" class="sb-back">← Accueil</a>
@@ -275,36 +276,28 @@
       </div>
     </div>
 
-    <!-- CAFÉ HISTORY -->
+    <!-- CAFÉ RELEVÉ (montant saisi) -->
     <div id="tab-cafe" class="tab-pane">
       <div class="form-card" style="padding:16px 20px">
-        <h3>Filtres</h3>
-        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-          <div class="fg" style="min-width:180px"><label>Mois</label><input type="month" id="cafe-month" onchange="loadCafeHistory()"/></div>
-          <button class="btn btn-p btn-sm" onclick="loadCafeHistory()">Actualiser</button>
-          <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;cursor:pointer;padding:8px 16px;border-radius:6px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px" onclick="printCafeReport()">
-            🖨️ Relevé Comptabilité
-          </button>
+        <h3>☕ Relevé Café — Comptabilité</h3>
+        <p style="font-size:13px;color:var(--muted);margin:4px 0 14px">Entrez le montant à déclarer et le mois — le relevé est généré automatiquement (indépendant des ventes réelles).</p>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div class="fg" style="min-width:170px"><label>Mois</label><input type="month" id="cafe-month"/></div>
+          <div class="fg" style="min-width:180px"><label>Montant à déclarer (MAD)</label><input type="number" id="cafe-montant" placeholder="0.00" step="0.01" min="0"/></div>
+          <button class="btn btn-p btn-sm" onclick="printCafeReport()">🖨️ Générer le Relevé</button>
         </div>
       </div>
-      <div class="section">
-        <div class="s-head">
-          <span class="s-title">☕ Recette Café par Jour</span>
-          <span id="cafe-month-label" style="font-size:12px;color:var(--muted)"></span>
-        </div>
-        <div class="s-body">
-          <table class="t" id="cafe-hist-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th class="num">Recette (MAD)</th>
-                <th class="num">Coût Stock (MAD)</th>
-                <th class="num">Bénéfice Net (MAD)</th>
-              </tr>
-            </thead>
-            <tbody id="cafe-hist-body"></tbody>
-            <tfoot id="cafe-hist-foot"></tfoot>
-          </table>
+    </div>
+
+    <!-- SERVICE RELEVÉ (montant saisi) -->
+    <div id="tab-service" class="tab-pane">
+      <div class="form-card" style="padding:16px 20px">
+        <h3>💧 Relevé Service — Comptabilité</h3>
+        <p style="font-size:13px;color:var(--muted);margin:4px 0 14px">Entrez le montant à déclarer et le mois — le relevé est généré automatiquement.</p>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div class="fg" style="min-width:170px"><label>Mois</label><input type="month" id="service-month"/></div>
+          <div class="fg" style="min-width:180px"><label>Montant à déclarer (MAD)</label><input type="number" id="service-montant" placeholder="0.00" step="0.01" min="0"/></div>
+          <button class="btn btn-p btn-sm" onclick="printServiceReport()">🖨️ Générer le Relevé</button>
         </div>
       </div>
     </div>
@@ -367,7 +360,6 @@ function showTab(name, el) {
   if (name === 'nouvelle') initNouvelleFacture();
   if (name === 'clients')  loadClientsList();
   if (name === 'tabac')    loadTabacHistory();
-  if (name === 'cafe')     loadCafeHistory();
 }
 
 // ── LUBRIFIANT PRODUCTS — pulled from the shared /api/products stock ──
@@ -1453,11 +1445,6 @@ function buildTabacPrintHtml(rows, monthLabel) {
 
     <!-- PAGE -->
     <div style="text-align:center;font-size:11px;margin-bottom:14px">1 / 1</div>
-
-    <!-- PIED DE PAGE -->
-    <div style="text-align:center;border-top:1.5px solid #000;padding-top:8px;font-size:10.5px;letter-spacing:.3px">
-      RC KENITRA 67019 &nbsp;&mdash;&nbsp; PATENTE 20113387 &nbsp;&mdash;&nbsp; IF 53221208 &nbsp;&mdash;&nbsp; ICE 003172239000062
-    </div>
   </div>`;
 }
 
@@ -1477,104 +1464,63 @@ async function printTabacReport() {
   document.getElementById('print-overlay').classList.add('open');
 }
 
-// ── CAFÉ HISTORY ──────────────────────────────────────────────
-async function loadCafeHistory() {
-  const month = document.getElementById('cafe-month').value;
-  if (!month) return;
-  document.getElementById('cafe-month-label').textContent = month;
-  const data = await A('/api/cafe/report/month?month=' + month).catch(() => ({ days: [] }));
-  const days = (data.days || []).filter(d => parseFloat(d.revenue) > 0 || parseFloat(d.stock_cost) > 0);
-  const tbody = document.getElementById('cafe-hist-body');
-  const tfoot = document.getElementById('cafe-hist-foot');
-  if (!days.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted)">Aucune recette café ce mois</td></tr>';
-    tfoot.innerHTML = '';
-    return;
-  }
-  let totRev = 0, totCost = 0, totNet = 0;
-  tbody.innerHTML = days.map(d => {
-    totRev  += parseFloat(d.revenue) || 0;
-    totCost += parseFloat(d.stock_cost) || 0;
-    totNet  += parseFloat(d.net_profit) || 0;
-    return `<tr>
-      <td><strong>${fmtDate(d.day)}</strong></td>
-      <td class="num fw7 c-br">${fmt(d.revenue)} MAD</td>
-      <td class="num c-r">${fmt(d.stock_cost)} MAD</td>
-      <td class="num fw7 c-g">${fmt(d.net_profit)} MAD</td>
-    </tr>`;
-  }).join('');
-  tfoot.innerHTML = `<tr style="background:var(--bg2);font-weight:800">
-    <td>TOTAL</td>
-    <td class="num c-br">${fmt(totRev)} MAD</td>
-    <td class="num c-r">${fmt(totCost)} MAD</td>
-    <td class="num c-g">${fmt(totNet)} MAD</td>
-  </tr>`;
-}
-
-// ── Relevé Café Comptabilité — même style que la facture physique ──
-function buildCafePrintHtml(days, monthLabel) {
-  const TD  = 'border:1px solid #000;padding:8px 10px;font-size:12px';
+// ── RELEVÉ MANUEL (Café / Service) — montant saisi, généré pour le comptable ──
+function buildManualRelevePrintHtml(title, montant, monthLabel) {
+  const TD  = 'border:1px solid #000;padding:10px 12px;font-size:13px';
   const TDR = TD + ';text-align:right';
-  const active = days.filter(d => parseFloat(d.revenue) > 0);
-  const grandTotal = active.reduce((s, d) => s + parseFloat(d.revenue), 0);
-
-  const rowsHtml = active.map(d => `
-    <tr>
-      <td style="${TD}">${fmtDate(d.day)}</td>
-      <td style="${TDR};font-weight:bold">${fmt(d.revenue, 2)}</td>
-    </tr>`).join('');
-  const emptyCount = Math.max(0, 8 - active.length);
-  const emptyHtml = Array(emptyCount).fill(`
-    <tr style="height:28px"><td style="${TD}"></td><td style="${TD}"></td></tr>`).join('');
-
+  const cap = title.charAt(0) + title.slice(1).toLowerCase();
   return `
   <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:600px;margin:0 auto">
     <div style="text-align:center;margin-bottom:8px;line-height:1.2">
-      <div style="font-size:26px;font-weight:bold;font-style:italic;letter-spacing:1px">CAFÉ</div>
+      <div style="font-size:26px;font-weight:bold;font-style:italic;letter-spacing:1px">${esc(title)}</div>
     </div>
     <div style="text-align:center;margin-bottom:14px">
-      <span style="display:inline-block;border:2.5px solid #000;padding:6px 36px;font-size:13px;font-weight:bold;letter-spacing:2px">RELEVÉ CAFÉ — COMPTABILITÉ</span>
+      <span style="display:inline-block;border:2.5px solid #000;padding:6px 36px;font-size:13px;font-weight:bold;letter-spacing:2px">RELEVÉ ${esc(title)} — COMPTABILITÉ</span>
     </div>
-    <div style="text-align:center;font-size:12px;margin-bottom:14px;font-style:italic">
+    <div style="text-align:center;font-size:12px;margin-bottom:16px;font-style:italic">
       Période : <strong>${esc(monthLabel)}</strong>
     </div>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:14px">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
       <thead>
         <tr style="background:#ddd">
-          <th style="${TD};text-align:left;font-size:11.5px">Date</th>
-          <th style="${TDR};width:200px;font-size:11.5px">Recette (MAD)</th>
+          <th style="${TD};text-align:left">Désignation</th>
+          <th style="${TDR};width:220px">Montant (MAD)</th>
         </tr>
       </thead>
-      <tbody>${rowsHtml}${emptyHtml}</tbody>
+      <tbody>
+        <tr>
+          <td style="${TD}">Recette ${esc(cap)} — ${esc(monthLabel)}</td>
+          <td style="${TDR};font-weight:bold">${fmt(montant, 2)}</td>
+        </tr>
+      </tbody>
       <tfoot>
         <tr style="background:#ddd">
-          <td style="${TD};font-weight:bold;font-size:13px;font-style:italic">TOTAL GÉNÉRAL</td>
-          <td style="${TDR};font-weight:bold;font-size:13px">${fmt(grandTotal, 2)}</td>
+          <td style="${TD};font-weight:bold;font-style:italic;font-size:13px">TOTAL GÉNÉRAL</td>
+          <td style="${TDR};font-weight:bold;font-size:13px">${fmt(montant, 2)}</td>
         </tr>
       </tfoot>
     </table>
     <div style="margin-bottom:18px;font-size:11.5px">
       <div style="font-style:italic">Arrêter le présent relevé à la somme de :</div>
-      <div style="font-weight:bold;margin-top:6px">${montantEnLettres(grandTotal)}</div>
+      <div style="font-weight:bold;margin-top:6px">${montantEnLettres(montant)}</div>
     </div>
     <div style="text-align:center;font-size:11px;margin-bottom:14px">1 / 1</div>
-    <div style="text-align:center;border-top:1.5px solid #000;padding-top:8px;font-size:10.5px;letter-spacing:.3px">
-      RC KENITRA 67019 &nbsp;&mdash;&nbsp; PATENTE 20113387 &nbsp;&mdash;&nbsp; IF 53221208 &nbsp;&mdash;&nbsp; ICE 003172239000062
-    </div>
   </div>`;
 }
 
-async function printCafeReport() {
-  const monthInput = document.getElementById('cafe-month').value;
-  if (!monthInput) { toast('Sélectionnez un mois d\'abord', 'w'); return; }
-  const [y, m] = monthInput.split('-');
-  const monthLabel = new Date(+y, +m - 1, 1).toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
-  const data = await A('/api/cafe/report/month?month=' + monthInput);
-  const active = (data.days || []).filter(d => parseFloat(d.revenue) > 0);
-  if (!active.length) { toast('Aucune recette café pour ce mois', 'w'); return; }
-  document.getElementById('print-frame').innerHTML = buildCafePrintHtml(active, monthLabel);
+function printManualReleve(kind) {
+  const month   = document.getElementById(kind + '-month').value;
+  const montant = parseFloat(document.getElementById(kind + '-montant').value);
+  if (!month) { toast('Sélectionnez un mois', 'w'); return; }
+  if (!isFinite(montant) || montant <= 0) { toast('Montant invalide', 'er'); return; }
+  const [y, m] = month.split('-');
+  const label = new Date(+y, +m - 1, 1).toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
+  const title = kind === 'cafe' ? 'CAFÉ' : 'SERVICE';
+  document.getElementById('print-frame').innerHTML = buildManualRelevePrintHtml(title, montant, label);
   document.getElementById('print-overlay').classList.add('open');
 }
+function printCafeReport()    { printManualReleve('cafe'); }
+function printServiceReport() { printManualReleve('service'); }
 
 loadListe();
 loadLubProductsList(); // preload lubrifiant catalogue for the désignation dropdowns
