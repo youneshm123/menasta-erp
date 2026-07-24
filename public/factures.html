@@ -1529,7 +1529,7 @@ function printManualReleve(kind) {
   if (!isFinite(montant) || montant <= 0) { toast('Montant invalide', 'er'); return; }
   const [y, m] = month.split('-').map(Number);
   const label = new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
-  const title = kind === 'cafe' ? 'CAFÉ' : 'SERVICE';
+  const title = kind === 'cafe' ? 'CAFÉ ET BOISSON' : 'LAVAGE ET GRAISSAGE';
   document.getElementById('print-frame').innerHTML = buildManualRelevePrintHtml(title, montant, y, m, label);
   document.getElementById('print-overlay').classList.add('open');
 }
