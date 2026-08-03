@@ -560,6 +560,10 @@
         <input type="checkbox" id="rv-bymonth" style="width:16px;height:16px;cursor:pointer"/>
         <span>Séparer par mois (un sous-total par mois)</span>
       </label>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rv-solde" style="width:16px;height:16px;cursor:pointer"/>
+        <span>Afficher le solde (antérieur, payé, reste à payer)</span>
+      </label>
       <div class="muted sm" style="margin-top:10px;line-height:1.5">
         Laissez les dates vides pour tout l'historique. Le solde d'avant la période est reporté en « Solde antérieur ».
       </div>
@@ -2018,6 +2022,7 @@ function genReleve() {
     from: document.getElementById('rv-from').value || null,
     to:   document.getElementById('rv-to').value   || null,
     byMonth: document.getElementById('rv-bymonth').checked,
+    showSolde: document.getElementById('rv-solde').checked,
     layout: document.getElementById('rv-layout').value
   };
   closeModal('m-releve');
@@ -2049,16 +2054,18 @@ async function clientReleve(id, name, opts) {
     if (client.company) doc.text('Société : ' + client.company, 14, 45);
     if (client.phone)   doc.text('Tél : ' + client.phone, 14, 51);
 
-    // Balance box
-    const balColor = client.balance_due > 0 ? [220, 38, 38] : [34, 197, 94];
-    doc.setFillColor(...balColor);
-    doc.roundedRect(130, 32, 66, 22, 3, 3, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-    doc.text('Solde actuel', 163, 40, { align: 'center' });
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text(fmt(client.balance_due) + ' MAD', 163, 50, { align: 'center' });
-    doc.setTextColor(0, 0, 0);
+    // Balance box — only on a full statement; a purchases-only relevé shows no solde.
+    if (opts.showSolde) {
+      const balColor = client.balance_due > 0 ? [220, 38, 38] : [34, 197, 94];
+      doc.setFillColor(...balColor);
+      doc.roundedRect(130, 32, 66, 22, 3, 3, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+      doc.text('Solde actuel', 163, 40, { align: 'center' });
+      doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+      doc.text(fmt(client.balance_due) + ' MAD', 163, 50, { align: 'center' });
+      doc.setTextColor(0, 0, 0);
+    }
 
     // Oldest first — a relevé reads chronologically. The API returns newest first.
     const asc = (a, b) => new Date(opDate(a)) - new Date(opDate(b));
@@ -2250,26 +2257,38 @@ async function clientReleve(id, name, opts) {
     if (fy > 250) { doc.addPage(); fy = 24; }   // keep the recap off a page edge
     doc.setFontSize(10); doc.setFont('helvetica', 'normal');
     doc.setTextColor(0, 0, 0);
-    if (Math.abs(opening) > 0.01) {
-      doc.text('Solde antérieur :', 14, fy);
-      doc.text((opening < 0 ? '- ' : '') + fmt(Math.abs(opening)) + ' MAD', 90, fy, { align: 'right' });
-      fy += 6;
-    }
-    doc.text('Total achats :', 14, fy);
-    doc.text('+ ' + fmt(totalSales) + ' MAD', 90, fy, { align: 'right' });
-    doc.text('Total payé :', 14, fy + 6);
-    doc.text('- ' + fmt(totalPays) + ' MAD', 90, fy + 6, { align: 'right' });
-    fy += 12;
-    doc.setDrawColor(180, 180, 180); doc.line(14, fy - 3, 90, fy - 3);
-    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...(closing > 0 ? [220, 38, 38] : [34, 197, 94]));
-    doc.text('Reste à payer : ' + fmt(closing) + ' MAD', 14, fy + 3);
-    fy += 3;
-    // The period stops before today, so today's balance differs — say so.
-    if (hasLater) {
-      fy += 7;
-      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(90, 90, 90);
-      doc.text('Solde à fin de période. Solde actuel toutes périodes : ' + fmt(bal) + ' MAD', 14, fy);
+    if (opts.showSolde) {
+      // Full statement: solde antérieur + achats - payé = reste à payer.
+      if (Math.abs(opening) > 0.01) {
+        doc.text('Solde antérieur :', 14, fy);
+        doc.text((opening < 0 ? '- ' : '') + fmt(Math.abs(opening)) + ' MAD', 90, fy, { align: 'right' });
+        fy += 6;
+      }
+      doc.text('Total achats :', 14, fy);
+      doc.text('+ ' + fmt(totalSales) + ' MAD', 90, fy, { align: 'right' });
+      doc.text('Total payé :', 14, fy + 6);
+      doc.text('- ' + fmt(totalPays) + ' MAD', 90, fy + 6, { align: 'right' });
+      fy += 12;
+      doc.setDrawColor(180, 180, 180); doc.line(14, fy - 3, 90, fy - 3);
+      doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...(closing > 0 ? [220, 38, 38] : [34, 197, 94]));
+      doc.text('Reste à payer : ' + fmt(closing) + ' MAD', 14, fy + 3);
+      fy += 3;
+      // The period stops before today, so today's balance differs — say so.
+      if (hasLater) {
+        fy += 7;
+        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(90, 90, 90);
+        doc.text('Solde à fin de période. Solde actuel toutes périodes : ' + fmt(bal) + ' MAD', 14, fy);
+      }
+    } else {
+      // Default: one big total of the purchases — no payments, no balance.
+      doc.setFillColor(91, 79, 207);
+      doc.roundedRect(14, fy - 6, 182, 16, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+      doc.text('TOTAL', 20, fy + 4.5);
+      doc.text(fmt(totalSales) + ' MAD', 190, fy + 4.5, { align: 'right' });
+      fy += 10;
     }
     doc.setTextColor(120, 120, 120); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
     doc.text('STE MENASTA — Merci de votre confiance.', 14, fy + 13);
