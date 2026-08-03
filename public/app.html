@@ -1965,17 +1965,20 @@ async function openClientHistory(id, name) {
         <td class="muted sm">${esc(p.notes||'')}</td>
       </tr>`).join('') : '<tr><td colspan="4" class="tc muted" style="padding:14px">Aucun paiement</td></tr>';
     const saleRows = sales.length ? sales.map(s => `
-      <tr>
+      <tr${s.hors_releve ? ' style="opacity:.55"' : ''}>
         <td class="muted sm">${fmtDT(opDate(s))}</td>
-        <td>${esc(s.pump_name||'—')}</td>
+        <td>${esc(s.notes || s.pump_name || '—')}${s.hors_releve ? ' <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;background:#FEF3C7;color:#92400E">HORS RELEVÉ</span>' : ''}</td>
         <td class="num fw7 c-r">${fmt(s.amount)} MAD</td>
-      </tr>`).join('') : '<tr><td colspan="3" class="tc muted" style="padding:14px">Aucun achat</td></tr>';
+        <td class="tc"><button class="btn btn-xs" style="background:${s.hors_releve ? '#DCFCE7;color:#15803D' : '#FEF3C7;color:#92400E'}"
+          onclick="toggleHorsReleve(${s.id}, ${s.hors_releve ? 'false' : 'true'}, ${id}, '${esc(name)}')">${s.hors_releve ? '↩ Remettre' : '🚫 Exclure'}</button></td>
+      </tr>`).join('') : '<tr><td colspan="4" class="tc muted" style="padding:14px">Aucun achat</td></tr>';
     body.innerHTML = `
       <div class="fxb" style="margin-bottom:6px"><span class="fw7">Solde dû</span><span class="fw7 ${client.balance_due>0?'c-r':'c-g'}">${fmt(client.balance_due)} MAD</span></div>
       <div style="font-size:12px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">💰 Paiements reçus (${payments.length})</div>
       <table class="t"><thead><tr><th>Date</th><th class="num">Montant</th><th>Reçu par</th><th>Note</th></tr></thead><tbody>${payRows}</tbody></table>
       <div style="font-size:12px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 6px">🛒 Achats à crédit (${sales.length})</div>
-      <table class="t"><thead><tr><th>Date</th><th>Type</th><th class="num">Montant</th></tr></thead><tbody>${saleRows}</tbody></table>`;
+      <table class="t"><thead><tr><th>Date</th><th>Désignation</th><th class="num">Montant</th><th class="tc">Relevé</th></tr></thead><tbody>${saleRows}</tbody></table>
+      <div class="muted sm" style="margin-top:8px;line-height:1.5">🚫 Exclure = le bon reste en base et dans le solde, mais n'apparaît plus sur le relevé PDF remis au client.</div>`;
   } catch (e) {
     body.innerHTML = '<div class="muted" style="padding:14px">Erreur : ' + esc(e.message) + '</div>';
   }
@@ -2029,6 +2032,15 @@ function genReleve() {
   clientReleve(_rvClient.id, _rvClient.name, opts);
 }
 
+// Retire (ou remet) un bon du relevé client sans toucher au solde ni au CA.
+async function toggleHorsReleve(saleId, hors, clientId, clientName) {
+  try {
+    await api('POST', '/credits/sales/' + saleId + '/hors-releve', { hors_releve: hors });
+    toast(hors ? 'Bon retiré du relevé ✓' : 'Bon remis dans le relevé ✓', 'ok');
+    openClientHistory(clientId, clientName);
+  } catch (e) { toast(e.message || 'Erreur', 'er'); }
+}
+
 async function clientReleve(id, name, opts) {
   opts = opts || {};
   toast('Génération du relevé…', 'i');
@@ -2079,9 +2091,14 @@ async function clientReleve(id, name, opts) {
       const d = dayOf(r);
       return (!opts.from || d >= opts.from) && (!opts.to || d <= opts.to);
     };
-    const salesAsc   = sales.filter(inPeriod).sort(asc);
+    // Bons marqués "hors relevé": réels et comptés dans le solde, mais retirés
+    // du document remis au client (il n'a pas le bon papier de son côté).
+    const inPeriodSales = sales.filter(inPeriod);
+    const salesAsc   = inPeriodSales.filter(s => !s.hors_releve).sort(asc);
+    const excluded   = inPeriodSales.filter(s => s.hors_releve);
     const paymentsAsc = payments.filter(inPeriod).sort(asc);
     const totalSales = salesAsc.reduce((t, s) => t + parseFloat(s.amount || 0), 0);
+    const totalExcl  = excluded.reduce((t, s) => t + parseFloat(s.amount || 0), 0);
     const totalPays  = paymentsAsc.reduce((t, p) => t + parseFloat(p.amount || 0), 0);
 
     // Balance carried forward INTO the period. Everything dated on/after `from`
@@ -2090,7 +2107,8 @@ async function clientReleve(id, name, opts) {
     const bal = parseFloat(client.balance_due || 0);
     const sumFrom = (arr) => arr.reduce((t, r) => t + (!opts.from || dayOf(r) >= opts.from ? parseFloat(r.amount || 0) : 0), 0);
     const opening = +(bal - sumFrom(sales) + sumFrom(payments)).toFixed(2);
-    const closing = +(opening + totalSales - totalPays).toFixed(2);
+    // Le solde reste la vérité comptable: il inclut les bons hors relevé.
+    const closing = +(opening + totalSales + totalExcl - totalPays).toFixed(2);
     // Operations after `to` are excluded, so the period's closing balance is not
     // today's balance — we then print both so the client isn't misled.
     const hasLater = opts.to && [...sales, ...payments].some(r => dayOf(r) > opts.to);
@@ -2266,9 +2284,16 @@ async function clientReleve(id, name, opts) {
       }
       doc.text('Total achats :', 14, fy);
       doc.text('+ ' + fmt(totalSales) + ' MAD', 90, fy, { align: 'right' });
-      doc.text('Total payé :', 14, fy + 6);
-      doc.text('- ' + fmt(totalPays) + ' MAD', 90, fy + 6, { align: 'right' });
-      fy += 12;
+      fy += 6;
+      // Sans cette ligne le total affiché ne mènerait pas au solde annoncé.
+      if (totalExcl > 0.01) {
+        doc.text('Bons hors relevé :', 14, fy);
+        doc.text('+ ' + fmt(totalExcl) + ' MAD', 90, fy, { align: 'right' });
+        fy += 6;
+      }
+      doc.text('Total payé :', 14, fy);
+      doc.text('- ' + fmt(totalPays) + ' MAD', 90, fy, { align: 'right' });
+      fy += 6;
       doc.setDrawColor(180, 180, 180); doc.line(14, fy - 3, 90, fy - 3);
       doc.setFontSize(12); doc.setFont('helvetica', 'bold');
       doc.setTextColor(...(closing > 0 ? [220, 38, 38] : [34, 197, 94]));

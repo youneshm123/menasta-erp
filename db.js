@@ -353,6 +353,9 @@ async function initDB() {
   await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS heure_fin TEXT');
   await pgPool.query('ALTER TABLE credit_sales ADD COLUMN IF NOT EXISTS product_type TEXT NOT NULL DEFAULT \'carburant\'');
   try { await pgPool.query('ALTER TABLE credit_sales ALTER COLUMN pump_id DROP NOT NULL'); } catch(_) {}
+  // Bon reel mais que le client ne reconnait pas (pas de bon papier): il reste
+  // dans la caisse, le CA et le solde, mais n'apparait pas sur le releve client.
+  await pgPool.query('ALTER TABLE credit_sales ADD COLUMN IF NOT EXISTS hors_releve BOOLEAN NOT NULL DEFAULT FALSE');
   await pgPool.query('ALTER TABLE credit_clients ADD COLUMN IF NOT EXISTS credit_limit REAL');
   await pgPool.query('ALTER TABLE fuel_deliveries ADD COLUMN IF NOT EXISTS numero_cheque TEXT');
   await pgPool.query('ALTER TABLE fuel_types ADD COLUMN IF NOT EXISTS cost_per_liter REAL NOT NULL DEFAULT 0');

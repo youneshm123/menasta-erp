@@ -128,6 +128,17 @@ router.post('/sales', requireAuth, wrap(async (req, res) => {
   res.status(201).json(sale);
 }));
 
+// Exclure / réintégrer une vente au relevé client. La vente reste en base et
+// continue de compter dans le solde, la caisse et le CA — elle disparaît
+// seulement du PDF remis au client (bon sans justificatif papier de son côté).
+router.post('/sales/:id/hors-releve', requireAuth, wrap(async (req, res) => {
+  const hors = !!(req.body && req.body.hors_releve);
+  const { rows } = await pool.query('SELECT id FROM credit_sales WHERE id=$1', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Vente introuvable' });
+  await pool.query('UPDATE credit_sales SET hors_releve=$2 WHERE id=$1', [req.params.id, hors]);
+  res.json({ ok: true, hors_releve: hors });
+}));
+
 router.delete('/sales/:id', requireAuth, wrap(async (req, res) => {
   const { rows } = await pool.query(
     'SELECT cs.*, s.status FROM credit_sales cs LEFT JOIN shifts s ON s.id=cs.shift_id WHERE cs.id=$1', [req.params.id]
