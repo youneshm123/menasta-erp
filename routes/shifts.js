@@ -372,4 +372,67 @@ router.post('/:id/reopen', requireAuth, wrap(async (req, res) => {
   res.json(await shiftDetail(updated));
 }));
 
+// ── Delete a poste and everything attached to it ──
+// There is no soft-delete: this permanently removes the shift and all its
+// children (readings, credit sales/payments, product sales, expenses, fuel
+// withdrawals, employee advances, price changes). Credit balances are reversed
+// the same way the individual delete routes do, so client `balance_due` stays
+// correct: a credit sale had ADDED to the balance, a payment had SUBTRACTED.
+router.delete('/:id', requireAuth, wrap(async (req, res) => {
+  const id = req.params.id;
+  const { rows } = await pool.query('SELECT id FROM shifts WHERE id=$1', [id]);
+  if (!rows.length) return res.status(404).json({ error: 'Poste introuvable' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Reverse credit sales: subtract each sale back off the client's balance.
+    const { rows: sales } = await client.query('SELECT credit_client_id, amount FROM credit_sales WHERE shift_id=$1', [id]);
+    for (const s of sales)
+      await client.query('UPDATE credit_clients SET balance_due=GREATEST(balance_due-$1,0) WHERE id=$2', [s.amount, s.credit_client_id]);
+    // Reverse credit payments: the paid amount goes back onto the client's debt.
+    const { rows: pays } = await client.query('SELECT credit_client_id, amount FROM credit_payments WHERE shift_id=$1', [id]);
+    for (const p of pays)
+      await client.query('UPDATE credit_clients SET balance_due=balance_due+$1 WHERE id=$2', [p.amount, p.credit_client_id]);
+
+    // Revert a mid-shift price change so the live fuel price isn't left stuck at
+    // the changed value. Only safe when this shift holds the LATEST price change
+    // for that fuel and the live price still equals its price_after (no newer
+    // change happened after this poste). See project_price_change_delete_gotcha.
+    const { rows: pcs } = await client.query(`
+      SELECT DISTINCT ON (p.fuel_type_id) p.fuel_type_id, pc.price_before, pc.price_after
+      FROM shift_price_changes pc JOIN pumps p ON p.id=pc.pump_id
+      WHERE pc.shift_id=$1 ORDER BY p.fuel_type_id, pc.meter_value DESC
+    `, [id]);
+    for (const c of pcs) {
+      const { rows: newer } = await client.query(`
+        SELECT 1 FROM shift_price_changes pc2 JOIN pumps p2 ON p2.id=pc2.pump_id
+        WHERE p2.fuel_type_id=$1 AND pc2.shift_id<>$2 AND pc2.created_at > (
+          SELECT MAX(created_at) FROM shift_price_changes WHERE shift_id=$2
+        ) LIMIT 1
+      `, [c.fuel_type_id, id]);
+      if (!newer.length)
+        await client.query('UPDATE fuel_types SET price_per_liter=$1 WHERE id=$2 AND price_per_liter=$3',
+          [c.price_before, c.fuel_type_id, c.price_after]);
+    }
+
+    await client.query('DELETE FROM credit_sales WHERE shift_id=$1', [id]);
+    await client.query('DELETE FROM credit_payments WHERE shift_id=$1', [id]);
+    await client.query('DELETE FROM product_sales WHERE shift_id=$1', [id]);
+    await client.query('DELETE FROM expenses WHERE shift_id=$1', [id]);
+    await client.query('DELETE FROM fuel_withdrawals WHERE shift_id=$1', [id]);
+    await client.query('DELETE FROM employee_advances WHERE shift_id=$1', [id]);
+    await client.query('DELETE FROM shift_price_changes WHERE shift_id=$1', [id]);
+    await client.query('DELETE FROM pump_readings WHERE shift_id=$1', [id]);
+    await client.query('DELETE FROM shifts WHERE id=$1', [id]);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+  res.json({ ok: true });
+}));
+
 module.exports = router;

@@ -23,6 +23,7 @@
 .fuel-btn.selected-gazoil{background:#FFF7ED;color:#C2410C;border-color:#C2410C;font-weight:800;}
 .fuel-btn.selected-essence{background:#F0FDF4;color:#15803D;border-color:#15803D;font-weight:800;}
 .fuel-btn.selected-lubrifiant{background:#EFF6FF;color:#1D4ED8;border-color:#1D4ED8;font-weight:800;}
+.fuel-btn.selected-vidange{background:#FEF2F2;color:#B91C1C;border-color:#B91C1C;font-weight:800;}
 .fuel-btn.selected-espece{background:#ECFDF5;color:#059669;border-color:#059669;font-weight:800;}
 .exp-btns{display:flex;gap:5px;align-items:center;flex-shrink:0}
 .exp-btn{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:none;transition:background .15s}
@@ -475,6 +476,7 @@
             <button type="button" class="fuel-btn" id="cs-btn-gazoil" onclick="csSelectFuel('gazoil')">⛽ Gazoil</button>
             <button type="button" class="fuel-btn" id="cs-btn-essence" onclick="csSelectFuel('essence')">🟢 Essence</button>
             <button type="button" class="fuel-btn" id="cs-btn-lubrifiant" onclick="csSelectFuel('lubrifiant')">🛢️ Lubrifiant</button>
+            <button type="button" class="fuel-btn" id="cs-btn-vidange" onclick="csSelectFuel('vidange')">🔧 Vidange</button>
             <button type="button" class="fuel-btn" id="cs-btn-espece" onclick="csSelectFuel('espece')">💵 Espèce</button>
           </div>
           <input type="hidden" id="cs-pump-id"/>
@@ -528,6 +530,34 @@
     <div class="modal-body" id="ch-body" style="max-height:62vh;overflow-y:auto">Chargement…</div>
     <div class="modal-ft">
       <button class="btn btn-g" onclick="closeModal('m-client-history')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- RELEVE OPTIONS -->
+<div class="overlay" id="m-releve">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-hd"><span>📄</span><h3 id="rv-title">Relevé Client</h3><button class="x" onclick="closeModal('m-releve')">×</button></div>
+    <div class="modal-body">
+      <div class="fg" style="margin-bottom:10px">
+        <label>Période</label>
+        <div id="rv-months" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="fg"><label>Du</label><input type="date" id="rv-from"/></div>
+        <div class="fg"><label>Au</label><input type="date" id="rv-to"/></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rv-bymonth" style="width:16px;height:16px;cursor:pointer"/>
+        <span>Séparer par mois (un sous-total par mois)</span>
+      </label>
+      <div class="muted sm" style="margin-top:10px;line-height:1.5">
+        Laissez les dates vides pour tout l'historique. Le solde d'avant la période est reporté en « Solde antérieur ».
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-releve')">Annuler</button>
+      <button class="btn btn-p" onclick="genReleve()">📄 Générer le PDF</button>
     </div>
   </div>
 </div>
@@ -1587,6 +1617,7 @@ function renderShiftRow(s) {
       <button class="btn btn-g btn-xs" onclick="viewShift(${s.id})">Détail</button>
       ${s.status==='closed'?`<button class="btn btn-p btn-xs" onclick="printShift(${s.id})">🖨️</button>`:''}
       ${s.status==='closed'?`<button class="btn btn-xs" style="background:#f59e0b;color:#fff" onclick="reopenShift(${s.id})">Réouvrir</button>`:''}
+      <button class="btn btn-xs" style="background:#ef4444;color:#fff" onclick="deleteShift(${s.id}, '${s.seq != null ? s.seq : s.id}')">🗑️ Supprimer</button>
     </td>
   </tr>`;
 }
@@ -1700,6 +1731,18 @@ async function reopenShift(id) {
   if (r && r.id) { toast('Poste #' + id + ' réouvert ✓', 'g'); loadHistory(); goTo('shift'); }
 }
 
+async function deleteShift(id, label) {
+  const n = label != null ? label : id;
+  if (!confirm('Supprimer définitivement le poste #' + n + ' ?\n\nCela efface le poste et TOUT ce qui y est rattaché (relevés, ventes crédit, ventes produits, dépenses, retraits carburant). Les soldes clients seront corrigés. Action irréversible.')) return;
+  try {
+    await api('DELETE', '/shifts/' + id);
+    toast('Poste #' + n + ' supprimé ✓', 'ok');
+    loadHistory();
+  } catch (e) {
+    toast(e.message || 'Erreur suppression', 'er');
+  }
+}
+
 // ─── CREDITS ───────────────────────────────────────────────
 async function loadCredits() {
   const [clients, sales] = await Promise.all([
@@ -1746,7 +1789,7 @@ async function loadCredits() {
         <button class="btn btn-w btn-xs" onclick="openEditClient(${c.id},'${esc(c.name)}','${esc(c.phone||'')}','${esc(c.company||'')}',${c.credit_limit||'null'})">✏️</button>
         <button class="btn btn-d btn-xs" onclick="deleteClient(${c.id},'${esc(c.name)}')">🗑️</button>
         <button class="btn btn-xs" style="background:#F0FDF4;color:#15803D;" onclick="openClientHistory(${c.id},'${esc(c.name)}')">🕑 Historique</button>
-        <button class="btn btn-xs" style="background:#EFF6FF;color:#1D4ED8;" onclick="clientReleve(${c.id},'${esc(c.name)}')">📄 Relevé</button>
+        <button class="btn btn-xs" style="background:#EFF6FF;color:#1D4ED8;" onclick="openReleveModal(${c.id},'${esc(c.name)}')">📄 Relevé</button>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="8" class="tc muted" style="padding:20px">Aucun client</td></tr>';
@@ -1760,7 +1803,7 @@ let _rcFiltered = [];
 const RC_PER_PAGE = 15;
 
 const _rcTypeBadge = t => {
-  const map = { carburant: ['#EFF6FF','#1D4ED8','⛽ Carburant'], lubrifiant: ['#FEF3C7','#B45309','🛢️ Lubrifiant'], espece: ['#ECFDF5','#15803D','💵 Espèce'] };
+  const map = { carburant: ['#EFF6FF','#1D4ED8','⛽ Carburant'], gazoil: ['#FFF7ED','#C2410C','⛽ Gazoil'], essence: ['#F0FDF4','#15803D','🟢 Essence'], lubrifiant: ['#FEF3C7','#B45309','🛢️ Lubrifiant'], vidange: ['#FEF2F2','#B91C1C','🔧 Vidange'], espece: ['#ECFDF5','#15803D','💵 Espèce'] };
   const [bg, c, lbl] = map[t] || ['var(--bg2)','var(--muted)', t || '—'];
   return `<span style="background:${bg};color:${c};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;">${lbl}</span>`;
 };
@@ -1888,6 +1931,12 @@ function rcExport(kind) {
   } catch (e) { toast('Erreur export: ' + e.message, 'er'); }
 }
 
+// Real date of a credit operation. Entries typed after the fact (catch-up data
+// entry) carry a sale_time/payment_time of the day they were TYPED, which can be
+// several days after the poste. shift_date (the poste's opened_at) is the date
+// the client actually took the fuel, so it wins whenever the row has a poste.
+function opDate(r) { return r.shift_date || r.sale_time || r.payment_time; }
+
 async function openClientHistory(id, name) {
   openModal('m-client-history');
   document.getElementById('ch-title').textContent = 'Historique — ' + name;
@@ -1897,14 +1946,14 @@ async function openClientHistory(id, name) {
     const { client, sales, payments } = await api('GET', '/credits/clients/' + id + '/history');
     const payRows = payments.length ? payments.map(p => `
       <tr>
-        <td class="muted sm">${fmtDT(p.payment_time)}</td>
+        <td class="muted sm">${fmtDT(opDate(p))}</td>
         <td class="num fw7 c-g">+ ${fmt(p.amount)} MAD</td>
         <td class="muted sm">${esc(p.received_by_name||'—')}</td>
         <td class="muted sm">${esc(p.notes||'')}</td>
       </tr>`).join('') : '<tr><td colspan="4" class="tc muted" style="padding:14px">Aucun paiement</td></tr>';
     const saleRows = sales.length ? sales.map(s => `
       <tr>
-        <td class="muted sm">${fmtDT(s.sale_time)}</td>
+        <td class="muted sm">${fmtDT(opDate(s))}</td>
         <td>${esc(s.pump_name||'—')}</td>
         <td class="num fw7 c-r">${fmt(s.amount)} MAD</td>
       </tr>`).join('') : '<tr><td colspan="3" class="tc muted" style="padding:14px">Aucun achat</td></tr>';
@@ -1919,7 +1968,54 @@ async function openClientHistory(id, name) {
   }
 }
 
-async function clientReleve(id, name) {
+// ─── RELEVÉ (options + PDF) ─────────────────────────────────
+let _rvClient = { id: null, name: '' };
+
+const MONTH_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const ymOf = d => { const x = new Date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0'); };
+const ymLabel = ym => { const [y, m] = ym.split('-'); return MONTH_FR[parseInt(m) - 1] + ' ' + y; };
+
+async function openReleveModal(id, name) {
+  _rvClient = { id, name };
+  document.getElementById('rv-title').textContent = 'Relevé — ' + name;
+  document.getElementById('rv-from').value = '';
+  document.getElementById('rv-to').value = '';
+  document.getElementById('rv-bymonth').checked = false;
+  const box = document.getElementById('rv-months');
+  box.innerHTML = '<span class="muted sm">Chargement…</span>';
+  openModal('m-releve');
+  try {
+    const { sales, payments } = await api('GET', '/credits/clients/' + id + '/history');
+    // Offer only the months this client actually has activity in.
+    const months = [...new Set([...sales, ...payments].map(r => ymOf(opDate(r))))].sort();
+    box.innerHTML = `<button type="button" class="btn btn-xs btn-g" onclick="rvSetPeriod('')">Tout</button>` +
+      months.map(m => `<button type="button" class="btn btn-xs btn-g" onclick="rvSetPeriod('${m}')">${ymLabel(m)}</button>`).join('');
+  } catch (e) {
+    box.innerHTML = '<span class="muted sm">Erreur : ' + esc(e.message) + '</span>';
+  }
+}
+
+// Fill the date range from a quick month button ('' = all history).
+function rvSetPeriod(ym) {
+  const from = document.getElementById('rv-from'), to = document.getElementById('rv-to');
+  if (!ym) { from.value = ''; to.value = ''; return; }
+  const [y, m] = ym.split('-').map(Number);
+  from.value = ym + '-01';
+  to.value   = ym + '-' + String(new Date(y, m, 0).getDate()).padStart(2, '0');  // last day of month
+}
+
+function genReleve() {
+  const opts = {
+    from: document.getElementById('rv-from').value || null,
+    to:   document.getElementById('rv-to').value   || null,
+    byMonth: document.getElementById('rv-bymonth').checked
+  };
+  closeModal('m-releve');
+  clientReleve(_rvClient.id, _rvClient.name, opts);
+}
+
+async function clientReleve(id, name, opts) {
+  opts = opts || {};
   toast('Génération du relevé…', 'i');
   try {
     const { client, sales, payments } = await api('GET', '/credits/clients/' + id + '/history');
@@ -1954,48 +2050,163 @@ async function clientReleve(id, name) {
     doc.text(fmt(client.balance_due) + ' MAD', 163, 50, { align: 'center' });
     doc.setTextColor(0, 0, 0);
 
-    // Achats à crédit — date, désignation (lubrifiant / carburant), montant
-    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-    doc.text('Achats à crédit (' + sales.length + ')', 14, 64);
-    doc.autoTable({
-      startY: 67,
-      head: [['Date', 'Désignation', 'Montant']],
-      body: sales.length ? sales.map(s => {
-        const isLub = (s.product_type || '').toLowerCase() === 'lubrifiant' || !s.pump_id;
-        const desig = isLub ? 'Lubrifiant / Produit'
-                            : 'Carburant' + (s.pump_name && s.pump_name !== 'Lubrifiant' ? ' — ' + s.pump_name : '');
-        return [fmtDT(s.sale_time), desig, fmt(s.amount) + ' MAD'];
-      }) : [['—', 'Aucun achat', '']],
-      styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [91, 79, 207], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [245, 245, 255] },
-      columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } }
-    });
+    // Oldest first — a relevé reads chronologically. The API returns newest first.
+    const asc = (a, b) => new Date(opDate(a)) - new Date(opDate(b));
+    // Local YYYY-MM-DD — must match the date the row DISPLAYS (fmtDT is local),
+    // otherwise a late-evening entry lands in the wrong month.
+    const dayOf = r => {
+      const d = new Date(opDate(r));
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    };
+    const inPeriod = r => {
+      const d = dayOf(r);
+      return (!opts.from || d >= opts.from) && (!opts.to || d <= opts.to);
+    };
+    const salesAsc   = sales.filter(inPeriod).sort(asc);
+    const paymentsAsc = payments.filter(inPeriod).sort(asc);
+    const totalSales = salesAsc.reduce((t, s) => t + parseFloat(s.amount || 0), 0);
+    const totalPays  = paymentsAsc.reduce((t, p) => t + parseFloat(p.amount || 0), 0);
 
-    // Paiements reçus — date, montant, reçu par
-    const y2 = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-    doc.text('Paiements reçus (' + payments.length + ')', 14, y2);
-    doc.autoTable({
-      startY: y2 + 3,
-      head: [['Date', 'Montant', 'Reçu par', 'Note']],
-      body: payments.length ? payments.map(p => [fmtDT(p.payment_time), fmt(p.amount) + ' MAD', p.received_by_name||'—', p.notes||'—']) : [['—', 'Aucun paiement', '', '']],
-      styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [34, 197, 94], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [240, 255, 245] },
-      columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } }
-    });
+    // Balance carried forward INTO the period. Everything dated on/after `from`
+    // is removed from the current balance to get where the client stood at the
+    // start; with no `from` this is the historical adjustment (see recap below).
+    const bal = parseFloat(client.balance_due || 0);
+    const sumFrom = (arr) => arr.reduce((t, r) => t + (!opts.from || dayOf(r) >= opts.from ? parseFloat(r.amount || 0) : 0), 0);
+    const opening = +(bal - sumFrom(sales) + sumFrom(payments)).toFixed(2);
+    const closing = +(opening + totalSales - totalPays).toFixed(2);
+    // Operations after `to` are excluded, so the period's closing balance is not
+    // today's balance — we then print both so the client isn't misled.
+    const hasLater = opts.to && [...sales, ...payments].some(r => dayOf(r) > opts.to);
 
-    // Closing note
-    const fy = doc.lastAutoTable.finalY + 12;
-    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...(client.balance_due > 0 ? [220, 38, 38] : [34, 197, 94]));
-    doc.text('Reste à payer : ' + fmt(client.balance_due) + ' MAD', 14, fy);
-    doc.setTextColor(120, 120, 120); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-    doc.text('STE MENASTA — Merci de votre confiance.', 14, fy + 7);
+    const periodLabel = (opts.from || opts.to)
+      ? 'Période : ' + (opts.from ? new Date(opts.from).toLocaleDateString('fr-FR') : 'début')
+        + ' au ' + (opts.to ? new Date(opts.to).toLocaleDateString('fr-FR') : "aujourd'hui")
+      : 'Période : tout l\'historique';
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(90, 90, 90);
+    doc.text(periodLabel, 14, 57);
     doc.setTextColor(0, 0, 0);
 
-    doc.save('Releve_' + name.replace(/\s+/g, '_') + '.pdf');
+    // Achats à crédit — date, désignation (lubrifiant / carburant), montant
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('Achats à crédit (' + salesAsc.length + ')', 14, 64);
+
+    // Group purchases by category so the client sees Gazoil / Lubrifiant /
+    // Vidange separately, each with its own subtotal. No emoji here: the PDF
+    // uses helvetica, which cannot render them.
+    const CAT_LABELS = { gazoil:'GAZOIL', essence:'ESSENCE', lubrifiant:'LUBRIFIANT', vidange:'VIDANGE', espece:'ESPÈCE' };
+    const CAT_ORDER  = ['gazoil', 'essence', 'lubrifiant', 'vidange', 'espece'];
+    const catOf = s => {
+      const t = (s.product_type || '').toLowerCase();
+      if (CAT_LABELS[t]) return t;
+      return s.pump_id ? 'gazoil' : 'lubrifiant';   // legacy rows with no type
+    };
+    const desigOf = (s, c) => {
+      const note = (s.notes || '').trim();
+      if (c === 'gazoil' || c === 'essence')
+        return (s.pump_name && s.pump_name !== 'Lubrifiant' ? s.pump_name : CAT_LABELS[c]) + (note ? ' — ' + note : '');
+      return note || (c === 'vidange' ? 'Vidange' : c === 'espece' ? 'Espèce' : 'Lubrifiant / Produit');
+    };
+
+    const monthRowIdx = [], catRowIdx = [], subRowIdx = [], salesBody = [];
+    const sumAmt = rows => rows.reduce((t, s) => t + parseFloat(s.amount || 0), 0);
+    const sumLit = rows => rows.reduce((t, s) => t + parseFloat(s.liters || 0), 0);
+
+    // Emit the per-category blocks (with subtotals) for one set of sales.
+    const emitCategories = (rows) => {
+      const groups = {};
+      rows.forEach(s => { const c = catOf(s); (groups[c] = groups[c] || []).push(s); });
+      CAT_ORDER.filter(c => groups[c]).forEach(c => {
+        const g = groups[c];
+        catRowIdx.push(salesBody.length);
+        salesBody.push([CAT_LABELS[c] + '  (' + g.length + ')', '', '', '']);
+        g.forEach(s => salesBody.push([
+          fmtDT(opDate(s)), desigOf(s, c),
+          parseFloat(s.liters || 0) > 0 ? fmt(s.liters) + ' L' : '',
+          fmt(s.amount) + ' MAD'
+        ]));
+        subRowIdx.push(salesBody.length);
+        salesBody.push(['', 'Sous-total ' + CAT_LABELS[c], sumLit(g) > 0 ? fmt(sumLit(g)) + ' L' : '', fmt(sumAmt(g)) + ' MAD']);
+      });
+    };
+
+    if (opts.byMonth) {
+      // Month sections, each split by category inside, then a month total.
+      const byMonth = {};
+      salesAsc.forEach(s => { const m = ymOf(opDate(s)); (byMonth[m] = byMonth[m] || []).push(s); });
+      Object.keys(byMonth).sort().forEach(m => {
+        monthRowIdx.push(salesBody.length);
+        salesBody.push([ymLabel(m).toUpperCase(), '', '', '']);
+        emitCategories(byMonth[m]);
+        subRowIdx.push(salesBody.length);
+        salesBody.push(['', 'TOTAL ' + ymLabel(m).toUpperCase(), '', fmt(sumAmt(byMonth[m])) + ' MAD']);
+      });
+    } else {
+      emitCategories(salesAsc);
+    }
+
+    doc.autoTable({
+      startY: 67,
+      head: [['Date', 'Désignation', 'Litres', 'Montant']],
+      body: salesBody.length ? salesBody : [['—', 'Aucun achat', '', '']],
+      foot: salesAsc.length ? [['', 'TOTAL ACHATS', '', fmt(totalSales) + ' MAD']] : undefined,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [91, 79, 207], textColor: 255, fontStyle: 'bold' },
+      footStyles: { fillColor: [237, 235, 250], textColor: 20, fontStyle: 'bold' },
+      columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' } },
+      didParseCell: d => {
+        if (d.section !== 'body') return;
+        if (monthRowIdx.includes(d.row.index)) {
+          d.cell.styles.fillColor = [91, 79, 207];
+          d.cell.styles.textColor = 255;
+          d.cell.styles.fontStyle = 'bold';
+        } else if (catRowIdx.includes(d.row.index)) {
+          d.cell.styles.fillColor = [225, 222, 246];
+          d.cell.styles.fontStyle = 'bold';
+        } else if (subRowIdx.includes(d.row.index)) {
+          d.cell.styles.fillColor = [243, 242, 251];
+          d.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+
+    // The detailed "Paiements reçus" table is intentionally NOT printed — the
+    // relevé lists what the client consumed. Payments still count in the recap
+    // below (Total payé) so the balance stays correct.
+
+    // Recap — reads as a statement: solde antérieur + achats - payé = solde.
+    // Every figure printed here comes from the tables above, so the client can
+    // always check the arithmetic line by line.
+    let fy = doc.lastAutoTable.finalY + 12;
+    if (fy > 250) { doc.addPage(); fy = 24; }   // keep the recap off a page edge
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    if (Math.abs(opening) > 0.01) {
+      doc.text('Solde antérieur :', 14, fy);
+      doc.text((opening < 0 ? '- ' : '') + fmt(Math.abs(opening)) + ' MAD', 90, fy, { align: 'right' });
+      fy += 6;
+    }
+    doc.text('Total achats :', 14, fy);
+    doc.text('+ ' + fmt(totalSales) + ' MAD', 90, fy, { align: 'right' });
+    doc.text('Total payé :', 14, fy + 6);
+    doc.text('- ' + fmt(totalPays) + ' MAD', 90, fy + 6, { align: 'right' });
+    fy += 12;
+    doc.setDrawColor(180, 180, 180); doc.line(14, fy - 3, 90, fy - 3);
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...(closing > 0 ? [220, 38, 38] : [34, 197, 94]));
+    doc.text('Reste à payer : ' + fmt(closing) + ' MAD', 14, fy + 3);
+    fy += 3;
+    // The period stops before today, so today's balance differs — say so.
+    if (hasLater) {
+      fy += 7;
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(90, 90, 90);
+      doc.text('Solde à fin de période. Solde actuel toutes périodes : ' + fmt(bal) + ' MAD', 14, fy);
+    }
+    doc.setTextColor(120, 120, 120); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text('STE MENASTA — Merci de votre confiance.', 14, fy + 13);
+    doc.setTextColor(0, 0, 0);
+
+    const suffix = opts.from || opts.to ? '_' + (opts.from || 'debut') + '_' + (opts.to || 'auj') : '';
+    doc.save('Releve_' + name.replace(/\s+/g, '_') + suffix + '.pdf');
     toast('Relevé PDF généré ✓', 'g');
   } catch(e) { toast(e.message, 'er'); }
 }
@@ -2100,7 +2311,7 @@ function csAddToList() {
   const amount     = parseFloat(document.getElementById('cs-amount').value);
   const notes      = document.getElementById('cs-notes-f').value;
   if (!clientId)             { toast('Sélectionnez un client', 'wn'); return; }
-  if (_csMode === 'credit' && !_csFuelType) { toast('Choisissez le type (Gazoil / Essence / Lubrifiant / Espèce)', 'wn'); return; }
+  if (_csMode === 'credit' && !_csFuelType) { toast('Choisissez le type (Gazoil / Essence / Lubrifiant / Vidange / Espèce)', 'wn'); return; }
   if (!amount || amount <= 0){ toast('Montant invalide', 'er'); return; }
   csPending.push({ mode: _csMode, client_id: clientId, client_name: clientName, pump_id: _csMode === 'payment' ? null : (pumpId ? parseInt(pumpId) : null), product_type: _csMode === 'payment' ? 'paiement' : _csFuelType, amount, notes });
   document.getElementById('cs-client-input').value = '';
@@ -2124,7 +2335,7 @@ function updateCsPendingUI() {
     btn.disabled = true; btn.textContent = '✅ Enregistrer tout (0)'; return;
   }
   wrap.style.display = 'block';
-  const typeIcon = { gazoil:'⛽', essence:'🟢', lubrifiant:'🛢️', espece:'💵', paiement:'💰' };
+  const typeIcon = { gazoil:'⛽', essence:'🟢', lubrifiant:'🛢️', vidange:'🔧', espece:'💵', paiement:'💰' };
   items.innerHTML = csPending.map((c,i) => {
     const pay = c.mode === 'payment';
     const tag = pay
@@ -2402,10 +2613,12 @@ function csSelectFuel(type) {
   document.getElementById('cs-btn-gazoil').className     = 'fuel-btn' + (type==='gazoil'     ? ' selected-gazoil'     : '');
   document.getElementById('cs-btn-essence').className    = 'fuel-btn' + (type==='essence'    ? ' selected-essence'    : '');
   document.getElementById('cs-btn-lubrifiant').className = 'fuel-btn' + (type==='lubrifiant' ? ' selected-lubrifiant' : '');
+  document.getElementById('cs-btn-vidange').className    = 'fuel-btn' + (type==='vidange'    ? ' selected-vidange'    : '');
   document.getElementById('cs-btn-espece').className     = 'fuel-btn' + (type==='espece'     ? ' selected-espece'     : '');
   document.getElementById('cs-pump-id').value = '';
   _csFuelType = type;
-  if (type === 'lubrifiant' || type === 'espece') return;
+  // Non-fuel types have no pump and no liters.
+  if (type === 'lubrifiant' || type === 'espece' || type === 'vidange') return;
   // Auto-fill pump if one is active for this fuel type — but pump is optional
   const pump = S.pumps.find(p => p.status === 'active' && (p.fuel_name||'').toLowerCase().includes(type));
   if (pump) document.getElementById('cs-pump-id').value = pump.id;

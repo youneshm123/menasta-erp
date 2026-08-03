@@ -50,10 +50,14 @@ router.get('/clients/:id/history', requireAuth, wrap(async (req, res) => {
     LEFT JOIN shifts s ON s.id=cs.shift_id
     WHERE cs.credit_client_id=$1 ORDER BY cs.sale_time DESC
   `, [req.params.id]);
+  // shift_date = the day the poste actually covers. Entries typed later
+  // (catch-up data entry) have a payment_time/sale_time of the typing day, so
+  // the relevé must prefer shift_date to show the real date to the client.
   const { rows: payments } = await pool.query(`
-    SELECT cp.*, u.full_name as received_by_name
+    SELECT cp.*, u.full_name as received_by_name, s.opened_at as shift_date
     FROM credit_payments cp
     LEFT JOIN users u ON u.id=cp.recorded_by
+    LEFT JOIN shifts s ON s.id=cp.shift_id
     WHERE cp.credit_client_id=$1 ORDER BY cp.payment_time DESC
   `, [req.params.id]);
   res.json({ client: cr[0], sales, payments });
