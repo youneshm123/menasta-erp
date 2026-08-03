@@ -547,6 +547,13 @@
         <div class="fg"><label>Du</label><input type="date" id="rv-from"/></div>
         <div class="fg"><label>Au</label><input type="date" id="rv-to"/></div>
       </div>
+      <div class="fg" style="margin-top:12px">
+        <label>Présentation</label>
+        <select id="rv-layout">
+          <option value="col">Colonnes par type — un bon = une ligne (Gazoil | Vidange | Lubrifiant)</option>
+          <option value="cat">Par catégorie — sections séparées avec sous-totaux</option>
+        </select>
+      </div>
       <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;font-size:13px">
         <input type="checkbox" id="rv-bymonth" style="width:16px;height:16px;cursor:pointer"/>
         <span>Séparer par mois (un sous-total par mois)</span>
@@ -2008,7 +2015,8 @@ function genReleve() {
   const opts = {
     from: document.getElementById('rv-from').value || null,
     to:   document.getElementById('rv-to').value   || null,
-    byMonth: document.getElementById('rv-bymonth').checked
+    byMonth: document.getElementById('rv-bymonth').checked,
+    layout: document.getElementById('rv-layout').value
   };
   closeModal('m-releve');
   clientReleve(_rvClient.id, _rvClient.name, opts);
@@ -2129,30 +2137,90 @@ async function clientReleve(id, name, opts) {
       });
     };
 
+    // ── Column layout: one BON per line, a column per type ──────────────
+    // A bon split into parts (gazoil + vidange) keeps ONE sale_time across its
+    // parts, so grouping on that timestamp rebuilds the original paper bon and
+    // lets its gazoil and vidange sit side by side on the same line.
+    const presentCats = CAT_ORDER.filter(c => salesAsc.some(s => catOf(s) === c));
+    const showLiters  = salesAsc.some(s => parseFloat(s.liters || 0) > 0);
+    const nCols = 1 + (showLiters ? 1 : 0) + presentCats.length + 1;
+    const blankRow = () => new Array(nCols).fill('');
+
+    const groupBons = (rows) => {
+      const map = new Map();
+      rows.forEach(s => {
+        // Exact ms timestamp — distinct bons are never recorded at the same
+        // instant, so anything sharing one is a split of the SAME bon. Never
+        // stringify the date here: that drops ms and merges unrelated bons.
+        const t = s.sale_time ? new Date(s.sale_time).getTime() : NaN;
+        const k = isFinite(t) ? 't' + t : 'id' + s.id;   // undated rows stay alone
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push(s);
+      });
+      return [...map.values()];
+    };
+    // [date, (litres), ...one cell per category, total]
+    const bonRow = (parts) => {
+      const notes = [...new Set(parts.map(s => (s.notes || '').trim()).filter(Boolean))].join(', ');
+      const row = [fmtDT(opDate(parts[0])) + (notes ? '\n' + notes : '')];
+      if (showLiters) row.push(sumLit(parts) > 0 ? fmt(sumLit(parts)) : '');
+      presentCats.forEach(c => {
+        const amt = sumAmt(parts.filter(s => catOf(s) === c));
+        row.push(amt > 0 ? fmt(amt) : '');
+      });
+      row.push(fmt(sumAmt(parts)));
+      return row;
+    };
+    const totalsRow = (label, rows) => {
+      const r = [label];
+      if (showLiters) r.push(sumLit(rows) > 0 ? fmt(sumLit(rows)) : '');
+      presentCats.forEach(c => {
+        const amt = sumAmt(rows.filter(s => catOf(s) === c));
+        r.push(amt > 0 ? fmt(amt) : '');
+      });
+      r.push(fmt(sumAmt(rows)));
+      return r;
+    };
+    const emitBons = (rows) => groupBons(rows).forEach(parts => salesBody.push(bonRow(parts)));
+
+    const byCols = (opts.layout || 'col') === 'col';
+    const emit = byCols ? emitBons : emitCategories;
+
     if (opts.byMonth) {
-      // Month sections, each split by category inside, then a month total.
+      // Month sections, then a month total.
       const byMonth = {};
       salesAsc.forEach(s => { const m = ymOf(opDate(s)); (byMonth[m] = byMonth[m] || []).push(s); });
       Object.keys(byMonth).sort().forEach(m => {
         monthRowIdx.push(salesBody.length);
-        salesBody.push([ymLabel(m).toUpperCase(), '', '', '']);
-        emitCategories(byMonth[m]);
+        const hdr = byCols ? blankRow() : ['', '', '', ''];
+        hdr[0] = ymLabel(m).toUpperCase();
+        salesBody.push(hdr);
+        emit(byMonth[m]);
         subRowIdx.push(salesBody.length);
-        salesBody.push(['', 'TOTAL ' + ymLabel(m).toUpperCase(), '', fmt(sumAmt(byMonth[m])) + ' MAD']);
+        salesBody.push(byCols
+          ? totalsRow('TOTAL ' + ymLabel(m).toUpperCase(), byMonth[m])
+          : ['', 'TOTAL ' + ymLabel(m).toUpperCase(), '', fmt(sumAmt(byMonth[m])) + ' MAD']);
       });
     } else {
-      emitCategories(salesAsc);
+      emit(salesAsc);
     }
+
+    const colHead = ['Date'].concat(showLiters ? ['Litres'] : [], presentCats.map(c => CAT_LABELS[c]), ['TOTAL']);
+    const colStyles = {};
+    for (let i = 1; i < nCols; i++) colStyles[i] = { halign: 'right' };
+    colStyles[nCols - 1] = { halign: 'right', fontStyle: 'bold' };
 
     doc.autoTable({
       startY: 67,
-      head: [['Date', 'Désignation', 'Litres', 'Montant']],
-      body: salesBody.length ? salesBody : [['—', 'Aucun achat', '', '']],
-      foot: salesAsc.length ? [['', 'TOTAL ACHATS', '', fmt(totalSales) + ' MAD']] : undefined,
-      styles: { fontSize: 9, cellPadding: 3 },
+      head: [byCols ? colHead : ['Date', 'Désignation', 'Litres', 'Montant']],
+      body: salesBody.length ? salesBody : (byCols ? [blankRow()] : [['—', 'Aucun achat', '', '']]),
+      foot: salesAsc.length
+        ? [byCols ? totalsRow('TOTAL ACHATS', salesAsc) : ['', 'TOTAL ACHATS', '', fmt(totalSales) + ' MAD']]
+        : undefined,
+      styles: { fontSize: byCols ? 8.5 : 9, cellPadding: byCols ? 2.5 : 3 },
       headStyles: { fillColor: [91, 79, 207], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [237, 235, 250], textColor: 20, fontStyle: 'bold' },
-      columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' } },
+      columnStyles: byCols ? colStyles : { 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' } },
       didParseCell: d => {
         if (d.section !== 'body') return;
         if (monthRowIdx.includes(d.row.index)) {
