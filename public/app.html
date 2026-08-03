@@ -2198,14 +2198,12 @@ async function clientReleve(id, name, opts) {
       row.push(fmt(sumAmt(parts)));
       return row;
     };
+    // Une seule valeur sur les lignes de total: le montant global. Les cases
+    // par catégorie restent vides pour ne pas noyer le chiffre qui compte.
     const totalsRow = (label, rows) => {
-      const r = [label];
-      if (showLiters) r.push(sumLit(rows) > 0 ? fmt(sumLit(rows)) : '');
-      presentCats.forEach(c => {
-        const amt = sumAmt(rows.filter(s => catOf(s) === c));
-        r.push(amt > 0 ? fmt(amt) : '');
-      });
-      r.push(fmt(sumAmt(rows)));
+      const r = blankRow();
+      r[0] = label;
+      r[nCols - 1] = fmt(sumAmt(rows));
       return r;
     };
     const emitBons = (rows) => groupBons(rows).forEach(parts => salesBody.push(bonRow(parts)));
