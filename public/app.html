@@ -2239,9 +2239,9 @@ async function clientReleve(id, name, opts) {
       startY: 67,
       head: [byCols ? colHead : ['Date', 'Désignation', 'Litres', 'Montant']],
       body: salesBody.length ? salesBody : (byCols ? [blankRow()] : [['—', 'Aucun achat', '', '']]),
-      foot: salesAsc.length
-        ? [byCols ? totalsRow('TOTAL ACHATS', salesAsc) : ['', 'TOTAL ACHATS', '', fmt(totalSales) + ' MAD']]
-        : undefined,
+      // Pas de pied de tableau: le total figure une seule fois plus bas
+      // (grand TOTAL, ou ligne "Total achats" du récap si le solde est affiché).
+      foot: undefined,
       styles: { fontSize: byCols ? 8.5 : 9, cellPadding: byCols ? 2.5 : 3 },
       headStyles: { fillColor: [91, 79, 207], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [237, 235, 250], textColor: 20, fontStyle: 'bold' },
