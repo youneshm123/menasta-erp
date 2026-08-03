@@ -24,6 +24,7 @@
 .fuel-btn.selected-essence{background:#F0FDF4;color:#15803D;border-color:#15803D;font-weight:800;}
 .fuel-btn.selected-lubrifiant{background:#EFF6FF;color:#1D4ED8;border-color:#1D4ED8;font-weight:800;}
 .fuel-btn.selected-vidange{background:#FEF2F2;color:#B91C1C;border-color:#B91C1C;font-weight:800;}
+.fuel-btn.selected-service{background:#F5F3FF;color:#6D28D9;border-color:#6D28D9;font-weight:800;}
 .fuel-btn.selected-espece{background:#ECFDF5;color:#059669;border-color:#059669;font-weight:800;}
 .exp-btns{display:flex;gap:5px;align-items:center;flex-shrink:0}
 .exp-btn{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:none;transition:background .15s}
@@ -477,6 +478,7 @@
             <button type="button" class="fuel-btn" id="cs-btn-essence" onclick="csSelectFuel('essence')">🟢 Essence</button>
             <button type="button" class="fuel-btn" id="cs-btn-lubrifiant" onclick="csSelectFuel('lubrifiant')">🛢️ Lubrifiant</button>
             <button type="button" class="fuel-btn" id="cs-btn-vidange" onclick="csSelectFuel('vidange')">🔧 Vidange</button>
+            <button type="button" class="fuel-btn" id="cs-btn-service" onclick="csSelectFuel('service')">🧽 Service</button>
             <button type="button" class="fuel-btn" id="cs-btn-espece" onclick="csSelectFuel('espece')">💵 Espèce</button>
           </div>
           <input type="hidden" id="cs-pump-id"/>
@@ -1810,7 +1812,7 @@ let _rcFiltered = [];
 const RC_PER_PAGE = 15;
 
 const _rcTypeBadge = t => {
-  const map = { carburant: ['#EFF6FF','#1D4ED8','⛽ Carburant'], gazoil: ['#FFF7ED','#C2410C','⛽ Gazoil'], essence: ['#F0FDF4','#15803D','🟢 Essence'], lubrifiant: ['#FEF3C7','#B45309','🛢️ Lubrifiant'], vidange: ['#FEF2F2','#B91C1C','🔧 Vidange'], espece: ['#ECFDF5','#15803D','💵 Espèce'] };
+  const map = { carburant: ['#EFF6FF','#1D4ED8','⛽ Carburant'], gazoil: ['#FFF7ED','#C2410C','⛽ Gazoil'], essence: ['#F0FDF4','#15803D','🟢 Essence'], lubrifiant: ['#FEF3C7','#B45309','🛢️ Lubrifiant'], vidange: ['#FEF2F2','#B91C1C','🔧 Vidange'], service: ['#F5F3FF','#6D28D9','🧽 Service'], espece: ['#ECFDF5','#15803D','💵 Espèce'] };
   const [bg, c, lbl] = map[t] || ['var(--bg2)','var(--muted)', t || '—'];
   return `<span style="background:${bg};color:${c};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;">${lbl}</span>`;
 };
@@ -2101,8 +2103,8 @@ async function clientReleve(id, name, opts) {
     // Group purchases by category so the client sees Gazoil / Lubrifiant /
     // Vidange separately, each with its own subtotal. No emoji here: the PDF
     // uses helvetica, which cannot render them.
-    const CAT_LABELS = { gazoil:'GAZOIL', essence:'ESSENCE', lubrifiant:'LUBRIFIANT', vidange:'VIDANGE', espece:'ESPÈCE' };
-    const CAT_ORDER  = ['gazoil', 'essence', 'lubrifiant', 'vidange', 'espece'];
+    const CAT_LABELS = { gazoil:'GAZOIL', essence:'ESSENCE', lubrifiant:'LUBRIFIANT', vidange:'VIDANGE', service:'SERVICE', espece:'ESPÈCE' };
+    const CAT_ORDER  = ['gazoil', 'essence', 'lubrifiant', 'vidange', 'service', 'espece'];
     const catOf = s => {
       const t = (s.product_type || '').toLowerCase();
       if (CAT_LABELS[t]) return t;
@@ -2112,7 +2114,7 @@ async function clientReleve(id, name, opts) {
       const note = (s.notes || '').trim();
       if (c === 'gazoil' || c === 'essence')
         return (s.pump_name && s.pump_name !== 'Lubrifiant' ? s.pump_name : CAT_LABELS[c]) + (note ? ' — ' + note : '');
-      return note || (c === 'vidange' ? 'Vidange' : c === 'espece' ? 'Espèce' : 'Lubrifiant / Produit');
+      return note || (c === 'vidange' ? 'Vidange' : c === 'service' ? 'Service' : c === 'espece' ? 'Espèce' : 'Lubrifiant / Produit');
     };
 
     const monthRowIdx = [], catRowIdx = [], subRowIdx = [], salesBody = [];
@@ -2379,7 +2381,7 @@ function csAddToList() {
   const amount     = parseFloat(document.getElementById('cs-amount').value);
   const notes      = document.getElementById('cs-notes-f').value;
   if (!clientId)             { toast('Sélectionnez un client', 'wn'); return; }
-  if (_csMode === 'credit' && !_csFuelType) { toast('Choisissez le type (Gazoil / Essence / Lubrifiant / Vidange / Espèce)', 'wn'); return; }
+  if (_csMode === 'credit' && !_csFuelType) { toast('Choisissez le type (Gazoil / Essence / Lubrifiant / Vidange / Service / Espèce)', 'wn'); return; }
   if (!amount || amount <= 0){ toast('Montant invalide', 'er'); return; }
   csPending.push({ mode: _csMode, client_id: clientId, client_name: clientName, pump_id: _csMode === 'payment' ? null : (pumpId ? parseInt(pumpId) : null), product_type: _csMode === 'payment' ? 'paiement' : _csFuelType, amount, notes });
   document.getElementById('cs-client-input').value = '';
@@ -2403,7 +2405,7 @@ function updateCsPendingUI() {
     btn.disabled = true; btn.textContent = '✅ Enregistrer tout (0)'; return;
   }
   wrap.style.display = 'block';
-  const typeIcon = { gazoil:'⛽', essence:'🟢', lubrifiant:'🛢️', vidange:'🔧', espece:'💵', paiement:'💰' };
+  const typeIcon = { gazoil:'⛽', essence:'🟢', lubrifiant:'🛢️', vidange:'🔧', service:'🧽', espece:'💵', paiement:'💰' };
   items.innerHTML = csPending.map((c,i) => {
     const pay = c.mode === 'payment';
     const tag = pay
@@ -2682,11 +2684,12 @@ function csSelectFuel(type) {
   document.getElementById('cs-btn-essence').className    = 'fuel-btn' + (type==='essence'    ? ' selected-essence'    : '');
   document.getElementById('cs-btn-lubrifiant').className = 'fuel-btn' + (type==='lubrifiant' ? ' selected-lubrifiant' : '');
   document.getElementById('cs-btn-vidange').className    = 'fuel-btn' + (type==='vidange'    ? ' selected-vidange'    : '');
+  document.getElementById('cs-btn-service').className    = 'fuel-btn' + (type==='service'    ? ' selected-service'    : '');
   document.getElementById('cs-btn-espece').className     = 'fuel-btn' + (type==='espece'     ? ' selected-espece'     : '');
   document.getElementById('cs-pump-id').value = '';
   _csFuelType = type;
   // Non-fuel types have no pump and no liters.
-  if (type === 'lubrifiant' || type === 'espece' || type === 'vidange') return;
+  if (type === 'lubrifiant' || type === 'espece' || type === 'vidange' || type === 'service') return;
   // Auto-fill pump if one is active for this fuel type — but pump is optional
   const pump = S.pumps.find(p => p.status === 'active' && (p.fuel_name||'').toLowerCase().includes(type));
   if (pump) document.getElementById('cs-pump-id').value = pump.id;

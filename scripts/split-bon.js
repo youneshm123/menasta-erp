@@ -15,7 +15,7 @@
  */
 const { pool } = require('../db');
 
-const TYPES = ['gazoil', 'essence', 'lubrifiant', 'vidange', 'espece'];
+const TYPES = ['gazoil', 'essence', 'lubrifiant', 'vidange', 'service', 'espece'];
 const FUEL  = ['gazoil', 'essence'];
 
 async function main() {
