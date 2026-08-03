@@ -2188,8 +2188,8 @@ async function clientReleve(id, name, opts) {
     };
     // [date, (litres), ...one cell per category, total]
     const bonRow = (parts) => {
-      const notes = [...new Set(parts.map(s => (s.notes || '').trim()).filter(Boolean))].join(', ');
-      const row = [fmtDT(opDate(parts[0])) + (notes ? '\n' + notes : '')];
+      // Rien sous la date: la cellule ne contient que la date, jamais les notes.
+      const row = [fmtDT(opDate(parts[0]))];
       if (showLiters) row.push(sumLit(parts) > 0 ? fmt(sumLit(parts)) : '');
       presentCats.forEach(c => {
         const amt = sumAmt(parts.filter(s => catOf(s) === c));
