@@ -1150,6 +1150,8 @@ async function loadShiftPage() {
       </span>
       <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${r.price?.toFixed(3)} MAD/L</span>
       <input type="number" class="end-reading" data-pump="${pid}" data-start="${r.start||0}" data-price="${r.price||0}" step="0.1" placeholder="Fin…" value="${savedEnd}" oninput="calcLiveCA();localStorage.setItem('er-${shift.id}-${pid}',this.value)" style="width:130px;padding:7px 10px;border:1.5px solid ${savedEnd?'var(--green)':'var(--border)'};border-radius:var(--r);font-size:14px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font);outline:none;" onfocus="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,.1)'" onblur="this.style.borderColor=this.value?'var(--green)':'var(--border)';this.style.boxShadow='none'"/>
+      <span class="live-liters" data-pump="${pid}" title="Litres = Fin - Début (à comparer avec le papier)"
+        style="min-width:96px;text-align:right;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap;">—</span>
     </div>${pcNote ? `<div style="padding-bottom:9px;border-bottom:1px solid var(--border-lt);">${pcNote}</div>` : ''}`;
   }).join('');
 
@@ -1188,7 +1190,7 @@ async function loadShiftPage() {
         <div class="tile-accent"></div>
         <div class="tile-ic-wrap" style="background:#EFF6FF;"><i data-lucide="fuel"></i></div>
         <div class="tile-val" style="color:#0070F2;" id="live-ca">0.00 MAD</div>
-        <div class="tile-lbl">CA Carburant (en cours)</div>
+        <div class="tile-lbl">CA Carburant (en cours) · <span id="live-liters-total" style="font-weight:800;color:var(--text);">0,00 L</span></div>
       </div>
       <div class="tile" style="--tile-color:var(--orange);">
         <div class="tile-accent"></div>
@@ -2629,12 +2631,23 @@ function acClose(ns) { _acPortalHide(); }
 // ─── LIVE CA CALCULATOR ─────────────────────────────────────
 let _pcByPump = {};  // pump_id -> [{meter, price_before, price_after}] for mid-shift price changes
 function calcLiveCA() {
-  let ca = 0;
+  let ca = 0, totalL = 0;
   document.querySelectorAll('.end-reading').forEach(inp => {
     const start = parseFloat(inp.dataset.start) || 0;
     const end   = parseFloat(inp.value);
     const price = parseFloat(inp.dataset.price) || 0;
+    // Litres de la pompe, affichés à côté des compteurs pour pointer le papier.
+    const cell = document.querySelector('.live-liters[data-pump="' + inp.dataset.pump + '"]');
+    if (cell) {
+      if (isNaN(end) || inp.value === '') { cell.textContent = '—'; cell.style.color = 'var(--muted)'; }
+      else if (end < start) { cell.textContent = 'Fin < Début'; cell.style.color = 'var(--red, #dc2626)'; }
+      else {
+        cell.textContent = (end - start).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L';
+        cell.style.color = 'var(--text)';
+      }
+    }
     if (isNaN(end) || end < start) return;
+    totalL += end - start;
     const segs = _pcByPump[inp.dataset.pump];
     if (!segs || !segs.length) { ca += (end - start) * price; return; }
     let prev = start;
@@ -2648,6 +2661,8 @@ function calcLiveCA() {
   const caEl  = document.getElementById('live-ca');
   const netEl = document.getElementById('live-net');
   if (caEl) caEl.textContent = fmt(ca) + ' MAD';
+  const litEl = document.getElementById('live-liters-total');
+  if (litEl) litEl.textContent = totalL.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L';
   if (netEl) {
     const net = ca - _liveCredit + _liveProduct - _liveExp - _liveAvance + _livePayments - _liveFreeFuel - _liveEmpAdvance;
     netEl.textContent = fmt(net) + ' MAD';
