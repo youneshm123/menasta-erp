@@ -50,13 +50,13 @@
 .ho-row input{width:90px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:center}
 #print-sheet{display:none}
 @media print{
-  /* 50mm x 50mm label roll — one branded label per page. */
-  @page{ size:50mm 50mm; margin:0 }
+  /* 60mm x 40mm label roll — one QR-only label per page. */
+  @page{ size:60mm 40mm; margin:0 }
   /* Remove everything except the label sheet from the layout, so the printer
      does not emit blank "rest" pages from the hidden app behind it. */
   body.app-layout > *{display:none!important}
   #print-sheet{display:block!important;position:static!important;width:100%;margin:0}
-  .lbl{width:50mm;height:50mm;box-sizing:border-box;page-break-after:always;break-inside:avoid;
+  .lbl{width:60mm;height:40mm;box-sizing:border-box;page-break-after:always;break-inside:avoid;
        display:flex;flex-direction:column;font-family:Arial,Helvetica,sans-serif;overflow:hidden}
   .lbl:last-child{page-break-after:auto}
   .lbl-head{background:#5b4fcf;color:#fff;font-weight:900;font-size:10pt;letter-spacing:2px;
@@ -567,30 +567,19 @@ function makeQrCanvas(p){
     }, 250);
   });
 }
-// Draw a 50x50mm label (name on top, big centred QR, price below) as a PNG data URL.
+// Draw a 60x40mm label (QR code only, centred) as a PNG data URL.
 // One flat image per sticker → it can never reflow or split across two labels.
 function buildLabelDataUrl(p, qrSrc){
-  const W = 750, H = 750;   // 50 x 50 mm (1:1), 15 px per mm
+  const W = 900, H = 600;   // 60 x 40 mm, 15 px per mm
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#111111';
-  // Title = product / série name (auto-shrink to fit)
-  let nf = 58; ctx.font = '800 ' + nf + 'px Arial';
-  while (ctx.measureText(p.name).width > W - 70 && nf > 22){ nf--; ctx.font = '800 ' + nf + 'px Arial'; }
-  ctx.fillText(p.name, W / 2, 72);
-  // Large centred QR with safe margins so nothing is clipped at the edges.
-  const q = 440, qx = (W - q) / 2, qy = 135;
+  // QR fills the label height minus a 2mm safety margin so nothing is clipped.
+  const q = 540, qx = (W - q) / 2, qy = (H - q) / 2;
   if (qrSrc) ctx.drawImage(qrSrc, qx, qy, q, q);
-  // Price below, centred
-  const priceTxt = fmt(p.price) + ' DH';
-  let pf = 92; ctx.font = '900 ' + pf + 'px Arial';
-  while (ctx.measureText(priceTxt).width > W - 90 && pf > 22){ pf--; ctx.font = '900 ' + pf + 'px Arial'; }
-  ctx.fillText(priceTxt, W / 2, 662);
   return c.toDataURL('image/png');
 }
-// items = [{ p, qty }] — print one 50x50mm sticker per label image.
+// items = [{ p, qty }] — print one 60x40mm sticker per label image.
 async function printLabels(items) {
   items = items.filter(it => it.qty > 0);
   if (!items.length) { toast('Quantité 0 — rien à imprimer', 'er'); return; }
@@ -602,11 +591,11 @@ async function printLabels(items) {
     for (let k = 0; k < qty; k++) imgs.push(url);
   }
   const doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Etiquettes</title><style>'
-    + '@page{size:50mm 50mm;margin:0}'
+    + '@page{size:60mm 40mm;margin:0}'
     + 'html,body{margin:0;padding:0}'
-    + '.pg{width:50mm;height:50mm;display:flex;align-items:center;justify-content:center;page-break-after:always;overflow:hidden}'
+    + '.pg{width:60mm;height:40mm;display:flex;align-items:center;justify-content:center;page-break-after:always;overflow:hidden}'
     + '.pg:last-child{page-break-after:auto}'
-    + 'img{width:50mm;height:50mm;display:block}'
+    + 'img{width:60mm;height:40mm;display:block}'
     + '</style></head><body>'
     + imgs.map(u => '<div class="pg"><img src="' + u + '"></div>').join('')
     + '</body></html>';
