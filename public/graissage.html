@@ -617,16 +617,42 @@ function makeQrCanvas(p){
     }, 250);
   });
 }
-// Draw a 60x40mm label (QR code only, centred) as a PNG data URL.
+// Draw a 60x40mm label (name + price on the left, QR on the right) as a PNG data URL.
 // One flat image per sticker → it can never reflow or split across two labels.
 function buildLabelDataUrl(p, qrSrc){
   const W = 900, H = 600;   // 60 x 40 mm, 15 px per mm
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
-  // QR fills the label height minus a 2mm safety margin so nothing is clipped.
-  const q = 540, qx = (W - q) / 2, qy = (H - q) / 2;
+  // QR à droite (32mm), marge 2mm.
+  const q = 480, qx = W - q - 30, qy = (H - q) / 2;
   if (qrSrc) ctx.drawImage(qrSrc, qx, qy, q, q);
+  // Zone texte à gauche : nom (sur 1-3 lignes) + prix, centrés verticalement.
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#111111';
+  const maxW = qx - 60, cx = 30 + (qx - 50) / 2;
+  const wrapName = fs => {
+    ctx.font = '800 ' + fs + 'px Arial';
+    const out = []; let cur = '';
+    for (const w of String(p.name).trim().split(/\s+/)) {
+      const t = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(t).width <= maxW) cur = t;
+      else { if (cur) out.push(cur); cur = w; }
+    }
+    if (cur) out.push(cur);
+    return out;
+  };
+  let fs = 58, lines = wrapName(fs);
+  while (fs > 22 && (lines.length > 3 || lines.some(l => ctx.measureText(l).width > maxW))) { fs--; lines = wrapName(fs); }
+  const priceTxt = fmt(p.price) + ' DH';
+  let pf = 72; ctx.font = '900 ' + pf + 'px Arial';
+  while (pf > 20 && ctx.measureText(priceTxt).width > maxW) { pf--; ctx.font = '900 ' + pf + 'px Arial'; }
+  const lineH = fs * 1.18, gap = 30;
+  const blockTop = (H - (lines.length * lineH + gap + pf)) / 2;
+  ctx.font = '800 ' + fs + 'px Arial';
+  let y = blockTop + lineH / 2;
+  for (const l of lines) { ctx.fillText(l, cx, y); y += lineH; }
+  ctx.font = '900 ' + pf + 'px Arial';
+  ctx.fillText(priceTxt, cx, blockTop + lines.length * lineH + gap + pf / 2);
   return c.toDataURL('image/png');
 }
 // items = [{ p, qty }] — print one 60x40mm sticker per label image.
