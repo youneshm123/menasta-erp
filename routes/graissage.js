@@ -167,6 +167,19 @@ router.get('/account', requireAuth, staff, wrap(async (_req, res) => {
   const { rows: [{ total_paid }] } = await pool.query(
     'SELECT COALESCE(SUM(amount),0) AS total_paid FROM graissage_payments'
   );
+  // Ventes du jour (heure marocaine — le serveur tourne en GMT).
+  const { rows: [today] } = await pool.query(`
+    SELECT COUNT(*)::int AS n, COALESCE(SUM(amount),0) AS total
+    FROM graissage_movements
+    WHERE type='sale'
+      AND (created_at AT TIME ZONE 'Africa/Casablanca')::date = (now() AT TIME ZONE 'Africa/Casablanca')::date
+  `);
+  // Bénéfice estimé : prix vendu − prix d'achat actuel du produit.
+  const { rows: [{ total_profit }] } = await pool.query(`
+    SELECT COALESCE(SUM((COALESCE(m.unit_price, p.price) - COALESCE(p.cost, 0)) * m.qty), 0) AS total_profit
+    FROM graissage_movements m JOIN graissage_products p ON p.id = m.product_id
+    WHERE m.type='sale'
+  `);
   const { rows: items } = await pool.query(
     'SELECT id, name, unit, price, cost, depot_qty, held_qty, image_data FROM graissage_products WHERE is_active=1 ORDER BY name'
   );
@@ -176,10 +189,44 @@ router.get('/account', requireAuth, staff, wrap(async (_req, res) => {
     total_sold:  +(+total_sold).toFixed(2),
     total_paid:  +(+total_paid).toFixed(2),
     balance_due: +((+total_sold) - (+total_paid)).toFixed(2),
+    today_count: today.n,
+    today_total: +(+today.total).toFixed(2),
+    total_profit: +(+total_profit).toFixed(2),
     stock_value_depot: +stock_value_depot.toFixed(2),
     stock_value_held:  +stock_value_held.toFixed(2),
     items,
   });
+}));
+
+// ── Annulation d'une vente (erreur de scan) ─────────────────────
+// Rend le stock chez l'employé, retire le montant de son compte,
+// et laisse une trace « annulation » dans le journal.
+router.post('/sales/:id/cancel', requireAuth, staff, wrap(async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [m] } = await client.query(
+      "SELECT * FROM graissage_movements WHERE id=$1 AND type='sale' FOR UPDATE", [req.params.id]
+    );
+    if (!m) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Vente introuvable ou déjà annulée' });
+    }
+    await client.query('UPDATE graissage_products SET held_qty=held_qty+$1 WHERE id=$2', [m.qty, m.product_id]);
+    await client.query('DELETE FROM graissage_movements WHERE id=$1', [m.id]);
+    await client.query(
+      "INSERT INTO graissage_movements (product_id, type, qty, amount, note, recorded_by) VALUES ($1,'cancel',$2,$3,$4,$5)",
+      [m.product_id, m.qty, m.amount,
+       `Vente annulée (${m.qty} × ${m.unit_price} = ${m.amount} DH)`, req.user.id]
+    );
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 }));
 
 // ── Règlements (l'employé paie ce qu'il a vendu) ────────────────

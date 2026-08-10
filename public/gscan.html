@@ -62,6 +62,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font
 
 <div id="net-banner" style="display:none;width:100%;max-width:440px;margin:-6px 0 12px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;text-align:center"></div>
 
+<div id="basket-bar" style="display:none;width:100%;max-width:440px;margin:0 0 14px;background:var(--surface);border:1.5px solid var(--primary);border-radius:var(--r);padding:14px 16px;box-shadow:0 4px 18px rgba(0,0,0,.06)"></div>
+
 <div class="card" id="card">
   <div class="spin"></div>
 </div>
@@ -90,6 +92,7 @@ let product = null;
 let offline = false;
 
 const QKEY  = 'gscan_queue';
+const BKEY  = 'gscan_basket';
 const PKEY  = 'gscan_prod_' + ID;
 const genUid = () => (crypto.randomUUID ? crypto.randomUUID()
   : 'u-' + Date.now() + '-' + Math.random().toString(16).slice(2));
@@ -159,9 +162,111 @@ function renderProduct() {
           '<div id="qval" style="font-size:38px;font-weight:800;min-width:60px">1</div>' +
           '<button id="qplus" style="' + stepBtn + '">+</button>' +
         '</div>' +
-        '<button class="btn btn-go" id="sell"></button>');
+        '<button class="btn btn-go" id="sell"></button>' +
+        '<button class="btn btn-ghost" id="addcart">🛒 Ajouter au panier</button>');
   foot.textContent = 'Connecté — choisissez la quantité puis confirmez.';
-  if (!out) { wireStepper(held); updateSellBtn(); document.getElementById('sell').addEventListener('click', sell); }
+  if (!out) {
+    wireStepper(held); updateSellBtn();
+    document.getElementById('sell').addEventListener('click', sell);
+    document.getElementById('addcart').addEventListener('click', addToBasket);
+  }
+  renderBasket();
+}
+
+// ── Panier multi-articles : scanner plusieurs QR puis encaisser en une fois ──
+const getBasket = () => { try { return JSON.parse(localStorage.getItem(BKEY) || '[]'); } catch { return []; } };
+const setBasket = b => { localStorage.setItem(BKEY, JSON.stringify(b)); renderBasket(); };
+
+function addToBasket() {
+  const held = parseFloat(product.held_qty) || 0;
+  const b = getBasket();
+  const ex = b.find(it => String(it.product_id) === String(ID));
+  const already = ex ? ex.qty : 0;
+  if (already + qtySel > held) {
+    card.insertAdjacentHTML('afterbegin', '<div class="msg msg-er">Stock insuffisant : ' + held + ' ' + esc(product.unit||'') + ' chez vous, déjà ' + already + ' au panier.</div>');
+    return;
+  }
+  if (ex) ex.qty += qtySel;
+  else b.push({ product_id: ID, name: product.name, unit: product.unit || 'unité', price: parseFloat(product.price) || 0, qty: qtySel });
+  setBasket(b);
+  qtySel = 1;
+  renderProduct();
+}
+
+function removeFromBasket(pid) {
+  setBasket(getBasket().filter(it => String(it.product_id) !== String(pid)));
+}
+
+function renderBasket() {
+  const bar = document.getElementById('basket-bar');
+  const b = getBasket();
+  if (!b.length) { bar.style.display = 'none'; return; }
+  const total = b.reduce((a, it) => a + it.price * it.qty, 0);
+  bar.innerHTML =
+    '<div style="font-size:13px;font-weight:800;color:var(--primary);margin-bottom:8px">🛒 Panier (' + b.length + ' article' + (b.length>1?'s':'') + ')</div>' +
+    b.map(it =>
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:14px">' +
+        '<div style="flex:1;text-align:left"><b>' + esc(it.name) + '</b><br/><span style="color:var(--muted);font-size:12px">' + it.qty + ' × ' + fmt(it.price) + ' DH</span></div>' +
+        '<div style="font-weight:800">' + fmt(it.price * it.qty) + ' DH</div>' +
+        '<button onclick="removeFromBasket(\'' + String(it.product_id) + '\')" style="border:none;background:var(--red-lt);color:var(--red);width:30px;height:30px;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer">✕</button>' +
+      '</div>').join('') +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:16px;font-weight:800"><span>Total</span><span>' + fmt(total) + ' DH</span></div>' +
+    '<button class="btn btn-go" id="checkout" style="margin-top:10px;padding:14px;font-size:16px">💰 Encaisser tout · ' + fmt(total) + ' DH</button>' +
+    '<button class="btn btn-ghost" id="clearcart" style="padding:10px;font-size:13px">Vider le panier</button>';
+  bar.style.display = 'block';
+  document.getElementById('checkout').addEventListener('click', checkoutBasket);
+  document.getElementById('clearcart').addEventListener('click', () => { if (confirm('Vider le panier ?')) setBasket([]); });
+}
+
+async function checkoutBasket() {
+  const b = getBasket();
+  if (!b.length) return;
+  const btn = document.getElementById('checkout');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  let soldTotal = 0, soldCount = 0, queuedCount = 0;
+  const errors = [];
+  for (const it of b) {
+    const uid = genUid();
+    try {
+      const r = await fetch('/api/graissage/scan-sell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN },
+        body: JSON.stringify({ product_id: it.product_id, client_uid: uid, qty: it.qty })
+      });
+      if (r.status === 401) return gotoLogin();
+      const d = await r.json();
+      if (!r.ok) { errors.push(it.name + ' : ' + (d.error || 'Erreur')); continue; }
+      soldTotal += +d.total_amount || it.price * it.qty; soldCount++;
+      if (String(it.product_id) === String(ID)) {
+        product.held_qty = d.remaining_stock;
+        localStorage.setItem(PKEY, JSON.stringify(product));
+      }
+    } catch (netErr) {
+      // Hors ligne : la vente part dans la file et sera synchronisée plus tard.
+      const q = getQueue();
+      q.push({ uid, product_id: it.product_id, qty: it.qty, ts: Date.now() });
+      setQueue(q);
+      offline = true;
+      soldTotal += it.price * it.qty; queuedCount++;
+      if (String(it.product_id) === String(ID)) {
+        product.held_qty = (parseFloat(product.held_qty) || 0) - it.qty;
+        localStorage.setItem(PKEY, JSON.stringify(product));
+      }
+    }
+  }
+  localStorage.setItem(BKEY, '[]');
+  banner();
+  renderBasket();
+  card.innerHTML =
+    '<div class="result">' +
+      '<div class="big">' + (queuedCount ? '🕓' : '✅') + '</div>' +
+      '<h2>' + (soldCount + queuedCount) + ' vente(s) encaissée(s)</h2>' +
+      '<p style="font-weight:700;color:var(--text);font-size:20px;margin-top:6px">' + fmt(soldTotal) + ' DH</p>' +
+      (queuedCount ? '<div class="msg" style="background:#FFFBEB;color:#b45309">📴 ' + queuedCount + ' vente(s) hors ligne — envoi automatique au retour du réseau.</div>' : '') +
+      errors.map(e => '<div class="msg msg-er">' + esc(e) + '</div>').join('') +
+      '<button class="btn btn-go" id="again">Nouvelle vente</button>' +
+    '</div>';
+  document.getElementById('again').addEventListener('click', () => { renderProduct(); });
 }
 
 // Quantity stepper: clamp between 1 and the stock available chez l'employé.
@@ -286,7 +391,7 @@ window.addEventListener('online', () => { offline = false; banner(); syncQueue()
 window.addEventListener('offline', () => { offline = true; banner(); });
 setInterval(() => { if (navigator.onLine) syncQueue(); }, 20000);
 
-if (TOKEN && ID) { banner(); loadProduct(); }
+if (TOKEN && ID) { banner(); renderBasket(); loadProduct(); }
 else { banner(); }
 </script>
 </body>

@@ -126,6 +126,7 @@
         <div class="muted" style="font-size:13px">Articles que l'employé vend. Chaque article a une photo et un QR à scanner.</div>
         <button class="btn btn-s" onclick="openProduct()">+ Nouvel article</button>
       </div>
+      <div id="low-banner" style="display:none;background:#FFFBEB;border:1.5px solid #f59e0b;color:#92400e;border-radius:12px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:14px;line-height:1.6"></div>
       <input id="cat-search" class="g-search" placeholder="🔍 Rechercher une référence…" oninput="onCatSearch()" autocomplete="off"/>
       <div class="g-grid" id="cat-grid"></div>
       <div id="cat-pager" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap"></div>
@@ -147,10 +148,21 @@
     <!-- ══ COMPTE ══ -->
     <div class="page" id="p-compte">
       <div class="kpi-row">
+        <div class="kpi-box"><div class="l">📅 Aujourd'hui (<span id="k-today-n">0</span> vente(s))</div><div class="v" id="k-today">0,00</div></div>
         <div class="kpi-box"><div class="l">Total vendu</div><div class="v" id="k-sold">0,00</div></div>
         <div class="kpi-box"><div class="l">Total versé</div><div class="v c-g" id="k-paid">0,00</div></div>
         <div class="kpi-box kpi-due"><div class="l">💰 Solde dû</div><div class="v" id="k-due">0,00</div></div>
+        <div class="kpi-box"><div class="l">📈 Bénéfice (estimé)</div><div class="v c-g" id="k-profit">0,00</div></div>
         <div class="kpi-box"><div class="l">Valeur stock chez lui</div><div class="v" id="k-held">0,00</div></div>
+      </div>
+
+      <div class="section" style="margin-bottom:18px">
+        <div class="s-head"><div class="s-title">🧾 Ventes d'aujourd'hui</div></div>
+        <div class="s-body">
+          <table class="t"><thead><tr><th>Heure</th><th>Article</th><th class="num">Qté</th><th class="num">Montant</th><th></th></tr></thead>
+            <tbody id="today-body"></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="section" style="margin-bottom:18px">
@@ -194,7 +206,7 @@
       <div class="section">
         <div class="s-head"><div class="s-title">📒 Mouvements de stock</div></div>
         <div class="s-body">
-          <table class="t"><thead><tr><th>Date</th><th>Type</th><th>Article</th><th class="num">Qté</th><th class="num">Montant</th><th>Par</th><th>Note</th></tr></thead>
+          <table class="t"><thead><tr><th>Date</th><th>Type</th><th>Article</th><th class="num">Qté</th><th class="num">Montant</th><th>Par</th><th>Note</th><th></th></tr></thead>
             <tbody id="mv-body"></tbody>
           </table>
         </div>
@@ -327,8 +339,21 @@ function renderPager(pages, total){
     mk('Suiv ›', catPage+1, catPage>=pages) +
     '<div class="muted" style="font-size:12px;margin-left:6px">('+total+' article(s))</div>';
 }
+// Bandeau « stock bas » : articles presque épuisés chez l'employé ou au dépôt.
+function renderLowBanner() {
+  const b = document.getElementById('low-banner');
+  const lowHeld  = _products.filter(p => (parseFloat(p.held_qty)||0)  <= 2);
+  const lowDepot = _products.filter(p => (parseFloat(p.depot_qty)||0) <= 2);
+  if (!lowHeld.length && !lowDepot.length) { b.style.display = 'none'; return; }
+  let html = '';
+  if (lowHeld.length)  html += '⚠️ <b>Stock bas chez l\'employé :</b> ' + lowHeld.map(p => esc(p.name) + ' (' + (parseFloat(p.held_qty)||0) + ')').join(' · ') + '<br/>';
+  if (lowDepot.length) html += '📦 <b>Dépôt presque vide :</b> ' + lowDepot.map(p => esc(p.name) + ' (' + (parseFloat(p.depot_qty)||0) + ')').join(' · ');
+  b.innerHTML = html;
+  b.style.display = 'block';
+}
 function renderCatalogue() {
   const grid = document.getElementById('cat-grid');
+  renderLowBanner();
   document.getElementById('cat-pager').innerHTML = '';
   if (!_products.length) { grid.innerHTML = '<div class="muted" style="padding:20px">Aucun article. Cliquez « Nouvel article ».</div>'; return; }
   const list = searchFilter('cat-search');
@@ -345,6 +370,7 @@ function renderCatalogue() {
       <div class="g-bd">
         <div class="g-nm">${esc(p.name)}</div>
         <div class="g-price">${fmt(p.price)} DH <span class="muted" style="font-weight:500">/ ${esc(p.unit||'')}</span></div>
+        ${(parseFloat(p.cost)||0) > 0 ? `<div class="muted" style="font-size:11.5px;font-weight:600;color:#059669">📈 Bénéf : ${fmt(p.price - p.cost)} DH / ${esc(p.unit||'unité')}</div>` : ''}
         <div class="g-stk">
           <div class="g-pill">Dépôt<b>${depot}</b></div>
           <div class="g-pill ${held<=2?'g-low':''}">Chez lui<b>${held}</b></div>
@@ -489,6 +515,21 @@ async function loadCompte() {
   document.getElementById('k-paid').textContent = fmt(acc.total_paid) + ' DH';
   document.getElementById('k-due').textContent  = fmt(acc.balance_due) + ' DH';
   document.getElementById('k-held').textContent = fmt(acc.stock_value_held) + ' DH';
+  document.getElementById('k-today').textContent   = fmt(acc.today_total) + ' DH';
+  document.getElementById('k-today-n').textContent = acc.today_count || 0;
+  document.getElementById('k-profit').textContent  = fmt(acc.total_profit) + ' DH';
+  // Ventes d'aujourd'hui (avec bouton Annuler en cas d'erreur de scan)
+  const sales = await api('GET', '/movements?type=sale');
+  const todayStr = new Date().toDateString();
+  const todays = sales.filter(m => new Date(m.created_at).toDateString() === todayStr);
+  document.getElementById('today-body').innerHTML = todays.length ? todays.map(m => `
+    <tr>
+      <td class="muted sm">${new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td>${esc(m.product_name||'—')}</td>
+      <td class="num">${m.qty}</td>
+      <td class="num fw8">${fmt(m.amount)} DH</td>
+      <td><button class="btn btn-d btn-xs" onclick="cancelSale(${m.id},'compte')">🚫 Annuler</button></td>
+    </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--muted)">Aucune vente aujourd\'hui</td></tr>';
   const pays = await api('GET', '/payments');
   document.getElementById('pay-body').innerHTML = pays.length ? pays.map(p => `
     <tr>
@@ -514,6 +555,15 @@ async function delPayment(id) {
   if (!confirm('Supprimer ce règlement ?')) return;
   try { await api('DELETE', '/payments/' + id); toast('Supprimé ✓'); loadCompte(); }
   catch(e) { toast(e.message, 'er'); }
+}
+// Annule une vente : stock rendu chez l'employé, montant retiré du compte.
+async function cancelSale(id, from) {
+  if (!confirm('Annuler cette vente ? Le stock revient chez l\'employé et le montant est retiré de son compte.')) return;
+  try {
+    await api('POST', '/sales/' + id + '/cancel');
+    toast('Vente annulée ✓');
+    if (from === 'journal') loadJournal(); else loadCompte();
+  } catch(e) { toast(e.message, 'er'); }
 }
 
 // ── QR ──
@@ -635,7 +685,7 @@ function downloadOne(id){
 }
 
 // ── JOURNAL ──
-const MVT = { reception:'📦 Réception', handout:'🤝 Remise', sale:'💰 Vente', return:'↩️ Retour', adjust:'✏️ Correction' };
+const MVT = { reception:'📦 Réception', handout:'🤝 Remise', sale:'💰 Vente', return:'↩️ Retour', adjust:'✏️ Correction', cancel:'🚫 Annulation' };
 async function loadJournal() {
   const rows = await api('GET', '/movements');
   document.getElementById('mv-body').innerHTML = rows.length ? rows.map(m => `
@@ -647,7 +697,8 @@ async function loadJournal() {
       <td class="num">${m.amount!=null ? fmt(m.amount)+' DH' : '—'}</td>
       <td class="muted sm">${esc(m.by_name||'?')}</td>
       <td class="muted sm">${esc(m.note||'')}</td>
-    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--muted)">Aucun mouvement</td></tr>';
+      <td>${m.type==='sale' ? `<button class="btn btn-d btn-xs" onclick="cancelSale(${m.id},'journal')">🚫</button>` : ''}</td>
+    </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--muted)">Aucun mouvement</td></tr>';
 }
 
 // init
