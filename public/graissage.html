@@ -17,21 +17,35 @@
 .g-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
 .g-search{width:100%;max-width:380px;padding:11px 14px;margin-bottom:14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:var(--surface);color:inherit;box-sizing:border-box}
 .g-search:focus{outline:none;border-color:var(--blue,#0070F2)}
-.g-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
-.g-card img,.g-noimg{width:100%;height:140px;object-fit:cover;background:var(--bg2,#f0f0f4);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:34px}
+@keyframes gpop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.g-card{background:var(--surface);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;animation:gpop .3s ease both}
+.g-card:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(91,79,207,.18);border-color:#b9b2ef}
+.g-card img,.g-noimg{width:100%;height:140px;object-fit:cover;background:var(--bg2,#f0f0f4);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:34px;transition:transform .35s ease}
+.g-card:hover img{transform:scale(1.05)}
 .g-bd{padding:12px 13px;display:flex;flex-direction:column;gap:7px;flex:1}
 .g-nm{font-weight:800;font-size:15px}
 .g-price{font-weight:800;color:var(--blue,#0070F2)}
 .g-stk{display:flex;gap:8px;margin-top:2px}
-.g-pill{flex:1;text-align:center;border-radius:8px;padding:6px 4px;font-size:12px;font-weight:700;background:var(--bg)}
+.g-pill{flex:1;text-align:center;border-radius:9px;padding:6px 4px;font-size:12px;font-weight:700;background:var(--bg)}
 .g-pill b{display:block;font-size:17px;margin-top:2px}
-.g-low{color:var(--red)}
+.g-ok{background:#ecfdf5;color:#059669}
+.g-low{background:#fef2f2;color:#dc2626;animation:lowpulse 1.6s ease infinite}
+@keyframes lowpulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.25)}50%{box-shadow:0 0 0 5px rgba(220,38,38,0)}}
 .g-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
-.g-acts .btn{flex:1;font-size:12px;padding:7px 6px}
-.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px}
-.kpi-box{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px}
-.kpi-box .l{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
-.kpi-box .v{font-size:26px;font-weight:900;margin-top:6px}
+.g-acts .btn{flex:1;font-size:12px;padding:7px 6px;transition:transform .1s}
+.g-acts .btn:active{transform:scale(.95)}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}
+.kpi-box{position:relative;overflow:hidden;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:16px 18px;
+  transition:transform .18s ease,box-shadow .18s ease;animation:gpop .3s ease both}
+.kpi-box:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(0,0,0,.12)}
+.kpi-box .l{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;position:relative;z-index:1}
+.kpi-box .v{font-size:26px;font-weight:900;margin-top:6px;position:relative;z-index:1}
+.kpi-box .bgico{position:absolute;right:8px;bottom:2px;font-size:52px;opacity:.14;pointer-events:none}
+.kpi-today{background:linear-gradient(135deg,#047857,#10b981);color:#fff;border:none}
+.kpi-today .l{color:rgba(255,255,255,.9)}
+.kpi-week{background:linear-gradient(135deg,#b45309,#f59e0b);color:#fff;border:none}
+.kpi-week .l{color:rgba(255,255,255,.9)}
 .kpi-due{background:linear-gradient(135deg,#5b4fcf,#0070F2);color:#fff;border:none}
 .kpi-due .l{color:rgba(255,255,255,.85)}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
@@ -102,10 +116,8 @@
     </div>
   </div>
   <div class="sb-nav">
-    <div class="nav-item active" data-p="catalogue"><span class="ni"><i data-lucide="package"></i></span> Catalogue</div>
-    <div class="nav-item" data-p="remise"><span class="ni"><i data-lucide="hand-coins"></i></span> Remise à l'employé</div>
+    <div class="nav-item active" data-p="catalogue"><span class="ni"><i data-lucide="package"></i></span> Catalogue & QR</div>
     <div class="nav-item" data-p="compte"><span class="ni"><i data-lucide="wallet"></i></span> Compte & Règlement</div>
-    <div class="nav-item" data-p="qr"><span class="ni"><i data-lucide="qr-code"></i></span> Imprimer QR</div>
     <div class="nav-item" data-p="journal"><span class="ni"><i data-lucide="history"></i></span> Journal</div>
   </div>
   <div class="sb-foot">
@@ -123,8 +135,11 @@
     <!-- ══ CATALOGUE ══ -->
     <div class="page active" id="p-catalogue">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-        <div class="muted" style="font-size:13px">Articles que l'employé vend. Chaque article a une photo et un QR à scanner.</div>
-        <button class="btn btn-s" onclick="openProduct()">+ Nouvel article</button>
+        <div class="muted" style="font-size:13px">Tout en un : stock, étiquette QR et impression sur chaque carte.</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-p btn-sm" onclick="printAll()">🖨️ Imprimer tout</button>
+          <button class="btn btn-s" onclick="openProduct()">+ Nouvel article</button>
+        </div>
       </div>
       <div id="low-banner" style="display:none;background:#FFFBEB;border:1.5px solid #f59e0b;color:#92400e;border-radius:12px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:14px;line-height:1.6"></div>
       <input id="cat-search" class="g-search" placeholder="🔍 Rechercher une référence…" oninput="onCatSearch()" autocomplete="off"/>
@@ -132,29 +147,16 @@
       <div id="cat-pager" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap"></div>
     </div>
 
-    <!-- ══ REMISE ══ -->
-    <div class="page" id="p-remise">
-      <div class="section">
-        <div class="s-head"><div class="s-title">🤝 Remettre un lot à l'employé</div></div>
-        <div class="s-body">
-          <p class="muted" style="font-size:13px;margin-bottom:12px">Indiquez la quantité prise du <strong>dépôt</strong> pour chaque article. Elle passe « chez l'employé ».</p>
-          <div id="handout-list"></div>
-          <div class="fld" style="margin-top:14px"><label>Note (optionnel)</label><input id="handout-note" placeholder="ex: remise du 22/06"/></div>
-          <button class="btn btn-s" onclick="submitHandout()" style="margin-top:6px">✅ Valider la remise</button>
-        </div>
-      </div>
-    </div>
-
     <!-- ══ COMPTE ══ -->
     <div class="page" id="p-compte">
       <div class="kpi-row">
-        <div class="kpi-box"><div class="l">📅 Aujourd'hui (<span id="k-today-n">0</span> vente(s))</div><div class="v" id="k-today">0,00</div></div>
-        <div class="kpi-box"><div class="l">📆 Cette semaine (<span id="k-week-n">0</span> vente(s))</div><div class="v" id="k-week">0,00</div></div>
-        <div class="kpi-box"><div class="l">Total vendu</div><div class="v" id="k-sold">0,00</div></div>
-        <div class="kpi-box"><div class="l">Total versé</div><div class="v c-g" id="k-paid">0,00</div></div>
-        <div class="kpi-box kpi-due"><div class="l">💰 Solde dû</div><div class="v" id="k-due">0,00</div></div>
-        <div class="kpi-box"><div class="l">📈 Bénéfice (estimé)</div><div class="v c-g" id="k-profit">0,00</div></div>
-        <div class="kpi-box"><div class="l">Valeur stock chez lui</div><div class="v" id="k-held">0,00</div></div>
+        <div class="kpi-box kpi-today"><div class="l">Aujourd'hui (<span id="k-today-n">0</span> vente(s))</div><div class="v" id="k-today">0,00</div><div class="bgico">📅</div></div>
+        <div class="kpi-box kpi-week"><div class="l">Cette semaine (<span id="k-week-n">0</span> vente(s))</div><div class="v" id="k-week">0,00</div><div class="bgico">📆</div></div>
+        <div class="kpi-box"><div class="l">Total vendu</div><div class="v" id="k-sold">0,00</div><div class="bgico">💰</div></div>
+        <div class="kpi-box"><div class="l">Total versé</div><div class="v c-g" id="k-paid">0,00</div><div class="bgico">✅</div></div>
+        <div class="kpi-box kpi-due"><div class="l">Solde dû</div><div class="v" id="k-due">0,00</div><div class="bgico">⏳</div></div>
+        <div class="kpi-box"><div class="l">Bénéfice (estimé)</div><div class="v c-g" id="k-profit">0,00</div><div class="bgico">📈</div></div>
+        <div class="kpi-box"><div class="l">Valeur du stock</div><div class="v" id="k-held">0,00</div><div class="bgico">🛢️</div></div>
       </div>
 
       <div class="section" style="margin-bottom:18px">
@@ -187,21 +189,6 @@
       </div>
     </div>
 
-    <!-- ══ QR ══ -->
-    <div class="page" id="p-qr">
-      <div class="section">
-        <div class="s-head">
-          <div class="s-title">🏷️ Étiquettes QR</div>
-          <button class="btn btn-p btn-sm" onclick="printAll()">🖨️ Imprimer tout</button>
-        </div>
-        <div class="s-body">
-          <p class="muted" style="font-size:13px;margin-bottom:14px">Un QR par article (collez-le sur le bac, pas sur chaque pièce). L'employé le scanne → la vente s'enregistre et le stock baisse. Astuce : plastifiez l'étiquette (zone grasse).</p>
-          <input id="qr-search" class="g-search" placeholder="🔍 Rechercher une référence…" oninput="renderQR()" autocomplete="off"/>
-          <div class="g-grid" id="qr-grid"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- ══ JOURNAL ══ -->
     <div class="page" id="p-journal">
       <div class="section">
@@ -228,12 +215,12 @@
     </div>
     <div class="row2">
       <div class="fld"><label>Unité</label><input id="f-unit" placeholder="unité / L / pièce"/></div>
-      <div class="fld" id="f-depot-wrap"><label>Stock initial (dépôt)</label><input type="number" id="f-depot" step="0.01" min="0" placeholder="0"/></div>
+      <div class="fld" id="f-depot-wrap"><label>Stock initial</label><input type="number" id="f-depot" step="0.01" min="0" placeholder="0"/></div>
     </div>
     <div class="fld" id="f-held-wrap" style="display:none">
-      <label>Stock « Chez lui » — corriger</label>
+      <label>Corriger le stock</label>
       <input type="number" id="f-held" step="0.01" min="0" placeholder="0"/>
-      <div class="muted" style="font-size:11.5px;margin-top:3px">Change directement la quantité détenue par l'employé. La correction est tracée dans le journal.</div>
+      <div class="muted" style="font-size:11.5px;margin-top:3px">Change directement la quantité en stock. La correction est tracée dans le journal.</div>
     </div>
     <div class="fld">
       <label>Photo</label>
@@ -250,13 +237,13 @@
 <!-- Réception modal -->
 <div class="ov" id="ov-recep">
   <div class="ov-card">
-    <h3>📦 Réception au dépôt</h3>
+    <h3>📦 Ajouter du stock</h3>
     <p class="muted" id="recep-name" style="font-size:14px;margin-bottom:12px"></p>
     <div class="fld"><label>Quantité reçue</label><input type="number" id="recep-qty" step="0.01" min="0"/></div>
     <div class="fld"><label>Note</label><input id="recep-note" placeholder="ex: achat fournisseur"/></div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="btn btn-g" style="flex:1" onclick="closeOv('ov-recep')">Annuler</button>
-      <button class="btn btn-s" style="flex:1" onclick="saveRecep()">+ Ajouter au dépôt</button>
+      <button class="btn btn-s" style="flex:1" onclick="saveRecep()">+ Ajouter au stock</button>
     </div>
   </div>
 </div>
@@ -298,15 +285,13 @@ let catPage = 1;
 const CAT_PER_PAGE = 12;
 
 // Tabs
-const pageNames = { catalogue:'Catalogue', remise:"Remise à l'employé", compte:'Compte & Règlement', qr:'Imprimer QR', journal:'Journal' };
+const pageNames = { catalogue:'Catalogue & QR', compte:'Compte & Règlement', journal:'Journal' };
 function navigate(p) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.p===p));
   document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('active', pg.id==='p-'+p));
   document.getElementById('page-title').textContent = pageNames[p]||p;
   if (p==='catalogue') loadCatalogue();
-  if (p==='remise')    loadRemise();
   if (p==='compte')    loadCompte();
-  if (p==='qr')        loadQR();
   if (p==='journal')   loadJournal();
 }
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => navigate(n.dataset.p)));
@@ -340,16 +325,12 @@ function renderPager(pages, total){
     mk('Suiv ›', catPage+1, catPage>=pages) +
     '<div class="muted" style="font-size:12px;margin-left:6px">('+total+' article(s))</div>';
 }
-// Bandeau « stock bas » : articles presque épuisés chez l'employé ou au dépôt.
+// Bandeau « stock bas » : articles presque épuisés.
 function renderLowBanner() {
   const b = document.getElementById('low-banner');
-  const lowHeld  = _products.filter(p => (parseFloat(p.held_qty)||0)  <= 2);
-  const lowDepot = _products.filter(p => (parseFloat(p.depot_qty)||0) <= 2);
-  if (!lowHeld.length && !lowDepot.length) { b.style.display = 'none'; return; }
-  let html = '';
-  if (lowHeld.length)  html += '⚠️ <b>Stock bas chez l\'employé :</b> ' + lowHeld.map(p => esc(p.name) + ' (' + (parseFloat(p.held_qty)||0) + ')').join(' · ') + '<br/>';
-  if (lowDepot.length) html += '📦 <b>Dépôt presque vide :</b> ' + lowDepot.map(p => esc(p.name) + ' (' + (parseFloat(p.depot_qty)||0) + ')').join(' · ');
-  b.innerHTML = html;
+  const low = _products.filter(p => (parseFloat(p.held_qty)||0) <= 2);
+  if (!low.length) { b.style.display = 'none'; return; }
+  b.innerHTML = '⚠️ <b>Stock bas :</b> ' + low.map(p => esc(p.name) + ' (' + (parseFloat(p.held_qty)||0) + ')').join(' · ');
   b.style.display = 'block';
 }
 function renderCatalogue() {
@@ -365,7 +346,7 @@ function renderCatalogue() {
   const start = (catPage - 1) * CAT_PER_PAGE;
   const pageItems = list.slice(start, start + CAT_PER_PAGE);
   grid.innerHTML = pageItems.map(p => {
-    const held = parseFloat(p.held_qty)||0, depot = parseFloat(p.depot_qty)||0;
+    const held = parseFloat(p.held_qty)||0;
     return `<div class="g-card">
       ${p.image_data ? `<img src="${esc(p.image_data)}" alt=""/>` : '<div class="g-noimg">🛢️</div>'}
       <div class="g-bd">
@@ -373,12 +354,16 @@ function renderCatalogue() {
         <div class="g-price">${fmt(p.price)} DH <span class="muted" style="font-weight:500">/ ${esc(p.unit||'')}</span></div>
         ${(parseFloat(p.cost)||0) > 0 ? `<div class="muted" style="font-size:11.5px;font-weight:600;color:#059669">📈 Bénéf : ${fmt(p.price - p.cost)} DH / ${esc(p.unit||'unité')}</div>` : ''}
         <div class="g-stk">
-          <div class="g-pill">Dépôt<b>${depot}</b></div>
-          <div class="g-pill ${held<=2?'g-low':''}">Chez lui<b>${held}</b></div>
+          <div class="g-pill ${held<=2?'g-low':''}">Stock<b>${held}</b></div>
+          <div class="g-pill" style="display:flex;align-items:center;gap:5px">🏷️
+            <input type="number" id="qty-${p.id}" value="1" min="1" max="200" onclick="this.select()"
+                   style="width:52px;padding:4px;border:1.5px solid var(--border);border-radius:7px;text-align:center;font-weight:800;font-size:13px"/>
+          </div>
         </div>
         <div class="g-acts">
-          <button class="btn btn-g" onclick="openRecep(${p.id})">📦 Réception</button>
-          <button class="btn btn-g" onclick="openProduct(${p.id})">✏️ Modifier</button>
+          <button class="btn btn-g" onclick="printOne(${p.id})">🖨️ QR</button>
+          <button class="btn btn-g" onclick="openRecep(${p.id})">📦 + Stock</button>
+          <button class="btn btn-g" onclick="openProduct(${p.id})">✏️</button>
           <button class="btn btn-d" onclick="delProduct(${p.id})">🗑</button>
         </div>
       </div>
@@ -472,7 +457,7 @@ let recepId = null;
 function openRecep(id) {
   recepId = id;
   const p = _products.find(x => x.id===id);
-  document.getElementById('recep-name').textContent = p ? p.name + ' — dépôt actuel : ' + (parseFloat(p.depot_qty)||0) : '';
+  document.getElementById('recep-name').textContent = p ? p.name + ' — stock actuel : ' + (parseFloat(p.held_qty)||0) : '';
   document.getElementById('recep-qty').value = '';
   document.getElementById('recep-note').value = '';
   document.getElementById('ov-recep').classList.add('show');
@@ -487,40 +472,31 @@ async function saveRecep() {
   } catch(e) { toast(e.message, 'er'); }
 }
 
-// ── REMISE ──
-async function loadRemise() {
-  _products = await api('GET', '/products');
-  const host = document.getElementById('handout-list');
-  host.innerHTML = _products.length ? _products.map(p => `
-    <div class="ho-row">
-      <div class="nm">${esc(p.name)} <span class="av">(dépôt : ${parseFloat(p.depot_qty)||0})</span></div>
-      <input type="number" min="0" step="0.01" id="ho-${p.id}" placeholder="0"/>
-    </div>`).join('') : '<div class="muted">Aucun article.</div>';
-}
-async function submitHandout() {
-  const items = _products.map(p => ({ product_id: p.id, qty: parseFloat(document.getElementById('ho-'+p.id).value) }))
-                         .filter(it => it.qty > 0);
-  if (!items.length) { toast('Indiquez au moins une quantité', 'er'); return; }
-  try {
-    await api('POST', '/handout', { items, note: document.getElementById('handout-note').value });
-    document.getElementById('handout-note').value = '';
-    toast('Remise validée ✓');
-    loadRemise();
-  } catch(e) { toast(e.message, 'er'); }
-}
-
 // ── COMPTE ──
+// Compteur animé : la valeur « monte » jusqu'au montant réel.
+function animVal(id, target) {
+  const el = document.getElementById(id);
+  const t0 = performance.now(), dur = 650;
+  const step = t => {
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmt(target * e) + ' DH';
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  // Onglet en arrière-plan : requestAnimationFrame ne tourne pas → valeur finale garantie.
+  setTimeout(() => { el.textContent = fmt(target) + ' DH'; }, dur + 80);
+}
 async function loadCompte() {
   const acc = await api('GET', '/account');
-  document.getElementById('k-sold').textContent = fmt(acc.total_sold) + ' DH';
-  document.getElementById('k-paid').textContent = fmt(acc.total_paid) + ' DH';
-  document.getElementById('k-due').textContent  = fmt(acc.balance_due) + ' DH';
-  document.getElementById('k-held').textContent = fmt(acc.stock_value_held) + ' DH';
-  document.getElementById('k-today').textContent   = fmt(acc.today_total) + ' DH';
+  animVal('k-sold', acc.total_sold);
+  animVal('k-paid', acc.total_paid);
+  animVal('k-due',  acc.balance_due);
+  animVal('k-held', acc.stock_value_held);
+  animVal('k-today', acc.today_total);
+  animVal('k-week',  acc.week_total);
+  animVal('k-profit', acc.total_profit);
   document.getElementById('k-today-n').textContent = acc.today_count || 0;
-  document.getElementById('k-week').textContent    = fmt(acc.week_total) + ' DH';
   document.getElementById('k-week-n').textContent  = acc.week_count || 0;
-  document.getElementById('k-profit').textContent  = fmt(acc.total_profit) + ' DH';
   // Ventes d'aujourd'hui (avec bouton Annuler en cas d'erreur de scan)
   const sales = await api('GET', '/movements?type=sale');
   const todayStr = new Date().toDateString();
@@ -569,39 +545,7 @@ async function cancelSale(id, from) {
   } catch(e) { toast(e.message, 'er'); }
 }
 
-// ── QR ──
-async function loadQR() {
-  _products = await api('GET', '/products');
-  renderQR();
-}
-function renderQR() {
-  const grid = document.getElementById('qr-grid');
-  if (typeof QRCode === 'undefined') { grid.innerHTML = '<div class="muted">Librairie QR non chargée. Rechargez la page.</div>'; return; }
-  if (!_products.length) { grid.innerHTML = '<div class="muted" style="padding:20px">Aucun article.</div>'; return; }
-  const list = searchFilter('qr-search');
-  if (!list.length) { grid.innerHTML = '<div class="muted" style="padding:20px">Aucune référence ne correspond.</div>'; return; }
-  grid.innerHTML = list.map(p => `
-    <div class="g-card" style="padding:14px;align-items:center;text-align:center">
-      <div class="g-nm" style="margin-bottom:8px">${esc(p.name)}</div>
-      <div id="qr-${p.id}" style="display:flex;justify-content:center"></div>
-      <div class="g-price" style="margin-top:8px">${fmt(p.price)} DH</div>
-      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px">
-        <label style="font-size:12px;color:var(--muted);font-weight:700">Quantité</label>
-        <input type="number" id="qty-${p.id}" value="1" min="1" max="200" onclick="this.select()"
-               style="width:66px;padding:7px;border:1.5px solid var(--border);border-radius:8px;text-align:center;font-weight:800;font-size:15px"/>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn btn-g" style="flex:1" onclick="printOne(${p.id})">🖨️ Imprimer</button>
-        <button class="btn btn-g" style="flex:1" onclick="downloadOne(${p.id})">🖼️ Image</button>
-      </div>
-    </div>`).join('');
-  list.forEach(p => {
-    new QRCode(document.getElementById('qr-' + p.id), {
-      text: qrLink(p.id), width: 150, height: 150,
-      colorDark: '#111827', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
-    });
-  });
-}
+// ── QR / étiquettes ──
 function getQty(id){
   const v = parseInt(document.getElementById('qty-' + id)?.value, 10);
   return Math.max(1, Math.min(200, isFinite(v) ? v : 1));
@@ -687,31 +631,6 @@ async function printLabels(items) {
 }
 function printAll(){ printLabels(_products.map(p => ({ p, qty: getQty(p.id) }))); }
 function printOne(id){ const p = _products.find(x => x.id===id); if (p) printLabels([{ p, qty: getQty(id) }]); }
-
-// Télécharge le QR (avec nom + prix) comme image PNG
-function downloadOne(id){
-  const p = _products.find(x => x.id===id); if (!p) return;
-  const host = document.getElementById('qr-' + id);
-  const src = host && (host.querySelector('canvas') || host.querySelector('img'));
-  if (!src){ alert('QR pas encore prêt, réessayez dans un instant.'); return; }
-  const qrW = 300, pad = 28, topH = 60, botH = 56;
-  const c = document.createElement('canvas');
-  c.width = qrW + pad*2;
-  c.height = topH + qrW + botH;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,c.width,c.height);
-  ctx.fillStyle = '#111827'; ctx.textAlign = 'center';
-  let fs = 26; ctx.font = 'bold ' + fs + 'px Arial';
-  while (ctx.measureText(p.name).width > c.width - 16 && fs > 12){ fs--; ctx.font = 'bold ' + fs + 'px Arial'; }
-  ctx.fillText(p.name, c.width/2, 40);
-  ctx.drawImage(src, pad, topH, qrW, qrW);
-  ctx.font = 'bold 28px Arial';
-  ctx.fillText(fmt(p.price) + ' DH', c.width/2, topH + qrW + 36);
-  const a = document.createElement('a');
-  a.download = 'QR-' + p.name.replace(/[^\w\-]+/g,'_') + '.png';
-  a.href = c.toDataURL('image/png');
-  a.click();
-}
 
 // ── JOURNAL ──
 const MVT = { reception:'📦 Réception', handout:'🤝 Remise', sale:'💰 Vente', return:'↩️ Retour', adjust:'✏️ Correction', cancel:'🚫 Annulation' };

@@ -25,15 +25,16 @@ router.post('/products', requireAuth, staff, wrap(async (req, res) => {
   const depot = num(req.body.depot_qty);
   if (!name || !name.trim()) return res.status(400).json({ error: 'Nom requis' });
   if (!isFinite(price) || price <= 0) return res.status(400).json({ error: 'Prix de vente valide requis' });
-  const startDepot = isFinite(depot) && depot > 0 ? depot : 0;
+  // Stock unique : tout vit dans held_qty (c'est lui que la vente QR décrémente).
+  const startStock = isFinite(depot) && depot > 0 ? depot : 0;
   const { rows: [{ id }] } = await pool.query(`
-    INSERT INTO graissage_products (name, price, cost, unit, image_data, depot_qty)
+    INSERT INTO graissage_products (name, price, cost, unit, image_data, held_qty)
     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id
-  `, [name.trim(), price, isFinite(cost) && cost >= 0 ? cost : 0, (unit || 'unité').trim(), image_data || null, startDepot]);
-  if (startDepot > 0) {
+  `, [name.trim(), price, isFinite(cost) && cost >= 0 ? cost : 0, (unit || 'unité').trim(), image_data || null, startStock]);
+  if (startStock > 0) {
     await pool.query(
       "INSERT INTO graissage_movements (product_id, type, qty, note, recorded_by) VALUES ($1,'reception',$2,'Stock initial',$3)",
-      [id, startDepot, req.user.id]
+      [id, startStock, req.user.id]
     );
   }
   const { rows: [p] } = await pool.query('SELECT * FROM graissage_products WHERE id=$1', [id]);
@@ -63,13 +64,13 @@ router.delete('/products/:id', requireAuth, staff, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// ── Réception : stock arrive au dépôt ───────────────────────────
+// ── Réception : nouveau stock qui arrive (stock unique) ─────────
 router.post('/products/:id/reception', requireAuth, staff, wrap(async (req, res) => {
   const qty = num(req.body && req.body.qty);
   if (!isFinite(qty) || qty <= 0) return res.status(400).json({ error: 'Quantité valide requise' });
   const { rows: [p] } = await pool.query('SELECT * FROM graissage_products WHERE id=$1 AND is_active=1', [req.params.id]);
   if (!p) return res.status(404).json({ error: 'Produit introuvable' });
-  await pool.query('UPDATE graissage_products SET depot_qty=depot_qty+$1 WHERE id=$2', [qty, p.id]);
+  await pool.query('UPDATE graissage_products SET held_qty=held_qty+$1 WHERE id=$2', [qty, p.id]);
   await pool.query(
     "INSERT INTO graissage_movements (product_id, type, qty, note, recorded_by) VALUES ($1,'reception',$2,$3,$4)",
     [p.id, qty, (req.body.note || '').trim() || null, req.user.id]
@@ -291,8 +292,8 @@ router.post('/scan-sell', requireAuth, wrap(async (req, res) => {
   const { rows: [p] } = await pool.query('SELECT * FROM graissage_products WHERE id=$1 AND is_active=1', [product_id]);
   if (!p) return res.status(404).json({ error: 'Produit introuvable' });
   const held = parseFloat(p.held_qty) || 0;
-  if (held < 1) return res.status(400).json({ error: 'Stock épuisé chez l\'employé — rien à vendre' });
-  if (held < qty) return res.status(400).json({ error: `Stock insuffisant : il reste ${held} ${p.unit || 'unité(s)'} chez l'employé` });
+  if (held < 1) return res.status(400).json({ error: 'Stock épuisé — rien à vendre' });
+  if (held < qty) return res.status(400).json({ error: `Stock insuffisant : il reste ${held} ${p.unit || 'unité(s)'}` });
 
   const total = +(+p.price * qty).toFixed(2);
   const { rows: [{ id }] } = await pool.query(`
