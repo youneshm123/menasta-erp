@@ -174,6 +174,13 @@ router.get('/account', requireAuth, staff, wrap(async (_req, res) => {
     WHERE type='sale'
       AND (created_at AT TIME ZONE 'Africa/Casablanca')::date = (now() AT TIME ZONE 'Africa/Casablanca')::date
   `);
+  // Ventes de la semaine (lundi → dimanche, heure marocaine) — règlement hebdomadaire.
+  const { rows: [week] } = await pool.query(`
+    SELECT COUNT(*)::int AS n, COALESCE(SUM(amount),0) AS total
+    FROM graissage_movements
+    WHERE type='sale'
+      AND (created_at AT TIME ZONE 'Africa/Casablanca') >= date_trunc('week', now() AT TIME ZONE 'Africa/Casablanca')
+  `);
   // Bénéfice estimé : prix vendu − prix d'achat actuel du produit.
   const { rows: [{ total_profit }] } = await pool.query(`
     SELECT COALESCE(SUM((COALESCE(m.unit_price, p.price) - COALESCE(p.cost, 0)) * m.qty), 0) AS total_profit
@@ -191,6 +198,8 @@ router.get('/account', requireAuth, staff, wrap(async (_req, res) => {
     balance_due: +((+total_sold) - (+total_paid)).toFixed(2),
     today_count: today.n,
     today_total: +(+today.total).toFixed(2),
+    week_count: week.n,
+    week_total: +(+week.total).toFixed(2),
     total_profit: +(+total_profit).toFixed(2),
     stock_value_depot: +stock_value_depot.toFixed(2),
     stock_value_held:  +stock_value_held.toFixed(2),

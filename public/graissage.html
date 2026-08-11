@@ -149,6 +149,7 @@
     <div class="page" id="p-compte">
       <div class="kpi-row">
         <div class="kpi-box"><div class="l">📅 Aujourd'hui (<span id="k-today-n">0</span> vente(s))</div><div class="v" id="k-today">0,00</div></div>
+        <div class="kpi-box"><div class="l">📆 Cette semaine (<span id="k-week-n">0</span> vente(s))</div><div class="v" id="k-week">0,00</div></div>
         <div class="kpi-box"><div class="l">Total vendu</div><div class="v" id="k-sold">0,00</div></div>
         <div class="kpi-box"><div class="l">Total versé</div><div class="v c-g" id="k-paid">0,00</div></div>
         <div class="kpi-box kpi-due"><div class="l">💰 Solde dû</div><div class="v" id="k-due">0,00</div></div>
@@ -517,6 +518,8 @@ async function loadCompte() {
   document.getElementById('k-held').textContent = fmt(acc.stock_value_held) + ' DH';
   document.getElementById('k-today').textContent   = fmt(acc.today_total) + ' DH';
   document.getElementById('k-today-n').textContent = acc.today_count || 0;
+  document.getElementById('k-week').textContent    = fmt(acc.week_total) + ' DH';
+  document.getElementById('k-week-n').textContent  = acc.week_count || 0;
   document.getElementById('k-profit').textContent  = fmt(acc.total_profit) + ' DH';
   // Ventes d'aujourd'hui (avec bouton Annuler en cas d'erreur de scan)
   const sales = await api('GET', '/movements?type=sale');
