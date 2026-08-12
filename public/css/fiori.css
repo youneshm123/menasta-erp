@@ -1378,3 +1378,84 @@ summary:focus-visible,
     scroll-behavior: auto !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   v25 POLISH LAYER — modern depth, motion & glow (token-based,
+   adapts automatically to light/dark). Appended overrides only.
+═══════════════════════════════════════════════════════════════ */
+:root {
+  --r-sm: 6px; --r: 8px; --r-lg: 12px; --r-xl: 16px;
+  --sh-xs: 0 1px 2px rgba(15,23,42,.05), 0 1px 3px rgba(15,23,42,.06);
+  --sh-sm: 0 2px 6px rgba(15,23,42,.07), 0 1px 2px rgba(15,23,42,.05);
+  --sh:    0 6px 18px rgba(15,23,42,.09), 0 2px 5px rgba(15,23,42,.05);
+  --sh-md: 0 12px 32px rgba(15,23,42,.13), 0 3px 8px rgba(15,23,42,.06);
+  --sh-lg: 0 24px 60px rgba(15,23,42,.18), 0 6px 16px rgba(15,23,42,.08);
+}
+
+/* Entrance motion — cards & panels rise in softly, staggered */
+@keyframes fio-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.tile, .kpi-card, .lp-tile, .lp-kpi, .section, .panel { animation: fio-rise .32s cubic-bezier(.22,.9,.36,1) both; }
+.tiles > :nth-child(2), .kpi-row > :nth-child(2), .panels > :nth-child(2) { animation-delay: .04s; }
+.tiles > :nth-child(3), .kpi-row > :nth-child(3), .panels > :nth-child(3) { animation-delay: .08s; }
+.tiles > :nth-child(4), .kpi-row > :nth-child(4), .panels > :nth-child(4) { animation-delay: .12s; }
+.tiles > :nth-child(5), .kpi-row > :nth-child(5), .panels > :nth-child(5) { animation-delay: .16s; }
+.tiles > :nth-child(6), .kpi-row > :nth-child(6), .panels > :nth-child(6) { animation-delay: .20s; }
+@media (prefers-reduced-motion: reduce) { .tile,.kpi-card,.lp-tile,.lp-kpi,.section,.panel { animation: none; } }
+
+/* Cards & tiles — lift + blue glow on hover */
+.tile, .kpi-card, .lp-tile, .lp-kpi {
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.tile:hover, .kpi-card:hover, .lp-tile:hover, .lp-kpi:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px rgba(0,112,242,.14), 0 4px 10px rgba(15,23,42,.08);
+  border-color: var(--blue);
+}
+.tile-val, .kpi-val, .lp-kpi-val { font-variant-numeric: tabular-nums; }
+
+/* Sections gain presence */
+.section, .panel { box-shadow: var(--sh-sm); }
+.s-title, .panel-title { letter-spacing: .1px; }
+
+/* Buttons — gradient primary, tactile press everywhere */
+.btn { transition: transform .12s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease, color .15s ease; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(.97); }
+.btn-p { background: linear-gradient(180deg, #1a84ff, var(--blue) 55%, var(--blue-dk)); border-color: var(--blue-dk); }
+.btn-p:hover:not(:disabled) { background: linear-gradient(180deg, #2a8dff, var(--blue-dk)); box-shadow: 0 6px 16px rgba(0,112,242,.35); }
+.btn-s { background: linear-gradient(180deg, #17a24f, var(--green) 60%); }
+.btn-s:hover:not(:disabled) { box-shadow: 0 6px 16px rgba(16,126,62,.32); }
+.btn-d:hover:not(:disabled) { box-shadow: 0 6px 16px rgba(187,0,0,.30); }
+
+/* Sidebar — active item becomes a glowing pill */
+.nav-item, .sb-item { border-radius: 0 999px 999px 0; margin-right: 10px; transition: background .14s, color .14s, padding-left .14s; }
+.nav-item:hover, .sb-item:hover { padding-left: 20px; }
+.nav-item.active, .sb-item.active {
+  background: linear-gradient(90deg, var(--blue-lt), transparent 140%);
+  box-shadow: inset 3px 0 0 var(--blue);
+  font-weight: 700;
+}
+
+/* Shell bar — subtle depth gradient */
+.fiori-shell, #shell { background: linear-gradient(180deg, #3c536b, #30455a); }
+[data-theme="dark"] .fiori-shell, [data-theme="dark"] #shell { background: linear-gradient(180deg, #131922, #0d1116); }
+
+/* Tables — calmer header, richer row hover */
+.t thead th { letter-spacing: .6px; }
+.t tbody tr:hover { box-shadow: inset 3px 0 0 var(--blue); }
+
+/* Inputs — soft focus ring everywhere */
+input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px var(--blue-ring); border-radius: var(--r-sm); }
+
+/* Modals — pop-in */
+@keyframes fio-pop { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+.ov-card, .modal, .modal-card { animation: fio-pop .22s cubic-bezier(.22,.9,.36,1) both; }
+
+/* Scrollbars — slim & rounded */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-dk); border-radius: 99px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--subtle); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Focus visibility for keyboard users */
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }

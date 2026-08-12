@@ -280,6 +280,47 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .kpi-grid .kpi-card:nth-child(3) .kpi-ic{background:#dbeafe;color:#2563eb}
 .kpi-grid .kpi-card:nth-child(4) .kpi-ic{background:#dcfce7;color:#16a34a}
 
+/* ── v25 polish : profondeur, mouvement, éclat ── */
+@keyframes lp-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.kpi-card,.chart-card,.promo{animation:lp-rise .34s cubic-bezier(.22,.9,.36,1) both}
+.kpi-grid>:nth-child(2){animation-delay:.05s}
+.kpi-grid>:nth-child(3){animation-delay:.1s}
+.kpi-grid>:nth-child(4){animation-delay:.15s}
+.charts-row>:nth-child(2){animation-delay:.08s}
+@media (prefers-reduced-motion:reduce){.kpi-card,.chart-card,.promo{animation:none}}
+.kpi-card{position:relative;overflow:hidden;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+/* filet de couleur qui se révèle au survol */
+.kpi-card::after{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;
+  background:var(--primary);opacity:0;transition:opacity .16s ease}
+.kpi-grid .kpi-card:nth-child(1)::after{background:#d97706}
+.kpi-grid .kpi-card:nth-child(2)::after{background:#e11d48}
+.kpi-grid .kpi-card:nth-child(3)::after{background:#2563eb}
+.kpi-grid .kpi-card:nth-child(4)::after{background:#16a34a}
+.kpi-card:hover{transform:translateY(-3px);border-color:var(--border-dk);
+  box-shadow:0 14px 32px rgba(17,24,39,.10),0 4px 10px rgba(17,24,39,.06)}
+.kpi-card:hover::after{opacity:1}
+.kpi-card:hover .kpi-ic{transform:scale(1.08) rotate(-4deg)}
+.kpi-ic{transition:transform .18s cubic-bezier(.22,.9,.36,1)}
+.kpi-val{font-variant-numeric:tabular-nums}
+.chart-card{transition:box-shadow .16s ease,border-color .16s ease}
+.chart-card:hover{box-shadow:0 10px 26px rgba(17,24,39,.08);border-color:var(--border-dk)}
+/* navigation : pastille active nette + glissement au survol */
+.nav-item{transition:background .14s,color .14s,padding-left .14s}
+.nav-item:hover{padding-left:16px}
+.nav-item.active{box-shadow:inset 3px 0 0 var(--primary)}
+.pill-btn,.link-btn,.exp-btn,.pg-btn{transition:transform .12s ease,box-shadow .14s ease,background .14s ease,border-color .14s ease}
+.pill-btn:hover,.link-btn:hover,.exp-btn:hover,.pg-btn:hover{transform:translateY(-1px)}
+.pill-btn:active,.link-btn:active,.exp-btn:active,.pg-btn:active{transform:translateY(0) scale(.97)}
+/* lignes de tableau : surlignage discret */
+.data-tbl tbody tr{transition:background .12s,box-shadow .12s}
+.data-tbl tbody tr:hover{background:var(--primary-lt);box-shadow:inset 3px 0 0 var(--primary)}
+/* barres de défilement fines */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--border-dk);border-radius:99px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:var(--subtle)}
+::-webkit-scrollbar-track{background:transparent}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+
 /* Charts */
 .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:26px}
 .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px;box-shadow:var(--sh-xs)}

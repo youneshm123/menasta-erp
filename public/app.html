@@ -11,7 +11,7 @@
 <title>MENASTA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=32"/>
+<link rel="stylesheet" href="/css/fiori.css?v=33"/>
 <script src="/js/sidebar.js?v=5" defer></script>
 <script src="/js/table-tools.js?v=1" defer></script>
 <script src="/js/modal-init.js?v=2" defer></script>
@@ -175,7 +175,7 @@
             <div class="s-title">👥 Clients Crédit</div>
             <div class="fxg">
               <div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('clients-tbl','Clients Crédit')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('clients-tbl','Clients Crédit')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('clients-tbl','Clients Crédit')">📝 Word</button></div>
-              <button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">🤝 Vente Crédit</button>
+              <button class="btn btn-w btn-sm" onclick="csOpen()">🤝 Vente Crédit</button>
               <button class="btn btn-p btn-sm" onclick="openModal('m-add-client')">+ Nouveau Client</button>
             </div>
           </div>
@@ -490,6 +490,11 @@
         <div class="fg">
           <label>Notes (facultatif)</label>
           <input type="text" id="cs-notes-f" placeholder="facultatif"/>
+        </div>
+        <div class="fg" id="cs-date-row" style="display:none">
+          <label>Date du bon</label>
+          <input type="date" id="cs-date"/>
+          <div class="muted sm" style="margin-top:4px">Vente hors poste : mettez la date écrite sur le bon, pas celle de la saisie.</div>
         </div>
       </div>
       <button class="btn btn-s" style="width:100%;margin-bottom:14px;font-size:15px;" onclick="csAddToList()">+ Ajouter à la liste</button>
@@ -980,7 +985,7 @@ const pageActions = {
   shift: () => {
     const el = document.getElementById('page-actions');
     if (S.activeShift) {
-      el.innerHTML = `<button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">🤝 Vente Crédit</button>
+      el.innerHTML = `<button class="btn btn-w btn-sm" onclick="csOpen()">🤝 Vente Crédit</button>
         <button class="btn btn-g btn-sm" onclick="openModal('m-sell-product')">🛒 Vente Produit</button>
         <button class="btn btn-p btn-sm" onclick="openPriceChange()">💱 Changer Prix</button>
         <button class="btn btn-d btn-sm" onclick="openModal('m-close-shift')">🔒 Fermer Poste</button>`;
@@ -990,7 +995,7 @@ const pageActions = {
   },
   credits: () => {
     document.getElementById('page-actions').innerHTML = `
-      <button class="btn btn-w btn-sm" onclick="openModal('m-credit-sale')">🤝 Vente Crédit</button>
+      <button class="btn btn-w btn-sm" onclick="csOpen()">🤝 Vente Crédit</button>
       <button class="btn btn-g btn-sm" onclick="openCreditsPDF()">📄 PDF Créances</button>`;
   }
 };
@@ -1968,7 +1973,7 @@ async function openClientHistory(id, name) {
       </tr>`).join('') : '<tr><td colspan="4" class="tc muted" style="padding:14px">Aucun paiement</td></tr>';
     const saleRows = sales.length ? sales.map(s => `
       <tr${s.hors_releve ? ' style="opacity:.55"' : ''}>
-        <td class="muted sm">${fmtDT(opDate(s))}</td>
+        <td class="muted sm">${fmtDT(opDate(s))}${!s.shift_id ? ` <button class="btn btn-xs" style="background:#EFF6FF;color:#1D4ED8;padding:1px 5px" title="Changer la date de ce bon" onclick="editSaleDate(${s.id}, '${String(opDate(s)).slice(0,10)}', ${id}, '${esc(name)}')">📅</button>` : ''}</td>
         <td>${esc(s.notes || s.pump_name || '—')}${s.hors_releve ? ' <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;background:#FEF3C7;color:#92400E">HORS RELEVÉ</span>' : ''}</td>
         <td class="num fw7 c-r">${fmt(s.amount)} MAD</td>
         <td class="tc"><button class="btn btn-xs" style="background:${s.hors_releve ? '#DCFCE7;color:#15803D' : '#FEF3C7;color:#92400E'}"
@@ -2032,6 +2037,18 @@ function genReleve() {
   };
   closeModal('m-releve');
   clientReleve(_rvClient.id, _rvClient.name, opts);
+}
+
+// Corrige la date d'un bon saisi hors poste (bon rentré en retard).
+async function editSaleDate(saleId, current, clientId, clientName) {
+  const d = prompt('Date du bon (AAAA-MM-JJ) :', current);
+  if (!d) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.trim())) { toast('Format attendu : AAAA-MM-JJ', 'er'); return; }
+  try {
+    await api('POST', '/credits/sales/' + saleId + '/date', { date: d.trim() });
+    toast('Date corrigée ✓', 'ok');
+    openClientHistory(clientId, clientName);
+  } catch (e) { toast(e.message || 'Erreur', 'er'); }
 }
 
 // Retire (ou remet) un bon du relevé client sans toucher au solde ni au CA.
@@ -2395,6 +2412,20 @@ let _csFuelType = '';
 let _csMode = 'credit';   // 'credit' = debit (− caisse) ; 'payment' = remboursement (+ caisse)
 let sppPending = [];      // pending product sales on the shift page (add-to-list then save all)
 
+// Ouvre la vente crédit. Hors poste, la vente ne tire sa date d'aucun poste:
+// on propose alors un champ Date pour saisir celle écrite sur le bon.
+function csOpen() {
+  const hasPoste = !!document.querySelector('#p-shift.active') && !!S.activeShift;
+  const row = document.getElementById('cs-date-row');
+  if (row) row.style.display = hasPoste ? 'none' : '';
+  const d = document.getElementById('cs-date');
+  if (d && !d.value) {
+    const t = new Date();
+    d.value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+  }
+  openModal('m-credit-sale');
+}
+
 function csSelectMode(mode) {
   _csMode = mode;
   document.getElementById('cs-mode-credit').classList.toggle('active', mode === 'credit');
@@ -2427,7 +2458,10 @@ function csAddToList() {
   if (!clientId)             { toast('Sélectionnez un client', 'wn'); return; }
   if (_csMode === 'credit' && !_csFuelType) { toast('Choisissez le type (Gazoil / Essence / Lubrifiant / Vidange / Service / Espèce)', 'wn'); return; }
   if (!amount || amount <= 0){ toast('Montant invalide', 'er'); return; }
-  csPending.push({ mode: _csMode, client_id: clientId, client_name: clientName, pump_id: _csMode === 'payment' ? null : (pumpId ? parseInt(pumpId) : null), product_type: _csMode === 'payment' ? 'paiement' : _csFuelType, amount, notes });
+  // Date saisie seulement hors poste (sinon la date vient du poste).
+  const dateRow = document.getElementById('cs-date-row');
+  const opDay = dateRow && dateRow.style.display !== 'none' ? (document.getElementById('cs-date').value || null) : null;
+  csPending.push({ mode: _csMode, client_id: clientId, client_name: clientName, pump_id: _csMode === 'payment' ? null : (pumpId ? parseInt(pumpId) : null), product_type: _csMode === 'payment' ? 'paiement' : _csFuelType, amount, notes, op_date: opDay });
   document.getElementById('cs-client-input').value = '';
   document.getElementById('cs-client-id').value = '';
   document.getElementById('cs-pump-id').value = '';
@@ -2457,7 +2491,7 @@ function updateCsPendingUI() {
       : '<span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;background:#FFEDD5;color:#C2410C;margin-right:6px;">CRÉDIT −</span>';
     return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg2);border-radius:6px;margin-bottom:4px;gap:8px;">
-      <span style="flex:1">${tag}${typeIcon[c.product_type]||''} <strong>${c.client_name}</strong> — ${pay?'remboursement':c.product_type} — <strong style="color:${pay?'var(--green)':'var(--orange)'}">${pay?'+':'−'} ${fmt(c.amount)} MAD</strong>${c.notes?' <span style="color:var(--muted);font-size:11px;">'+c.notes+'</span>':''}</span>
+      <span style="flex:1">${tag}${typeIcon[c.product_type]||''} <strong>${c.client_name}</strong> — ${pay?'remboursement':c.product_type} — <strong style="color:${pay?'var(--green)':'var(--orange)'}">${pay?'+':'−'} ${fmt(c.amount)} MAD</strong>${c.op_date?' <span style="color:var(--blue);font-size:11px;font-weight:700;">📅 '+c.op_date.split('-').reverse().join('/')+'</span>':''}${c.notes?' <span style="color:var(--muted);font-size:11px;">'+c.notes+'</span>':''}</span>
       <button class="btn btn-d btn-xs" onclick="csRemovePending(${i})">✕</button>
     </div>`;
   }).join('');
@@ -2481,13 +2515,15 @@ async function csSubmitAll() {
       if (c.mode === 'payment') {
         await api('POST', '/credits/payments', {
           shift_id: shiftId, credit_client_id: c.client_id,
-          amount: c.amount, notes: c.notes
+          amount: c.amount, notes: c.notes,
+          payment_date: shiftId ? null : c.op_date
         });
       } else {
         await api('POST', '/credits/sales', {
           shift_id: shiftId, credit_client_id: c.client_id,
           pump_id: c.pump_id || null, amount: c.amount,
-          notes: c.notes, product_type: c.product_type
+          notes: c.notes, product_type: c.product_type,
+          sale_date: shiftId ? null : c.op_date
         });
       }
       saved++;
