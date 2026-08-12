@@ -16,6 +16,49 @@ const dst = new Pool({ connectionString: TARGET, ssl: false });
 // jsonb : node-pg convertit un tableau JS en tableau Postgres → on force le JSON texte.
 const fix = v => (v !== null && typeof v === 'object' && !(v instanceof Date) && !Buffer.isBuffer(v)) ? JSON.stringify(v) : v;
 
+// Colonnes d'une table côté source (type formaté, nullabilité, défaut).
+async function srcColumns(t) {
+  const { rows } = await src.query(`
+    SELECT a.attname AS col, format_type(a.atttypid, a.atttypmod) AS typ,
+           a.attnotnull AS notnull, pg_get_expr(d.adbin, d.adrelid) AS def
+    FROM pg_attribute a
+    LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+    WHERE a.attrelid = ('public.' || quote_ident($1))::regclass
+      AND a.attnum > 0 AND NOT a.attisdropped
+    ORDER BY a.attnum`, [t]);
+  return rows;
+}
+
+// Crée sur la cible une table qui n'existe que sur la source (colonnes + PK).
+async function cloneTable(t) {
+  const cols = await srcColumns(t);
+  for (const c of cols) {
+    const m = /nextval\('([^']+)'/.exec(c.def || '');
+    if (m) await dst.query(`CREATE SEQUENCE IF NOT EXISTS ${m[1].replace(/^public\./, '')}`);
+  }
+  const defs = cols.map(c =>
+    `"${c.col}" ${c.typ}${c.notnull ? ' NOT NULL' : ''}${c.def ? ' DEFAULT ' + c.def : ''}`);
+  const { rows: pk } = await src.query(`
+    SELECT a.attname FROM pg_index i
+    JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+    WHERE i.indrelid = ('public.' || quote_ident($1))::regclass AND i.indisprimary`, [t]);
+  if (pk.length) defs.push(`PRIMARY KEY (${pk.map(r => '"' + r.attname + '"').join(',')})`);
+  await dst.query(`CREATE TABLE "${t}" (${defs.join(', ')})`);
+  console.log(`   + table créée : ${t}`);
+}
+
+// Ajoute sur la cible les colonnes que la source a en plus (ALTER manuels historiques).
+async function addMissingColumns(t) {
+  const scols = await srcColumns(t);
+  const { rows: dcols } = await dst.query(
+    "SELECT column_name AS col FROM information_schema.columns WHERE table_schema='public' AND table_name=$1", [t]);
+  const dset = new Set(dcols.map(r => r.col));
+  for (const c of scols.filter(c => !dset.has(c.col))) {
+    await dst.query(`ALTER TABLE "${t}" ADD COLUMN "${c.col}" ${c.typ}${c.def ? ' DEFAULT ' + c.def : ''}`);
+    console.log(`   + colonne ajoutée : ${t}.${c.col}`);
+  }
+}
+
 (async () => {
   console.log('1) Schéma sur la cible (initDB)…');
   await initDB();
@@ -23,9 +66,12 @@ const fix = v => (v !== null && typeof v === 'object' && !(v instanceof Date) &&
   const { rows: st } = await src.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename");
   const { rows: dt } = await dst.query("SELECT tablename FROM pg_tables WHERE schemaname='public'");
   const dset = new Set(dt.map(r => r.tablename));
-  const tables  = st.map(r => r.tablename).filter(t => dset.has(t));
-  const missing = st.map(r => r.tablename).filter(t => !dset.has(t));
-  if (missing.length) console.warn('⚠️ Tables absentes de la cible (NON copiées) :', missing.join(', '));
+  const tables = st.map(r => r.tablename);
+  console.log('1b) Alignement du schéma (tables/colonnes hors initDB)…');
+  for (const t of tables) {
+    if (!dset.has(t)) await cloneTable(t);
+    else await addMissingColumns(t);
+  }
 
   const c = await dst.connect();
   await c.query('SET session_replication_role = replica');
