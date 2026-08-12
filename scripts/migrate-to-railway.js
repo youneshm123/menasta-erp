@@ -2,9 +2,16 @@
 // S'exécute DANS le conteneur Railway (railway ssh) :
 //   TARGET_DB=postgresql://...railway.internal.../railway node scripts/migrate-to-railway.js
 // Source = DATABASE_URL (Neon, l'actuelle). Cible = TARGET_DB. Neon n'est jamais modifié.
-const SOURCE = process.env.DATABASE_URL;
+const SOURCE = process.env.SOURCE_DB || process.env.DATABASE_URL;
 const TARGET = process.env.TARGET_DB;
-if (!SOURCE || !TARGET) { console.error('DATABASE_URL (source) et TARGET_DB (cible) requis'); process.exit(1); }
+if (!SOURCE || !TARGET) { console.error('SOURCE_DB/DATABASE_URL (source) et TARGET_DB (cible) requis'); process.exit(1); }
+// Garde-fou : source et cible identiques = on viderait la base en la « copiant »
+// sur elle-même (la vérification passerait trompeusement). Refus absolu.
+const hostOf = u => { try { return new URL(u).host + new URL(u).pathname; } catch { return u; } };
+if (hostOf(SOURCE) === hostOf(TARGET)) {
+  console.error('REFUS: SOURCE et TARGET pointent sur la même base — rien à copier.');
+  process.exit(1);
+}
 
 process.env.DATABASE_URL = TARGET;          // db.js/initDB créent le schéma sur la CIBLE
 const { Pool } = require('pg');
