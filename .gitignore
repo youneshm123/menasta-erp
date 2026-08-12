@@ -24,3 +24,4 @@ get-*.js
 find-*.js
 assemble-*.js
 deep-scan.js
+backups/
