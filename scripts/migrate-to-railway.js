@@ -75,9 +75,11 @@ async function addMissingColumns(t) {
 
   const c = await dst.connect();
   await c.query('SET session_replication_role = replica');
+  // Vider TOUTES les tables d'un coup AVANT de copier : un TRUNCATE CASCADE
+  // par table effacerait les tables déjà copiées (clés étrangères).
+  await c.query(`TRUNCATE TABLE ${tables.map(t => `"${t}"`).join(', ')} CASCADE`);
   console.log('2) Copie des données…');
   for (const t of tables) {
-    await c.query(`TRUNCATE TABLE "${t}" CASCADE`);
     const { rows } = await src.query(`SELECT * FROM "${t}"`);
     if (rows.length) {
       const cols = Object.keys(rows[0]);
