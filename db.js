@@ -24,11 +24,19 @@ function stripSslmode(url) {
   }
 }
 
+// Railway private network (…railway.internal): plain TCP inside the datacenter,
+// no TLS. Everything else (Neon, public proxies) keeps TLS on.
+const isRailwayInternal = (() => {
+  try { return new URL(process.env.DATABASE_URL).hostname.endsWith('.railway.internal'); }
+  catch { return false; }
+})();
+
 const pgPool = new Pool({
   connectionString: stripSslmode(process.env.DATABASE_URL),
-  ssl: process.env.NODE_ENV === 'production'
-    ? { rejectUnauthorized: true }
-    : { rejectUnauthorized: false }
+  ssl: isRailwayInternal ? false
+    : process.env.NODE_ENV === 'production'
+      ? { rejectUnauthorized: true }
+      : { rejectUnauthorized: false }
 });
 
 const { toPostgres } = require('./lib/toPostgres');
