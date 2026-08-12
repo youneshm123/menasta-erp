@@ -377,6 +377,16 @@ async function start() {
     console.log(`\n⛽  MENASTA v2 — http://localhost:${PORT}\n`);
   });
 
+  // One-shot DB migration (Neon → Railway) : runs in the background when the
+  // TARGET_DB env var is set on the service, then does nothing on later boots
+  // once TARGET_DB is removed. The app keeps serving from DATABASE_URL meanwhile.
+  if (process.env.TARGET_DB) {
+    console.log('[MIGRATE] TARGET_DB détecté — lancement de la copie Neon → Railway…');
+    const { spawn } = require('child_process');
+    const child = spawn(process.execPath, ['scripts/migrate-to-railway.js'], { stdio: 'inherit' });
+    child.on('exit', code => console.log(`[MIGRATE] terminé avec le code ${code}`));
+  }
+
   // ── Graceful shutdown ──
   const shutdown = (signal) => {
     console.log(`[MENASTA] ${signal} reçu — arrêt propre...`);
