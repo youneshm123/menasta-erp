@@ -81,7 +81,7 @@ router.get('/sales', requireAuth, wrap(async (req, res) => {
 }));
 
 router.post('/sales', requireAuth, wrap(async (req, res) => {
-  const { shift_id, credit_client_id, pump_id, notes, product_type } = req.body || {};
+  const { shift_id, credit_client_id, pump_id, notes, product_type, sale_date } = req.body || {};
   const amount = parseFloat(req.body.amount);
   if (!credit_client_id || !amount || amount <= 0)
     return res.status(400).json({ error: 'Champs obligatoires manquants ou montant invalide' });
@@ -103,10 +103,14 @@ router.post('/sales', requireAuth, wrap(async (req, res) => {
   }
 
   const pType = product_type || (pump_id ? 'carburant' : 'lubrifiant');
+  // Vente hors poste: la date du bon peut différer du jour de saisie. On garde
+  // l'heure courante pour que chaque bon garde un horodatage unique (le relevé
+  // regroupe les lignes d'un même bon sur cet horodatage exact).
+  const sDate = /^\d{4}-\d{2}-\d{2}$/.test(sale_date || '') ? sale_date : null;
   const { rows: [{ id }] } = await pool.query(`
-    INSERT INTO credit_sales (shift_id,credit_client_id,pump_id,liters,price_per_liter,amount,recorded_by,notes,product_type)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id
-  `, [shift_id, credit_client_id, pump_id||null, liters, price_per_liter, amount, req.user.id, notes||null, pType]);
+    INSERT INTO credit_sales (shift_id,credit_client_id,pump_id,liters,price_per_liter,amount,recorded_by,notes,product_type,sale_time)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, COALESCE($10::date + NOW()::time, NOW())) RETURNING id
+  `, [shift_id, credit_client_id, pump_id||null, liters, price_per_liter, amount, req.user.id, notes||null, pType, sDate]);
 
   await pool.query('UPDATE credit_clients SET balance_due=balance_due+$1 WHERE id=$2', [amount, credit_client_id]);
 
@@ -126,6 +130,21 @@ router.post('/sales', requireAuth, wrap(async (req, res) => {
   }
 
   res.status(201).json(sale);
+}));
+
+// Changer la date d'une vente (bon saisi en retard, ou date corrigée après
+// coup). On ne garde que le jour: l'heure d'origine est conservée, sinon les
+// lignes d'un bon séparé perdraient leur horodatage commun.
+router.post('/sales/:id/date', requireAuth, wrap(async (req, res) => {
+  const date = (req.body && req.body.date) || '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Date invalide (AAAA-MM-JJ)' });
+  const { rows } = await pool.query('SELECT id, shift_id FROM credit_sales WHERE id=$1', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Vente introuvable' });
+  // Une vente rattachée à un poste tire sa date du poste: la changer ici
+  // n'aurait aucun effet visible sur le relevé.
+  if (rows[0].shift_id) return res.status(400).json({ error: 'Vente rattachée au poste #' + rows[0].shift_id + ' : sa date vient du poste. Changez la date du poste.' });
+  await pool.query('UPDATE credit_sales SET sale_time = $2::date + sale_time::time WHERE id=$1', [req.params.id, date]);
+  res.json({ ok: true });
 }));
 
 // Exclure / réintégrer une vente au relevé client. La vente reste en base et
@@ -173,17 +192,19 @@ router.post('/clients/:id/remind', requireAuth, wrap(async (req, res) => {
 
 // ── Payments ──────────────────────────────────────────────────
 router.post('/payments', requireAuth, wrap(async (req, res) => {
-  const { credit_client_id, shift_id, notes } = req.body || {};
+  const { credit_client_id, shift_id, notes, payment_date } = req.body || {};
   const amount = parseFloat(req.body.amount);
   if (!credit_client_id || !amount || amount <= 0) return res.status(400).json({ error: 'Client et montant valide requis' });
 
   const { rows: cr } = await pool.query('SELECT * FROM credit_clients WHERE id=$1', [credit_client_id]);
   if (!cr.length) return res.status(404).json({ error: 'Client introuvable' });
 
+  // Paiement hors poste: la date réelle peut différer du jour de saisie.
+  const pDate = /^\d{4}-\d{2}-\d{2}$/.test(payment_date || '') ? payment_date : null;
   const { rows: [{ id }] } = await pool.query(`
-    INSERT INTO credit_payments (credit_client_id,shift_id,amount,recorded_by,notes)
-    VALUES ($1,$2,$3,$4,$5) RETURNING id
-  `, [credit_client_id, shift_id||null, amount, req.user.id, notes||null]);
+    INSERT INTO credit_payments (credit_client_id,shift_id,amount,recorded_by,notes,payment_time)
+    VALUES ($1,$2,$3,$4,$5, COALESCE($6::date + NOW()::time, NOW())) RETURNING id
+  `, [credit_client_id, shift_id||null, amount, req.user.id, notes||null, pDate]);
 
   await pool.query('UPDATE credit_clients SET balance_due=GREATEST(balance_due-$1, 0) WHERE id=$2', [amount, credit_client_id]);
 
@@ -203,6 +224,71 @@ router.delete('/payments/:id', requireAuth, wrap(async (req, res) => {
   await pool.query('UPDATE credit_clients SET balance_due=balance_due+$1 WHERE id=$2', [pay.amount, pay.credit_client_id]);
   await pool.query('DELETE FROM credit_payments WHERE id=$1', [pay.id]);
   res.json({ ok: true });
+}));
+
+// Recherche dans TOUS les paiements clients (module « Paiements »).
+// Filtres: q (client / société / note / encaisseur), client_id, dates, montant
+// min/max, poste. La date retenue est celle du poste quand le paiement y est
+// rattaché (saisie en retard), sinon l'heure de saisie — comme le relevé client.
+router.get('/payments/search', requireAuth, wrap(async (req, res) => {
+  const { q, client_id, from, to, shift_id, sort } = req.query;
+  const min = parseFloat(req.query.min), max = parseFloat(req.query.max);
+  const perPage = Math.min(500, Math.max(10, parseInt(req.query.per_page) || 25));
+  const page    = Math.max(1, parseInt(req.query.page) || 1);
+
+  const params = [];
+  const DATE_EXPR = "(COALESCE(s.opened_at, cp.payment_time) AT TIME ZONE 'Africa/Casablanca')::date";
+  let where = 'WHERE 1=1';
+  if (q && q.trim()) {
+    params.push('%' + q.trim() + '%');
+    where += ` AND (cc.name ILIKE $${params.length} OR cc.company ILIKE $${params.length}
+                 OR cp.notes ILIKE $${params.length} OR u.full_name ILIKE $${params.length})`;
+  }
+  if (client_id) { params.push(parseInt(client_id)); where += ` AND cp.credit_client_id=$${params.length}`; }
+  if (shift_id)  { params.push(parseInt(shift_id));  where += ` AND cp.shift_id=$${params.length}`; }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(from || '')) { params.push(from); where += ` AND ${DATE_EXPR} >= $${params.length}::date`; }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(to   || '')) { params.push(to);   where += ` AND ${DATE_EXPR} <= $${params.length}::date`; }
+  if (isFinite(min)) { params.push(min); where += ` AND cp.amount >= $${params.length}`; }
+  if (isFinite(max)) { params.push(max); where += ` AND cp.amount <= $${params.length}`; }
+
+  const joins = `
+    FROM credit_payments cp
+    JOIN credit_clients cc ON cc.id=cp.credit_client_id
+    LEFT JOIN shifts s ON s.id=cp.shift_id
+    LEFT JOIN users  u ON u.id=cp.recorded_by`;
+
+  const ORDER = {
+    date_desc:   'eff_date DESC, cp.id DESC',
+    date_asc:    'eff_date ASC, cp.id ASC',
+    amount_desc: 'cp.amount DESC',
+    amount_asc:  'cp.amount ASC',
+    client_asc:  'cc.name ASC, eff_date DESC',
+  };
+  const orderBy = ORDER[sort] || ORDER.date_desc;
+
+  const { rows: [tot] } = await pool.query(`
+    SELECT COUNT(*)::int AS n,
+           COALESCE(SUM(cp.amount),0) AS amount,
+           COUNT(DISTINCT cp.credit_client_id)::int AS clients
+    ${joins} ${where}`, params);
+
+  params.push(perPage, (page - 1) * perPage);
+  const { rows } = await pool.query(`
+    SELECT cp.*, cc.name AS client_name, cc.company AS client_company,
+           cc.balance_due, u.full_name AS received_by_name,
+           s.opened_at AS shift_date, s.status AS shift_status,
+           COALESCE(s.opened_at, cp.payment_time) AS eff_date
+    ${joins} ${where}
+    ORDER BY ${orderBy}
+    LIMIT $${params.length - 1} OFFSET $${params.length}`, params);
+
+  res.json({
+    rows, page, per_page: perPage,
+    total: tot.n, pages: Math.max(1, Math.ceil(tot.n / perPage)),
+    total_amount: +(+tot.amount).toFixed(2),
+    avg_amount: tot.n ? +((+tot.amount) / tot.n).toFixed(2) : 0,
+    clients_count: tot.clients,
+  });
 }));
 
 router.get('/payments', requireAuth, wrap(async (req, res) => {

@@ -11,8 +11,8 @@
 <title>MENASTA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/fiori.css?v=33"/>
-<script src="/js/sidebar.js?v=5" defer></script>
+<link rel="stylesheet" href="/css/fiori.css?v=34"/>
+<script src="/js/sidebar.js?v=6" defer></script>
 <script src="/js/table-tools.js?v=1" defer></script>
 <script src="/js/modal-init.js?v=2" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -35,7 +35,7 @@
 .div{border:none;border-top:1px solid var(--border);margin:14px 0}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
-<link rel="stylesheet" href="/css/dashboard.css?v=1"/>
+<link rel="stylesheet" href="/css/dashboard.css?v=2"/>
 </head>
 <body>
 
@@ -69,30 +69,43 @@
 
   <!-- SIDE NAV -->
   <nav id="nav">
-    <div class="nav-section">Opérations</div>
-    <div class="nav-item active" data-p="dashboard"><span class="ni"><i data-lucide="bar-chart-2"></i></span>Tableau de Bord</div>
-    <div class="nav-item" data-p="shift"><span class="ni"><i data-lucide="clock"></i></span>Poste en Cours</div>
-    <div class="nav-item" data-p="shifts-history"><span class="ni"><i data-lucide="clipboard-list"></i></span>Historique Postes</div>
+    <div class="mn-search">
+      <span class="mn-search-ic">🔍</span>
+      <input id="mn-q" type="text" placeholder="Filtrer le menu…  (M)" autocomplete="off" spellcheck="false"/>
+    </div>
 
-    <div class="nav-divider"></div>
-    <div class="nav-section">Finances</div>
-    <div class="nav-item" data-p="credits"><span class="ni"><i data-lucide="handshake"></i></span>Créances Clients <span class="nav-badge" id="nb-credits">0</span></div>
-    <div class="nav-item" data-p="products"><span class="ni"><i data-lucide="gauge"></i></span>Produits & Huiles</div>
+    <div class="mn-grp" data-grp="ops">
+      <button class="mn-grp-lbl" data-grp-btn="ops">Opérations <span class="mn-grp-ch"><i data-lucide="chevron-down"></i></span></button>
+      <div class="nav-item active" data-p="dashboard" data-name="Tableau de Bord"><span class="ni"><i data-lucide="bar-chart-2"></i></span><span class="mn-lbl">Tableau de Bord</span></div>
+      <div class="nav-item" data-p="shift" data-name="Poste en Cours"><span class="ni"><i data-lucide="clock"></i></span><span class="mn-lbl">Poste en Cours</span></div>
+      <div class="nav-item" data-p="shifts-history" data-name="Historique Postes"><span class="ni"><i data-lucide="clipboard-list"></i></span><span class="mn-lbl">Historique Postes</span></div>
+    </div>
 
-    <div class="nav-divider"></div>
-    <div class="nav-section">Analyses</div>
-    <div class="nav-item" data-p="reports"><span class="ni"><i data-lucide="bar-chart-2"></i></span>Rapports Mensuels</div>
-    <div class="nav-item" data-p="expenses"><span class="ni"><i data-lucide="wallet"></i></span>Dépenses</div>
-    <div class="nav-item" data-p="employees"><span class="ni"><i data-lucide="users"></i></span>Employés & Salaires</div>
-    <div class="nav-item" data-p="freefuel"><span class="ni"><i data-lucide="fuel"></i></span>Carburant Gratuit</div>
-    <div class="nav-item" data-p="stock"><span class="ni"><i data-lucide="gauge"></i></span>Stock Carburant</div>
+    <div class="mn-grp" data-grp="fin">
+      <button class="mn-grp-lbl" data-grp-btn="fin">Finances <span class="mn-grp-ch"><i data-lucide="chevron-down"></i></span></button>
+      <div class="nav-item" data-p="credits" data-name="Créances Clients"><span class="ni"><i data-lucide="handshake"></i></span><span class="mn-lbl">Créances Clients</span> <span class="nav-badge" id="nb-credits">0</span></div>
+      <div class="nav-item" data-p="payments" data-name="Paiements Clients"><span class="ni"><i data-lucide="banknote"></i></span><span class="mn-lbl">Paiements Clients</span></div>
+      <div class="nav-item" data-p="products" data-name="Produits & Huiles"><span class="ni"><i data-lucide="gauge"></i></span><span class="mn-lbl">Produits & Huiles</span></div>
+    </div>
 
-    <div class="nav-divider"></div>
-    <div class="nav-section">Administration</div>
-    <div class="nav-item" data-p="pumps"><span class="ni"><i data-lucide="fuel"></i></span>Pompes & Prix</div>
-    <div class="nav-item" data-p="settings"><span class="ni"><i data-lucide="settings"></i></span>Paramètres</div>
+    <div class="mn-grp" data-grp="ana">
+      <button class="mn-grp-lbl" data-grp-btn="ana">Analyses <span class="mn-grp-ch"><i data-lucide="chevron-down"></i></span></button>
+      <div class="nav-item" data-p="reports" data-name="Rapports Mensuels"><span class="ni"><i data-lucide="bar-chart-2"></i></span><span class="mn-lbl">Rapports Mensuels</span></div>
+      <div class="nav-item" data-p="expenses" data-name="Dépenses"><span class="ni"><i data-lucide="wallet"></i></span><span class="mn-lbl">Dépenses</span></div>
+      <div class="nav-item" data-p="employees" data-name="Employés & Salaires"><span class="ni"><i data-lucide="users"></i></span><span class="mn-lbl">Employés & Salaires</span></div>
+      <div class="nav-item" data-p="freefuel" data-name="Carburant Gratuit"><span class="ni"><i data-lucide="fuel"></i></span><span class="mn-lbl">Carburant Gratuit</span></div>
+      <div class="nav-item" data-p="stock" data-name="Stock Carburant"><span class="ni"><i data-lucide="gauge"></i></span><span class="mn-lbl">Stock Carburant</span></div>
+    </div>
 
-    <a href="/home" style="display:block;padding:10px 18px;color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;border-top:1px solid rgba(255,255,255,.08)">← Accueil</a>
+    <div class="mn-grp" data-grp="adm">
+      <button class="mn-grp-lbl" data-grp-btn="adm">Administration <span class="mn-grp-ch"><i data-lucide="chevron-down"></i></span></button>
+      <div class="nav-item" data-p="pumps" data-name="Pompes & Prix"><span class="ni"><i data-lucide="fuel"></i></span><span class="mn-lbl">Pompes & Prix</span></div>
+      <div class="nav-item" data-p="settings" data-name="Paramètres"><span class="ni"><i data-lucide="settings"></i></span><span class="mn-lbl">Paramètres</span></div>
+    </div>
+
+    <div class="mn-empty" id="mn-empty">Aucune section trouvée</div>
+
+    <a href="/home" style="display:block;margin-top:auto;padding:10px 18px;color:var(--muted);font-size:12px;text-decoration:none;border-top:1px solid var(--border)">← Accueil</a>
     <div class="nav-footer">v1.0 · MENASTA</div>
   </nav>
 
@@ -186,6 +199,64 @@
             <table class="t" id="clients-tbl"><thead><tr><th>Nom</th><th>Société</th><th>Téléphone</th><th class="num">Crédit Pris</th><th class="num">Nb Ventes</th><th>Dernière Vente</th><th class="num">Solde Dû</th><th></th></tr></thead>
             <tbody id="clients-body"></tbody></table>
           </div>
+        </div>
+      </div>
+
+      <!-- ══ PAGE: PAIEMENTS CLIENTS ══ -->
+      <div class="page" id="p-payments">
+        <style>
+          .pay-lbl{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;}
+          .pay-inp{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;outline:none;}
+          .pay-inp:focus{border-color:var(--blue);}
+          .pay-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:14px 16px;}
+          .pay-quick{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 14px;align-items:center;}
+        </style>
+        <div class="tiles" id="pay-tiles"></div>
+        <div class="section">
+          <div class="s-head">
+            <div class="s-title">🔎 Recherche des paiements</div>
+            <div class="fxg">
+              <div class="exp-btns">
+                <button class="exp-btn exp-pdf" onclick="payExport('pdf')">📄 PDF</button>
+                <button class="exp-btn exp-xl" onclick="payExport('excel')">📊 Excel</button>
+              </div>
+            </div>
+          </div>
+          <div class="pay-filters">
+            <div><label class="pay-lbl">Recherche libre</label>
+              <input id="pay-q" class="pay-inp" placeholder="Client, société, note, encaissé par…" onkeydown="if(event.key==='Enter')payApply()"/></div>
+            <div><label class="pay-lbl">Client</label>
+              <select id="pay-client" class="pay-inp" onchange="payApply()"><option value="">Tous les clients</option></select></div>
+            <div><label class="pay-lbl">Du</label><input type="date" id="pay-from" class="pay-inp" onchange="payApply()"/></div>
+            <div><label class="pay-lbl">Au</label><input type="date" id="pay-to" class="pay-inp" onchange="payApply()"/></div>
+            <div><label class="pay-lbl">Montant min</label><input type="number" id="pay-min" class="pay-inp" step="0.01" placeholder="0" onkeydown="if(event.key==='Enter')payApply()"/></div>
+            <div><label class="pay-lbl">Montant max</label><input type="number" id="pay-max" class="pay-inp" step="0.01" placeholder="∞" onkeydown="if(event.key==='Enter')payApply()"/></div>
+            <div><label class="pay-lbl">Poste n°</label><input type="number" id="pay-shift" class="pay-inp" placeholder="#" onkeydown="if(event.key==='Enter')payApply()"/></div>
+            <div><label class="pay-lbl">Trier par</label>
+              <select id="pay-sort" class="pay-inp" onchange="payApply()">
+                <option value="date_desc">Date ↓ (récent)</option>
+                <option value="date_asc">Date ↑ (ancien)</option>
+                <option value="amount_desc">Montant ↓</option>
+                <option value="amount_asc">Montant ↑</option>
+                <option value="client_asc">Client A→Z</option>
+              </select></div>
+          </div>
+          <div class="pay-quick">
+            <button class="btn btn-p btn-sm" onclick="payApply()">🔍 Rechercher</button>
+            <button class="btn btn-g btn-sm" onclick="payReset()">✕ Effacer</button>
+            <button class="btn btn-w btn-sm" onclick="payPreset('today')">Aujourd'hui</button>
+            <button class="btn btn-w btn-sm" onclick="payPreset('week')">7 jours</button>
+            <button class="btn btn-w btn-sm" onclick="payPreset('month')">Ce mois</button>
+            <button class="btn btn-w btn-sm" onclick="payPreset('year')">Cette année</button>
+            <span id="pay-summary" class="muted sm" style="margin-left:auto"></span>
+          </div>
+          <div class="s-body-flush" style="overflow-x:auto">
+            <table class="t" id="pay-tbl">
+              <thead><tr><th>Date</th><th>Client</th><th>Société</th><th>Poste</th><th>Encaissé par</th><th>Note</th><th class="num">Montant</th><th></th></tr></thead>
+              <tbody id="pay-body"></tbody>
+            </table>
+          </div>
+          <div id="pay-pager" style="display:flex;justify-content:center;align-items:center;gap:10px;padding:14px;flex-wrap:wrap"></div>
         </div>
       </div>
 
@@ -920,7 +991,7 @@
 
 // ─── STATE ─────────────────────────────────────────────────
 const S = { user: null, pumps: [], fuelTypes: [], activeShift: null, products: [], clients: [] };
-const pageNames = { dashboard:'Tableau de Bord', shift:'Poste en Cours', 'shifts-history':'Historique Postes', credits:'Créances Clients', products:'Produits & Huiles', reports:'Rapports Mensuels', expenses:'Dépenses', stock:'Stock Carburant', pumps:'Pompes & Prix', settings:'Paramètres' };
+const pageNames = { dashboard:'Tableau de Bord', shift:'Poste en Cours', 'shifts-history':'Historique Postes', credits:'Créances Clients', payments:'Paiements Clients', products:'Produits & Huiles', reports:'Rapports Mensuels', expenses:'Dépenses', stock:'Stock Carburant', pumps:'Pompes & Prix', settings:'Paramètres' };
 let paymentClientId = null;
 let chartWeekly = null, chartSplit = null;
 // Live shift calculation state
@@ -969,6 +1040,71 @@ document.querySelectorAll('.overlay').forEach(o => {
 
 // ─── NAV ────────────────────────────────────────────────────
 document.querySelectorAll('.nav-item[data-p]').forEach(el => el.addEventListener('click', () => goTo(el.dataset.p)));
+
+// ─── MENU DU MODULE : filtre instantané + groupes repliables ─
+// Le menu s'allonge à chaque nouvelle section: on tape 2-3 lettres au lieu de
+// chercher à l'œil, et on replie les blocs qu'on n'utilise pas (état mémorisé).
+(function initModuleNav() {
+  const nav   = document.getElementById('nav');
+  const q     = document.getElementById('mn-q');
+  const empty = document.getElementById('mn-empty');
+  if (!nav || !q) return;
+  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const escH = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // État replié mémorisé par groupe
+  nav.querySelectorAll('.mn-grp').forEach(g => {
+    if (localStorage.getItem('mn_grp_' + g.dataset.grp) === '0') g.classList.add('mn-closed');
+  });
+
+  function applyFilter() {
+    const s = norm(q.value.trim());
+    let shown = 0;
+    nav.querySelectorAll('.nav-item[data-p]').forEach(it => {
+      const name = it.dataset.name || '';
+      const hit  = !s || norm(name).includes(s);
+      it.classList.toggle('mn-hide', !hit);
+      const lbl = it.querySelector('.mn-lbl');
+      if (!s) lbl.textContent = name;
+      else if (hit) {
+        const i = norm(name).indexOf(s);
+        lbl.innerHTML = escH(name.slice(0, i)) + '<mark>' + escH(name.slice(i, i + s.length)) + '</mark>' + escH(name.slice(i + s.length));
+      }
+      if (hit) shown++;
+    });
+    nav.querySelectorAll('.mn-grp').forEach(g => {
+      const visible = g.querySelectorAll('.nav-item:not(.mn-hide)').length;
+      g.classList.toggle('mn-hide', !!s && visible === 0);
+      if (s) g.classList.remove('mn-closed');
+      else g.classList.toggle('mn-closed', localStorage.getItem('mn_grp_' + g.dataset.grp) === '0');
+    });
+    empty.style.display = s && shown === 0 ? 'block' : 'none';
+  }
+
+  q.addEventListener('input', applyFilter);
+  q.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { q.value = ''; applyFilter(); q.blur(); }
+    if (e.key === 'Enter') {
+      const first = nav.querySelector('.nav-item[data-p]:not(.mn-hide)');
+      if (first) { goTo(first.dataset.p); q.value = ''; applyFilter(); q.blur(); }
+    }
+  });
+
+  nav.addEventListener('click', e => {
+    const btn = e.target.closest('.mn-grp-lbl');
+    if (!btn) return;
+    const g = nav.querySelector('.mn-grp[data-grp="' + btn.dataset.grpBtn + '"]');
+    const closed = g.classList.toggle('mn-closed');
+    localStorage.setItem('mn_grp_' + g.dataset.grp, closed ? '0' : '1');
+  });
+
+  // « m » = aller au filtre du menu (quand on n'est pas en train de saisir).
+  document.addEventListener('keydown', e => {
+    const t = (e.target.tagName || '').toLowerCase();
+    if (t === 'input' || t === 'textarea' || t === 'select' || e.target.isContentEditable) return;
+    if (e.key === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); q.focus(); q.select(); }
+  });
+})();
 function goTo(p) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.p === p));
   document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
@@ -1008,6 +1144,7 @@ async function loadPage(p) {
     case 'shift':          await loadShiftPage(); break;
     case 'shifts-history': await loadHistory();   break;
     case 'credits':        await loadCredits();   break;
+    case 'payments':       await loadPayments();  break;
     case 'products':       await loadProducts();    break;
     case 'pumps':          await loadPumps();       break;
     case 'reports':        await initReportsYear(); break;
@@ -1956,6 +2093,147 @@ function rcExport(kind) {
 // several days after the poste. shift_date (the poste's opened_at) is the date
 // the client actually took the fuel, so it wins whenever the row has a poste.
 function opDate(r) { return r.shift_date || r.sale_time || r.payment_time; }
+
+// ─── PAIEMENTS CLIENTS ──────────────────────────────────────
+// Tous les règlements encaissés, cherchables par client, montant, date, poste,
+// note ou personne qui a encaissé. La recherche est faite côté serveur: elle
+// couvre tout l'historique, pas seulement les derniers paiements chargés.
+let payPage = 1, _payLast = null;
+const PAY_PER_PAGE = 25;
+
+async function loadPayments() {
+  if (!S.clients.length) { try { S.clients = await api('GET', '/credits/clients'); } catch(_) {} }
+  const sel = document.getElementById('pay-client');
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">Tous les clients</option>' +
+    S.clients.map(c => `<option value="${c.id}">${c.name}${c.company ? ' — ' + c.company : ''}</option>`).join('');
+  sel.value = keep;
+  await payFetch();
+}
+
+function payApply() { payPage = 1; payFetch(); }
+function payGoPage(p) { payPage = p; payFetch(); document.getElementById('pay-tbl').scrollIntoView({ behavior:'smooth', block:'start' }); }
+
+function payReset() {
+  ['pay-q','pay-from','pay-to','pay-min','pay-max','pay-shift'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pay-client').value = '';
+  document.getElementById('pay-sort').value = 'date_desc';
+  payApply();
+}
+
+function payPreset(kind) {
+  // Date locale (pas toISOString: en UTC+1 il renverrait la veille).
+  const now = new Date();
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let from = new Date(now);
+  if (kind === 'week')  from.setDate(now.getDate() - 6);
+  if (kind === 'month') from = new Date(now.getFullYear(), now.getMonth(), 1);
+  if (kind === 'year')  from = new Date(now.getFullYear(), 0, 1);
+  document.getElementById('pay-from').value = iso(from);
+  document.getElementById('pay-to').value   = iso(now);
+  payApply();
+}
+
+function payQuery(page, perPage) {
+  const v = id => (document.getElementById(id).value || '').trim();
+  const f = {
+    q: v('pay-q'), client_id: v('pay-client'), from: v('pay-from'), to: v('pay-to'),
+    min: v('pay-min'), max: v('pay-max'), shift_id: v('pay-shift'),
+    sort: v('pay-sort') || 'date_desc',
+    page: page || payPage, per_page: perPage || PAY_PER_PAGE,
+  };
+  return '?' + Object.entries(f).filter(([, x]) => x !== '' && x != null)
+    .map(([k, x]) => k + '=' + encodeURIComponent(x)).join('&');
+}
+
+async function payFetch() {
+  const body = document.getElementById('pay-body');
+  body.innerHTML = '<tr><td colspan="8" class="tc muted" style="padding:20px">Chargement…</td></tr>';
+  try {
+    const d = await api('GET', '/credits/payments/search' + payQuery());
+    _payLast = d;
+    document.getElementById('pay-tiles').innerHTML = [
+      { ic:'💰', val: fmt(d.total_amount) + ' MAD', lbl:'Total encaissé', tc:'var(--green)' },
+      { ic:'🧾', val: d.total,                      lbl:'Nb de paiements', tc:'var(--blue)' },
+      { ic:'👥', val: d.clients_count,              lbl:'Clients concernés', tc:'var(--purple)' },
+      { ic:'📊', val: fmt(d.avg_amount) + ' MAD',   lbl:'Paiement moyen', tc:'var(--orange)' },
+    ].map(t => `<div class="tile" style="--tile-color:${t.tc}"><div class="tile-ic">${t.ic}</div><div class="tile-val">${t.val}</div><div class="tile-lbl">${t.lbl}</div></div>`).join('');
+
+    document.getElementById('pay-summary').innerHTML =
+      `<strong>${d.total}</strong> paiement(s) · Total <strong class="c-g">${fmt(d.total_amount)} MAD</strong>`;
+
+    body.innerHTML = d.rows.map(p => `
+      <tr>
+        <td class="muted sm">${fmtDT(opDate(p))}</td>
+        <td class="fw7">${p.client_name || '?'}</td>
+        <td class="muted sm">${p.client_company || '—'}</td>
+        <td class="muted sm">${p.shift_id ? '#' + p.shift_id : '—'}</td>
+        <td class="muted sm">${p.received_by_name || '—'}</td>
+        <td class="muted sm">${p.notes || '—'}</td>
+        <td class="num fw7 c-g">${fmt(p.amount)} MAD</td>
+        <td>${p.shift_id && p.shift_status !== 'open'
+              ? '<span class="muted sm" title="Poste fermé — paiement verrouillé">🔒</span>'
+              : `<button class="btn btn-d btn-xs" onclick="payDelete(${p.id})">🗑️</button>`}</td>
+      </tr>`).join('') || '<tr><td colspan="8" class="tc muted" style="padding:20px">Aucun paiement trouvé</td></tr>';
+
+    const pager = document.getElementById('pay-pager');
+    pager.innerHTML = d.pages <= 1 ? '' : `
+      <button class="btn btn-w btn-sm" ${d.page<=1?'disabled style="opacity:.4;cursor:default;"':''} onclick="payGoPage(${d.page-1})">← Précédent</button>
+      <span class="muted sm">Page <strong>${d.page}</strong> / ${d.pages} · ${d.total} paiements</span>
+      <button class="btn btn-w btn-sm" ${d.page>=d.pages?'disabled style="opacity:.4;cursor:default;"':''} onclick="payGoPage(${d.page+1})">Suivant →</button>`;
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="8" class="tc" style="padding:20px;color:var(--red)">${e.message}</td></tr>`;
+  }
+}
+
+async function payDelete(id) {
+  if (!confirm('Annuler ce paiement ? Le montant sera remis sur la dette du client.')) return;
+  try {
+    await api('DELETE', '/credits/payments/' + id);
+    toast('Paiement annulé');
+    S.clients = await api('GET', '/credits/clients');
+    payFetch();
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+// Export de TOUT le résultat filtré (pas seulement la page affichée).
+async function payExport(kind) {
+  if (!_payLast || !_payLast.total) { toast('Aucun paiement à exporter', 'wn'); return; }
+  let rows = _payLast.rows;
+  if (_payLast.total > rows.length) {
+    // On récupère tout le résultat filtré, page de 500 par page de 500.
+    try {
+      rows = [];
+      for (let pg = 1; pg <= 40; pg++) {
+        const d = await api('GET', '/credits/payments/search' + payQuery(pg, 500));
+        rows = rows.concat(d.rows);
+        if (pg >= d.pages) break;
+      }
+    } catch (e) { rows = _payLast.rows; toast('Export partiel : ' + e.message, 'wn'); }
+  }
+  const headers = ['Date','Client','Société','Poste','Encaissé par','Note','Montant'];
+  const data = rows.map(p => [
+    fmtDT(opDate(p)), p.client_name || '?', p.client_company || '', p.shift_id ? '#' + p.shift_id : '',
+    p.received_by_name || '', p.notes || '', fmt(p.amount) + ' MAD',
+  ]);
+  data.push(['', '', '', '', '', 'TOTAL', fmt(rows.reduce((t, p) => t + (parseFloat(p.amount)||0), 0)) + ' MAD']);
+  try {
+    if (kind === 'excel') {
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Paiements');
+      XLSX.writeFile(wb, 'Paiements_Clients.xlsx');
+    } else {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape' });
+      doc.setFontSize(13);
+      doc.text('Paiements Clients — ' + new Date().toLocaleDateString('fr-FR'), 14, 14);
+      doc.autoTable({ head: [headers], body: data, startY: 20, styles: { fontSize: 8 }, headStyles: { fillColor: [21, 128, 61] } });
+      doc.save('Paiements_Clients.pdf');
+    }
+    toast('Export téléchargé ✓', 'g');
+  } catch (e) { toast('Erreur export: ' + e.message, 'er'); }
+}
 
 async function openClientHistory(id, name) {
   openModal('m-client-history');
