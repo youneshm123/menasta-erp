@@ -208,7 +208,9 @@
           .pay-lbl{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;}
           .pay-inp{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;outline:none;}
           .pay-inp:focus{border-color:var(--blue);}
-          .pay-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:14px 16px;}
+          .pay-searchbar{display:flex;align-items:center;gap:8px;padding:14px 16px 8px;position:relative;}
+          .pay-search-input{flex:1;height:40px;font-size:14.5px;padding-left:34px;}
+          .pay-search-ic{position:absolute;left:26px;font-size:14px;color:var(--muted);pointer-events:none;}
           .pay-quick{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 14px;align-items:center;}
         </style>
         <div class="tiles" id="pay-tiles"></div>
@@ -222,34 +224,13 @@
               </div>
             </div>
           </div>
-          <div class="pay-filters">
-            <div><label class="pay-lbl">Recherche libre</label>
-              <input id="pay-q" class="pay-inp" placeholder="Client, société, note, encaissé par…" onkeydown="if(event.key==='Enter')payApply()"/></div>
-            <div><label class="pay-lbl">Client</label>
-              <select id="pay-client" class="pay-inp" onchange="payApply()"><option value="">Tous les clients</option></select></div>
-            <div><label class="pay-lbl">Du</label><input type="date" id="pay-from" class="pay-inp" onchange="payApply()"/></div>
-            <div><label class="pay-lbl">Au</label><input type="date" id="pay-to" class="pay-inp" onchange="payApply()"/></div>
-            <div><label class="pay-lbl">Montant min</label><input type="number" id="pay-min" class="pay-inp" step="0.01" placeholder="0" onkeydown="if(event.key==='Enter')payApply()"/></div>
-            <div><label class="pay-lbl">Montant max</label><input type="number" id="pay-max" class="pay-inp" step="0.01" placeholder="∞" onkeydown="if(event.key==='Enter')payApply()"/></div>
-            <div><label class="pay-lbl">Poste n°</label><input type="number" id="pay-shift" class="pay-inp" placeholder="#" onkeydown="if(event.key==='Enter')payApply()"/></div>
-            <div><label class="pay-lbl">Trier par</label>
-              <select id="pay-sort" class="pay-inp" onchange="payApply()">
-                <option value="date_desc">Date ↓ (récent)</option>
-                <option value="date_asc">Date ↑ (ancien)</option>
-                <option value="amount_desc">Montant ↓</option>
-                <option value="amount_asc">Montant ↑</option>
-                <option value="client_asc">Client A→Z</option>
-              </select></div>
+          <div class="pay-searchbar">
+            <span class="pay-search-ic">🔍</span>
+            <input id="pay-q" class="pay-inp pay-search-input" autocomplete="off"
+                   placeholder="Rechercher un nom ou un montant… (ex : Alami, ou 3000)"/>
+            <button class="btn btn-g btn-sm" onclick="payReset()">✕</button>
           </div>
-          <div class="pay-quick">
-            <button class="btn btn-p btn-sm" onclick="payApply()">🔍 Rechercher</button>
-            <button class="btn btn-g btn-sm" onclick="payReset()">✕ Effacer</button>
-            <button class="btn btn-w btn-sm" onclick="payPreset('today')">Aujourd'hui</button>
-            <button class="btn btn-w btn-sm" onclick="payPreset('week')">7 jours</button>
-            <button class="btn btn-w btn-sm" onclick="payPreset('month')">Ce mois</button>
-            <button class="btn btn-w btn-sm" onclick="payPreset('year')">Cette année</button>
-            <span id="pay-summary" class="muted sm" style="margin-left:auto"></span>
-          </div>
+          <div class="pay-quick"><span id="pay-summary" class="muted sm"></span></div>
           <div class="s-body-flush" style="overflow-x:auto">
             <table class="t" id="pay-tbl">
               <thead><tr><th>Date</th><th>Client</th><th>Société</th><th>Poste</th><th>Encaissé par</th><th>Note</th><th class="num">Montant</th><th></th></tr></thead>
@@ -2102,12 +2083,17 @@ let payPage = 1, _payLast = null;
 const PAY_PER_PAGE = 25;
 
 async function loadPayments() {
-  if (!S.clients.length) { try { S.clients = await api('GET', '/credits/clients'); } catch(_) {} }
-  const sel = document.getElementById('pay-client');
-  const keep = sel.value;
-  sel.innerHTML = '<option value="">Tous les clients</option>' +
-    S.clients.map(c => `<option value="${c.id}">${c.name}${c.company ? ' — ' + c.company : ''}</option>`).join('');
-  sel.value = keep;
+  const input = document.getElementById('pay-q');
+  if (!input.dataset.bound) {
+    // Recherche au fil de la frappe (petite pause pour ne pas spammer le serveur).
+    let t = null;
+    input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(payApply, 300); });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  { clearTimeout(t); payApply(); }
+      if (e.key === 'Escape') { input.value = ''; payApply(); }
+    });
+    input.dataset.bound = '1';
+  }
   await payFetch();
 }
 
@@ -2115,33 +2101,16 @@ function payApply() { payPage = 1; payFetch(); }
 function payGoPage(p) { payPage = p; payFetch(); document.getElementById('pay-tbl').scrollIntoView({ behavior:'smooth', block:'start' }); }
 
 function payReset() {
-  ['pay-q','pay-from','pay-to','pay-min','pay-max','pay-shift'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('pay-client').value = '';
-  document.getElementById('pay-sort').value = 'date_desc';
+  const input = document.getElementById('pay-q');
+  input.value = '';
+  input.focus();
   payApply();
 }
 
-function payPreset(kind) {
-  // Date locale (pas toISOString: en UTC+1 il renverrait la veille).
-  const now = new Date();
-  const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  let from = new Date(now);
-  if (kind === 'week')  from.setDate(now.getDate() - 6);
-  if (kind === 'month') from = new Date(now.getFullYear(), now.getMonth(), 1);
-  if (kind === 'year')  from = new Date(now.getFullYear(), 0, 1);
-  document.getElementById('pay-from').value = iso(from);
-  document.getElementById('pay-to').value   = iso(now);
-  payApply();
-}
-
+// Une seule barre : le texte cherche le nom du client comme le montant.
 function payQuery(page, perPage) {
-  const v = id => (document.getElementById(id).value || '').trim();
-  const f = {
-    q: v('pay-q'), client_id: v('pay-client'), from: v('pay-from'), to: v('pay-to'),
-    min: v('pay-min'), max: v('pay-max'), shift_id: v('pay-shift'),
-    sort: v('pay-sort') || 'date_desc',
-    page: page || payPage, per_page: perPage || PAY_PER_PAGE,
-  };
+  const q = (document.getElementById('pay-q').value || '').trim();
+  const f = { q, page: page || payPage, per_page: perPage || PAY_PER_PAGE };
   return '?' + Object.entries(f).filter(([, x]) => x !== '' && x != null)
     .map(([k, x]) => k + '=' + encodeURIComponent(x)).join('&');
 }

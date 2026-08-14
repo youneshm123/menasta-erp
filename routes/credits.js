@@ -227,9 +227,10 @@ router.delete('/payments/:id', requireAuth, wrap(async (req, res) => {
 }));
 
 // Recherche dans TOUS les paiements clients (module « Paiements »).
-// Filtres: q (client / société / note / encaisseur), client_id, dates, montant
-// min/max, poste. La date retenue est celle du poste quand le paiement y est
-// rattaché (saisie en retard), sinon l'heure de saisie — comme le relevé client.
+// Une seule barre : `q` cherche à la fois dans le nom du client (société, note,
+// encaisseur) ET dans le montant — taper « 3000 » sort les paiements de 3000 DH.
+// La date retenue est celle du poste quand le paiement y est rattaché (saisie en
+// retard), sinon l'heure de saisie — comme le relevé client.
 router.get('/payments/search', requireAuth, wrap(async (req, res) => {
   const { q, client_id, from, to, shift_id, sort } = req.query;
   const min = parseFloat(req.query.min), max = parseFloat(req.query.max);
@@ -240,9 +241,22 @@ router.get('/payments/search', requireAuth, wrap(async (req, res) => {
   const DATE_EXPR = "(COALESCE(s.opened_at, cp.payment_time) AT TIME ZONE 'Africa/Casablanca')::date";
   let where = 'WHERE 1=1';
   if (q && q.trim()) {
-    params.push('%' + q.trim() + '%');
-    where += ` AND (cc.name ILIKE $${params.length} OR cc.company ILIKE $${params.length}
-                 OR cp.notes ILIKE $${params.length} OR u.full_name ILIKE $${params.length})`;
+    const term = q.trim();
+    // % et _ tapés par l'utilisateur sont des caractères, pas des jokers SQL.
+    const likeTerm = term.replace(/[\\%_]/g, c => '\\' + c);
+    params.push('%' + likeTerm + '%');
+    const txt = params.length;
+    let cond = `cc.name ILIKE $${txt} OR cc.company ILIKE $${txt}
+                OR cp.notes ILIKE $${txt} OR u.full_name ILIKE $${txt}`;
+    // Terme numérique → on cherche aussi le montant (exact ou qui commence par).
+    const nb = parseFloat(term.replace(',', '.'));
+    if (/^[\d.,]+$/.test(term) && isFinite(nb)) {
+      params.push(nb);                                    // montant exact
+      const exact = params.length;
+      params.push(term.replace(',', '.') + '%');          // montant qui commence par
+      cond += ` OR cp.amount = $${exact} OR CAST(cp.amount AS TEXT) LIKE $${params.length}`;
+    }
+    where += ` AND (${cond})`;
   }
   if (client_id) { params.push(parseInt(client_id)); where += ` AND cp.credit_client_id=$${params.length}`; }
   if (shift_id)  { params.push(parseInt(shift_id));  where += ` AND cp.shift_id=$${params.length}`; }
