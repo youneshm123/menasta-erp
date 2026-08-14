@@ -62,6 +62,14 @@
 .ho-row .nm{flex:1;font-weight:700;font-size:14px}
 .ho-row .av{font-size:12px;color:var(--muted)}
 .ho-row input{width:90px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:center}
+.hist-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.h-sel{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg);color:inherit;font-family:var(--font)}
+.h-cancelled td{opacity:.6}
+.h-cancelled .h-strike{text-decoration:line-through}
+.tagi{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px}
+.tag-scan{background:#eef2ff;color:#4338ca}
+.tag-manual{background:#fff7ed;color:#c2410c}
+.tag-cancel{background:#fef2f2;color:#dc2626}
 #print-sheet{display:none}
 @media print{
   /* 60mm x 40mm label roll — one QR-only label per page. */
@@ -118,6 +126,7 @@
   <div class="sb-nav">
     <div class="nav-item active" data-p="catalogue"><span class="ni"><i data-lucide="package"></i></span> Catalogue & QR</div>
     <div class="nav-item" data-p="compte"><span class="ni"><i data-lucide="wallet"></i></span> Compte & Règlement</div>
+    <div class="nav-item" data-p="historique"><span class="ni"><i data-lucide="list"></i></span> Historique des pièces</div>
     <div class="nav-item" data-p="journal"><span class="ni"><i data-lucide="history"></i></span> Journal</div>
   </div>
   <div class="sb-foot">
@@ -136,7 +145,8 @@
     <div class="page active" id="p-catalogue">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div class="muted" style="font-size:13px">Tout en un : stock, étiquette QR et impression sur chaque carte.</div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-p btn-sm" id="btn-manual-cat" style="display:none" onclick="openManual()">✍️ Vente sans scan</button>
           <button class="btn btn-p btn-sm" onclick="printAll()">🖨️ Imprimer tout</button>
           <button class="btn btn-s" onclick="openProduct()">+ Nouvel article</button>
         </div>
@@ -185,6 +195,64 @@
           <table class="t"><thead><tr><th>Date</th><th>Par</th><th>Note</th><th class="num">Montant</th><th></th></tr></thead>
             <tbody id="pay-body"></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ HISTORIQUE DES PIÈCES VENDUES ══ -->
+    <div class="page" id="p-historique">
+      <div class="kpi-row">
+        <div class="kpi-box"><div class="l">Pièces vendues</div><div class="v" id="h-qty">0</div><div class="bgico">📦</div></div>
+        <div class="kpi-box kpi-due"><div class="l">Montant</div><div class="v" id="h-amount">0,00</div><div class="bgico">💰</div></div>
+        <div class="kpi-box"><div class="l">Bénéfice (estimé)</div><div class="v c-g" id="h-profit">0,00</div><div class="bgico">📈</div></div>
+        <div class="kpi-box"><div class="l">Lignes / annulées</div><div class="v" id="h-count">0</div><div class="bgico">🧾</div></div>
+      </div>
+
+      <div class="section" style="margin-bottom:14px">
+        <div class="s-head"><div class="s-title">🔎 Filtres</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-g btn-sm" onclick="exportSalesCsv()">⬇️ Export CSV</button>
+            <button class="btn btn-s btn-sm" id="btn-manual-sale" style="display:none" onclick="openManual()">✍️ Vente sans scan</button>
+          </div>
+        </div>
+        <div class="s-body">
+          <div class="hist-filters">
+            <div class="fld" style="margin:0"><label>Du</label><input type="date" id="h-from"/></div>
+            <div class="fld" style="margin:0"><label>Au</label><input type="date" id="h-to"/></div>
+            <div class="fld" style="margin:0"><label>Article</label>
+              <select id="h-product" class="h-sel"><option value="">Tous</option></select>
+            </div>
+            <div class="fld" style="margin:0"><label>Origine</label>
+              <select id="h-source" class="h-sel">
+                <option value="">Toutes</option><option value="scan">📷 Scan QR</option><option value="manual">✍️ Sans scan</option>
+              </select>
+            </div>
+            <div class="fld" style="margin:0"><label>Statut</label>
+              <select id="h-status" class="h-sel">
+                <option value="">Toutes</option><option value="active">Valides</option><option value="cancelled">Annulées</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-s btn-sm" onclick="histPage=1;loadHistorique()">Appliquer</button>
+            <button class="btn btn-g btn-sm" onclick="resetHistFilters()">Réinitialiser</button>
+            <button class="btn btn-g btn-sm" onclick="histPreset('today')">Aujourd'hui</button>
+            <button class="btn btn-g btn-sm" onclick="histPreset('week')">7 jours</button>
+            <button class="btn btn-g btn-sm" onclick="histPreset('month')">Ce mois</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="s-head"><div class="s-title">🧾 Toutes les pièces vendues</div></div>
+        <div class="s-body">
+          <table class="t"><thead><tr>
+            <th>Date & heure</th><th>Article</th><th>Origine</th><th class="num">Qté</th>
+            <th class="num">P.U.</th><th class="num">Montant</th><th>Par</th><th>Note</th><th></th>
+          </tr></thead>
+            <tbody id="hist-body"></tbody>
+          </table>
+          <div id="hist-pager" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap"></div>
         </div>
       </div>
     </div>
@@ -248,6 +316,31 @@
   </div>
 </div>
 
+<!-- Vente manuelle (sans scan) — patron / admin -->
+<div class="ov" id="ov-manual">
+  <div class="ov-card">
+    <h3>✍️ Vente sans scan</h3>
+    <p class="muted" style="font-size:13px;margin:-6px 0 14px">Enregistrer une pièce vendue dont le QR n'a pas été scanné. Le stock est décrémenté et le montant ajouté au compte de l'employé.</p>
+    <div class="fld"><label>Article *</label>
+      <select id="m-product" class="h-sel" onchange="onManualProduct()"><option value="">— choisir —</option></select>
+      <div class="muted" style="font-size:11.5px;margin-top:3px" id="m-stock"></div>
+    </div>
+    <div class="row2">
+      <div class="fld"><label>Quantité *</label><input type="number" id="m-qty" step="1" min="1" value="1" oninput="onManualCalc()"/></div>
+      <div class="fld"><label>Prix unitaire (MAD)</label><input type="number" id="m-price" step="0.01" min="0" oninput="onManualCalc()"/></div>
+    </div>
+    <div class="fld"><label>Date de la vente</label><input type="date" id="m-date"/>
+      <div class="muted" style="font-size:11.5px;margin-top:3px">Vide = aujourd'hui.</div>
+    </div>
+    <div class="fld"><label>Note</label><input id="m-note" placeholder="ex: vendue sans scan le matin"/></div>
+    <div style="background:var(--bg);border-radius:10px;padding:11px 14px;font-weight:800;font-size:15px" id="m-total">Total : 0,00 DH</div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-g" style="flex:1" onclick="closeOv('ov-manual')">Annuler</button>
+      <button class="btn btn-s" style="flex:1" onclick="saveManual()">💰 Enregistrer la vente</button>
+    </div>
+  </div>
+</div>
+
 <div id="print-sheet"></div>
 <div id="toasts" style="position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px"></div>
 
@@ -284,15 +377,20 @@ let _products = [];
 let catPage = 1;
 const CAT_PER_PAGE = 12;
 
+// Qui est connecté — la vente sans scan est réservée au patron et à l'admin.
+const USER = (() => { try { return JSON.parse(localStorage.getItem('fm_user') || 'null'); } catch { return null; } })();
+const CAN_MANUAL = !!USER && (USER.role === 'patron' || USER.role === 'admin');
+
 // Tabs
-const pageNames = { catalogue:'Catalogue & QR', compte:'Compte & Règlement', journal:'Journal' };
+const pageNames = { catalogue:'Catalogue & QR', compte:'Compte & Règlement', historique:'Historique des pièces vendues', journal:'Journal' };
 function navigate(p) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.p===p));
   document.querySelectorAll('.page').forEach(pg => pg.classList.toggle('active', pg.id==='p-'+p));
   document.getElementById('page-title').textContent = pageNames[p]||p;
-  if (p==='catalogue') loadCatalogue();
-  if (p==='compte')    loadCompte();
-  if (p==='journal')   loadJournal();
+  if (p==='catalogue')  loadCatalogue();
+  if (p==='compte')     loadCompte();
+  if (p==='historique') loadHistorique();
+  if (p==='journal')    loadJournal();
 }
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => navigate(n.dataset.p)));
 document.getElementById('top-date').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -361,6 +459,7 @@ function renderCatalogue() {
           </div>
         </div>
         <div class="g-acts">
+          ${CAN_MANUAL ? `<button class="btn btn-p" onclick="openManual(${p.id})" title="Vente sans scan">✍️ Vendre</button>` : ''}
           <button class="btn btn-g" onclick="printOne(${p.id})">🖨️ QR</button>
           <button class="btn btn-g" onclick="openRecep(${p.id})">📦 + Stock</button>
           <button class="btn btn-g" onclick="openProduct(${p.id})">✏️</button>
@@ -500,11 +599,11 @@ async function loadCompte() {
   // Ventes d'aujourd'hui (avec bouton Annuler en cas d'erreur de scan)
   const sales = await api('GET', '/movements?type=sale');
   const todayStr = new Date().toDateString();
-  const todays = sales.filter(m => new Date(m.created_at).toDateString() === todayStr);
+  const todays = sales.filter(m => !m.cancelled_at && new Date(m.created_at).toDateString() === todayStr);
   document.getElementById('today-body').innerHTML = todays.length ? todays.map(m => `
     <tr>
       <td class="muted sm">${new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td>
-      <td>${esc(m.product_name||'—')}</td>
+      <td>${esc(m.product_name||'—')} ${m.source==='manual' ? '<span class="tagi tag-manual">✍️ sans scan</span>' : ''}</td>
       <td class="num">${m.qty}</td>
       <td class="num fw8">${fmt(m.amount)} DH</td>
       <td><button class="btn btn-d btn-xs" onclick="cancelSale(${m.id},'compte')">🚫 Annuler</button></td>
@@ -537,11 +636,13 @@ async function delPayment(id) {
 }
 // Annule une vente : stock rendu chez l'employé, montant retiré du compte.
 async function cancelSale(id, from) {
-  if (!confirm('Annuler cette vente ? Le stock revient chez l\'employé et le montant est retiré de son compte.')) return;
+  if (!confirm('Annuler cette vente ? Le stock revient chez l\'employé et le montant est retiré de son compte.\nLa vente reste visible dans l\'historique, marquée « annulée ».')) return;
   try {
     await api('POST', '/sales/' + id + '/cancel');
     toast('Vente annulée ✓');
-    if (from === 'journal') loadJournal(); else loadCompte();
+    if (from === 'journal') loadJournal();
+    else if (from === 'historique') loadHistorique();
+    else loadCompte();
   } catch(e) { toast(e.message, 'er'); }
 }
 
@@ -632,24 +733,186 @@ async function printLabels(items) {
 function printAll(){ printLabels(_products.map(p => ({ p, qty: getQty(p.id) }))); }
 function printOne(id){ const p = _products.find(x => x.id===id); if (p) printLabels([{ p, qty: getQty(id) }]); }
 
+// ── HISTORIQUE DES PIÈCES VENDUES ──
+// Chaque pièce vendue (scannée ou saisie à la main) est conservée ici pour toujours :
+// une annulation ne supprime plus la ligne, elle la marque « annulée ».
+let histPage = 1, _histLast = null;
+function histFilters() {
+  return {
+    from:       document.getElementById('h-from').value,
+    to:         document.getElementById('h-to').value,
+    product_id: document.getElementById('h-product').value,
+    source:     document.getElementById('h-source').value,
+    status:     document.getElementById('h-status').value,
+  };
+}
+function histQuery(extra) {
+  const f = Object.assign(histFilters(), extra || {});
+  const qs = Object.entries(f).filter(([, v]) => v !== '' && v != null)
+    .map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
+  return qs ? '?' + qs : '';
+}
+function resetHistFilters() {
+  ['h-from','h-to'].forEach(id => document.getElementById(id).value = '');
+  ['h-product','h-source','h-status'].forEach(id => document.getElementById(id).value = '');
+  histPage = 1; loadHistorique();
+}
+function histPreset(kind) {
+  const d = new Date(), iso = x => x.toISOString().slice(0,10);
+  let from = new Date(d);
+  if (kind === 'week')  from.setDate(d.getDate() - 6);
+  if (kind === 'month') from = new Date(d.getFullYear(), d.getMonth(), 1);
+  document.getElementById('h-from').value = iso(from);
+  document.getElementById('h-to').value   = iso(d);
+  histPage = 1; loadHistorique();
+}
+function fillProductSelects() {
+  const opts = '<option value="">Tous</option>' +
+    _products.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  const sel = document.getElementById('h-product');
+  const keep = sel.value; sel.innerHTML = opts; sel.value = keep;
+  const msel = document.getElementById('m-product');
+  const mkeep = msel.value;
+  msel.innerHTML = '<option value="">— choisir —</option>' +
+    _products.map(p => `<option value="${p.id}">${esc(p.name)} — ${fmt(p.price)} DH (stock ${parseFloat(p.held_qty)||0})</option>`).join('');
+  msel.value = mkeep;
+}
+async function loadHistorique() {
+  const body = document.getElementById('hist-body');
+  document.getElementById('btn-manual-sale').style.display = CAN_MANUAL ? '' : 'none';
+  body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--muted)">Chargement…</td></tr>';
+  try {
+    if (!_products.length) { _products = await api('GET', '/products'); }
+    fillProductSelects();
+    const data = await api('GET', '/sales' + histQuery({ page: histPage, per_page: 50 }));
+    _histLast = data;
+    document.getElementById('h-qty').textContent    = fmt(data.total_qty);
+    document.getElementById('h-amount').textContent = fmt(data.total_amount) + ' DH';
+    document.getElementById('h-profit').textContent = fmt(data.total_profit) + ' DH';
+    document.getElementById('h-count').textContent  = data.total + ' / ' + data.cancelled_count;
+    body.innerHTML = data.rows.length ? data.rows.map(m => {
+      const cancelled = !!m.cancelled_at;
+      return `<tr class="${cancelled?'h-cancelled':''}">
+        <td class="muted sm">${new Date(m.created_at).toLocaleString('fr-FR')}</td>
+        <td class="${cancelled?'h-strike':''}">${esc(m.product_name||'—')}</td>
+        <td>${m.source==='manual' ? '<span class="tagi tag-manual">✍️ Sans scan</span>' : '<span class="tagi tag-scan">📷 Scan</span>'}
+            ${cancelled ? '<span class="tagi tag-cancel" style="margin-left:4px">Annulée</span>' : ''}</td>
+        <td class="num ${cancelled?'h-strike':''}">${m.qty}</td>
+        <td class="num">${m.unit_price!=null ? fmt(m.unit_price) : '—'}</td>
+        <td class="num fw8 ${cancelled?'h-strike':''}">${fmt(m.amount)} DH</td>
+        <td class="muted sm">${esc(m.by_name||'?')}</td>
+        <td class="muted sm">${esc(m.note||'')}${cancelled ? ' · annulée par ' + esc(m.cancelled_by_name||'?') + ' le ' + new Date(m.cancelled_at).toLocaleDateString('fr-FR') : ''}</td>
+        <td>${cancelled ? '' : `<button class="btn btn-d btn-xs" onclick="cancelSale(${m.id},'historique')">🚫</button>`}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--muted)">Aucune vente pour ces filtres</td></tr>';
+    const pager = document.getElementById('hist-pager');
+    if (data.pages <= 1) {
+      pager.innerHTML = '<div class="muted" style="font-size:12px">'+data.total+' vente(s)</div>';
+    } else {
+      const mk = (label, page, disabled) =>
+        '<button class="btn btn-g" '+(disabled?'disabled style="opacity:.4;padding:8px 14px"':'style="padding:8px 14px" onclick="gotoHistPage('+page+')"')+'>'+label+'</button>';
+      pager.innerHTML = mk('‹ Préc', data.page-1, data.page<=1) +
+        '<div style="font-weight:700;font-size:13px;min-width:96px;text-align:center">Page '+data.page+' / '+data.pages+'</div>' +
+        mk('Suiv ›', data.page+1, data.page>=data.pages) +
+        '<div class="muted" style="font-size:12px;margin-left:6px">('+data.total+' vente(s))</div>';
+    }
+  } catch(e) {
+    body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:18px;color:#c0392b">'+esc(e.message)+'</td></tr>';
+  }
+}
+function gotoHistPage(p){ histPage = p; loadHistorique(); }
+function exportSalesCsv() {
+  if (!_histLast || !_histLast.rows.length) { toast('Rien à exporter', 'er'); return; }
+  const head = ['Date','Article','Origine','Statut','Quantite','Prix unitaire','Montant','Par','Note'];
+  const esc2 = s => '"' + String(s==null?'':s).replace(/"/g,'""') + '"';
+  const lines = _histLast.rows.map(m => [
+    new Date(m.created_at).toLocaleString('fr-FR'), m.product_name||'',
+    m.source==='manual'?'Sans scan':'Scan', m.cancelled_at?'Annulee':'Valide',
+    m.qty, m.unit_price!=null?m.unit_price:'', m.amount, m.by_name||'', m.note||''
+  ].map(esc2).join(';'));
+  const csv = '﻿' + head.map(esc2).join(';') + '\n' + lines.join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  a.download = 'graissage-ventes-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ── VENTE SANS SCAN (patron / admin) ──
+function openManual(productId) {
+  if (!CAN_MANUAL) { toast('Réservé au patron', 'er'); return; }
+  fillProductSelects();
+  document.getElementById('m-product').value = productId ? String(productId) : '';
+  document.getElementById('m-qty').value = 1;
+  document.getElementById('m-date').value = '';
+  document.getElementById('m-note').value = '';
+  onManualProduct();
+  document.getElementById('ov-manual').classList.add('show');
+}
+function onManualProduct() {
+  const p = _products.find(x => String(x.id) === document.getElementById('m-product').value);
+  document.getElementById('m-price').value = p ? p.price : '';
+  document.getElementById('m-stock').textContent = p
+    ? 'Stock chez l\'employé : ' + (parseFloat(p.held_qty)||0) + ' ' + (p.unit||'')
+    : '';
+  onManualCalc();
+}
+function onManualCalc() {
+  const qty = parseFloat(document.getElementById('m-qty').value) || 0;
+  const pu  = parseFloat(document.getElementById('m-price').value) || 0;
+  document.getElementById('m-total').textContent = 'Total : ' + fmt(qty * pu) + ' DH';
+}
+async function saveManual(force) {
+  const product_id = parseInt(document.getElementById('m-product').value);
+  const qty = parseFloat(document.getElementById('m-qty').value);
+  const unit_price = document.getElementById('m-price').value;
+  if (!product_id) { toast('Choisissez un article', 'er'); return; }
+  if (!(qty > 0))  { toast('Quantité invalide', 'er'); return; }
+  const body = {
+    product_id, qty,
+    unit_price: unit_price === '' ? undefined : unit_price,
+    sale_date: document.getElementById('m-date').value || undefined,
+    note: document.getElementById('m-note').value || undefined,
+    force: !!force,
+  };
+  try {
+    const r = await api('POST', '/manual-sale', body);
+    closeOv('ov-manual');
+    toast('Vente enregistrée ✓ ' + fmt(r.total_amount) + ' DH');
+    _products = await api('GET', '/products');
+    if (document.getElementById('p-historique').classList.contains('active')) { histPage = 1; loadHistorique(); }
+    else if (document.getElementById('p-compte').classList.contains('active')) loadCompte();
+    else renderCatalogue();
+  } catch(e) {
+    // Stock insuffisant (pièce déjà sortie du stock) → on propose de forcer.
+    if (!force && /Stock insuffisant/i.test(e.message)) {
+      if (confirm(e.message + '\n\nEnregistrer quand même ? (le stock passera en négatif)')) return saveManual(true);
+      return;
+    }
+    toast(e.message, 'er');
+  }
+}
+
 // ── JOURNAL ──
 const MVT = { reception:'📦 Réception', handout:'🤝 Remise', sale:'💰 Vente', return:'↩️ Retour', adjust:'✏️ Correction', cancel:'🚫 Annulation' };
 async function loadJournal() {
   const rows = await api('GET', '/movements');
-  document.getElementById('mv-body').innerHTML = rows.length ? rows.map(m => `
-    <tr>
+  document.getElementById('mv-body').innerHTML = rows.length ? rows.map(m => {
+    const cancelled = !!m.cancelled_at;
+    return `<tr class="${cancelled?'h-cancelled':''}">
       <td class="muted sm">${new Date(m.created_at).toLocaleString('fr-FR')}</td>
-      <td>${MVT[m.type]||m.type}</td>
-      <td>${esc(m.product_name||'—')}</td>
+      <td>${MVT[m.type]||m.type}${cancelled ? ' <span class="tagi tag-cancel">annulée</span>' : ''}${m.type==='sale'&&m.source==='manual' ? ' <span class="tagi tag-manual">sans scan</span>' : ''}</td>
+      <td class="${cancelled?'h-strike':''}">${esc(m.product_name||'—')}</td>
       <td class="num">${m.qty}</td>
-      <td class="num">${m.amount!=null ? fmt(m.amount)+' DH' : '—'}</td>
+      <td class="num ${cancelled?'h-strike':''}">${m.amount!=null ? fmt(m.amount)+' DH' : '—'}</td>
       <td class="muted sm">${esc(m.by_name||'?')}</td>
-      <td class="muted sm">${esc(m.note||'')}</td>
-      <td>${m.type==='sale' ? `<button class="btn btn-d btn-xs" onclick="cancelSale(${m.id},'journal')">🚫</button>` : ''}</td>
-    </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--muted)">Aucun mouvement</td></tr>';
+      <td class="muted sm">${esc(m.note||'')}${cancelled ? ' · par ' + esc(m.cancelled_by_name||'?') : ''}</td>
+      <td>${m.type==='sale' && !cancelled ? `<button class="btn btn-d btn-xs" onclick="cancelSale(${m.id},'journal')">🚫</button>` : ''}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--muted)">Aucun mouvement</td></tr>';
 }
 
 // init
+if (CAN_MANUAL) document.getElementById('btn-manual-cat').style.display = '';
 loadCatalogue();
 if (typeof lucide !== 'undefined') lucide.createIcons();
 </script>

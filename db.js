@@ -532,6 +532,14 @@ async function initDB() {
       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+  // Historique complet des pièces vendues : on ne supprime plus une vente annulée,
+  // on la marque (cancelled_at) — la ligne reste dans l'historique. `source` dit si
+  // la pièce est passée par le QR ('scan') ou a été saisie à la main ('manual').
+  await pgPool.query("ALTER TABLE graissage_movements ADD COLUMN IF NOT EXISTS source TEXT");
+  await pgPool.query('ALTER TABLE graissage_movements ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ');
+  await pgPool.query('ALTER TABLE graissage_movements ADD COLUMN IF NOT EXISTS cancelled_by INTEGER REFERENCES users(id)');
+  await pgPool.query("UPDATE graissage_movements SET source='scan' WHERE type='sale' AND source IS NULL");
+  await pgPool.query("CREATE INDEX IF NOT EXISTS graissage_mv_sale_idx ON graissage_movements(created_at DESC) WHERE type='sale'");
 
   // ── Employés + salaires ──
   // Each employee has a monthly salary. When they take money in advance we log

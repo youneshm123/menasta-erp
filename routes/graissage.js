@@ -149,10 +149,12 @@ router.get('/movements', requireAuth, staff, wrap(async (req, res) => {
   const { type } = req.query;
   const params = [];
   let sql = `
-    SELECT m.*, p.name AS product_name, p.unit, u.full_name AS by_name
+    SELECT m.*, p.name AS product_name, p.unit, u.full_name AS by_name,
+           cu.full_name AS cancelled_by_name
     FROM graissage_movements m
     LEFT JOIN graissage_products p ON p.id=m.product_id
     LEFT JOIN users u ON u.id=m.recorded_by
+    LEFT JOIN users cu ON cu.id=m.cancelled_by
     WHERE 1=1`;
   if (type) { params.push(type); sql += ` AND m.type=$${params.length}`; }
   sql += ' ORDER BY m.created_at DESC LIMIT 200';
@@ -160,10 +162,122 @@ router.get('/movements', requireAuth, staff, wrap(async (req, res) => {
   res.json(rows);
 }));
 
+// ── Historique complet des pièces vendues (scan + saisie manuelle) ──
+// Chaque pièce vendue reste ici pour toujours, même annulée (marquée, jamais effacée).
+// Filtres : from / to (dates), product_id, source ('scan'|'manual'), q (nom),
+// status ('all'|'active'|'cancelled'), page / per_page.
+router.get('/sales', requireAuth, staff, wrap(async (req, res) => {
+  const { from, to, product_id, source, q, status } = req.query;
+  const perPage = Math.min(500, Math.max(10, parseInt(req.query.per_page) || 50));
+  const page    = Math.max(1, parseInt(req.query.page) || 1);
+
+  const params = [];
+  let where = "WHERE m.type='sale'";
+  if (from)  { params.push(from); where += ` AND (m.created_at AT TIME ZONE 'Africa/Casablanca')::date >= $${params.length}::date`; }
+  if (to)    { params.push(to);   where += ` AND (m.created_at AT TIME ZONE 'Africa/Casablanca')::date <= $${params.length}::date`; }
+  if (product_id) { params.push(parseInt(product_id)); where += ` AND m.product_id=$${params.length}`; }
+  if (source === 'scan')   where += " AND COALESCE(m.source,'scan')='scan'";
+  if (source === 'manual') where += " AND m.source='manual'";
+  if (status === 'active')    where += ' AND m.cancelled_at IS NULL';
+  if (status === 'cancelled') where += ' AND m.cancelled_at IS NOT NULL';
+  if (q && q.trim()) { params.push('%' + q.trim() + '%'); where += ` AND p.name ILIKE $${params.length}`; }
+
+  const joins = `
+    FROM graissage_movements m
+    LEFT JOIN graissage_products p ON p.id=m.product_id`;
+  const base = `${joins} ${where}`;
+
+  const { rows: [tot] } = await pool.query(`
+    SELECT COUNT(*)::int AS n,
+           COALESCE(SUM(CASE WHEN m.cancelled_at IS NULL THEN m.qty    ELSE 0 END),0) AS qty,
+           COALESCE(SUM(CASE WHEN m.cancelled_at IS NULL THEN m.amount ELSE 0 END),0) AS amount,
+           COUNT(*) FILTER (WHERE m.cancelled_at IS NOT NULL)::int AS cancelled_n,
+           COALESCE(SUM(CASE WHEN m.cancelled_at IS NULL
+                             THEN (COALESCE(m.unit_price, p.price) - COALESCE(p.cost,0)) * m.qty ELSE 0 END),0) AS profit
+    ${base}`, params);
+
+  params.push(perPage, (page - 1) * perPage);
+  const { rows } = await pool.query(`
+    SELECT m.id, m.product_id, m.qty, m.unit_price, m.amount, m.note, m.created_at,
+           m.cancelled_at, COALESCE(m.source,'scan') AS source,
+           p.name AS product_name, p.unit,
+           u.full_name AS by_name, cu.full_name AS cancelled_by_name
+    ${joins}
+    LEFT JOIN users u  ON u.id=m.recorded_by
+    LEFT JOIN users cu ON cu.id=m.cancelled_by
+    ${where}
+    ORDER BY m.created_at DESC
+    LIMIT $${params.length - 1} OFFSET $${params.length}`, params);
+
+  res.json({
+    rows, page, per_page: perPage,
+    total: tot.n, pages: Math.max(1, Math.ceil(tot.n / perPage)),
+    total_qty: +(+tot.qty).toFixed(2),
+    total_amount: +(+tot.amount).toFixed(2),
+    total_profit: +(+tot.profit).toFixed(2),
+    cancelled_count: tot.cancelled_n,
+  });
+}));
+
+// ── Vente manuelle (sans scan) — patron & admin uniquement ──────
+// Sert à rattraper une pièce vendue dont le QR n'a pas été scanné.
+router.post('/manual-sale', requireAuth, requireMinRole('patron'), wrap(async (req, res) => {
+  const product_id = parseInt(req.body && req.body.product_id);
+  const qty = num(req.body && req.body.qty);
+  const priceIn = num(req.body && req.body.unit_price);
+  const force = !!(req.body && req.body.force);
+  const saleDate = (req.body && req.body.sale_date || '').trim();
+  if (!product_id) return res.status(400).json({ error: 'Produit requis' });
+  if (!isFinite(qty) || qty <= 0) return res.status(400).json({ error: 'Quantité valide requise' });
+  if (saleDate && !/^\d{4}-\d{2}-\d{2}$/.test(saleDate)) return res.status(400).json({ error: 'Date invalide' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [p] } = await client.query(
+      'SELECT * FROM graissage_products WHERE id=$1 AND is_active=1 FOR UPDATE', [product_id]
+    );
+    if (!p) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Produit introuvable' }); }
+    const held = parseFloat(p.held_qty) || 0;
+    if (held < qty && !force) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: `Stock insuffisant : il reste ${held} ${p.unit || 'unité(s)'}`,
+        insufficient_stock: true, available: held,
+      });
+    }
+    const unitPrice = isFinite(priceIn) && priceIn >= 0 ? priceIn : parseFloat(p.price) || 0;
+    const total = +(unitPrice * qty).toFixed(2);
+    const note = (req.body.note || '').trim() || null;
+    // Date passée : on la pose à midi (heure marocaine) pour rester sur le bon jour.
+    const { rows: [{ id }] } = await client.query(`
+      INSERT INTO graissage_movements
+        (product_id, type, qty, unit_price, amount, note, source, recorded_by, created_at)
+      VALUES ($1,'sale',$2,$3,$4,$5,'manual',$6,
+              COALESCE($7::timestamptz, NOW()))
+      RETURNING id`,
+      [p.id, qty, unitPrice, total, note, req.user.id,
+       saleDate ? `${saleDate} 12:00:00 Africa/Casablanca` : null]
+    );
+    await client.query('UPDATE graissage_products SET held_qty=held_qty-$1 WHERE id=$2', [qty, p.id]);
+    await client.query('COMMIT');
+    res.status(201).json({
+      ok: true, sale_id: id, qty, product_name: p.name, unit: p.unit,
+      unit_price: unitPrice, total_amount: total, remaining_stock: held - qty,
+    });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}));
+
 // ── Compte de l'employé : vendu, payé, solde dû ─────────────────
 router.get('/account', requireAuth, staff, wrap(async (_req, res) => {
+  // Les ventes annulées restent en base (historique) mais ne comptent nulle part.
   const { rows: [{ total_sold }] } = await pool.query(
-    "SELECT COALESCE(SUM(amount),0) AS total_sold FROM graissage_movements WHERE type='sale'"
+    "SELECT COALESCE(SUM(amount),0) AS total_sold FROM graissage_movements WHERE type='sale' AND cancelled_at IS NULL"
   );
   const { rows: [{ total_paid }] } = await pool.query(
     'SELECT COALESCE(SUM(amount),0) AS total_paid FROM graissage_payments'
@@ -172,21 +286,21 @@ router.get('/account', requireAuth, staff, wrap(async (_req, res) => {
   const { rows: [today] } = await pool.query(`
     SELECT COUNT(*)::int AS n, COALESCE(SUM(amount),0) AS total
     FROM graissage_movements
-    WHERE type='sale'
+    WHERE type='sale' AND cancelled_at IS NULL
       AND (created_at AT TIME ZONE 'Africa/Casablanca')::date = (now() AT TIME ZONE 'Africa/Casablanca')::date
   `);
   // Ventes de la semaine (lundi → dimanche, heure marocaine) — règlement hebdomadaire.
   const { rows: [week] } = await pool.query(`
     SELECT COUNT(*)::int AS n, COALESCE(SUM(amount),0) AS total
     FROM graissage_movements
-    WHERE type='sale'
+    WHERE type='sale' AND cancelled_at IS NULL
       AND (created_at AT TIME ZONE 'Africa/Casablanca') >= date_trunc('week', now() AT TIME ZONE 'Africa/Casablanca')
   `);
   // Bénéfice estimé : prix vendu − prix d'achat actuel du produit.
   const { rows: [{ total_profit }] } = await pool.query(`
     SELECT COALESCE(SUM((COALESCE(m.unit_price, p.price) - COALESCE(p.cost, 0)) * m.qty), 0) AS total_profit
     FROM graissage_movements m JOIN graissage_products p ON p.id = m.product_id
-    WHERE m.type='sale'
+    WHERE m.type='sale' AND m.cancelled_at IS NULL
   `);
   const { rows: items } = await pool.query(
     'SELECT id, name, unit, price, cost, depot_qty, held_qty, image_data FROM graissage_products WHERE is_active=1 ORDER BY name'
@@ -209,8 +323,8 @@ router.get('/account', requireAuth, staff, wrap(async (_req, res) => {
 }));
 
 // ── Annulation d'une vente (erreur de scan) ─────────────────────
-// Rend le stock chez l'employé, retire le montant de son compte,
-// et laisse une trace « annulation » dans le journal.
+// Rend le stock chez l'employé et retire le montant de son compte, mais la ligne
+// de vente n'est JAMAIS supprimée : elle reste dans l'historique, marquée annulée.
 router.post('/sales/:id/cancel', requireAuth, staff, wrap(async (req, res) => {
   const client = await pool.connect();
   try {
@@ -220,14 +334,18 @@ router.post('/sales/:id/cancel', requireAuth, staff, wrap(async (req, res) => {
     );
     if (!m) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Vente introuvable ou déjà annulée' });
+      return res.status(404).json({ error: 'Vente introuvable' });
+    }
+    if (m.cancelled_at) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Vente déjà annulée' });
     }
     await client.query('UPDATE graissage_products SET held_qty=held_qty+$1 WHERE id=$2', [m.qty, m.product_id]);
-    await client.query('DELETE FROM graissage_movements WHERE id=$1', [m.id]);
     await client.query(
-      "INSERT INTO graissage_movements (product_id, type, qty, amount, note, recorded_by) VALUES ($1,'cancel',$2,$3,$4,$5)",
-      [m.product_id, m.qty, m.amount,
-       `Vente annulée (${m.qty} × ${m.unit_price} = ${m.amount} DH)`, req.user.id]
+      'UPDATE graissage_movements SET cancelled_at=NOW(), cancelled_by=$1, note=$2 WHERE id=$3',
+      [req.user.id,
+       (m.note ? m.note + ' · ' : '') + ((req.body && req.body.reason || '').trim() || 'Annulée'),
+       m.id]
     );
     await client.query('COMMIT');
     res.json({ ok: true });
@@ -297,8 +415,8 @@ router.post('/scan-sell', requireAuth, wrap(async (req, res) => {
 
   const total = +(+p.price * qty).toFixed(2);
   const { rows: [{ id }] } = await pool.query(`
-    INSERT INTO graissage_movements (product_id, type, qty, unit_price, amount, client_uid, recorded_by)
-    VALUES ($1,'sale',$2,$3,$4,$5,$6) RETURNING id
+    INSERT INTO graissage_movements (product_id, type, qty, unit_price, amount, client_uid, source, recorded_by)
+    VALUES ($1,'sale',$2,$3,$4,$5,'scan',$6) RETURNING id
   `, [p.id, qty, p.price, total, client_uid || null, req.user.id]);
   await pool.query('UPDATE graissage_products SET held_qty=held_qty-$1 WHERE id=$2', [qty, p.id]);
 
