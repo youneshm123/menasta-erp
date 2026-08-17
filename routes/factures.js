@@ -80,6 +80,39 @@ router.delete('/clients/:id', requireAuth, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ── Relevés Tabac générés pour la comptabilité (archive) ──────────────
+// Déclarés AVANT les routes '/:id' pour ne pas être avalés par elles.
+router.get('/releves-tabac', requireAuth, wrap(async (_req, res) => {
+  const { rows } = await pool.query(`
+    SELECT rt.*, u.full_name AS by_name
+    FROM releves_tabac rt LEFT JOIN users u ON u.id=rt.recorded_by
+    ORDER BY rt.mois DESC, rt.id DESC LIMIT 200
+  `);
+  res.json(rows);
+}));
+
+router.post('/releves-tabac', requireAuth, wrap(async (req, res) => {
+  const { mois, mois_label, montant, is_manuel, lignes } = req.body || {};
+  if (!mois || !/^\d{4}-\d{2}$/.test(String(mois))) return res.status(400).json({ error: 'Mois invalide' });
+  const m = parseFloat(montant);
+  if (!isFinite(m) || m < 0) return res.status(400).json({ error: 'Montant invalide' });
+  if (!Array.isArray(lignes) || !lignes.length) return res.status(400).json({ error: 'Relevé vide' });
+  const clean = lignes.map(l => ({
+    name: String(l.name || '').slice(0, 120),
+    total_montant: parseFloat(l.total_montant) || 0
+  }));
+  const { rows: [r] } = await pool.query(`
+    INSERT INTO releves_tabac (mois, mois_label, montant, is_manuel, lignes, recorded_by)
+    VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
+  `, [mois, mois_label || mois, m, is_manuel ? 1 : 0, JSON.stringify(clean), req.user.id]);
+  res.status(201).json(r);
+}));
+
+router.delete('/releves-tabac/:id', requireAuth, wrap(async (req, res) => {
+  await pool.query('DELETE FROM releves_tabac WHERE id=$1', [Number(req.params.id)]);
+  res.json({ ok: true });
+}));
+
 // ── Lubrifiant products are pulled from the shared /api/products stock ──
 // (Huiles, Lubrifiants, Filtres, etc.) — no separate facture catalogue.
 

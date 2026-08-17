@@ -279,6 +279,27 @@
           </table>
         </div>
       </div>
+      <div class="section">
+        <div class="s-head">
+          <span class="s-title">🗂️ Relevés Tabac Enregistrés</span>
+          <span style="font-size:12px;color:var(--muted)">Chaque relevé généré est archivé ici</span>
+        </div>
+        <div class="s-body">
+          <table class="t">
+            <thead>
+              <tr>
+                <th>Période</th>
+                <th class="num">Montant</th>
+                <th>Type</th>
+                <th class="num">Marques</th>
+                <th>Généré le</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="releves-tabac-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- CAFÉ RELEVÉ (montant saisi) -->
@@ -364,7 +385,7 @@ function showTab(name, el) {
   if (name === 'liste')    loadListe();
   if (name === 'nouvelle') initNouvelleFacture();
   if (name === 'clients')  loadClientsList();
-  if (name === 'tabac')    loadTabacHistory();
+  if (name === 'tabac')  { loadTabacHistory(); loadRelevesTabac(); }
 }
 
 // ── LUBRIFIANT PRODUCTS — pulled from the shared /api/products stock ──
@@ -1385,71 +1406,64 @@ function buildPrintHtml(f) {
 
 // ── Relevé Tabac Comptabilité — même style que la facture physique ──
 function buildTabacPrintHtml(rows, monthLabel) {
-  const TD  = 'border:1px solid #000;padding:8px 10px;font-size:12px';
+  const TD  = 'border:1px solid #000;padding:3px 8px;font-size:11px';
   const TDR = TD + ';text-align:right';
 
   const active = rows.filter(r => parseFloat(r.total_montant) > 0);
   const grandTotal = active.reduce((s, r) => s + parseFloat(r.total_montant), 0);
 
+  // Tableau compact : uniquement les marques vendues, pas de lignes vides.
   const rowsHtml = active.map(r => `
     <tr>
       <td style="${TD}">${esc(r.name)}</td>
       <td style="${TDR};font-weight:bold">${fmtE(r.total_montant)}</td>
     </tr>`).join('');
 
-  // Pad to at least 8 rows so the table looks full
-  const emptyCount = Math.max(0, 8 - active.length);
-  const emptyHtml = Array(emptyCount).fill(`
-    <tr style="height:28px">
-      <td style="${TD}"></td>
-      <td style="${TD}"></td>
-    </tr>`).join('');
-
   return `
-  <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:600px;margin:0 auto">
+  <div style="font-family:'Times New Roman',Times,serif;font-size:11px;color:#000;background:#fff;padding:12px 18px;max-width:480px;margin:0 auto">
 
     <!-- EN-TÊTE -->
-    <div style="text-align:center;margin-bottom:8px;line-height:1.2">
-      <div style="font-size:26px;font-weight:bold;font-style:italic;letter-spacing:1px">TABAC</div>
+    <div style="text-align:center;margin-bottom:6px;line-height:1.2">
+      <div style="font-size:20px;font-weight:bold;font-style:italic;letter-spacing:1px">TABAC</div>
     </div>
 
     <!-- TITRE -->
-    <div style="text-align:center;margin-bottom:14px">
-      <span style="display:inline-block;border:2.5px solid #000;padding:6px 36px;font-size:13px;font-weight:bold;letter-spacing:2px">RELEVÉ TABAC — COMPTABILITÉ</span>
+    <div style="text-align:center;margin-bottom:10px">
+      <span style="display:inline-block;border:2px solid #000;padding:4px 24px;font-size:11.5px;font-weight:bold;letter-spacing:1.5px">RELEVÉ TABAC — COMPTABILITÉ</span>
     </div>
 
     <!-- PÉRIODE -->
-    <div style="text-align:center;font-size:12px;margin-bottom:14px;font-style:italic">
+    <div style="text-align:center;font-size:11px;margin-bottom:10px;font-style:italic">
       Période : <strong>${esc(monthLabel)}</strong>
     </div>
 
     <!-- TABLEAU MARQUES / MONTANTS -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:14px">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
       <thead>
         <tr style="background:#ddd">
-          <th style="${TD};text-align:left;font-size:11.5px">Marque</th>
-          <th style="${TDR};width:200px;font-size:11.5px">Total Ventes (MAD)</th>
+          <th style="${TD};text-align:left;font-size:10.5px">Marque</th>
+          <th style="${TDR};width:150px;font-size:10.5px">Total Ventes (MAD)</th>
         </tr>
       </thead>
       <tbody>
-        ${rowsHtml}${emptyHtml}
+        ${rowsHtml}
       </tbody>
       <tfoot>
         <tr style="background:#ddd">
-          <td style="${TD};font-weight:bold;font-size:13px;font-style:italic">TOTAL GÉNÉRAL</td>
-          <td style="${TDR};font-weight:bold;font-size:13px">${fmtE(grandTotal)}</td>
+          <td style="${TD};font-weight:bold;font-size:11.5px;font-style:italic">TOTAL GÉNÉRAL</td>
+          <td style="${TDR};font-weight:bold;font-size:11.5px">${fmtE(grandTotal)}</td>
         </tr>
       </tfoot>
     </table>
 
     <!-- ARRÊTÉ -->
-    <div style="margin-bottom:18px;font-size:11.5px">
+    <div style="margin-bottom:12px;font-size:10.5px">
       <div style="font-style:italic">Arrêter le présent relevé à la somme de :</div>
-      <div style="font-weight:bold;margin-top:6px">${montantEnLettres(grandTotal)}</div>
+      <div style="font-weight:bold;margin-top:4px">${montantEnLettres(grandTotal)}</div>
     </div>
 
     <!-- PAGE -->
-    <div style="text-align:center;font-size:11px;margin-bottom:14px">1 / 1</div>
+    <div style="text-align:center;font-size:10px;margin-bottom:10px">1 / 1</div>
   </div>`;
 }
 
@@ -1489,6 +1503,59 @@ async function printTabacReport() {
   const rows = montant !== null ? scaleTabacRows(active, montant) : active;
   document.getElementById('print-frame').innerHTML = buildTabacPrintHtml(rows, monthLabel);
   document.getElementById('print-overlay').classList.add('open');
+
+  // Archivage : chaque relevé généré est conservé et réimprimable.
+  const total = rows.reduce((s, r) => s + parseFloat(r.total_montant), 0);
+  try {
+    await A('/api/factures/releves-tabac', { method: 'POST', body: JSON.stringify({
+      mois: `${y}-${m}`, mois_label: monthLabel, montant: Math.round(total),
+      is_manuel: montant !== null,
+      lignes: rows.map(r => ({ name: r.name, total_montant: parseFloat(r.total_montant) }))
+    })});
+    loadRelevesTabac();
+  } catch (e) { /* l'aperçu reste utilisable même si l'archivage échoue */ }
+}
+
+// ── Archive des relevés Tabac générés ────────────────────────────────
+async function loadRelevesTabac() {
+  const body = document.getElementById('releves-tabac-body');
+  if (!body) return;
+  let list = [];
+  try { list = await A('/api/factures/releves-tabac'); } catch (e) { list = []; }
+  if (!Array.isArray(list) || !list.length) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--muted)">Aucun relevé enregistré</td></tr>';
+    return;
+  }
+  window._relevesTabac = {};
+  body.innerHTML = list.map(r => {
+    window._relevesTabac[r.id] = r;
+    const nb = Array.isArray(r.lignes) ? r.lignes.length : 0;
+    return `<tr>
+      <td>${esc(r.mois_label)}</td>
+      <td class="num" style="font-weight:700">${fmtE(r.montant)} MAD</td>
+      <td>${r.is_manuel ? '<span style="color:#7c3aed;font-weight:700">Montant saisi</span>' : 'Ventes réelles'}</td>
+      <td class="num">${nb}</td>
+      <td style="font-size:12px;color:var(--muted)">${fmtDate(r.created_at)}${r.by_name ? ' — ' + esc(r.by_name) : ''}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none" onclick="reprintReleveTabac(${r.id})">🖨️ Rouvrir</button>
+        <button class="btn btn-sm btn-d" onclick="deleteReleveTabac(${r.id})">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function reprintReleveTabac(id) {
+  const r = (window._relevesTabac || {})[id];
+  if (!r) { toast('Relevé introuvable', 'er'); return; }
+  document.getElementById('print-frame').innerHTML = buildTabacPrintHtml(r.lignes || [], r.mois_label);
+  document.getElementById('print-overlay').classList.add('open');
+}
+
+async function deleteReleveTabac(id) {
+  if (!confirm('Supprimer ce relevé enregistré ?')) return;
+  await A('/api/factures/releves-tabac/' + id, { method: 'DELETE' });
+  toast('Relevé supprimé');
+  loadRelevesTabac();
 }
 
 // ── RELEVÉ MANUEL (Café / Service / Tabac) — montant saisi, généré pour le comptable ──

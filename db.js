@@ -583,6 +583,20 @@ async function initDB() {
       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_fuelwd_date ON fuel_withdrawals(wdate DESC);
+
+    -- Relevés Tabac générés pour la comptabilité : on garde le mois, le montant
+    -- déclaré et le détail par marque, pour pouvoir les rouvrir/réimprimer.
+    CREATE TABLE IF NOT EXISTS releves_tabac (
+      id          SERIAL PRIMARY KEY,
+      mois        TEXT NOT NULL,                     -- 'YYYY-MM'
+      mois_label  TEXT NOT NULL,                     -- 'janvier 2026'
+      montant     NUMERIC(16,4) NOT NULL DEFAULT 0,  -- total du relevé
+      is_manuel   INTEGER NOT NULL DEFAULT 0,        -- 1 = montant imposé, 0 = ventes réelles
+      lignes      JSONB NOT NULL DEFAULT '[]',       -- [{name, total_montant}]
+      recorded_by INTEGER REFERENCES users(id),
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_releves_tabac_mois ON releves_tabac(mois DESC, id DESC);
   `);
 
   // Link free-fuel & employee advances to the poste they were taken during, so
