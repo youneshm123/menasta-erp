@@ -278,14 +278,7 @@
         <div class="s-body">
           <table class="t">
             <thead>
-              <tr>
-                <th>Période</th>
-                <th class="num">Montant</th>
-                <th>Type</th>
-                <th class="num">Marques</th>
-                <th>Généré le</th>
-                <th></th>
-              </tr>
+              <tr><th>Période</th><th class="num">Montant</th><th class="num">Marques</th><th>Généré le</th><th></th></tr>
             </thead>
             <tbody id="releves-tabac-body"></tbody>
           </table>
@@ -304,6 +297,20 @@
           <button class="btn btn-p btn-sm" onclick="printCafeReport()">🖨️ Générer le Relevé</button>
         </div>
       </div>
+      <div class="section">
+        <div class="s-head">
+          <span class="s-title">🗂️ Relevés Café Enregistrés</span>
+          <span style="font-size:12px;color:var(--muted)">Chaque relevé généré est archivé ici</span>
+        </div>
+        <div class="s-body">
+          <table class="t">
+            <thead>
+              <tr><th>Période</th><th class="num">Montant</th><th class="num">Jours</th><th>Généré le</th><th></th></tr>
+            </thead>
+            <tbody id="releves-cafe-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- SERVICE RELEVÉ (montant saisi) -->
@@ -315,6 +322,20 @@
           <div class="fg" style="min-width:170px"><label>Mois</label><input type="month" id="service-month"/></div>
           <div class="fg" style="min-width:180px"><label>Montant à déclarer (MAD)</label><input type="number" id="service-montant" placeholder="0" step="1" min="0"/></div>
           <button class="btn btn-p btn-sm" onclick="printServiceReport()">🖨️ Générer le Relevé</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="s-head">
+          <span class="s-title">🗂️ Relevés Service Enregistrés</span>
+          <span style="font-size:12px;color:var(--muted)">Chaque relevé généré est archivé ici</span>
+        </div>
+        <div class="s-body">
+          <table class="t">
+            <thead>
+              <tr><th>Période</th><th class="num">Montant</th><th class="num">Jours</th><th>Généré le</th><th></th></tr>
+            </thead>
+            <tbody id="releves-service-body"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -365,7 +386,9 @@ function showTab(name, el) {
   if (name === 'liste')    loadListe();
   if (name === 'nouvelle') initNouvelleFacture();
   if (name === 'clients')  loadClientsList();
-  if (name === 'tabac')  { loadTabacHistory(); loadRelevesTabac(); }
+  if (name === 'tabac')  { loadTabacHistory(); loadReleves('tabac'); }
+  if (name === 'cafe')     loadReleves('cafe');
+  if (name === 'service')  loadReleves('service');
 }
 
 // ── LUBRIFIANT PRODUCTS — pulled from the shared /api/products stock ──
@@ -1488,55 +1511,71 @@ async function printTabacReport() {
 
   // Archivage : chaque relevé généré est conservé et réimprimable.
   const total = rows.reduce((s, r) => s + parseFloat(r.total_montant), 0);
-  try {
-    await A('/api/factures/releves-tabac', { method: 'POST', body: JSON.stringify({
-      mois: `${y}-${m}`, mois_label: monthLabel, montant: Math.round(total),
-      is_manuel: montant !== null,
-      lignes: rows.map(r => ({ name: r.name, total_montant: parseFloat(r.total_montant) }))
-    })});
-    loadRelevesTabac();
-  } catch (e) { /* l'aperçu reste utilisable même si l'archivage échoue */ }
+  saveReleve('tabac', `${y}-${m}`, monthLabel, total, montant !== null,
+    rows.map(r => ({ name: r.name, total_montant: parseFloat(r.total_montant) })));
 }
 
-// ── Archive des relevés Tabac générés ────────────────────────────────
-async function loadRelevesTabac() {
-  const body = document.getElementById('releves-tabac-body');
+// ── Archive des relevés générés (Tabac / Café / Service) ─────────────
+// Les montants sont figés à la génération : rouvrir un relevé réimprime
+// exactement le document d'origine, même si les ventes changent après.
+const RELEVE_BODIES = { tabac: 'releves-tabac-body', cafe: 'releves-cafe-body', service: 'releves-service-body' };
+window._releves = {};
+
+async function loadReleves(module) {
+  const body = document.getElementById(RELEVE_BODIES[module]);
   if (!body) return;
   let list = [];
-  try { list = await A('/api/factures/releves-tabac'); } catch (e) { list = []; }
+  try { list = await A('/api/factures/releves?module=' + module); } catch (e) { list = []; }
   if (!Array.isArray(list) || !list.length) {
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--muted)">Aucun relevé enregistré</td></tr>';
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--muted)">Aucun relevé enregistré</td></tr>';
     return;
   }
-  window._relevesTabac = {};
   body.innerHTML = list.map(r => {
-    window._relevesTabac[r.id] = r;
-    const nb = Array.isArray(r.lignes) ? r.lignes.length : 0;
+    window._releves[r.id] = r;
     return `<tr>
       <td>${esc(r.mois_label)}</td>
       <td class="num" style="font-weight:700">${fmtE(r.montant)} MAD</td>
-      <td>${r.is_manuel ? '<span style="color:#7c3aed;font-weight:700">Montant saisi</span>' : 'Ventes réelles'}</td>
-      <td class="num">${nb}</td>
+      <td class="num">${Array.isArray(r.lignes) ? r.lignes.length : 0}</td>
       <td style="font-size:12px;color:var(--muted)">${fmtDate(r.created_at)}${r.by_name ? ' — ' + esc(r.by_name) : ''}</td>
       <td style="white-space:nowrap">
-        <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none" onclick="reprintReleveTabac(${r.id})">🖨️ Rouvrir</button>
-        <button class="btn btn-sm btn-d" onclick="deleteReleveTabac(${r.id})">✕</button>
+        <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none" onclick="reprintReleve(${r.id})">🖨️ Rouvrir</button>
+        <button class="btn btn-sm btn-d" onclick="deleteReleve(${r.id})">✕</button>
       </td>
     </tr>`;
   }).join('');
 }
 
-function reprintReleveTabac(id) {
-  const r = (window._relevesTabac || {})[id];
+function reprintReleve(id) {
+  const r = (window._releves || {})[id];
   if (!r) { toast('Relevé introuvable', 'er'); return; }
-  printHtmlDirect(buildTabacPrintHtml(r.lignes || [], r.mois_label));
+  const lignes = r.lignes || [];
+  if (r.module === 'tabac') { printHtmlDirect(buildTabacPrintHtml(lignes, r.mois_label)); return; }
+  // Café / Service : on réimprime les montants du jour tels qu'enregistrés.
+  const [y, m] = String(r.mois).split('-').map(Number);
+  printHtmlDirect(buildManualRelevePrintHtml(
+    RELEVE_TITRES[r.module] || r.module.toUpperCase(),
+    parseFloat(r.montant), y, m, r.mois_label,
+    lignes.map(l => parseFloat(l.total_montant) || 0)
+  ));
 }
 
-async function deleteReleveTabac(id) {
+async function deleteReleve(id) {
+  const r = (window._releves || {})[id];
   if (!confirm('Supprimer ce relevé enregistré ?')) return;
-  await A('/api/factures/releves-tabac/' + id, { method: 'DELETE' });
+  await A('/api/factures/releves/' + id, { method: 'DELETE' });
   toast('Relevé supprimé');
-  loadRelevesTabac();
+  loadReleves(r ? r.module : 'tabac');
+}
+
+// Enregistre un relevé généré pour qu'il reste consultable et réimprimable.
+async function saveReleve(module, mois, moisLabel, montant, isManuel, lignes) {
+  try {
+    await A('/api/factures/releves', { method: 'POST', body: JSON.stringify({
+      module, mois, mois_label: moisLabel, montant: Math.round(montant),
+      is_manuel: isManuel, lignes
+    })});
+    loadReleves(module);
+  } catch (e) { /* l'impression reste valable même si l'archivage échoue */ }
 }
 
 // ── RELEVÉ MANUEL (Café / Service / Tabac) — montant saisi, généré pour le comptable ──
@@ -1561,10 +1600,14 @@ function splitMontantOverDays(montant, year, month) {
   return vals;
 }
 
-function buildManualRelevePrintHtml(title, montant, year, month, monthLabel) {
+// `savedVals` : montants déjà enregistrés (réimpression d'un relevé archivé).
+// Sans eux, la répartition est retirée au hasard et donnerait d'autres chiffres.
+function buildManualRelevePrintHtml(title, montant, year, month, monthLabel, savedVals) {
   const TD  = 'border:1px solid #000;padding:2px 6px;font-size:10px';
   const TDR = TD + ';text-align:right';
-  const vals = splitMontantOverDays(montant, year, month);
+  const vals = (Array.isArray(savedVals) && savedVals.length)
+    ? savedVals
+    : splitMontantOverDays(montant, year, month);
   const dLabel = i => String(i + 1).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + year;
 
   // Tableau droit : une ligne par jour, simplement compacté.
@@ -1618,7 +1661,12 @@ function printManualReleve(kind) {
   if (!isFinite(montant) || montant <= 0) { toast('Montant invalide', 'er'); return; }
   const [y, m] = month.split('-').map(Number);
   const label = new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
-  printHtmlDirect(buildManualRelevePrintHtml(RELEVE_TITRES[kind] || kind.toUpperCase(), montant, y, m, label));
+  // La répartition est tirée une seule fois, puis imprimée ET archivée telle quelle.
+  const vals = splitMontantOverDays(montant, y, m);
+  printHtmlDirect(buildManualRelevePrintHtml(RELEVE_TITRES[kind] || kind.toUpperCase(), montant, y, m, label, vals));
+  const mm = String(m).padStart(2, '0');
+  saveReleve(kind, `${y}-${mm}`, label, montant, true,
+    vals.map((v, i) => ({ name: `${String(i + 1).padStart(2, '0')}/${mm}/${y}`, total_montant: v })));
 }
 function printCafeReport()    { printManualReleve('cafe'); }
 function printServiceReport() { printManualReleve('service'); }

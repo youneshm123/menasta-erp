@@ -584,20 +584,26 @@ async function initDB() {
     );
     CREATE INDEX IF NOT EXISTS idx_fuelwd_date ON fuel_withdrawals(wdate DESC);
 
-    -- Relevés Tabac générés pour la comptabilité : on garde le mois, le montant
-    -- déclaré et le détail par marque, pour pouvoir les rouvrir/réimprimer.
+    -- Relevés générés pour la comptabilité (Tabac, Café, Service) : on garde le
+    -- mois, le montant et le détail ligne à ligne, pour pouvoir les rouvrir et
+    -- les réimprimer à l'identique. (Table historiquement nommée releves_tabac.)
     CREATE TABLE IF NOT EXISTS releves_tabac (
       id          SERIAL PRIMARY KEY,
+      module      TEXT NOT NULL DEFAULT 'tabac',     -- tabac | cafe | service
       mois        TEXT NOT NULL,                     -- 'YYYY-MM'
       mois_label  TEXT NOT NULL,                     -- 'janvier 2026'
       montant     NUMERIC(16,4) NOT NULL DEFAULT 0,  -- total du relevé
       is_manuel   INTEGER NOT NULL DEFAULT 0,        -- 1 = montant imposé, 0 = ventes réelles
-      lignes      JSONB NOT NULL DEFAULT '[]',       -- [{name, total_montant}]
+      lignes      JSONB NOT NULL DEFAULT '[]',       -- [{name, total_montant}] (marque, ou date pour café/service)
       recorded_by INTEGER REFERENCES users(id),
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_releves_tabac_mois ON releves_tabac(mois DESC, id DESC);
   `);
+
+  // Les relevés Café/Service partagent la table des relevés Tabac : colonne
+  // ajoutée après coup pour les bases où elle a déjà été créée sans.
+  await pgPool.query("ALTER TABLE releves_tabac ADD COLUMN IF NOT EXISTS module TEXT NOT NULL DEFAULT 'tabac'");
 
   // Link free-fuel & employee advances to the poste they were taken during, so
   // they reduce that poste's net cash (money/fuel left the drawer that shift).
