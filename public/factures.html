@@ -244,23 +244,19 @@
     <!-- TABAC HISTORY -->
     <div id="tab-tabac" class="tab-pane">
       <div class="form-card" style="padding:16px 20px">
-        <h3>🚬 Relevé Tabac — Comptabilité</h3>
-        <p style="font-size:13px;color:var(--muted);margin:4px 0 14px">Entrez le montant à déclarer et le mois — le relevé est généré automatiquement, réparti jour par jour (indépendant des ventes réelles).</p>
-        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-          <div class="fg" style="min-width:170px"><label>Mois</label><input type="month" id="tabacm-month"/></div>
-          <div class="fg" style="min-width:180px"><label>Montant à déclarer (MAD)</label><input type="number" id="tabacm-montant" placeholder="0" step="1" min="0"/></div>
-          <button class="btn btn-p btn-sm" onclick="printTabacManuelReport()">🖨️ Générer le Relevé</button>
-        </div>
-      </div>
-      <div class="form-card" style="padding:16px 20px">
         <h3>Filtres</h3>
-        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
           <div class="fg" style="min-width:180px"><label>Mois</label><input type="month" id="tab-month" onchange="loadTabacHistory()"/></div>
+          <div class="fg" style="min-width:200px">
+            <label>Montant à déclarer (MAD)</label>
+            <input type="number" id="tab-montant" placeholder="vide = ventes réelles" step="1" min="0"/>
+          </div>
           <button class="btn btn-p btn-sm" onclick="loadTabacHistory()">Actualiser</button>
           <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;cursor:pointer;padding:8px 16px;border-radius:6px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px" onclick="printTabacReport()">
-            🖨️ Relevé (ventes réelles)
+            🖨️ Relevé Comptabilité
           </button>
         </div>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0">Laissez le montant vide pour le relevé des ventes réelles. Si vous saisissez un montant, les marques sont conservées et leurs totaux sont ajustés pour tomber exactement sur ce montant.</p>
       </div>
       <div class="section">
         <div class="s-head">
@@ -359,7 +355,6 @@ function logout() { localStorage.clear(); location.href = '/'; }
 const _today = new Date().toISOString();
 const _fd = document.getElementById('f-date'); if(_fd) _fd.value = _today.slice(0,10);
 const _tm = document.getElementById('tab-month'); if(_tm) _tm.value = _today.slice(0,7);
-const _tmm = document.getElementById('tabacm-month'); if(_tmm) _tmm.value = _today.slice(0,7);
 
 function showTab(name, el) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
@@ -1458,19 +1453,41 @@ function buildTabacPrintHtml(rows, monthLabel) {
   </div>`;
 }
 
+// Montant imposé : on garde les marques et leurs proportions réelles, mais on
+// ajuste les totaux pour que la somme tombe EXACTEMENT sur le montant saisi
+// (en dirhams entiers).
+function scaleTabacRows(rows, montant) {
+  const total = Math.round(montant);
+  const sum = rows.reduce((s, r) => s + parseFloat(r.total_montant), 0);
+  if (sum <= 0 || !rows.length) return rows;
+  let acc = 0;
+  const out = rows.map(r => {
+    const v = Math.max(0, Math.round(parseFloat(r.total_montant) * total / sum));
+    acc += v;
+    return { ...r, total_montant: v };
+  });
+  let rest = total - acc;
+  for (let i = 0; rest > 0; i = (i + 1) % out.length) { out[i].total_montant++; rest--; }
+  for (let i = 0; rest < 0; i = (i + 1) % out.length) { if (out[i].total_montant > 0) { out[i].total_montant--; rest++; } }
+  return out;
+}
+
 async function printTabacReport() {
   const monthInput = document.getElementById('tab-month').value;
   if (!monthInput) { toast('Sélectionnez un mois d\'abord', 'w'); return; }
+  const montantStr = document.getElementById('tab-montant').value.trim();
+  const montant    = montantStr === '' ? null : Math.round(parseFloat(montantStr));
+  if (montant !== null && (!isFinite(montant) || montant <= 0)) { toast('Montant invalide', 'er'); return; }
   const [y, m] = monthInput.split('-');
   const from = `${y}-${m}-01`;
   const lastDay = new Date(+y, +m, 0).getDate();
   const to = `${y}-${m}-${String(lastDay).padStart(2,'0')}`;
   const monthLabel = new Date(+y, +m - 1, 1).toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
   const data = await A(`/api/tabac/ventes-mois?from=${from}&to=${to}`);
-  if (!data.rows || !data.rows.filter(r => parseFloat(r.total_montant) > 0).length) {
-    toast('Aucune vente tabac pour ce mois', 'w'); return;
-  }
-  document.getElementById('print-frame').innerHTML = buildTabacPrintHtml(data.rows, monthLabel);
+  const active = (data.rows || []).filter(r => parseFloat(r.total_montant) > 0);
+  if (!active.length) { toast('Aucune vente tabac pour ce mois', 'w'); return; }
+  const rows = montant !== null ? scaleTabacRows(active, montant) : active;
+  document.getElementById('print-frame').innerHTML = buildTabacPrintHtml(rows, monthLabel);
   document.getElementById('print-overlay').classList.add('open');
 }
 
@@ -1541,7 +1558,6 @@ function buildManualRelevePrintHtml(title, montant, year, month, monthLabel) {
 const RELEVE_TITRES = {
   cafe:    'CAFÉ ET BOISSON',
   service: 'LAVAGE ET GRAISSAGE',
-  tabacm:  'TABAC',
 };
 
 function printManualReleve(kind) {
@@ -1555,9 +1571,8 @@ function printManualReleve(kind) {
     buildManualRelevePrintHtml(RELEVE_TITRES[kind] || kind.toUpperCase(), montant, y, m, label);
   document.getElementById('print-overlay').classList.add('open');
 }
-function printCafeReport()        { printManualReleve('cafe'); }
-function printServiceReport()     { printManualReleve('service'); }
-function printTabacManuelReport() { printManualReleve('tabacm'); }
+function printCafeReport()    { printManualReleve('cafe'); }
+function printServiceReport() { printManualReleve('service'); }
 
 loadListe();
 loadLubProductsList(); // preload lubrifiant catalogue for the désignation dropdowns
