@@ -244,12 +244,21 @@
     <!-- TABAC HISTORY -->
     <div id="tab-tabac" class="tab-pane">
       <div class="form-card" style="padding:16px 20px">
+        <h3>🚬 Relevé Tabac — Comptabilité</h3>
+        <p style="font-size:13px;color:var(--muted);margin:4px 0 14px">Entrez le montant à déclarer et le mois — le relevé est généré automatiquement, réparti jour par jour (indépendant des ventes réelles).</p>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div class="fg" style="min-width:170px"><label>Mois</label><input type="month" id="tabacm-month"/></div>
+          <div class="fg" style="min-width:180px"><label>Montant à déclarer (MAD)</label><input type="number" id="tabacm-montant" placeholder="0" step="1" min="0"/></div>
+          <button class="btn btn-p btn-sm" onclick="printTabacManuelReport()">🖨️ Générer le Relevé</button>
+        </div>
+      </div>
+      <div class="form-card" style="padding:16px 20px">
         <h3>Filtres</h3>
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           <div class="fg" style="min-width:180px"><label>Mois</label><input type="month" id="tab-month" onchange="loadTabacHistory()"/></div>
           <button class="btn btn-p btn-sm" onclick="loadTabacHistory()">Actualiser</button>
           <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;cursor:pointer;padding:8px 16px;border-radius:6px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px" onclick="printTabacReport()">
-            🖨️ Relevé Comptabilité
+            🖨️ Relevé (ventes réelles)
           </button>
         </div>
       </div>
@@ -283,7 +292,7 @@
         <p style="font-size:13px;color:var(--muted);margin:4px 0 14px">Entrez le montant à déclarer et le mois — le relevé est généré automatiquement (indépendant des ventes réelles).</p>
         <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
           <div class="fg" style="min-width:170px"><label>Mois</label><input type="month" id="cafe-month"/></div>
-          <div class="fg" style="min-width:180px"><label>Montant à déclarer (MAD)</label><input type="number" id="cafe-montant" placeholder="0.00" step="0.01" min="0"/></div>
+          <div class="fg" style="min-width:180px"><label>Montant à déclarer (MAD)</label><input type="number" id="cafe-montant" placeholder="0" step="1" min="0"/></div>
           <button class="btn btn-p btn-sm" onclick="printCafeReport()">🖨️ Générer le Relevé</button>
         </div>
       </div>
@@ -296,7 +305,7 @@
         <p style="font-size:13px;color:var(--muted);margin:4px 0 14px">Entrez le montant à déclarer et le mois — le relevé est généré automatiquement.</p>
         <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
           <div class="fg" style="min-width:170px"><label>Mois</label><input type="month" id="service-month"/></div>
-          <div class="fg" style="min-width:180px"><label>Montant à déclarer (MAD)</label><input type="number" id="service-montant" placeholder="0.00" step="0.01" min="0"/></div>
+          <div class="fg" style="min-width:180px"><label>Montant à déclarer (MAD)</label><input type="number" id="service-montant" placeholder="0" step="1" min="0"/></div>
           <button class="btn btn-p btn-sm" onclick="printServiceReport()">🖨️ Générer le Relevé</button>
         </div>
       </div>
@@ -350,6 +359,7 @@ function logout() { localStorage.clear(); location.href = '/'; }
 const _today = new Date().toISOString();
 const _fd = document.getElementById('f-date'); if(_fd) _fd.value = _today.slice(0,10);
 const _tm = document.getElementById('tab-month'); if(_tm) _tm.value = _today.slice(0,7);
+const _tmm = document.getElementById('tabacm-month'); if(_tmm) _tmm.value = _today.slice(0,7);
 
 function showTab(name, el) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
@@ -1389,7 +1399,7 @@ function buildTabacPrintHtml(rows, monthLabel) {
   const rowsHtml = active.map(r => `
     <tr>
       <td style="${TD}">${esc(r.name)}</td>
-      <td style="${TDR};font-weight:bold">${fmt(r.total_montant, 2)}</td>
+      <td style="${TDR};font-weight:bold">${fmtE(r.total_montant)}</td>
     </tr>`).join('');
 
   // Pad to at least 8 rows so the table looks full
@@ -1432,7 +1442,7 @@ function buildTabacPrintHtml(rows, monthLabel) {
       <tfoot>
         <tr style="background:#ddd">
           <td style="${TD};font-weight:bold;font-size:13px;font-style:italic">TOTAL GÉNÉRAL</td>
-          <td style="${TDR};font-weight:bold;font-size:13px">${fmt(grandTotal, 2)}</td>
+          <td style="${TDR};font-weight:bold;font-size:13px">${fmtE(grandTotal)}</td>
         </tr>
       </tfoot>
     </table>
@@ -1464,19 +1474,25 @@ async function printTabacReport() {
   document.getElementById('print-overlay').classList.add('open');
 }
 
-// ── RELEVÉ MANUEL (Café / Service) — montant saisi, généré pour le comptable ──
+// ── RELEVÉ MANUEL (Café / Service / Tabac) — montant saisi, généré pour le comptable ──
+// Montants du relevé en dirhams entiers, sans centimes (12,50 → 13).
+const fmtE = n => String(Math.round(parseFloat(n) || 0));
+
 // Spread a total across every day of the month with natural variation,
-// summing EXACTLY to the total (last day absorbs the rounding).
+// in whole dirhams, summing EXACTLY to the total.
 function splitMontantOverDays(montant, year, month) {
   const nDays = new Date(year, month, 0).getDate();
-  const avg = montant / nDays;
+  const total = Math.round(montant);
+  const avg = total / nDays;
   let vals = [], sum = 0;
   for (let i = 0; i < nDays; i++) { const f = 0.8 + Math.random() * 0.4; vals.push(avg * f); sum += vals[i]; }
-  const scale = montant / sum;
+  const scale = sum > 0 ? total / sum : 0;
   let acc = 0;
-  vals = vals.map(v => { const a = Math.round(v * scale * 100) / 100; acc += a; return a; });
-  acc = Math.round(acc * 100) / 100;
-  vals[nDays - 1] = Math.round((vals[nDays - 1] + (montant - acc)) * 100) / 100;
+  vals = vals.map(v => { const a = Math.max(0, Math.round(v * scale)); acc += a; return a; });
+  // Le reste d'arrondi est réparti 1 MAD par jour, sans jamais créer de jour négatif.
+  let rest = total - acc;
+  for (let i = 0; rest > 0; i = (i + 1) % nDays) { vals[i]++; rest--; }
+  for (let i = 0; rest < 0; i = (i + 1) % nDays) { if (vals[i] > 0) { vals[i]--; rest++; } }
   return vals;
 }
 
@@ -1486,7 +1502,7 @@ function buildManualRelevePrintHtml(title, montant, year, month, monthLabel) {
   const vals = splitMontantOverDays(montant, year, month);
   const rowsHtml = vals.map((amt, i) => {
     const d = String(i + 1).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + year;
-    return `<tr><td style="${TD}">${d}</td><td style="${TDR};font-weight:bold">${fmt(amt, 2)}</td></tr>`;
+    return `<tr><td style="${TD}">${d}</td><td style="${TDR};font-weight:bold">${fmtE(amt)}</td></tr>`;
   }).join('');
   return `
   <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:600px;margin:0 auto">
@@ -1510,7 +1526,7 @@ function buildManualRelevePrintHtml(title, montant, year, month, monthLabel) {
       <tfoot>
         <tr style="background:#ddd">
           <td style="${TD};font-weight:bold;font-style:italic;font-size:13px">TOTAL GÉNÉRAL</td>
-          <td style="${TDR};font-weight:bold;font-size:13px">${fmt(montant, 2)}</td>
+          <td style="${TDR};font-weight:bold;font-size:13px">${fmtE(montant)}</td>
         </tr>
       </tfoot>
     </table>
@@ -1522,19 +1538,26 @@ function buildManualRelevePrintHtml(title, montant, year, month, monthLabel) {
   </div>`;
 }
 
+const RELEVE_TITRES = {
+  cafe:    'CAFÉ ET BOISSON',
+  service: 'LAVAGE ET GRAISSAGE',
+  tabacm:  'TABAC',
+};
+
 function printManualReleve(kind) {
   const month   = document.getElementById(kind + '-month').value;
-  const montant = parseFloat(document.getElementById(kind + '-montant').value);
+  const montant = Math.round(parseFloat(document.getElementById(kind + '-montant').value));
   if (!month) { toast('Sélectionnez un mois', 'w'); return; }
   if (!isFinite(montant) || montant <= 0) { toast('Montant invalide', 'er'); return; }
   const [y, m] = month.split('-').map(Number);
   const label = new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
-  const title = kind === 'cafe' ? 'CAFÉ ET BOISSON' : 'LAVAGE ET GRAISSAGE';
-  document.getElementById('print-frame').innerHTML = buildManualRelevePrintHtml(title, montant, y, m, label);
+  document.getElementById('print-frame').innerHTML =
+    buildManualRelevePrintHtml(RELEVE_TITRES[kind] || kind.toUpperCase(), montant, y, m, label);
   document.getElementById('print-overlay').classList.add('open');
 }
-function printCafeReport()    { printManualReleve('cafe'); }
-function printServiceReport() { printManualReleve('service'); }
+function printCafeReport()        { printManualReleve('cafe'); }
+function printServiceReport()     { printManualReleve('service'); }
+function printTabacManuelReport() { printManualReleve('tabacm'); }
 
 loadListe();
 loadLubProductsList(); // preload lubrifiant catalogue for the désignation dropdowns
