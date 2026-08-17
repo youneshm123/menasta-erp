@@ -36,17 +36,8 @@
 .cl-item:last-child{border-bottom:none}
 .cl-name{font-weight:700}
 .cl-sub{font-size:11px;color:var(--muted)}
-#print-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;align-items:center;justify-content:center;overflow-y:auto;padding:20px}
-#print-overlay.open{display:flex}
-#print-frame{background:#fff;width:794px;max-width:100%;border-radius:4px;padding:40px;font-family:"Times New Roman",serif}
-@media print{
-  @page{size:A4 portrait;margin:0}
-  body>*{display:none!important}
-  #print-overlay{display:block!important;position:static;background:none;padding:0;overflow:visible}
-  #print-overlay .print-actions{display:none!important}
-  #print-frame{box-shadow:none;border-radius:0;width:100%;max-width:100%;padding:10mm;margin:0}
-  #print-frame>div{max-width:100%!important;padding:0!important;margin:0!important}
-}
+/* Tous les documents (factures et relevés) s'impriment via un iframe caché —
+   voir printHtmlDirect() — donc plus d'aperçu ni de styles d'impression ici. */
 </style>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.474.0/dist/umd/lucide.min.js"></script>
 <link rel="stylesheet" href="/css/dashboard.css?v=2"/>
@@ -328,17 +319,6 @@
       </div>
     </div>
 
-  </div>
-</div>
-
-<!-- PRINT OVERLAY -->
-<div id="print-overlay" onclick="if(event.target===this)closePrint()">
-  <div style="display:flex;flex-direction:column;gap:12px;align-items:center;width:794px;max-width:100%">
-    <div class="print-actions" style="display:flex;gap:10px">
-      <button class="btn btn-g" onclick="closePrint()">✕ Fermer</button>
-      <button class="btn btn-p" onclick="window.print()">🖨️ Imprimer</button>
-    </div>
-    <div id="print-frame" style="background:#fff;width:100%"></div>
   </div>
 </div>
 
@@ -1151,11 +1131,10 @@ async function dlPDF(id) {
 }
 
 // ── IMPRESSION ────────────────────────────────────────────────
-async function printFacture(id) {
-  const f = await A('/api/factures/' + id);
-  const html = buildPrintHtml(f);
-  // Print the facture on its own in a hidden iframe — only the facture
-  // shows, no buttons, no overlay, no page chrome.
+// Impression directe : le document part dans un iframe caché et ouvre tout de
+// suite la boîte d'impression — pas d'aperçu intermédiaire, pas de boutons,
+// rien de la page autour.
+function printHtmlDirect(html) {
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
   iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8">`
@@ -1168,7 +1147,11 @@ async function printFacture(id) {
   };
   document.body.appendChild(iframe);
 }
-function closePrint() { document.getElementById('print-overlay').classList.remove('open'); }
+
+async function printFacture(id) {
+  const f = await A('/api/factures/' + id);
+  printHtmlDirect(buildPrintHtml(f));
+}
 
 function montantEnLettres(n) {
   const ones = ['','Un','Deux','Trois','Quatre','Cinq','Six','Sept','Huit','Neuf',
@@ -1501,8 +1484,7 @@ async function printTabacReport() {
   const active = (data.rows || []).filter(r => parseFloat(r.total_montant) > 0);
   if (!active.length) { toast('Aucune vente tabac pour ce mois', 'w'); return; }
   const rows = montant !== null ? scaleTabacRows(active, montant) : active;
-  document.getElementById('print-frame').innerHTML = buildTabacPrintHtml(rows, monthLabel);
-  document.getElementById('print-overlay').classList.add('open');
+  printHtmlDirect(buildTabacPrintHtml(rows, monthLabel));
 
   // Archivage : chaque relevé généré est conservé et réimprimable.
   const total = rows.reduce((s, r) => s + parseFloat(r.total_montant), 0);
@@ -1547,8 +1529,7 @@ async function loadRelevesTabac() {
 function reprintReleveTabac(id) {
   const r = (window._relevesTabac || {})[id];
   if (!r) { toast('Relevé introuvable', 'er'); return; }
-  document.getElementById('print-frame').innerHTML = buildTabacPrintHtml(r.lignes || [], r.mois_label);
-  document.getElementById('print-overlay').classList.add('open');
+  printHtmlDirect(buildTabacPrintHtml(r.lignes || [], r.mois_label));
 }
 
 async function deleteReleveTabac(id) {
@@ -1581,44 +1562,58 @@ function splitMontantOverDays(montant, year, month) {
 }
 
 function buildManualRelevePrintHtml(title, montant, year, month, monthLabel) {
-  const TD  = 'border:1px solid #000;padding:5px 10px;font-size:12px';
+  const TD  = 'border:1px solid #000;padding:2px 6px;font-size:10px';
   const TDR = TD + ';text-align:right';
   const vals = splitMontantOverDays(montant, year, month);
-  const rowsHtml = vals.map((amt, i) => {
-    const d = String(i + 1).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + year;
-    return `<tr><td style="${TD}">${d}</td><td style="${TDR};font-weight:bold">${fmtE(amt)}</td></tr>`;
+  const dLabel = i => String(i + 1).padStart(2, '0') + '/' + String(month).padStart(2, '0') + '/' + year;
+
+  // Tableau compact : le mois est plié sur deux colonnes de dates côte à côte,
+  // pour tenir sur un petit bloc au lieu d'une pleine page.
+  const half = Math.ceil(vals.length / 2);
+  const rowsHtml = Array.from({ length: half }, (_, i) => {
+    const j = i + half;
+    const right = j < vals.length
+      ? `<td style="${TD}">${dLabel(j)}</td><td style="${TDR};font-weight:bold">${fmtE(vals[j])}</td>`
+      : `<td style="${TD}"></td><td style="${TD}"></td>`;
+    return `<tr>
+      <td style="${TD}">${dLabel(i)}</td><td style="${TDR};font-weight:bold">${fmtE(vals[i])}</td>
+      ${right}
+    </tr>`;
   }).join('');
+
   return `
-  <div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;background:#fff;padding:16px 22px;max-width:600px;margin:0 auto">
-    <div style="text-align:center;margin-bottom:8px;line-height:1.2">
-      <div style="font-size:26px;font-weight:bold;font-style:italic;letter-spacing:1px">${esc(title)}</div>
+  <div style="font-family:'Times New Roman',Times,serif;font-size:10px;color:#000;background:#fff;padding:12px 18px;max-width:480px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:6px;line-height:1.2">
+      <div style="font-size:20px;font-weight:bold;font-style:italic;letter-spacing:1px">${esc(title)}</div>
     </div>
-    <div style="text-align:center;margin-bottom:14px">
-      <span style="display:inline-block;border:2.5px solid #000;padding:6px 36px;font-size:13px;font-weight:bold;letter-spacing:2px">RELEVÉ ${esc(title)} — COMPTABILITÉ</span>
+    <div style="text-align:center;margin-bottom:10px">
+      <span style="display:inline-block;border:2px solid #000;padding:4px 20px;font-size:11px;font-weight:bold;letter-spacing:1.5px">RELEVÉ ${esc(title)} — COMPTABILITÉ</span>
     </div>
-    <div style="text-align:center;font-size:12px;margin-bottom:14px;font-style:italic">
+    <div style="text-align:center;font-size:11px;margin-bottom:10px;font-style:italic">
       Période : <strong>${esc(monthLabel)}</strong>
     </div>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
       <thead>
         <tr style="background:#ddd">
-          <th style="${TD};text-align:left">Date</th>
-          <th style="${TDR};width:220px">Recette (MAD)</th>
+          <th style="${TD};text-align:left;font-size:9.5px">Date</th>
+          <th style="${TDR};font-size:9.5px">Recette (MAD)</th>
+          <th style="${TD};text-align:left;font-size:9.5px">Date</th>
+          <th style="${TDR};font-size:9.5px">Recette (MAD)</th>
         </tr>
       </thead>
       <tbody>${rowsHtml}</tbody>
       <tfoot>
         <tr style="background:#ddd">
-          <td style="${TD};font-weight:bold;font-style:italic;font-size:13px">TOTAL GÉNÉRAL</td>
-          <td style="${TDR};font-weight:bold;font-size:13px">${fmtE(montant)}</td>
+          <td style="${TD};font-weight:bold;font-style:italic;font-size:11px" colspan="3">TOTAL GÉNÉRAL</td>
+          <td style="${TDR};font-weight:bold;font-size:11px">${fmtE(montant)}</td>
         </tr>
       </tfoot>
     </table>
-    <div style="margin-bottom:18px;font-size:11.5px">
+    <div style="margin-bottom:12px;font-size:10px">
       <div style="font-style:italic">Arrêter le présent relevé à la somme de :</div>
-      <div style="font-weight:bold;margin-top:6px">${montantEnLettres(montant)}</div>
+      <div style="font-weight:bold;margin-top:4px">${montantEnLettres(montant)}</div>
     </div>
-    <div style="text-align:center;font-size:11px;margin-bottom:14px">1 / 1</div>
+    <div style="text-align:center;font-size:9.5px;margin-bottom:10px">1 / 1</div>
   </div>`;
 }
 
@@ -1634,9 +1629,7 @@ function printManualReleve(kind) {
   if (!isFinite(montant) || montant <= 0) { toast('Montant invalide', 'er'); return; }
   const [y, m] = month.split('-').map(Number);
   const label = new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
-  document.getElementById('print-frame').innerHTML =
-    buildManualRelevePrintHtml(RELEVE_TITRES[kind] || kind.toUpperCase(), montant, y, m, label);
-  document.getElementById('print-overlay').classList.add('open');
+  printHtmlDirect(buildManualRelevePrintHtml(RELEVE_TITRES[kind] || kind.toUpperCase(), montant, y, m, label));
 }
 function printCafeReport()    { printManualReleve('cafe'); }
 function printServiceReport() { printManualReleve('service'); }
