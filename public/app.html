@@ -914,7 +914,7 @@
 <!-- ADD DELIVERY -->
 <div class="overlay" id="m-add-delivery">
   <div class="modal">
-    <div class="modal-hd"><span>🚛</span><h3>Nouvelle Livraison Carburant</h3><button class="x" onclick="closeModal('m-add-delivery')">×</button></div>
+    <div class="modal-hd"><span>🚛</span><h3 id="dl-title">Nouvelle Livraison Carburant</h3><button class="x" onclick="closeModal('m-add-delivery')">×</button></div>
     <div class="modal-body">
       <div class="fgrid">
         <div class="fg"><label>Type Carburant *</label><select id="dl-fuel"></select></div>
@@ -935,7 +935,7 @@
     </div>
     <div class="modal-ft">
       <button class="btn btn-g" onclick="closeModal('m-add-delivery')">Annuler</button>
-      <button class="btn btn-p" onclick="submitAddDelivery()">Enregistrer</button>
+      <button class="btn btn-p" id="dl-submit" onclick="submitAddDelivery()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -3865,7 +3865,17 @@ async function deleteExpense(id) {
 }
 
 // ─── LIVRAISON MODAL ────────────────────────────────────────
+let _editDeliveryId = null;   // null = création, sinon id de la livraison modifiée
+
 async function openDeliveryModal() {
+  _editDeliveryId = null;
+  document.getElementById('dl-title').textContent  = 'Nouvelle Livraison Carburant';
+  document.getElementById('dl-submit').textContent = 'Enregistrer';
+  ['dl-qty','dl-cost','dl-cheque','dl-supplier','dl-notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('dl-unit').value = 'litres';
+  document.getElementById('dl-date').value = new Date().toISOString().slice(0,10);
+  const prevEl = document.getElementById('dl-preview');
+  prevEl.innerHTML = ''; prevEl.style.display = 'none';
   // Always fetch fresh fuel types so the select is never empty
   try {
     const fuels = await api('GET', '/pumps/fuel-types');
@@ -3987,8 +3997,10 @@ async function loadStock() {
     </div>`;
   }
 
-  const allDeliveries = fuels.flatMap(ft => ft.deliveries.map(d => ({...d, fuel_name: ft.name, color: ft.color_hex})));
+  const allDeliveries = fuels.flatMap(ft => ft.deliveries.map(d => ({...d, fuel_id: ft.id, fuel_name: ft.name, color: ft.color_hex})));
   allDeliveries.sort((a,b) => b.created_at.localeCompare(a.created_at));
+  // Gardé pour pré-remplir le formulaire de modification.
+  S.deliveries = {}; allDeliveries.forEach(d => { S.deliveries[d.id] = d; });
 
   document.getElementById('stock-body').innerHTML = allDeliveries.map(d => {
     const totalCostRow = d.cost_per_liter ? d.quantity_liters * d.cost_per_liter : null;
@@ -4001,7 +4013,10 @@ async function loadStock() {
       <td>${d.supplier||'—'}</td>
       <td class="muted sm">${d.numero_cheque ? `<span style="font-weight:700;color:var(--blue)">${d.numero_cheque}</span>` : '—'}</td>
       <td class="muted sm">${d.notes||'—'}</td>
-      <td><button class="btn btn-d btn-xs" onclick="deleteDelivery(${d.id})">✕</button></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-g btn-xs" title="Modifier" onclick="editDelivery(${d.id})">✏️</button>
+        <button class="btn btn-d btn-xs" title="Supprimer" onclick="deleteDelivery(${d.id})">✕</button>
+      </td>
     </tr>`;
   }).join('') || '<tr><td colspan="9" class="tc muted" style="padding:20px">Aucune livraison</td></tr>';
 
@@ -4056,6 +4071,25 @@ async function clearOpeningStock(id, name) {
   } catch (e) { toast(e.message, 'er'); }
 }
 
+// Modifier une livraison : ouvre le même formulaire, pré-rempli.
+async function editDelivery(id) {
+  const d = (S.deliveries || {})[id];
+  if (!d) { toast('Livraison introuvable', 'er'); return; }
+  await openDeliveryModal();                     // recharge la liste des carburants
+  _editDeliveryId = id;
+  document.getElementById('dl-title').textContent  = 'Modifier la Livraison';
+  document.getElementById('dl-submit').textContent = 'Mettre à jour';
+  document.getElementById('dl-fuel').value     = d.fuel_id;
+  document.getElementById('dl-date').value     = (d.delivery_date || '').toString().slice(0,10);
+  document.getElementById('dl-unit').value     = 'litres';   // stocké en litres
+  document.getElementById('dl-qty').value      = d.quantity_liters ?? '';
+  document.getElementById('dl-cost').value     = d.cost_per_liter ?? '';
+  document.getElementById('dl-supplier').value = d.supplier || '';
+  document.getElementById('dl-cheque').value   = d.numero_cheque || '';
+  document.getElementById('dl-notes').value    = d.notes || '';
+  updateDlPreview();
+}
+
 async function deleteDelivery(id) {
   if (!confirm('Supprimer cette livraison ?')) return;
   await api('DELETE', '/stock/delivery/' + id);
@@ -4081,15 +4115,17 @@ async function submitAddDelivery() {
   const qty  = parseFloat(document.getElementById('dl-qty').value);
   const unit = document.getElementById('dl-unit').value;
   if (!fuel_type_id || !qty) { toast('Carburant et quantité requis', 'er'); return; }
+  const body = {
+    fuel_type_id, quantity: qty, unit,
+    delivery_date: document.getElementById('dl-date').value || new Date().toISOString().slice(0,10),
+    supplier: document.getElementById('dl-supplier').value,
+    notes: document.getElementById('dl-notes').value,
+    cost_per_liter: parseFloat(document.getElementById('dl-cost').value) || null,
+    numero_cheque: document.getElementById('dl-cheque').value || null
+  };
   try {
-    await api('POST', '/stock/delivery', {
-      fuel_type_id, quantity: qty, unit,
-      delivery_date: document.getElementById('dl-date').value || new Date().toISOString().slice(0,10),
-      supplier: document.getElementById('dl-supplier').value,
-      notes: document.getElementById('dl-notes').value,
-      cost_per_liter: parseFloat(document.getElementById('dl-cost').value) || null,
-      numero_cheque: document.getElementById('dl-cheque').value || null
-    });
+    if (_editDeliveryId) await api('PUT',  '/stock/delivery/' + _editDeliveryId, body);
+    else                 await api('POST', '/stock/delivery', body);
     closeModal('m-add-delivery');
     document.getElementById('dl-qty').value = '';
     document.getElementById('dl-cost').value = '';
@@ -4097,7 +4133,8 @@ async function submitAddDelivery() {
     const prevEl = document.getElementById('dl-preview');
     prevEl.innerHTML = '';
     prevEl.style.display = 'none';
-    toast('Livraison enregistrée');
+    toast(_editDeliveryId ? 'Livraison modifiée ✓' : 'Livraison enregistrée');
+    _editDeliveryId = null;
     loadStock();
   } catch(e) { toast(e.message,'er'); }
 }

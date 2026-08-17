@@ -147,6 +147,22 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
       },
       currentCost() { let off = 0; for (const l of ls) { if (cursor < off + l.liters) return l.cost; off += l.liters; } return ls.length ? ls[ls.length - 1].cost : legacy; },
       consumed() { return cursor; },
+      // Reste en cuve, décomposé par prix d'achat (le plus ancien d'abord),
+      // en fusionnant les lots consécutifs de même prix. Sert à afficher
+      // « 15 139 L à 13,10 puis 30 200 L à 12,00 ».
+      remaining() {
+        const out = []; let off = 0;
+        for (const l of ls) {
+          const rem = (off + l.liters) - Math.max(cursor, off);
+          if (rem > 0) {
+            const last = out[out.length - 1];
+            if (last && Math.abs(last.cost - l.cost) < 1e-9) last.liters += rem;
+            else out.push({ cost: l.cost, liters: rem });
+          }
+          off += l.liters;
+        }
+        return out;
+      },
     };
   }
   // FIFO is now AUTOMATIC: every priced delivery is a layer. An opening stock is
@@ -186,6 +202,7 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
     const op = opening[f.id], cons = consumers[f.id];
     if (cons) {
       f.cost_per_liter_effective = cons.currentCost();
+      f.remaining_by_cost = cons.remaining();
       if (op) {
         f.old_stock_remaining = Math.max(0, op.liters - cons.consumed());
         f.opening = op;
@@ -231,6 +248,44 @@ router.post('/delivery', requireAuth, wrap(async (req, res) => {
   `, [cuves[0].id, delivDate, litres, supplier||null, prixUnit, numero_cheque||null, notes||null, req.user.id]);
 
   res.status(201).json({ ok: true, id: Number(id), quantity_liters: litres });
+}));
+
+// Modifier une livraison existante (mêmes champs que la création).
+router.put('/delivery/:id', requireAuth, wrap(async (req, res) => {
+  const { fuel_type_id, quantity, unit, delivery_date, supplier, notes, cost_per_liter, numero_cheque } = req.body || {};
+  const qty = parseFloat(quantity);
+  if (!fuel_type_id || !isFinite(qty) || qty <= 0) return res.status(400).json({ error: 'Carburant et quantité valide requis' });
+
+  const { rows: [liv] } = await pool.query('SELECT * FROM cuve_livraisons WHERE id=$1', [Number(req.params.id)]);
+  if (!liv) return res.status(404).json({ error: 'Livraison introuvable' });
+
+  // Si le carburant a changé, rattacher la livraison à une cuve de ce carburant.
+  const { rows: cuves } = await pool.query(
+    'SELECT id FROM cuves WHERE fuel_type_id=$1 AND is_active=1 ORDER BY id LIMIT 1', [Number(fuel_type_id)]
+  );
+  if (!cuves.length) return res.status(400).json({ error: 'Aucune cuve pour ce carburant' });
+
+  const litres   = unit === 'tonnes' ? qty * DENSITY : qty;
+  const prixUnit = cost_per_liter !== '' && cost_per_liter != null ? parseFloat(cost_per_liter) : null;
+  if (prixUnit != null && (!isFinite(prixUnit) || prixUnit < 0)) return res.status(400).json({ error: "Prix d'achat invalide" });
+
+  await pool.query(`
+    UPDATE cuve_livraisons
+       SET cuve_id=$1, livraison_date=$2, litres_recus=$3, fournisseur=$4,
+           prix_unitaire=$5, bon_livraison=$6, notes=$7
+     WHERE id=$8
+  `, [
+    cuves[0].id,
+    delivery_date || liv.livraison_date,
+    litres,
+    supplier || null,
+    prixUnit,
+    numero_cheque || null,
+    notes || null,
+    liv.id
+  ]);
+
+  res.json({ ok: true, id: liv.id, quantity_liters: litres });
 }));
 
 router.delete('/delivery/:id', requireAuth, wrap(async (req, res) => {
