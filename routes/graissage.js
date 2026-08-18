@@ -377,9 +377,49 @@ router.post('/payments', requireAuth, staff, wrap(async (req, res) => {
   res.status(201).json(pay);
 }));
 
+router.put('/payments/:id', requireAuth, staff, wrap(async (req, res) => {
+  const amount = num(req.body && req.body.amount);
+  if (!isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Montant valide requis' });
+  const { rows: [pay] } = await pool.query(
+    'UPDATE graissage_payments SET amount=$1, note=$2 WHERE id=$3 RETURNING *',
+    [+amount.toFixed(2), (req.body.note || '').trim() || null, req.params.id]
+  );
+  if (!pay) return res.status(404).json({ error: 'Règlement introuvable' });
+  res.json(pay);
+}));
+
 router.delete('/payments/:id', requireAuth, staff, wrap(async (req, res) => {
   await pool.query('DELETE FROM graissage_payments WHERE id=$1', [req.params.id]);
   res.json({ ok: true });
+}));
+
+// ── Cycles de règlement ─────────────────────────────────────────
+// Chaque fois que l'employé a tout remboursé (solde retombé à 0), on ferme un
+// cycle. Sert à découper l'historique des pièces : « tout ce qui est sous ce
+// trait a été réglé ». On rejoue la chronologie ventes/versements.
+router.get('/cycles', requireAuth, staff, wrap(async (_req, res) => {
+  const { rows: sales } = await pool.query(
+    "SELECT created_at, amount FROM graissage_movements WHERE type='sale' AND cancelled_at IS NULL ORDER BY created_at"
+  );
+  const { rows: pays } = await pool.query('SELECT created_at, amount FROM graissage_payments ORDER BY created_at');
+  const events = [
+    ...sales.map(r => ({ t: +new Date(r.created_at), kind: 'sale', v: +r.amount, at: r.created_at })),
+    ...pays.map(r  => ({ t: +new Date(r.created_at), kind: 'pay',  v: +r.amount, at: r.created_at })),
+  ].sort((a, b) => a.t - b.t || (a.kind === 'sale' ? -1 : 1)); // à instant égal, la vente compte avant le versement
+
+  const cycles = [];
+  let balance = 0, sold = 0, paid = 0;
+  for (const e of events) {
+    if (e.kind === 'sale') { balance += e.v; sold += e.v; }
+    else                   { balance -= e.v; paid += e.v; }
+    // Cycle fermé : un versement ramène le solde à zéro (ou en dessous).
+    if (e.kind === 'pay' && balance <= 0.005 && sold > 0) {
+      cycles.push({ closed_at: e.at, total_sold: +sold.toFixed(2), total_paid: +paid.toFixed(2) });
+      sold = 0; paid = 0;   // le solde négatif éventuel (trop-perçu) reste reporté
+    }
+  }
+  cycles.reverse();   // le plus récent d'abord, comme l'historique
+  res.json(cycles);
 }));
 
 // ── Vente par QR — vend 1 unité du stock chez l'employé ─────────

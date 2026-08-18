@@ -79,6 +79,10 @@
 .ho-row .av{font-size:12px;color:var(--muted)}
 .ho-row input{width:90px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:center}
 .hist-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.cy-sep td{background:linear-gradient(90deg,rgba(4,120,87,.14),rgba(16,185,129,.05));
+  border-top:2px solid #10b981;border-bottom:2px solid #10b981;font-weight:800;font-size:12.5px;color:#047857;
+  letter-spacing:.4px;padding:9px 12px}
+.cy-sep td .cy-r{float:right;font-weight:700;opacity:.85}
 .h-sel{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg);color:inherit;font-family:var(--font)}
 .h-cancelled td{opacity:.6}
 .h-cancelled .h-strike{text-decoration:line-through}
@@ -642,13 +646,17 @@ async function loadCompte() {
       <td><button class="btn btn-d btn-xs" onclick="cancelSale(${m.id},'compte')">🚫 Annuler</button></td>
     </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--muted)">Aucune vente aujourd\'hui</td></tr>';
   const pays = await api('GET', '/payments');
+  _payments = {}; pays.forEach(p => { _payments[p.id] = p; });
   document.getElementById('pay-body').innerHTML = pays.length ? pays.map(p => `
     <tr>
       <td>${new Date(p.created_at).toLocaleDateString('fr-FR')}</td>
       <td>${esc(p.by_name||'?')}</td>
       <td>${esc(p.note||'—')}</td>
       <td class="num fw8 c-g">${fmt(p.amount)} DH</td>
-      <td><button class="btn btn-d btn-xs" onclick="delPayment(${p.id})">🗑</button></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-g btn-xs" title="Modifier" onclick="editPayment(${p.id})">✏️</button>
+        <button class="btn btn-d btn-xs" title="Supprimer" onclick="delPayment(${p.id})">🗑</button>
+      </td>
     </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--muted)">Aucun règlement</td></tr>';
 }
 // Pré-remplit avec tout ce qu'il reste à me remettre.
@@ -668,6 +676,25 @@ async function submitPayment() {
     loadCompte();   // le solde se recalcule : 0 s'il a tout réglé
   } catch(e) { toast(e.message, 'er'); }
 }
+let _payments = {};   // règlements chargés, pour la modification
+
+// Corriger un règlement déjà enregistré (montant saisi de travers).
+async function editPayment(id) {
+  const p = _payments[id];
+  if (!p) { toast('Règlement introuvable', 'er'); return; }
+  const val = prompt('Montant reçu (MAD) :', parseFloat(p.amount).toFixed(2));
+  if (val === null) return;
+  const amount = parseFloat(String(val).replace(',', '.'));
+  if (!(amount > 0)) { toast('Montant invalide', 'er'); return; }
+  const note = prompt('Note :', p.note || '');
+  if (note === null) return;
+  try {
+    await api('PUT', '/payments/' + id, { amount, note });
+    toast('Règlement modifié ✓');
+    loadCompte();
+  } catch(e) { toast(e.message, 'er'); }
+}
+
 async function delPayment(id) {
   if (!confirm('Supprimer ce règlement ?')) return;
   try { await api('DELETE', '/payments/' + id); toast('Supprimé ✓'); loadCompte(); }
@@ -826,14 +853,27 @@ async function loadHistorique() {
     if (!_products.length) { _products = await api('GET', '/products'); }
     fillProductSelects();
     const data = await api('GET', '/sales' + histQuery({ page: histPage, per_page: 50 }));
+    const cycles = await api('GET', '/cycles');   // moments où le solde est retombé à 0
     _histLast = data;
     document.getElementById('h-qty').textContent    = fmt(data.total_qty);
     document.getElementById('h-amount').textContent = fmt(data.total_amount) + ' DH';
     document.getElementById('h-profit').textContent = fmt(data.total_profit) + ' DH';
     document.getElementById('h-count').textContent  = data.total + ' / ' + data.cancelled_count;
+    // Un trait vert à chaque fois que tout a été réglé : ce qui est en dessous
+    // appartient à un règlement déjà soldé.
+    let ci = 0;
+    const sepBefore = ts => {
+      let out = '';
+      while (ci < cycles.length && +new Date(cycles[ci].closed_at) > ts) {
+        const c = cycles[ci++];
+        out += `<tr class="cy-sep"><td colspan="9">✅ Soldé le ${new Date(c.closed_at).toLocaleDateString('fr-FR')}
+          <span class="cy-r">${fmt(c.total_sold)} DH vendus · ${fmt(c.total_paid)} DH encaissés</span></td></tr>`;
+      }
+      return out;
+    };
     body.innerHTML = data.rows.length ? data.rows.map(m => {
       const cancelled = !!m.cancelled_at;
-      return `<tr class="${cancelled?'h-cancelled':''}">
+      return sepBefore(+new Date(m.created_at)) + `<tr class="${cancelled?'h-cancelled':''}">
         <td class="muted sm">${new Date(m.created_at).toLocaleString('fr-FR')}</td>
         <td class="${cancelled?'h-strike':''}">${esc(m.product_name||'—')}</td>
         <td>${m.source==='manual' ? '<span class="tagi tag-manual">✍️ Sans scan</span>' : '<span class="tagi tag-scan">📷 Scan</span>'}
