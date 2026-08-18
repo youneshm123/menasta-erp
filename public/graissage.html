@@ -57,6 +57,9 @@
 .due-hero .dh-sub{font-size:13.5px;opacity:.92;margin-top:10px}
 .due-hero .dh-sub b{font-weight:800}
 .due-hero .bgico{position:absolute;right:16px;bottom:-14px;font-size:120px;opacity:.13;pointer-events:none}
+.due-hero .dh-more{display:flex;flex-wrap:wrap;gap:22px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.28);position:relative;z-index:1}
+.due-hero .dh-more div{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;opacity:.85}
+.due-hero .dh-more b{display:block;font-size:19px;font-weight:900;letter-spacing:0;text-transform:none;margin-top:3px;opacity:1}
 @media(max-width:600px){.due-hero{padding:22px 20px}.due-hero .dh-v{font-size:40px}}
 .pay-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
 .pay-row .fld{margin:0;flex:1;min-width:170px}
@@ -178,6 +181,12 @@
         <div class="dh-v" id="k-due">0,00 DH</div>
         <div class="dh-sub">
           Total vendu <b id="k-sold">0,00 DH</b> &nbsp;·&nbsp; déjà versé <b id="k-paid">0,00 DH</b>
+        </div>
+        <div class="dh-more">
+          <div>Aujourd'hui (<span id="k-today-n">0</span>)<b id="k-today">0,00 DH</b></div>
+          <div>Cette semaine (<span id="k-week-n">0</span>)<b id="k-week">0,00 DH</b></div>
+          <div>Bénéfice estimé<b id="k-profit">0,00 DH</b></div>
+          <div>Valeur du stock chez lui<b id="k-held">0,00 DH</b></div>
         </div>
         <div class="bgico" id="due-ico">💰</div>
       </div>
@@ -614,6 +623,12 @@ async function loadCompte() {
   hero.classList.toggle('is-clear', clear);
   document.getElementById('due-label').textContent = clear ? 'Rien à me remettre' : 'À me remettre';
   document.getElementById('due-ico').textContent   = clear ? '✅' : '💰';
+  animVal('k-today',  acc.today_total);
+  animVal('k-week',   acc.week_total);
+  animVal('k-profit', acc.total_profit);
+  animVal('k-held',   acc.stock_value_held);
+  document.getElementById('k-today-n').textContent = acc.today_count || 0;
+  document.getElementById('k-week-n').textContent  = acc.week_count || 0;
   // Ventes d'aujourd'hui (avec bouton Annuler en cas d'erreur de scan)
   const sales = await api('GET', '/movements?type=sale');
   const todayStr = new Date().toDateString();
