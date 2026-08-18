@@ -286,6 +286,16 @@ router.get('/payments/search', requireAuth, wrap(async (req, res) => {
            COUNT(DISTINCT cp.credit_client_id)::int AS clients
     ${joins} ${where}`, params);
 
+  // Qui sont ces paiements : répartition par client sur l'ensemble du résultat
+  // (pas seulement la page affichée), pour répondre à « c'est qui ce montant ? ».
+  const { rows: byClient } = await pool.query(`
+    SELECT cc.id, cc.name, cc.company,
+           COUNT(*)::int AS n, COALESCE(SUM(cp.amount),0) AS amount
+    ${joins} ${where}
+    GROUP BY cc.id, cc.name, cc.company
+    ORDER BY amount DESC, cc.name ASC
+    LIMIT 30`, params);
+
   params.push(perPage, (page - 1) * perPage);
   const { rows } = await pool.query(`
     SELECT cp.*, cc.name AS client_name, cc.company AS client_company,
@@ -302,6 +312,10 @@ router.get('/payments/search', requireAuth, wrap(async (req, res) => {
     total_amount: +(+tot.amount).toFixed(2),
     avg_amount: tot.n ? +((+tot.amount) / tot.n).toFixed(2) : 0,
     clients_count: tot.clients,
+    by_client: byClient.map(c => ({
+      id: c.id, name: c.name, company: c.company,
+      count: c.n, amount: +(+c.amount).toFixed(2),
+    })),
   });
 }));
 

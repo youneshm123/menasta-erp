@@ -212,6 +212,14 @@
           .pay-search-input{flex:1;height:40px;font-size:14.5px;padding-left:34px;}
           .pay-search-ic{position:absolute;left:26px;font-size:14px;color:var(--muted);pointer-events:none;}
           .pay-quick{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 14px;align-items:center;}
+          .pay-who{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 14px;align-items:center;}
+          .pay-who-lbl{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+          .pay-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:20px;cursor:pointer;
+            background:var(--bg2,#f1f5f9);border:1.5px solid var(--border);font-size:13px;transition:all .15s;}
+          .pay-chip:hover{border-color:var(--blue);background:#EFF6FF;}
+          .pay-chip b{font-weight:800;}
+          .pay-chip .c-amt{font-weight:800;color:var(--green);}
+          .pay-chip .c-n{font-size:11.5px;color:var(--muted);}
         </style>
         <div class="tiles" id="pay-tiles"></div>
         <div class="section">
@@ -231,6 +239,7 @@
             <button class="btn btn-g btn-sm" onclick="payReset()">✕</button>
           </div>
           <div class="pay-quick"><span id="pay-summary" class="muted sm"></span></div>
+          <div class="pay-who" id="pay-who"></div>
           <div class="s-body-flush" style="overflow-x:auto">
             <table class="t" id="pay-tbl">
               <thead><tr><th>Date</th><th>Client</th><th>Société</th><th>Poste</th><th>Encaissé par</th><th>Note</th><th class="num">Montant</th><th></th></tr></thead>
@@ -2131,6 +2140,23 @@ async function payFetch() {
     document.getElementById('pay-summary').innerHTML =
       `<strong>${d.total}</strong> paiement(s) · Total <strong class="c-g">${fmt(d.total_amount)} MAD</strong>`;
 
+    // « C'est qui, ce montant ? » — les clients derrière le résultat, cliquables
+    // pour ne garder que les leurs. Basé sur tout le résultat, pas juste la page.
+    const who = document.getElementById('pay-who');
+    const list = d.by_client || [];
+    const searching = (document.getElementById('pay-q').value || '').trim() !== '';
+    if (searching && list.length) {
+      who.innerHTML = '<span class="pay-who-lbl">Qui&nbsp;:</span>' + list.map(c => `
+        <span class="pay-chip" title="Ne voir que les paiements de ce client"
+              onclick="paySearchClient(${c.id})">
+          👤 <b>${c.name}</b>${c.company ? ' <span class="c-n">(' + c.company + ')</span>' : ''}
+          <span class="c-amt">${fmt(c.amount)} MAD</span>
+          <span class="c-n">${c.count} paiement${c.count > 1 ? 's' : ''}</span>
+        </span>`).join('');
+    } else {
+      who.innerHTML = '';
+    }
+
     body.innerHTML = d.rows.map(p => `
       <tr>
         <td class="muted sm">${fmtDT(opDate(p))}</td>
@@ -2153,6 +2179,16 @@ async function payFetch() {
   } catch (e) {
     body.innerHTML = `<tr><td colspan="8" class="tc" style="padding:20px;color:var(--red)">${e.message}</td></tr>`;
   }
+}
+
+// Clic sur une pastille « Qui » : ne garder que les paiements de ce client.
+// On passe l'id (pas le nom) pour ne pas casser sur les apostrophes et guillemets.
+function paySearchClient(id) {
+  const c = ((_payLast && _payLast.by_client) || []).find(x => x.id === id);
+  if (!c) return;
+  const input = document.getElementById('pay-q');
+  input.value = c.name;
+  payApply();
 }
 
 async function payDelete(id) {
