@@ -48,6 +48,19 @@
 .kpi-week .l{color:rgba(255,255,255,.9)}
 .kpi-due{background:linear-gradient(135deg,#5b4fcf,#0070F2);color:#fff;border:none}
 .kpi-due .l{color:rgba(255,255,255,.85)}
+/* Compte employé : une seule grande carte — ce qu'il reste à me remettre. */
+.due-hero{position:relative;overflow:hidden;border-radius:20px;padding:30px 32px;margin-bottom:18px;color:#fff;
+  background:linear-gradient(135deg,#5b4fcf,#0070F2);box-shadow:0 14px 34px rgba(0,112,242,.28)}
+.due-hero.is-clear{background:linear-gradient(135deg,#047857,#10b981);box-shadow:0 14px 34px rgba(4,120,87,.28)}
+.due-hero .dh-l{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1px;opacity:.9}
+.due-hero .dh-v{font-size:56px;font-weight:900;line-height:1.05;margin:8px 0 2px;letter-spacing:-1px}
+.due-hero .dh-sub{font-size:13.5px;opacity:.92;margin-top:10px}
+.due-hero .dh-sub b{font-weight:800}
+.due-hero .bgico{position:absolute;right:16px;bottom:-14px;font-size:120px;opacity:.13;pointer-events:none}
+@media(max-width:600px){.due-hero{padding:22px 20px}.due-hero .dh-v{font-size:40px}}
+.pay-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.pay-row .fld{margin:0;flex:1;min-width:170px}
+.pay-row input{font-size:20px;font-weight:800}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
 .ov.show{display:flex}
 .ov-card{background:var(--surface);border-radius:16px;max-width:460px;width:100%;max-height:92vh;overflow-y:auto;padding:22px}
@@ -159,14 +172,14 @@
 
     <!-- ══ COMPTE ══ -->
     <div class="page" id="p-compte">
-      <div class="kpi-row">
-        <div class="kpi-box kpi-today"><div class="l">Aujourd'hui (<span id="k-today-n">0</span> vente(s))</div><div class="v" id="k-today">0,00</div><div class="bgico">📅</div></div>
-        <div class="kpi-box kpi-week"><div class="l">Cette semaine (<span id="k-week-n">0</span> vente(s))</div><div class="v" id="k-week">0,00</div><div class="bgico">📆</div></div>
-        <div class="kpi-box"><div class="l">Total vendu</div><div class="v" id="k-sold">0,00</div><div class="bgico">💰</div></div>
-        <div class="kpi-box"><div class="l">Total versé</div><div class="v c-g" id="k-paid">0,00</div><div class="bgico">✅</div></div>
-        <div class="kpi-box kpi-due"><div class="l">Solde dû</div><div class="v" id="k-due">0,00</div><div class="bgico">⏳</div></div>
-        <div class="kpi-box"><div class="l">Bénéfice (estimé)</div><div class="v c-g" id="k-profit">0,00</div><div class="bgico">📈</div></div>
-        <div class="kpi-box"><div class="l">Valeur du stock</div><div class="v" id="k-held">0,00</div><div class="bgico">🛢️</div></div>
+      <!-- Une seule valeur qui compte : ce que l'employé doit encore me remettre. -->
+      <div class="due-hero" id="due-hero">
+        <div class="dh-l" id="due-label">À me remettre</div>
+        <div class="dh-v" id="k-due">0,00 DH</div>
+        <div class="dh-sub">
+          Total vendu <b id="k-sold">0,00 DH</b> &nbsp;·&nbsp; déjà versé <b id="k-paid">0,00 DH</b>
+        </div>
+        <div class="bgico" id="due-ico">💰</div>
       </div>
 
       <div class="section" style="margin-bottom:18px">
@@ -179,13 +192,15 @@
       </div>
 
       <div class="section" style="margin-bottom:18px">
-        <div class="s-head"><div class="s-title">💵 Enregistrer un règlement</div></div>
+        <div class="s-head"><div class="s-title">💵 Il m'a donné</div></div>
         <div class="s-body">
-          <div class="row2">
-            <div class="fld" style="margin:0"><label>Montant versé (MAD)</label><input type="number" id="pay-amount" step="0.01" min="0" placeholder="0.00"/></div>
-            <div class="fld" style="margin:0"><label>Note</label><input id="pay-note" placeholder="optionnel"/></div>
+          <div class="pay-row">
+            <div class="fld"><label>Montant reçu (MAD)</label><input type="number" id="pay-amount" step="0.01" min="0" placeholder="0.00" onkeydown="if(event.key==='Enter')submitPayment()"/></div>
+            <div class="fld"><label>Note</label><input id="pay-note" placeholder="optionnel"/></div>
+            <button class="btn btn-g" type="button" onclick="fillFullDue()">Tout le solde</button>
+            <button class="btn btn-s" type="button" onclick="submitPayment()">✅ Encaisser</button>
           </div>
-          <button class="btn btn-s" style="margin-top:12px" onclick="submitPayment()">+ Enregistrer le paiement</button>
+          <p class="muted" style="font-size:12.5px;margin:10px 0 0">Le montant est retiré du solde (qui retombe à 0 s'il règle tout) et reste enregistré dans l'historique ci-dessous.</p>
         </div>
       </div>
 
@@ -585,17 +600,20 @@ function animVal(id, target) {
   // Onglet en arrière-plan : requestAnimationFrame ne tourne pas → valeur finale garantie.
   setTimeout(() => { el.textContent = fmt(target) + ' DH'; }, dur + 80);
 }
+let _dueAmount = 0;   // solde restant, pour le bouton « Tout le solde »
+
 async function loadCompte() {
   const acc = await api('GET', '/account');
+  _dueAmount = acc.balance_due;
+  animVal('k-due',  acc.balance_due);
   animVal('k-sold', acc.total_sold);
   animVal('k-paid', acc.total_paid);
-  animVal('k-due',  acc.balance_due);
-  animVal('k-held', acc.stock_value_held);
-  animVal('k-today', acc.today_total);
-  animVal('k-week',  acc.week_total);
-  animVal('k-profit', acc.total_profit);
-  document.getElementById('k-today-n').textContent = acc.today_count || 0;
-  document.getElementById('k-week-n').textContent  = acc.week_count || 0;
+  // Soldé = carte verte, rien à réclamer.
+  const hero = document.getElementById('due-hero');
+  const clear = acc.balance_due <= 0.005;
+  hero.classList.toggle('is-clear', clear);
+  document.getElementById('due-label').textContent = clear ? 'Rien à me remettre' : 'À me remettre';
+  document.getElementById('due-ico').textContent   = clear ? '✅' : '💰';
   // Ventes d'aujourd'hui (avec bouton Annuler en cas d'erreur de scan)
   const sales = await api('GET', '/movements?type=sale');
   const todayStr = new Date().toDateString();
@@ -618,6 +636,12 @@ async function loadCompte() {
       <td><button class="btn btn-d btn-xs" onclick="delPayment(${p.id})">🗑</button></td>
     </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--muted)">Aucun règlement</td></tr>';
 }
+// Pré-remplit avec tout ce qu'il reste à me remettre.
+function fillFullDue() {
+  if (_dueAmount <= 0) { toast('Rien à encaisser', 'w'); return; }
+  document.getElementById('pay-amount').value = _dueAmount.toFixed(2);
+}
+
 async function submitPayment() {
   const amount = parseFloat(document.getElementById('pay-amount').value);
   if (!(amount > 0)) { toast('Montant invalide', 'er'); return; }
@@ -625,8 +649,8 @@ async function submitPayment() {
     await api('POST', '/payments', { amount, note: document.getElementById('pay-note').value });
     document.getElementById('pay-amount').value = '';
     document.getElementById('pay-note').value = '';
-    toast('Paiement enregistré ✓');
-    loadCompte();
+    toast('Encaissé ' + fmt(amount) + ' DH ✓');
+    loadCompte();   // le solde se recalcule : 0 s'il a tout réglé
   } catch(e) { toast(e.message, 'er'); }
 }
 async function delPayment(id) {
