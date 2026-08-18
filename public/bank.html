@@ -232,11 +232,36 @@
         <button class="btn btn-g btn-sm" onclick="document.getElementById('ck-search').value='';document.getElementById('ck-date-from').value='';document.getElementById('ck-date-to').value='';filterCheques()"↺ Reset</button>
       </div>
       <div class="tiles" id="ck-tiles"></div>
-      <div class="section">
-        <div class="s-head"><div class="s-title">💳 Tous les Chèques & Effets</div></div>
-        <div style="overflow-x:auto"><table class="t" id="ck-table">
+      <div class="section" style="margin-bottom:16px">
+        <div class="s-head">
+          <div class="s-title">⏳ Chèques en Attente</div>
+          <div class="s-title" style="font-size:12.5px;color:var(--muted)" id="ck-pending-sum"></div>
+        </div>
+        <div style="overflow-x:auto"><table class="t" id="ck-table-pending">
           <thead><tr><th>Date</th><th>Sens</th><th>N° Chèque</th><th>Bénéficiaire / Émetteur</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
-          <tbody id="ck-all-body"></tbody>
+          <tbody id="ck-pending-body"></tbody>
+        </table></div>
+      </div>
+
+      <div class="section" style="margin-bottom:16px">
+        <div class="s-head">
+          <div class="s-title">✅ Chèques Encaissés</div>
+          <div class="s-title" style="font-size:12.5px;color:var(--muted)" id="ck-cashed-sum"></div>
+        </div>
+        <div style="overflow-x:auto"><table class="t" id="ck-table-cashed">
+          <thead><tr><th>Date</th><th>Sens</th><th>N° Chèque</th><th>Bénéficiaire / Émetteur</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="ck-cashed-body"></tbody>
+        </table></div>
+      </div>
+
+      <div class="section" id="ck-other-section" style="display:none">
+        <div class="s-head">
+          <div class="s-title">↩️ Retournés / Annulés</div>
+          <div class="s-title" style="font-size:12.5px;color:var(--muted)" id="ck-other-sum"></div>
+        </div>
+        <div style="overflow-x:auto"><table class="t" id="ck-table-other">
+          <thead><tr><th>Date</th><th>Sens</th><th>N° Chèque</th><th>Bénéficiaire / Émetteur</th><th>Échéance</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="ck-other-body"></tbody>
         </table></div>
       </div>
     </div>
@@ -697,10 +722,31 @@ function filterCheques() {
   const all = _allCheques
     .filter(c => ['cheque_out','effet_out','cheque_in','effet_in'].includes(c.type) && match(c))
     .sort((a,b) => String(b.txn_date||'').localeCompare(String(a.txn_date||'')));
-  document.getElementById('ck-all-body').innerHTML = all.map(c => {
-    const dir = (c.type === 'cheque_in' || c.type === 'effet_in') ? 'in' : 'out';
-    return ckRow(c, dir);
-  }).join('') || '<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--muted)">Aucun résultat</td></tr>';
+
+  // Trois paniers : en attente, encaissés, et le reste (retournés / annulés).
+  const isCashed = c => c.check_status === 'cashed' || c.check_status === 'encaissé';
+  const groups = {
+    pending: all.filter(c => c.check_status === 'pending'),
+    cashed:  all.filter(isCashed),
+    other:   all.filter(c => c.check_status !== 'pending' && !isCashed(c)),
+  };
+  const render = (key, emptyMsg) => {
+    const list = groups[key];
+    document.getElementById('ck-' + key + '-body').innerHTML = list.map(c => {
+      const dir = (c.type === 'cheque_in' || c.type === 'effet_in') ? 'in' : 'out';
+      return ckRow(c, dir);
+    }).join('') || '<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--muted)">' + emptyMsg + '</td></tr>';
+    // Récapitulatif du panier : nombre, et entrées/sorties séparées.
+    const sum = dirs => list.filter(c => dirs.includes(c.type)).reduce((t,c) => t + parseFloat(c.amount||0), 0);
+    const inS  = sum(['cheque_in','effet_in']);
+    const outS = sum(['cheque_out','effet_out']);
+    document.getElementById('ck-' + key + '-sum').textContent =
+      list.length + ' chèque(s) · 📥 ' + fmt(inS,2) + ' MAD · 📤 ' + fmt(outS,2) + ' MAD';
+  };
+  render('pending', 'Aucun chèque en attente');
+  render('cashed',  'Aucun chèque encaissé');
+  render('other',   'Aucun');
+  document.getElementById('ck-other-section').style.display = groups.other.length ? '' : 'none';
 }
 
 const STATUS_LABELS = { pending:'⏳ En attente', cashed:'✅ Encaissé', 'encaissé':'✅ Encaissé', cancelled:'❌ Annulé', returned:'↩️ Retourné' };
