@@ -8,7 +8,7 @@ const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 const DENSITY = 1000;
 
 router.get('/', requireAuth, wrap(async (_req, res) => {
-  const { rows: fuels } = await pool.query('SELECT * FROM fuel_types WHERE is_active=1');
+  const { rows: fuels } = await pool.query('SELECT * FROM fuel_types WHERE is_active=1 ORDER BY id');
   const { rows: [{ t: totalRevenue }] } = await pool.query(
     "SELECT COALESCE(SUM(total_fuel_revenue),0) as t FROM shifts WHERE status='closed'"
   );
