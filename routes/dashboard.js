@@ -3,6 +3,7 @@ const PDFDocument = require('pdfkit');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
 const { pctDelta, fillDailySeries, estMargin } = require('../lib/analytics');
+const fsplit = require('../lib/fuelSplit');
 
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
@@ -20,6 +21,11 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
     FROM shifts WHERE date(opened_at)=$1 AND status='closed'
   `, [today]);
 
+  // Répartition Essence / Gazoil du jour (litres + CA), calculée pompe par pompe.
+  const todayFuels = await fsplit.fuelTypes(pool);
+  const todayRows  = await fsplit.fuelRows(pool, { from: today, to: today });
+  const by_fuel    = fsplit.shape(todayFuels, fsplit.totals(todayRows));
+
   const { rows: [{ t: debt }] }    = await pool.query('SELECT COALESCE(SUM(balance_due),0) as t FROM credit_clients WHERE is_active=1');
   const { rows: [{ c: low }] }     = await pool.query('SELECT COUNT(*) as c FROM products WHERE stock_qty<=stock_min AND is_active=1');
   const { rows: [{ c: clients }] } = await pool.query('SELECT COUNT(*) as c FROM credit_clients WHERE is_active=1');
@@ -32,6 +38,7 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
       credit_deducted: parseFloat(tr.credits),
       net_cash:        parseFloat(tr.net),
       liters_sold:     parseFloat(tr.liters),
+      by_fuel,
     },
     total_debt:    parseFloat(debt),
     low_stock:     parseInt(low),

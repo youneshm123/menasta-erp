@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
 const { computeFuelTotals } = require('../lib/shiftCalc');
+const fsplit = require('../lib/fuelSplit');
 
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
@@ -129,6 +130,11 @@ async function shiftDetail(shift) {
     WHERE pc.shift_id=$1 ORDER BY pc.created_at, pc.pump_id
   `, [shift.id]);
   shift.price_changes = pc;
+
+  // Répartition Essence / Gazoil de ce poste (litres + CA), pompe par pompe.
+  const fuels = await fsplit.fuelTypes(pool);
+  const rows  = await fsplit.fuelRows(pool, { shiftId: shift.id });
+  shift.fuel_split = fsplit.shape(fuels, fsplit.totals(rows));
 
   return shift;
 }

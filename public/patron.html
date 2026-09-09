@@ -151,6 +151,7 @@ body.app-layout{overflow:auto}
       </div>
       <div class="panel-body">
         <div class="prow"><span class="prow-lbl">CA Carburant</span><span class="prow-val blue" id="car-ca">—</span></div>
+        <div id="car-by-fuel"></div>
         <div class="prow"><span class="prow-lbl">Litres vendus</span><span class="prow-val" id="car-liters">—</span></div>
         <div class="prow"><span class="prow-lbl">Ventes produits</span><span class="prow-val green" id="car-prod">—</span></div>
         <div class="prow"><span class="prow-lbl">(-) Crédits accordés</span><span class="prow-val red" id="car-credits">—</span></div>
@@ -245,6 +246,7 @@ body.app-layout{overflow:auto}
     <div class="s-head">🗓️ Cumul du Mois — <span id="month-lbl"></span></div>
     <div class="kpi-row" id="month-row" style="margin:4px 0 0">
       <div class="kpi-card"><div class="kpi-icon" style="background:#EFF6FF"><i data-lucide="fuel"></i></div><div class="kpi-val blue" id="m-car">—</div><div class="kpi-lbl">CA Carburant</div><div class="kpi-sub" id="m-liters">—</div></div>
+      <div class="kpi-card" id="m-fuel-cards-slot" style="display:none"></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:#FFFBEB">☕</div><div class="kpi-val" id="m-cafe">—</div><div class="kpi-lbl">Café</div><div class="kpi-sub">Ventes du mois</div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:#FDF4EC">🚬</div><div class="kpi-val" id="m-tabac">—</div><div class="kpi-lbl">Tabac</div><div class="kpi-sub" id="m-tabac-ben">—</div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:#FEF2F2">💸</div><div class="kpi-val red" id="m-dep">—</div><div class="kpi-lbl">Dépenses</div><div class="kpi-sub" id="m-postes">—</div></div>
@@ -433,6 +435,13 @@ async function load() {
   document.getElementById('car-avance').textContent = fmt(d.carburant.avance) + ' MAD';
   document.getElementById('car-net').textContent = fmt(d.carburant.net) + ' MAD';
 
+  // Détail Essence / Gazoil du jour
+  const carSplit = d.carburant.by_fuel || [];
+  document.getElementById('car-by-fuel').innerHTML = carSplit.map(f =>
+    `<div class="prow"><span class="prow-lbl" style="padding-left:14px">↳ ${f.name}</span>` +
+    `<span class="prow-val blue">${fmt(f.revenue)} MAD <span style="font-weight:400;color:#6A6D70">· ${fmt(f.liters,1)} L</span></span></div>`
+  ).join('');
+
   // Café panel
   document.getElementById('cafe-rev').textContent = fmt(d.cafe.revenue) + ' MAD';
   document.getElementById('cafe-ben').textContent = fmt(d.cafe.benefice) + ' MAD';
@@ -503,6 +512,21 @@ async function load() {
   document.getElementById('m-tabac-ben').textContent = 'Bénéfice ' + fmt(d.mois.tabac_benefice) + ' MAD';
   document.getElementById('m-dep').textContent   = fmt(d.mois.depenses) + ' MAD';
   document.getElementById('m-postes').textContent = 'Caisse nette ' + fmt(d.mois.net) + ' MAD';
+
+  // Cartes CA du mois par carburant (Essence / Gazoil)
+  const slot = document.getElementById('m-fuel-cards-slot');
+  const moisSplit = d.mois.by_fuel || [];
+  if (slot && moisSplit.length) {
+    // Le slot reste en place (masqué) : on remplace les cartes à chaque
+    // rafraîchissement au lieu de le consommer une seule fois.
+    document.querySelectorAll('.m-fuel-card').forEach(el => el.remove());
+    slot.insertAdjacentHTML('beforebegin', moisSplit.map(f =>
+      `<div class="kpi-card m-fuel-card"><div class="kpi-icon" style="background:#EFF6FF">⛽</div>` +
+      `<div class="kpi-val blue">${fmt(f.revenue)} MAD</div>` +
+      `<div class="kpi-lbl">CA ${f.name}</div>` +
+      `<div class="kpi-sub">${fmt(f.liters,0)} L ce mois</div></div>`
+    ).join(''));
+  }
 
   // ── Dépenses ──
   document.getElementById('dep-today').textContent = fmt(d.depenses.today) + ' MAD';

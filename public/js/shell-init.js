@@ -114,6 +114,7 @@
 
   // ── Global logout ──
   window.logout = function () {
+    try { navigator.sendBeacon ? navigator.sendBeacon('/api/auth/logout') : fetch('/api/auth/logout', { method: 'POST', keepalive: true }); } catch (e) {}
     localStorage.removeItem('fm_token');
     localStorage.removeItem('fm_user');
     location.href = '/';

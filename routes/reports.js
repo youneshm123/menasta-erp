@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
+const fsplit = require('../lib/fuelSplit');
 
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
@@ -75,13 +76,16 @@ async function computeMonthlyFuelCost() {
     consumers[f.id] = makeConsumer(ls, legacyCost[f.id] || (op ? op.cost : 0));
   }
 
-  const byMonth = {};
+  // byMonth = coût total du mois ; byMonthFuel = le même coût, détaillé par
+  // carburant (c'est lui qui permet d'afficher la marge Essence / Gazoil).
+  const byMonth = {}, byMonthFuel = {};
   for (const r of allDay) {
     const ftid = r.ftid, liters = Math.max(0, parseFloat(r.liters)), day = r.d, month = day.slice(0, 7);
     const cost = consumers[ftid] ? consumers[ftid].consume(day, liters) : liters * (legacyCost[ftid] || 0);
     byMonth[month] = (byMonth[month] || 0) + cost;
+    (byMonthFuel[month] = byMonthFuel[month] || {})[ftid] = (byMonthFuel[month][ftid] || 0) + cost;
   }
-  return byMonth;
+  return { byMonth, byMonthFuel };
 }
 
 router.get('/monthly', requireAuth, wrap(async (req, res) => {
@@ -109,7 +113,12 @@ router.get('/monthly', requireAuth, wrap(async (req, res) => {
   const expMap = {};
   expenses.forEach(e => { expMap[e.month] = parseFloat(e.total); });
 
-  const fuelCostByMonth = await computeMonthlyFuelCost();
+  const { byMonth: fuelCostByMonth, byMonthFuel } = await computeMonthlyFuelCost();
+
+  // Litres et CA par carburant, mois par mois (répartition du total du poste).
+  const fuels     = await fsplit.fuelTypes(pool);
+  const splitRows = await fsplit.fuelRows(pool, { from: year + '-01-01', to: year + '-12-31' });
+  const splitByMonth = fsplit.byMonth(splitRows);
 
   const result = months.map(m => {
     const fuel_revenue = parseFloat(m.fuel_revenue);
@@ -129,6 +138,8 @@ router.get('/monthly', requireAuth, wrap(async (req, res) => {
       expenses:     exp,
       // Real profit = fuel gross margin (revenue − FIFO cost of fuel sold) − expenses.
       profit:       +(gross_margin - exp).toFixed(2),
+      // Détail Essence / Gazoil : litres, CA, coût d'achat et marge brute.
+      by_fuel:      fsplit.shape(fuels, splitByMonth[m.month], byMonthFuel[m.month] || {}),
     };
   });
 

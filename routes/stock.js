@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
+const fsplit = require('../lib/fuelSplit');
 
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
@@ -185,6 +186,8 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
   // Parcours chronologique : coût FIFO à partir de la date de départ, ancien coût avant.
   let grandCost = 0;
   const dayCostMap = {}, dayLitersMap = {};
+  // Mêmes chiffres, détaillés par carburant : { jour: { ftid: valeur } }.
+  const dayFuelCost = {}, dayFuelLiters = {}, fuelCostTotal = {};
   for (const r of allDay) {
     const ftid = r.ftid, liters = Math.max(0, parseFloat(r.liters)), day = r.d;
     // consume() respects each layer's date (sales before any layer overflow to
@@ -195,6 +198,9 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
     grandCost += dayCost;
     dayCostMap[day] = (dayCostMap[day] || 0) + dayCost;
     dayLitersMap[day] = (dayLitersMap[day] || 0) + liters;
+    (dayFuelCost[day]   = dayFuelCost[day]   || {})[ftid] = (dayFuelCost[day][ftid]   || 0) + dayCost;
+    (dayFuelLiters[day] = dayFuelLiters[day] || {})[ftid] = (dayFuelLiters[day][ftid] || 0) + liters;
+    fuelCostTotal[ftid] = (fuelCostTotal[ftid] || 0) + dayCost;
   }
 
   // Coût d'achat effectif (prochain litre vendu) + reste d'ancien stock, par carburant.
@@ -217,11 +223,42 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
     FROM shifts WHERE status='closed' AND opened_at >= NOW() - INTERVAL '30 days'
     GROUP BY 1
   `);
+
+  // CA par jour et par carburant sur la même fenêtre de 30 jours.
+  const since30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const splitRows  = await fsplit.fuelRows(pool, { from: since30 });
+  const splitByDay = fsplit.byDay(splitRows);
+  const fuelList   = result.map(f => ({ id: f.id, name: f.name, color_hex: f.color_hex }));
+
   const dayMap = {};
   for (const r of dayRev) dayMap[r.d] = { date: r.d, liters: dayLitersMap[r.d] || 0, revenue: parseFloat(r.rev), cost: dayCostMap[r.d] || 0 };
   const daily_profit = Object.values(dayMap)
-    .map(d => ({ date: d.date, liters: Math.round(d.liters), revenue: Math.round(d.revenue), cost: Math.round(d.cost), profit: Math.round(d.revenue - d.cost) }))
+    .map(d => ({
+      date: d.date, liters: Math.round(d.liters), revenue: Math.round(d.revenue),
+      cost: Math.round(d.cost), profit: Math.round(d.revenue - d.cost),
+      by_fuel: fuelList.map(f => {
+        const v   = (splitByDay[d.date] && splitByDay[d.date][f.id]) || { liters: 0, revenue: 0 };
+        const lit = (dayFuelLiters[d.date] && dayFuelLiters[d.date][f.id]) || 0;
+        const cst = (dayFuelCost[d.date]   && dayFuelCost[d.date][f.id])   || 0;
+        return {
+          id: f.id, name: f.name, color_hex: f.color_hex,
+          liters: Math.round(v.liters || lit), revenue: Math.round(v.revenue),
+          cost: Math.round(cst), profit: Math.round(v.revenue - cst),
+        };
+      }),
+    }))
     .sort((a, b) => b.date.localeCompare(a.date));
+
+  // CA / coût / bénéfice cumulés par carburant (tout l'historique).
+  const allRows   = await fsplit.fuelRows(pool, {});
+  const allTotals = fsplit.totals(allRows);
+  for (const f of result) {
+    const v = allTotals[f.id] || { liters: 0, revenue: 0 };
+    f.liters_sold  = +v.liters.toFixed(2);
+    f.revenue      = +v.revenue.toFixed(2);
+    f.cost_sold    = +(fuelCostTotal[f.id] || 0).toFixed(2);
+    f.profit       = +(v.revenue - (fuelCostTotal[f.id] || 0)).toFixed(2);
+  }
 
   res.json({ fuels: result, total_revenue: parseFloat(totalRevenue), total_cost: grandCost, profit: parseFloat(totalRevenue) - grandCost, daily_profit });
 }));

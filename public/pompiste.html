@@ -202,7 +202,7 @@ document.getElementById('login-btn').onclick = async () => {
     await startApp();
   }catch(e){ err('login-err','تعذر الاتصال بالخادم'); }
 };
-function logout(){ localStorage.removeItem('fm_token'); localStorage.removeItem('fm_user'); show('s-login'); }
+function logout(){ try{navigator.sendBeacon?navigator.sendBeacon('/api/auth/logout'):fetch('/api/auth/logout',{method:'POST',keepalive:true});}catch(e){} localStorage.removeItem('fm_token'); localStorage.removeItem('fm_user'); show('s-login'); }
 document.getElementById('logout').onclick = logout;
 
 let ME = null;

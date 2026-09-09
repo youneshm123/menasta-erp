@@ -71,9 +71,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font
 <div class="foot" id="foot"></div>
 
 <script>
-const TOKEN = localStorage.getItem('fm_token');
-const USER = (() => { try { return JSON.parse(localStorage.getItem('fm_user') || 'null'); } catch { return null; } })();
-const CAN_MANAGE = USER && ['gerant','patron','admin'].includes(USER.role);
+let TOKEN = localStorage.getItem('fm_token');
+let USER = (() => { try { return JSON.parse(localStorage.getItem('fm_user') || 'null'); } catch { return null; } })();
+let CAN_MANAGE = USER && ['gerant','patron','admin'].includes(USER.role);
 const ID = (location.pathname.match(/\/gscan\/(\d+)/) || [])[1];
 const card = document.getElementById('card');
 const foot = document.getElementById('foot');
@@ -85,8 +85,26 @@ function gotoLogin() {
   location.href = '/?return=' + encodeURIComponent(location.pathname);
 }
 
-if (!TOKEN) { gotoLogin(); }
-if (!ID)    { card.innerHTML = '<div class="msg msg-er">QR invalide — aucun produit.</div>'; }
+// Le token peut disparaître du localStorage (nettoyage de cache, mise à jour du
+// navigateur…). Le cookie de session, lui, survit : on le rejoue pour récupérer
+// un token sans redemander le mot de passe. Renvoie true si on est connecté.
+async function ensureSession() {
+  if (TOKEN) return true;
+  try {
+    const r = await fetch('/api/auth/session', { credentials: 'same-origin' });
+    if (!r.ok) return false;
+    const d = await r.json();
+    if (!d || !d.token) return false;
+    TOKEN = d.token;
+    USER = d.user || null;
+    CAN_MANAGE = USER && ['gerant','patron','admin'].includes(USER.role);
+    localStorage.setItem('fm_token', d.token);
+    localStorage.setItem('fm_user', JSON.stringify(d.user || {}));
+    return true;
+  } catch { return false; }
+}
+
+if (!ID) { card.innerHTML = '<div class="msg msg-er">QR invalide — aucun produit.</div>'; }
 
 let product = null;
 let offline = false;
@@ -120,7 +138,7 @@ function banner() {
 async function loadProduct() {
   try {
     const r = await fetch('/api/graissage/' + ID, { headers: { Authorization: 'Bearer ' + TOKEN } });
-    if (r.status === 401) return gotoLogin();
+    if (r.status === 401) { TOKEN = null; if (await ensureSession()) return loadProduct(); return gotoLogin(); }
     const d = await r.json();
     if (!r.ok) { card.innerHTML = '<div class="msg msg-er">' + (d.error || 'Produit introuvable') + '</div>'; return; }
     product = d;
@@ -391,8 +409,12 @@ window.addEventListener('online', () => { offline = false; banner(); syncQueue()
 window.addEventListener('offline', () => { offline = true; banner(); });
 setInterval(() => { if (navigator.onLine) syncQueue(); }, 20000);
 
-if (TOKEN && ID) { banner(); renderBasket(); loadProduct(); }
-else { banner(); }
+(async () => {
+  if (!ID) return;
+  banner(); renderBasket();
+  if (!(await ensureSession())) return gotoLogin();
+  loadProduct();
+})();
 </script>
 </body>
 </html>

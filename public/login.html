@@ -295,9 +295,27 @@ function returnUrl() {
 
 btn.addEventListener('click', login);
 document.addEventListener('keydown', e => e.key === 'Enter' && login());
+
+function goHome(u) {
+  window.location.href = (u && u.role === 'pompiste') ? '/pompiste' : returnUrl();
+}
+
 if (localStorage.getItem('fm_token')) {
   let u = null; try { u = JSON.parse(localStorage.getItem('fm_user') || 'null'); } catch {}
-  window.location.href = (u && u.role === 'pompiste') ? '/pompiste' : returnUrl();
+  goHome(u);
+} else {
+  // Pas de token en localStorage : le cookie de session peut encore être là
+  // (téléphone dont le cache a été vidé). On le rejoue avant de demander le
+  // mot de passe — les employés qui ne le connaissent pas restent connectés.
+  fetch('/api/auth/session', { credentials: 'same-origin' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(d => {
+      if (!d || !d.token) return;
+      localStorage.setItem('fm_token', d.token);
+      localStorage.setItem('fm_user', JSON.stringify(d.user || {}));
+      goHome(d.user);
+    })
+    .catch(() => {});
 }
 </script>
 <script>lucide.createIcons();</script>

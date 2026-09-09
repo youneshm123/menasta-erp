@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html><!-- v32 -->
+﻿<!DOCTYPE html><!-- v33 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
-<script>if(localStorage.getItem('_av')!=='32'){localStorage.setItem('_av','32');location.reload(true);}</script>
+<script>if(localStorage.getItem('_av')!=='33'){localStorage.setItem('_av','33');location.reload(true);}</script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA</title>
@@ -334,6 +334,15 @@
             <table class="t" id="rpt-tbl">
               <thead><tr><th>Mois</th><th class="num">Postes</th><th class="num">Litres</th><th class="num">CA Carburant</th><th class="num">Coût Achats</th><th class="num">Marge Brute</th><th class="num">Dépenses</th><th class="num">Bénéfice Net</th></tr></thead>
               <tbody id="rpt-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section mt4">
+          <div class="s-head"><div class="s-title">⛽ Détail par Carburant (Essence / Gazoil)</div><div class="exp-btns"><button class="exp-btn exp-pdf" onclick="expPDF('rpt-fuel-tbl','Detail par Carburant')">📄 PDF</button><button class="exp-btn exp-xl" onclick="expXL('rpt-fuel-tbl','Detail par Carburant')">📊 Excel</button><button class="exp-btn exp-word" onclick="expWord('rpt-fuel-tbl','Detail par Carburant')">📝 Word</button></div></div>
+          <div class="s-body-flush" style="overflow-x:auto">
+            <table class="t" id="rpt-fuel-tbl">
+              <thead id="rpt-fuel-head"></thead>
+              <tbody id="rpt-fuel-body"></tbody>
             </table>
           </div>
         </div>
@@ -1001,7 +1010,7 @@ async function api(method, path, body) {
   return data;
 }
 
-function logout() { localStorage.removeItem('fm_token'); localStorage.removeItem('fm_user'); window.location.href = '/'; }
+function logout() { try{navigator.sendBeacon?navigator.sendBeacon('/api/auth/logout'):fetch('/api/auth/logout',{method:'POST',keepalive:true});}catch(e){} localStorage.removeItem('fm_token'); localStorage.removeItem('fm_user'); window.location.href = '/'; }
 
 // ─── TOAST ──────────────────────────────────────────────────
 function toast(msg, type = 'ok') {
@@ -1161,10 +1170,19 @@ async function loadDashboard() {
   else alertsEl.innerHTML += `<div class="msg msg-w mb3">⚠️ Aucun poste ouvert. Cliquez sur <strong>Poste en Cours</strong> pour en ouvrir un.</div>`;
   if (dash.low_stock > 0) alertsEl.innerHTML += `<div class="msg msg-w mb3">📦 ${dash.low_stock} produit(s) en stock faible.</div>`;
 
+  // Détail Essence / Gazoil du jour (litres + CA), fourni par l'API.
+  const todayFuels = dash.today.by_fuel || [];
+  const fuelIcon   = n => /essence/i.test(n) ? '🟦' : '🟧';
+  const fuelSub    = f => `${fmt(f.liters)} L vendus aujourd'hui`;
+
   // Tiles
   document.getElementById('dash-tiles').innerHTML = [
     { ic:'💰', val: fmt(dash.today.fuel_revenue) + ' MAD', lbl:"CA Carburant Auj.", sub:"Carburant vendu aujourd'hui", sc:'', tc:'var(--green)' },
-    { ic:'⛽', val: dash.today.liters_sold.toFixed(1) + ' L', lbl:'Litres Vendus Auj.', sub:'Volume journalier', sc:'', tc:'var(--blue)' },
+    ...todayFuels.map(f => ({
+      ic: fuelIcon(f.name), val: fmt(f.revenue) + ' MAD',
+      lbl: 'CA ' + f.name + ' Auj.', sub: fuelSub(f), sc: '', tc: f.color_hex || 'var(--blue)',
+    })),
+    { ic:'⛽', val: dash.today.liters_sold.toFixed(1) + ' L', lbl:'Litres Vendus Auj.', sub: todayFuels.length ? todayFuels.map(f => f.name + ' ' + fmt(f.liters) + ' L').join(' · ') : 'Volume journalier', sc:'', tc:'var(--blue)' },
     { ic:'🤝', val: fmt(dash.total_debt) + ' MAD', lbl:'Total Créances', sub: dash.total_clients + ' clients crédit', sc: dash.total_debt > 0 ? 'warn' : '', tc:'var(--orange)' },
     { ic:'🛢️', val: dash.low_stock, lbl:'Produits Stock Faible', sub:'Réapprovisionnement requis', sc: dash.low_stock > 0 ? 'warn' : '', tc:'var(--red)' },
     { ic:'🏦', val: fmt(dash.today.net_cash) + ' MAD', lbl:'Caisse Nette Auj.', sub:'Fuel - Crédits + Produits', sc:'up', tc:'var(--purple)' },
@@ -1698,7 +1716,22 @@ function showShiftSummary(result) {
       <td class="num fw7 c-b">${fmt(rev)} MAD</td>
     </tr>`;
   }
-  html += `</tbody></table>
+  html += `</tbody></table>`;
+
+  // Sous-total par carburant (Essence / Gazoil) pour ce poste.
+  const split = s.fuel_split || [];
+  if (split.length) {
+    html += `<table class="t mb4">
+      <thead><tr><th>Carburant</th><th class="num">Litres</th><th class="num">CA (MAD)</th></tr></thead>
+      <tbody>${split.map(f => `<tr>
+        <td class="fw7"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:${f.color_hex}"></span>${f.name}</span></td>
+        <td class="num fw7">${fmt(f.liters)} L</td>
+        <td class="num fw7 c-b">${fmt(f.revenue)} MAD</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+
+  html += `
     <div style="background:var(--bg);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px;">
       <div class="fxb"><span class="fw7">Total CA Carburant</span><span class="fw8 c-b">${fmt(c.totalFuel)} MAD</span></div>
       <div class="fxb"><span class="fw7">(-) Ventes Crédit</span><span class="fw7 c-r">- ${fmt(c.totalCredit)} MAD</span></div>
@@ -3535,8 +3568,22 @@ async function loadReports() {
   const totProf   = data.reduce((s,r)=>s+r.profit,0);      // Σ (marge brute − dépenses) = bénéfice net exact
   const pcYear    = totFuel > 0 ? ((totMargin/totFuel)*100).toFixed(1) : '0.0';
 
+  // Cumul de l'année par carburant (Essence / Gazoil).
+  const fuelYear = {};
+  data.forEach(r => (r.by_fuel || []).forEach(f => {
+    const a = fuelYear[f.id] || (fuelYear[f.id] = { id:f.id, name:f.name, color_hex:f.color_hex, liters:0, revenue:0, cost:0, profit:0 });
+    a.liters += f.liters; a.revenue += f.revenue; a.cost += f.cost || 0; a.profit += f.profit || 0;
+  }));
+  const fuelYearList = Object.values(fuelYear).sort((a,b)=>a.id-b.id);
+
   document.getElementById('rpt-tiles').innerHTML = [
     { ic:'💰', val: fmt(totFuel)+' MAD',  lbl:'CA Carburant', tc:'var(--blue)' },
+    ...fuelYearList.map(f => ({
+      ic: /essence/i.test(f.name) ? '🟦' : '🟧',
+      val: fmt(f.revenue)+' MAD',
+      lbl: 'CA ' + f.name + ' — ' + fmt(f.liters) + ' L',
+      tc: f.color_hex || 'var(--blue)',
+    })),
     { ic:'🛢️', val: fmt(totCost)+' MAD',  lbl:'Coût Achats (vendu)', tc:'var(--orange)' },
     { ic:'📊', val: fmt(totMargin)+' MAD', lbl:'Marge Brute ('+pcYear+'%)', tc:'var(--green)' },
     { ic:'💸', val: fmt(totExp)+' MAD',    lbl:'Dépenses', tc:'var(--red)' },
@@ -3592,6 +3639,31 @@ async function loadReports() {
       <td class="num fw8 ${r.profit>=0?'c-g':'c-r'}">${fmt(r.profit)} MAD</td>
     </tr>`;
   }).join('') || '<tr><td colspan="8" class="tc muted" style="padding:20px">Aucune donnée pour cette année</td></tr>';
+
+  // ── Tableau Essence / Gazoil : litres, CA, coût et marge, mois par mois ──
+  const fuelCols = fuelYearList.length ? fuelYearList : (data[0] && data[0].by_fuel) || [];
+  document.getElementById('rpt-fuel-head').innerHTML = fuelCols.length
+    ? `<tr><th rowspan="2">Mois</th>${fuelCols.map(f=>`<th colspan="4" class="tc" style="border-left:2px solid var(--border)">${f.name}</th>`).join('')}</tr>
+       <tr>${fuelCols.map(()=>'<th class="num" style="border-left:2px solid var(--border)">Litres</th><th class="num">CA</th><th class="num">Coût</th><th class="num">Marge</th>').join('')}</tr>`
+    : '<tr><th>Mois</th></tr>';
+
+  document.getElementById('rpt-fuel-body').innerHTML = data.map(r => {
+    const m = parseInt(r.month.split('-')[1])-1;
+    const cells = fuelCols.map(fc => {
+      const f = (r.by_fuel || []).find(x => x.id === fc.id) || { liters:0, revenue:0, cost:0, profit:0 };
+      return `<td class="num" style="border-left:2px solid var(--border)">${fmt(f.liters)} L</td>
+              <td class="num c-b">${fmt(f.revenue)} MAD</td>
+              <td class="num c-o">-${fmt(f.cost||0)} MAD</td>
+              <td class="num fw7 ${(f.profit||0)>=0?'c-g':'c-r'}">${fmt(f.profit||0)} MAD</td>`;
+    }).join('');
+    return `<tr><td class="fw7">${months[m]} ${r.month.split('-')[0]}</td>${cells}</tr>`;
+  }).join('') + (fuelCols.length ? `<tr style="background:var(--bg-alt,#f5f6f7)">
+      <td class="fw8">TOTAL ${year}</td>
+      ${fuelCols.map(f=>`<td class="num fw8" style="border-left:2px solid var(--border)">${fmt(f.liters)} L</td>
+        <td class="num fw8 c-b">${fmt(f.revenue)} MAD</td>
+        <td class="num fw8 c-o">-${fmt(f.cost)} MAD</td>
+        <td class="num fw8 ${f.profit>=0?'c-g':'c-r'}">${fmt(f.profit)} MAD</td>`).join('')}
+    </tr>` : '');
 }
 
 async function initReportsYear() {
@@ -3976,6 +4048,12 @@ async function loadStock() {
           📦 Reste en cuve : ${ft.remaining_by_cost.map(r => `<strong>${Math.round(r.liters).toLocaleString('fr-FR')} L</strong> à <strong>${r.cost.toFixed(2)}</strong>`).join(' &nbsp;puis&nbsp; ')}
           ${ft.opening ? `<button onclick="clearOpeningStock(${ft.id},'${esc(ft.name)}')" title="Désactiver le FIFO" style="border:none;background:none;color:#BB0000;cursor:pointer;font-size:11px">✕ retirer</button>` : ''}
         </div>` : ''}
+        ${ft.revenue != null ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;font-size:12.5px;color:#6A6D70;line-height:1.8">
+          <div>Vendu&nbsp;: <strong style="color:#333">${fmt(ft.liters_sold||0)} L</strong></div>
+          <div>CA&nbsp;: <strong style="color:#0070F2">${fmt(ft.revenue)} MAD</strong></div>
+          <div>Coût&nbsp;: <strong style="color:#E65100">${fmt(ft.cost_sold||0)} MAD</strong></div>
+          <div>Bénéfice&nbsp;: <strong style="color:${(ft.profit||0)>=0?'#188918':'#BB0000'}">${fmt(ft.profit||0)} MAD</strong></div>
+        </div>` : ''}
         <div style="margin-top:8px">
           ${empty ? '<span style="color:#BB0000;font-weight:700;font-size:13px">🚨 Stock vide</span>'
                   : low  ? '<span style="color:#E65100;font-weight:700;font-size:13px">⚠️ Stock faible</span>'
@@ -4001,22 +4079,38 @@ async function loadStock() {
         <div style="font-size:12px;font-weight:700;color:#6A6D70;text-transform:uppercase;margin-bottom:4px">Bénéfice Brut Carburant</div>
         <div style="font-size:22px;font-weight:900;color:${profitColor}">${fmt(profit)} MAD</div>
       </div>
+      ${fuels.filter(f => f.revenue != null).map(f => `
+      <div style="flex:1;min-width:160px;background:#fff;border-radius:10px;padding:18px 22px;box-shadow:0 2px 8px rgba(0,0,0,.07);border-left:4px solid ${f.color_hex}">
+        <div style="font-size:12px;font-weight:700;color:#6A6D70;text-transform:uppercase;margin-bottom:4px">Bénéfice ${f.name}</div>
+        <div style="font-size:22px;font-weight:900;color:${(f.profit||0)>=0?'#188918':'#BB0000'}">${fmt(f.profit||0)} MAD</div>
+        <div style="font-size:11.5px;color:#6A6D70;margin-top:4px">CA ${fmt(f.revenue)} − coût ${fmt(f.cost_sold||0)}</div>
+      </div>`).join('')}
     </div>`;
 
   // ── Daily profit table ──
   const daily = data.daily_profit || [];
   const dailyEl = document.getElementById('stock-daily');
   if (dailyEl) {
+    // Colonnes Essence / Gazoil : mêmes carburants que les cartes de stock.
+    const dailyFuels = fuels.map(f => ({ id: f.id, name: f.name, color_hex: f.color_hex }));
+    const nCols = 5 + dailyFuels.length * 3;
     const rows = daily.map(d => {
       const pc = d.profit >= 0 ? '#188918' : '#BB0000';
+      const fuelCells = dailyFuels.map(fc => {
+        const f = (d.by_fuel || []).find(x => x.id === fc.id) || { liters:0, revenue:0, profit:0 };
+        return `<td class="num" style="border-left:2px solid var(--border)">${(f.liters||0).toLocaleString('fr-FR')} L</td>
+                <td class="num">${fmt(f.revenue||0)} MAD</td>
+                <td class="num fw7" style="color:${(f.profit||0)>=0?'#188918':'#BB0000'}">${fmt(f.profit||0)} MAD</td>`;
+      }).join('');
       return `<tr>
         <td class="muted sm">${d.date}</td>
         <td class="num fw7 c-b">${d.liters.toLocaleString('fr-FR')} L</td>
         <td class="num">${fmt(d.revenue)} MAD</td>
         <td class="num">${fmt(d.cost)} MAD</td>
         <td class="num fw7" style="color:${pc}">${d.profit >= 0 ? '+' : ''}${fmt(d.profit)} MAD</td>
+        ${fuelCells}
       </tr>`;
-    }).join('') || '<tr><td colspan="5" class="tc muted" style="padding:20px">Aucune vente carburant (postes fermés) sur 30 jours</td></tr>';
+    }).join('') || `<tr><td colspan="${nCols}" class="tc muted" style="padding:20px">Aucune vente carburant (postes fermés) sur 30 jours</td></tr>`;
     dailyEl.innerHTML = `
     <div class="section" style="margin-bottom:24px">
       <div class="s-head">
@@ -4026,7 +4120,14 @@ async function loadStock() {
       <div style="padding:6px 16px 10px;font-size:12px;color:var(--muted)">Bénéfice = CA du jour − (litres vendus × coût d'achat moyen). Mis à jour à la fermeture du poste.</div>
       <div class="s-body-flush" style="overflow-x:auto">
         <table class="t" id="daily-profit-tbl">
-          <thead><tr><th>Date</th><th class="num">Litres Vendus</th><th class="num">Chiffre d'Affaires</th><th class="num">Coût Carburant</th><th class="num">Bénéfice</th></tr></thead>
+          <thead>
+            <tr>
+              <th rowspan="2">Date</th><th rowspan="2" class="num">Litres Vendus</th><th rowspan="2" class="num">Chiffre d'Affaires</th>
+              <th rowspan="2" class="num">Coût Carburant</th><th rowspan="2" class="num">Bénéfice</th>
+              ${dailyFuels.map(f=>`<th colspan="3" class="tc" style="border-left:2px solid var(--border)">${f.name}</th>`).join('')}
+            </tr>
+            <tr>${dailyFuels.map(()=>'<th class="num" style="border-left:2px solid var(--border)">Litres</th><th class="num">CA</th><th class="num">Bénéfice</th>').join('')}</tr>
+          </thead>
           <tbody>${rows}</tbody>
         </table>
       </div>

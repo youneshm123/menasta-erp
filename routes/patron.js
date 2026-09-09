@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware');
+const fsplit = require('../lib/fuelSplit');
 const wrap = fn => (req, res, next) => fn(req, res, next).catch(next);
 
 router.get('/summary', requireAuth, wrap(async (_req, res) => {
@@ -216,10 +217,19 @@ router.get('/summary', requireAuth, wrap(async (_req, res) => {
     total:     parseFloat(r.carburant) + (cafeMap[r.day] || 0) + (tabacMap[r.day]?.montant || 0),
   }));
 
+  // ── Répartition Essence / Gazoil : aujourd'hui et cumul du mois ──
+  const fuelList  = await fsplit.fuelTypes(pool);
+  const monthFrom = ym + '-01';
+  const monthRows = await fsplit.fuelRows(pool, { from: monthFrom, to: today });
+  const dayRows   = monthRows.filter(r => r.day === today);
+  const byFuelDay   = fsplit.shape(fuelList, fsplit.totals(dayRows));
+  const byFuelMonth = fsplit.shape(fuelList, fsplit.totals(monthRows));
+
   res.json({
     today,
     carburant: {
       ca: parseFloat(car.ca), liters: parseFloat(car.liters),
+      by_fuel: byFuelDay,
       credits: parseFloat(car.credits), products: parseFloat(car.products),
       net: parseFloat(car.net), avance: parseFloat(car.avance),
       postes: parseInt(car.postes), open_shift: openShift || null
@@ -260,6 +270,7 @@ router.get('/summary', requireAuth, wrap(async (_req, res) => {
     },
     mois: {
       carburant: parseFloat(mtdCar.ca),
+      by_fuel:   byFuelMonth,
       products:  parseFloat(mtdCar.products),
       net:       parseFloat(mtdCar.net),
       liters:    parseFloat(mtdCar.liters),
