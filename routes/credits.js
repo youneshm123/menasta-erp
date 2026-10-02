@@ -44,7 +44,7 @@ router.get('/clients/:id/history', requireAuth, wrap(async (req, res) => {
   const { rows: cr } = await pool.query('SELECT * FROM credit_clients WHERE id=$1', [req.params.id]);
   if (!cr.length) return res.status(404).json({ error: 'Client introuvable' });
   const { rows: sales } = await pool.query(`
-    SELECT cs.*, COALESCE(p.name,'Lubrifiant') as pump_name, s.opened_at as shift_date
+    SELECT cs.*, COALESCE(p.name,'Lubrifiant') as pump_name, s.opened_at as shift_date, s.status as shift_status
     FROM credit_sales cs
     LEFT JOIN pumps p ON p.id=cs.pump_id
     LEFT JOIN shifts s ON s.id=cs.shift_id
@@ -54,7 +54,7 @@ router.get('/clients/:id/history', requireAuth, wrap(async (req, res) => {
   // (catch-up data entry) have a payment_time/sale_time of the typing day, so
   // the relevé must prefer shift_date to show the real date to the client.
   const { rows: payments } = await pool.query(`
-    SELECT cp.*, u.full_name as received_by_name, s.opened_at as shift_date
+    SELECT cp.*, u.full_name as received_by_name, s.opened_at as shift_date, s.status as shift_status
     FROM credit_payments cp
     LEFT JOIN users u ON u.id=cp.recorded_by
     LEFT JOIN shifts s ON s.id=cp.shift_id

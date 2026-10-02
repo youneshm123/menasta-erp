@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html><!-- v33 -->
+﻿<!DOCTYPE html><!-- v34 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
-<script>if(localStorage.getItem('_av')!=='33'){localStorage.setItem('_av','33');location.reload(true);}</script>
+<script>if(localStorage.getItem('_av')!=='34'){localStorage.setItem('_av','34');location.reload(true);}</script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA</title>
@@ -2286,7 +2286,8 @@ async function openClientHistory(id, name) {
         <td class="num fw7 c-g">+ ${fmt(p.amount)} MAD</td>
         <td class="muted sm">${esc(p.received_by_name||'—')}</td>
         <td class="muted sm">${esc(p.notes||'')}</td>
-      </tr>`).join('') : '<tr><td colspan="4" class="tc muted" style="padding:14px">Aucun paiement</td></tr>';
+        <td class="tc">${histDelBtn('payment', p, id, name)}</td>
+      </tr>`).join('') : '<tr><td colspan="5" class="tc muted" style="padding:14px">Aucun paiement</td></tr>';
     const saleRows = sales.length ? sales.map(s => `
       <tr${s.hors_releve ? ' style="opacity:.55"' : ''}>
         <td class="muted sm">${fmtDT(opDate(s))}${!s.shift_id ? ` <button class="btn btn-xs" style="background:#EFF6FF;color:#1D4ED8;padding:1px 5px" title="Changer la date de ce bon" onclick="editSaleDate(${s.id}, '${String(opDate(s)).slice(0,10)}', ${id}, '${esc(name)}')">📅</button>` : ''}</td>
@@ -2294,13 +2295,14 @@ async function openClientHistory(id, name) {
         <td class="num fw7 c-r">${fmt(s.amount)} MAD</td>
         <td class="tc"><button class="btn btn-xs" style="background:${s.hors_releve ? '#DCFCE7;color:#15803D' : '#FEF3C7;color:#92400E'}"
           onclick="toggleHorsReleve(${s.id}, ${s.hors_releve ? 'false' : 'true'}, ${id}, '${esc(name)}')">${s.hors_releve ? '↩ Remettre' : '🚫 Exclure'}</button></td>
-      </tr>`).join('') : '<tr><td colspan="4" class="tc muted" style="padding:14px">Aucun achat</td></tr>';
+        <td class="tc">${histDelBtn('sale', s, id, name)}</td>
+      </tr>`).join('') : '<tr><td colspan="5" class="tc muted" style="padding:14px">Aucun achat</td></tr>';
     body.innerHTML = `
       <div class="fxb" style="margin-bottom:6px"><span class="fw7">Solde dû</span><span class="fw7 ${client.balance_due>0?'c-r':'c-g'}">${fmt(client.balance_due)} MAD</span></div>
       <div style="font-size:12px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">💰 Paiements reçus (${payments.length})</div>
-      <table class="t"><thead><tr><th>Date</th><th class="num">Montant</th><th>Reçu par</th><th>Note</th></tr></thead><tbody>${payRows}</tbody></table>
+      <table class="t"><thead><tr><th>Date</th><th class="num">Montant</th><th>Reçu par</th><th>Note</th><th></th></tr></thead><tbody>${payRows}</tbody></table>
       <div style="font-size:12px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 6px">🛒 Achats à crédit (${sales.length})</div>
-      <table class="t"><thead><tr><th>Date</th><th>Désignation</th><th class="num">Montant</th><th class="tc">Relevé</th></tr></thead><tbody>${saleRows}</tbody></table>
+      <table class="t"><thead><tr><th>Date</th><th>Désignation</th><th class="num">Montant</th><th class="tc">Relevé</th><th></th></tr></thead><tbody>${saleRows}</tbody></table>
       <div class="muted sm" style="margin-top:8px;line-height:1.5">🚫 Exclure = le bon reste en base et dans le solde, mais n'apparaît plus sur le relevé PDF remis au client.</div>`;
   } catch (e) {
     body.innerHTML = '<div class="muted" style="padding:14px">Erreur : ' + esc(e.message) + '</div>';
@@ -2363,6 +2365,27 @@ async function editSaleDate(saleId, current, clientId, clientName) {
   try {
     await api('POST', '/credits/sales/' + saleId + '/date', { date: d.trim() });
     toast('Date corrigée ✓', 'ok');
+    openClientHistory(clientId, clientName);
+  } catch (e) { toast(e.message || 'Erreur', 'er'); }
+}
+
+// Bouton ✕ pour supprimer un paiement / bon saisi par erreur (historique client).
+// Verrouillé 🔒 si le poste est fermé : le serveur refuse pour ne pas fausser la caisse.
+function histDelBtn(kind, r, clientId, clientName) {
+  if (r.shift_id && r.shift_status !== 'open')
+    return '<span class="muted sm" title="Poste fermé — verrouillé">🔒</span>';
+  return `<button class="btn btn-d btn-xs" title="Supprimer (erreur de saisie)" onclick="histDelete('${kind}', ${r.id}, ${clientId}, '${esc(clientName)}')">✕</button>`;
+}
+
+async function histDelete(kind, rowId, clientId, clientName) {
+  const isPay = kind === 'payment';
+  if (!confirm(isPay ? 'Supprimer ce paiement ? Le montant sera remis sur la dette du client.'
+                     : 'Supprimer ce bon ? Le montant sera retiré de la dette du client.')) return;
+  try {
+    await api('DELETE', (isPay ? '/credits/payments/' : '/credits/sales/') + rowId);
+    toast(isPay ? 'Paiement supprimé ✓' : 'Bon supprimé ✓', 'ok');
+    S.clients = await api('GET', '/credits/clients');
+    if (document.querySelector('#p-credits.active')) loadCredits();
     openClientHistory(clientId, clientName);
   } catch (e) { toast(e.message || 'Erreur', 'er'); }
 }
