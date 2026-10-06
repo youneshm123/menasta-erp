@@ -147,7 +147,7 @@ router.get('/', requireAuth, wrap(async (_req, res) => {
     SELECT s.*, u.full_name as opened_by_name,
            (ROW_NUMBER() OVER (ORDER BY s.opened_at ASC))::int AS seq
     FROM shifts s LEFT JOIN users u ON u.id=s.opened_by
-    ORDER BY s.opened_at DESC LIMIT 50
+    ORDER BY s.opened_at DESC
   `);
   res.json(rows);
 }));
