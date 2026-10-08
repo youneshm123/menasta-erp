@@ -397,7 +397,7 @@ router.delete('/:id', requireAuth, wrap(async (req, res) => {
     for (const s of sales)
       await client.query('UPDATE credit_clients SET balance_due=GREATEST(balance_due-$1,0) WHERE id=$2', [s.amount, s.credit_client_id]);
     // Reverse credit payments: the paid amount goes back onto the client's debt.
-    const { rows: pays } = await client.query('SELECT credit_client_id, amount FROM credit_payments WHERE shift_id=$1', [id]);
+    const { rows: pays } = await client.query('SELECT credit_client_id, COALESCE(balance_applied, amount) AS amount FROM credit_payments WHERE shift_id=$1', [id]);
     for (const p of pays)
       await client.query('UPDATE credit_clients SET balance_due=balance_due+$1 WHERE id=$2', [p.amount, p.credit_client_id]);
 

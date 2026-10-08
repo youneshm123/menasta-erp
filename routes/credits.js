@@ -191,39 +191,97 @@ router.post('/clients/:id/remind', requireAuth, wrap(async (req, res) => {
 }));
 
 // ── Payments ──────────────────────────────────────────────────
+// Anti-doublon, en trois couches:
+//  1. client_uid  — id généré par le navigateur à l'ouverture du formulaire. Un
+//     double-clic ou un renvoi réseau (connexion lente) renvoie le paiement déjà
+//     enregistré au lieu d'en créer un second.
+//  2. verrou FOR UPDATE sur le client — deux paiements simultanés du même client
+//     passent l'un après l'autre, le solde ne peut pas être lu/écrit en parallèle.
+//  3. même client + même montant saisi il y a < 10 min — refusé (409) sauf si
+//     l'utilisateur confirme (force=true): c'est le paiement retapé par erreur.
+const DUP_WINDOW_MIN = 10;
+const UID_RE = /^[A-Za-z0-9_-]{8,64}$/;
+
 router.post('/payments', requireAuth, wrap(async (req, res) => {
-  const { credit_client_id, shift_id, notes, payment_date } = req.body || {};
+  const { credit_client_id, shift_id, notes, payment_date, client_uid, force } = req.body || {};
   const amount = parseFloat(req.body.amount);
   if (!credit_client_id || !amount || amount <= 0) return res.status(400).json({ error: 'Client et montant valide requis' });
-
-  const { rows: cr } = await pool.query('SELECT * FROM credit_clients WHERE id=$1', [credit_client_id]);
-  if (!cr.length) return res.status(404).json({ error: 'Client introuvable' });
-
+  const uid = typeof client_uid === 'string' && UID_RE.test(client_uid) ? client_uid : null;
   // Paiement hors poste: la date réelle peut différer du jour de saisie.
   const pDate = /^\d{4}-\d{2}-\d{2}$/.test(payment_date || '') ? payment_date : null;
-  const { rows: [{ id }] } = await pool.query(`
-    INSERT INTO credit_payments (credit_client_id,shift_id,amount,recorded_by,notes,payment_time)
-    VALUES ($1,$2,$3,$4,$5, COALESCE($6::date + NOW()::time, NOW())) RETURNING id
-  `, [credit_client_id, shift_id||null, amount, req.user.id, notes||null, pDate]);
 
-  await pool.query('UPDATE credit_clients SET balance_due=GREATEST(balance_due-$1, 0) WHERE id=$2', [amount, credit_client_id]);
+  const db = await pool.connect();
+  try {
+    await db.query('BEGIN');
+    const { rows: cr } = await db.query('SELECT id, balance_due FROM credit_clients WHERE id=$1 FOR UPDATE', [credit_client_id]);
+    if (!cr.length) { await db.query('ROLLBACK'); return res.status(404).json({ error: 'Client introuvable' }); }
 
-  const { rows: [p] } = await pool.query('SELECT * FROM credit_payments WHERE id=$1', [id]);
-  res.status(201).json(p);
+    if (uid) {
+      const { rows: [already] } = await db.query('SELECT * FROM credit_payments WHERE client_uid=$1', [uid]);
+      if (already) { await db.query('COMMIT'); return res.status(200).json({ ...already, replayed: true }); }
+    }
+
+    if (!force) {
+      const { rows: [recent] } = await db.query(`
+        SELECT id, amount, notes,
+               EXTRACT(EPOCH FROM NOW() - COALESCE(created_at, payment_time))::int AS seconds_ago
+        FROM credit_payments
+        WHERE credit_client_id=$1 AND ABS(amount - $2) < 0.005
+          AND COALESCE(created_at, payment_time) > NOW() - make_interval(mins => $3)
+        ORDER BY COALESCE(created_at, payment_time) DESC LIMIT 1
+      `, [credit_client_id, amount, DUP_WINDOW_MIN]);
+      if (recent) {
+        await db.query('ROLLBACK');
+        return res.status(409).json({ error: 'Paiement identique déjà enregistré', duplicate: true, recent });
+      }
+    }
+
+    // The balance never goes below 0: keep what was really deducted so an
+    // annulation restores exactly that.
+    const applied = Math.min(amount, Math.max(parseFloat(cr[0].balance_due) || 0, 0));
+    const { rows: [p] } = await db.query(`
+      INSERT INTO credit_payments (credit_client_id,shift_id,amount,recorded_by,notes,payment_time,client_uid,balance_applied)
+      VALUES ($1,$2,$3,$4,$5, COALESCE($6::date + NOW()::time, NOW()), $7, $8) RETURNING *
+    `, [credit_client_id, shift_id||null, amount, req.user.id, notes||null, pDate, uid, applied]);
+    await db.query('UPDATE credit_clients SET balance_due=balance_due-$1 WHERE id=$2', [applied, credit_client_id]);
+    await db.query('COMMIT');
+    res.status(201).json(p);
+  } catch (e) {
+    await db.query('ROLLBACK').catch(() => {});
+    // Same uid raced in from another connection: hand back the winner.
+    if (e.code === '23505' && uid) {
+      const { rows: [already] } = await pool.query('SELECT * FROM credit_payments WHERE client_uid=$1', [uid]);
+      if (already) return res.status(200).json({ ...already, replayed: true });
+    }
+    throw e;
+  } finally {
+    db.release();
+  }
 }));
 
 router.delete('/payments/:id', requireAuth, wrap(async (req, res) => {
-  const { rows } = await pool.query(
-    'SELECT cp.*, s.status FROM credit_payments cp LEFT JOIN shifts s ON s.id=cp.shift_id WHERE cp.id=$1', [req.params.id]
-  );
-  const pay = rows[0];
-  if (!pay) return res.status(404).json({ error: 'Paiement introuvable' });
-  // Block deletion only when it belongs to a poste that is already closed.
-  if (pay.shift_id && pay.status !== 'open') return res.status(400).json({ error: "Impossible d'annuler: poste fermé" });
-  // Reverse the payment: the amount goes back onto the client's debt.
-  await pool.query('UPDATE credit_clients SET balance_due=balance_due+$1 WHERE id=$2', [pay.amount, pay.credit_client_id]);
-  await pool.query('DELETE FROM credit_payments WHERE id=$1', [pay.id]);
-  res.json({ ok: true });
+  const db = await pool.connect();
+  try {
+    await db.query('BEGIN');
+    const { rows } = await db.query(
+      'SELECT cp.*, s.status FROM credit_payments cp LEFT JOIN shifts s ON s.id=cp.shift_id WHERE cp.id=$1 FOR UPDATE OF cp', [req.params.id]
+    );
+    const pay = rows[0];
+    if (!pay) { await db.query('ROLLBACK'); return res.status(404).json({ error: 'Paiement introuvable' }); }
+    // Block deletion only when it belongs to a poste that is already closed.
+    if (pay.shift_id && pay.status !== 'open') { await db.query('ROLLBACK'); return res.status(400).json({ error: "Impossible d'annuler: poste fermé" }); }
+    // Reverse the payment: what it took off the debt goes back on.
+    await db.query('UPDATE credit_clients SET balance_due=balance_due+$1 WHERE id=$2',
+      [pay.balance_applied ?? pay.amount, pay.credit_client_id]);
+    await db.query('DELETE FROM credit_payments WHERE id=$1', [pay.id]);
+    await db.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await db.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    db.release();
+  }
 }));
 
 // Recherche dans TOUS les paiements clients (module « Paiements »).

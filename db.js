@@ -377,6 +377,18 @@ async function initDB() {
   // Offline QR scan sales carry a client-generated id so replays don't double-count.
   await pgPool.query('ALTER TABLE product_sales ADD COLUMN IF NOT EXISTS client_uid TEXT');
   try { await pgPool.query('CREATE UNIQUE INDEX IF NOT EXISTS product_sales_client_uid_idx ON product_sales(client_uid) WHERE client_uid IS NOT NULL'); } catch(_) {}
+  // Client payments: a client-generated id per submission so a double-click or a
+  // network retry on a slow connection returns the first payment instead of
+  // recording it twice.
+  await pgPool.query('ALTER TABLE credit_payments ADD COLUMN IF NOT EXISTS client_uid TEXT');
+  try { await pgPool.query('CREATE UNIQUE INDEX IF NOT EXISTS credit_payments_client_uid_idx ON credit_payments(client_uid) WHERE client_uid IS NOT NULL'); } catch(_) {}
+  // What the payment really took off balance_due (it is clamped at 0), so an
+  // annulation gives back exactly that and not the full amount. NULL = legacy row.
+  await pgPool.query('ALTER TABLE credit_payments ADD COLUMN IF NOT EXISTS balance_applied REAL');
+  // Real entry time (payment_time can be backdated) — used to spot re-typed duplicates.
+  // No default on ADD so existing rows stay NULL instead of all looking "just entered".
+  await pgPool.query('ALTER TABLE credit_payments ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ');
+  await pgPool.query('ALTER TABLE credit_payments ALTER COLUMN created_at SET DEFAULT NOW()');
   await pgPool.query('ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS bank_ref TEXT');
   await pgPool.query(`
     CREATE TABLE IF NOT EXISTS bank_import_rules (

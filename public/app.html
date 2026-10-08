@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html><!-- v34 -->
+﻿<!DOCTYPE html><!-- v35 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
-<script>if(localStorage.getItem('_av')!=='34'){localStorage.setItem('_av','34');location.reload(true);}</script>
+<script>if(localStorage.getItem('_av')!=='35'){localStorage.setItem('_av','35');location.reload(true);}</script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b4fcf'/><text y='23' x='5' font-size='20'>⛽</text></svg>"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>MENASTA</title>
@@ -595,7 +595,7 @@
     </div>
     <div class="modal-ft">
       <button class="btn btn-g" onclick="closeModal('m-credit-payment')">Annuler</button>
-      <button class="btn btn-s" onclick="submitPayment()">✅ Valider Paiement</button>
+      <button class="btn btn-s" id="cp-submit-btn" onclick="submitPayment()">✅ Valider Paiement</button>
     </div>
   </div>
 </div>
@@ -1000,14 +1000,56 @@ let _liveCredit = 0, _liveProduct = 0, _liveExp = 0, _liveAvance = 0, _livePayme
 const token = () => localStorage.getItem('fm_token');
 const headers = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() });
 
-async function api(method, path, body) {
+// `retries` re-sends the request when the network drops (connexion lente).
+// Only pass it for requests the server de-duplicates (e.g. a client_uid).
+async function api(method, path, body, { retries = 0 } = {}) {
   const opts = { method, headers: headers() };
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch('/api' + path, opts);
+  let r;
+  for (let attempt = 0; ; attempt++) {
+    try { r = await fetch('/api' + path, opts); }
+    catch (e) {
+      if (attempt >= retries) throw new Error('Connexion perdue — réessayez');
+      await new Promise(ok => setTimeout(ok, 800 * 2 ** attempt));
+      continue;
+    }
+    // Proxy timeout pages (502/503/504) on a slow link: the request may or may not have landed.
+    if (r.status >= 502 && r.status <= 504 && attempt < retries) {
+      await new Promise(ok => setTimeout(ok, 800 * 2 ** attempt));
+      continue;
+    }
+    break;
+  }
   if (r.status === 401) { logout(); throw new Error('Session expirée'); }
-  const data = await r.json();
-  if (!r.ok) throw new Error(data.error || 'Erreur serveur');
+  let data = {};
+  try { data = await r.json(); } catch (_) {}
+  if (!r.ok) {
+    const err = new Error(data.error || `Erreur serveur (${r.status})`);
+    err.status = r.status; err.data = data;
+    throw err;
+  }
   return data;
+}
+
+// Unique id for one payment submission, so the server can ignore repeats.
+function newUid() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+}
+
+// POST a client payment; on a likely duplicate (same client, same amount, a few
+// minutes ago) ask before recording it anyway.
+async function postCreditPayment(body, clientName) {
+  try {
+    return await api('POST', '/credits/payments', body, { retries: 3 });
+  } catch (e) {
+    if (e.status !== 409 || !e.data || !e.data.duplicate) throw e;
+    const r = e.data.recent || {};
+    const ago = r.seconds_ago < 60 ? r.seconds_ago + ' s' : Math.round(r.seconds_ago / 60) + ' min';
+    const ok = confirm(`⚠️ Doublon probable\n\nUn paiement de ${fmt(r.amount)} MAD pour ${clientName || 'ce client'} a déjà été enregistré il y a ${ago}${r.notes ? ' (« ' + r.notes + ' »)' : ''}.\n\nEnregistrer quand même un DEUXIÈME paiement ?`);
+    if (!ok) { const c = new Error('Doublon ignoré'); c.cancelled = true; throw c; }
+    return await api('POST', '/credits/payments', { ...body, force: true }, { retries: 3 });
+  }
 }
 
 function logout() { try{navigator.sendBeacon?navigator.sendBeacon('/api/auth/logout'):fetch('/api/auth/logout',{method:'POST',keepalive:true});}catch(e){} localStorage.removeItem('fm_token'); localStorage.removeItem('fm_user'); window.location.href = '/'; }
@@ -2717,8 +2759,12 @@ async function deleteClient(id, name) {
   } catch(e) { toast(e.message, 'er'); }
 }
 
+let _payUid = null, _payName = '', _payBusy = false;
+
 function openPayment(clientId, name, balance) {
   paymentClientId = clientId;
+  _payUid = newUid();   // one id per opening of the form: double-click = same payment
+  _payName = name;
   document.getElementById('cp-title').textContent = '💰 ' + name;
   const inp = document.getElementById('cp-amount');
   inp.value = '';
@@ -2731,19 +2777,30 @@ function openPayment(clientId, name, balance) {
 }
 
 async function submitPayment() {
+  if (_payBusy) return;
   const amount = parseFloat(document.getElementById('cp-amount').value);
   if (!amount || amount <= 0) { toast('Montant invalide', 'er'); return; }
+  const btn = document.getElementById('cp-submit-btn');
+  _payBusy = true;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enregistrement…'; }
   try {
-    await api('POST', '/credits/payments', {
+    const p = await postCreditPayment({
       credit_client_id: paymentClientId,
       amount,
       shift_id: null,   // paiement client = réduit la dette seulement, n'entre pas dans le poste
-      notes: document.getElementById('cp-notes').value
-    });
+      notes: document.getElementById('cp-notes').value,
+      client_uid: _payUid
+    }, _payName);
     closeModal('m-credit-payment');
-    toast('Paiement de ' + fmt(amount) + ' MAD enregistré');
+    toast(p.replayed ? 'Paiement déjà enregistré ✓ (pas de doublon)' : 'Paiement de ' + fmt(amount) + ' MAD enregistré');
     loadCredits();
-  } catch (e) { toast(e.message, 'er'); }
+  } catch (e) {
+    if (e.cancelled) { closeModal('m-credit-payment'); toast('Paiement non enregistré (doublon)', 'wn'); }
+    else toast(e.message, 'er');
+  } finally {
+    _payBusy = false;
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Valider Paiement'; }
+  }
 }
 
 let csPending = [];
@@ -2800,7 +2857,7 @@ function csAddToList() {
   // Date saisie seulement hors poste (sinon la date vient du poste).
   const dateRow = document.getElementById('cs-date-row');
   const opDay = dateRow && dateRow.style.display !== 'none' ? (document.getElementById('cs-date').value || null) : null;
-  csPending.push({ mode: _csMode, client_id: clientId, client_name: clientName, pump_id: _csMode === 'payment' ? null : (pumpId ? parseInt(pumpId) : null), product_type: _csMode === 'payment' ? 'paiement' : _csFuelType, amount, notes, op_date: opDay });
+  csPending.push({ uid: newUid(), mode: _csMode, client_id: clientId, client_name: clientName, pump_id: _csMode === 'payment' ? null : (pumpId ? parseInt(pumpId) : null), product_type: _csMode === 'payment' ? 'paiement' : _csFuelType, amount, notes, op_date: opDay });
   document.getElementById('cs-client-input').value = '';
   document.getElementById('cs-client-id').value = '';
   document.getElementById('cs-pump-id').value = '';
@@ -2839,8 +2896,10 @@ function updateCsPendingUI() {
 
 function csRemovePending(i) { csPending.splice(i,1); updateCsPendingUI(); }
 
+let _csSaving = false;
 async function csSubmitAll() {
-  if (!csPending.length) return;
+  if (!csPending.length || _csSaving) return;
+  _csSaving = true;
   // A credit sale/payment only counts in the open poste when it is entered from
   // the poste page itself. Entered from the client module (Créances), it records
   // against the client only (balance + historique) and is NOT added to the poste.
@@ -2849,14 +2908,16 @@ async function csSubmitAll() {
   const btn = document.getElementById('cs-submit-btn');
   btn.disabled = true; btn.textContent = 'Enregistrement…';
   let saved = 0;
+  const failed = [];
   for (const c of csPending) {
     try {
       if (c.mode === 'payment') {
-        await api('POST', '/credits/payments', {
+        await postCreditPayment({
           shift_id: shiftId, credit_client_id: c.client_id,
           amount: c.amount, notes: c.notes,
-          payment_date: shiftId ? null : c.op_date
-        });
+          payment_date: shiftId ? null : c.op_date,
+          client_uid: c.uid
+        }, c.client_name);
       } else {
         await api('POST', '/credits/sales', {
           shift_id: shiftId, credit_client_id: c.client_id,
@@ -2866,12 +2927,23 @@ async function csSubmitAll() {
         });
       }
       saved++;
-    } catch(e) { toast(`${c.client_name}: ${e.message}`, 'er'); }
+    } catch(e) {
+      if (!e.cancelled) { failed.push(c); toast(`${c.client_name}: ${e.message}`, 'er'); }
+    }
   }
-  csPending = []; _csFuelType = '';
-  updateCsPendingUI();
-  csCancel();
-  toast(`${saved} vente(s) crédit enregistrée(s) ✓`, 'g');
+  _csSaving = false;
+  if (failed.length) {
+    // Keep the lines that did not go through so they can be re-sent; payments
+    // keep their uid, so a re-send never doubles one that actually landed.
+    csPending = failed;
+    updateCsPendingUI();
+    toast(`${saved} enregistrée(s) — ${failed.length} en attente, cliquez « Enregistrer tout » pour réessayer`, 'wn');
+  } else {
+    csPending = []; _csFuelType = '';
+    updateCsPendingUI();
+    csCancel();
+    toast(`${saved} vente(s) crédit enregistrée(s) ✓`, 'g');
+  }
   if (document.querySelector('#p-credits.active')) loadCredits();
   if (document.querySelector('#p-shift.active')) loadShiftPage();
 }
