@@ -81,6 +81,7 @@
     <div class="nav-item active" onclick="showTab('liste',this)"><span class="ni"><i data-lucide="clipboard-list"></i></span> Liste Factures</div>
     <div class="nav-item" onclick="newFacture(this)"><span class="ni"><i data-lucide="plus-circle"></i></span> Nouvelle Facture</div>
     <div class="nav-item" onclick="showTab('clients',this)"><span class="ni"><i data-lucide="users"></i></span> Clients</div>
+    <div class="nav-item" id="nav-historique" onclick="showTab('historique',this)"><span class="ni"><i data-lucide="file-spreadsheet"></i></span> Historique Client</div>
     <div class="nav-item" onclick="showTab('tabac',this)"><span class="ni"><i data-lucide="cigarette"></i></span> Ventes Tabac</div>
     <div class="nav-item" onclick="showTab('cafe',this)"><span class="ni"><i data-lucide="coffee"></i></span> Relevé Café</div>
     <div class="nav-item" onclick="showTab('service',this)"><span class="ni"><i data-lucide="droplets"></i></span> Relevé Service</div>
@@ -230,6 +231,30 @@
           <tbody id="clients-body"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- HISTORIQUE CLIENT (factures par mois + export Excel) -->
+    <div id="tab-historique" class="tab-pane">
+      <div class="form-card" style="padding:16px 20px">
+        <h3>📊 Historique des factures par client</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <div class="fg" style="flex:1;min-width:240px"><label>Client</label>
+            <input type="text" id="hist-client" list="hist-clients-dl" placeholder="Tous les clients (ou tapez un nom)" autocomplete="off" onchange="loadHistorique()"/>
+            <datalist id="hist-clients-dl"></datalist>
+          </div>
+          <div class="fg" style="min-width:150px"><label>Du mois</label><input type="month" id="hist-from" onchange="loadHistorique()"/></div>
+          <div class="fg" style="min-width:150px"><label>Au mois</label><input type="month" id="hist-to" onchange="loadHistorique()"/></div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-g btn-sm" onclick="setHistPeriod(1)">1 mois</button>
+            <button class="btn btn-g btn-sm" onclick="setHistPeriod(3)">3 mois</button>
+            <button class="btn btn-g btn-sm" onclick="setHistPeriod(6)">6 mois</button>
+          </div>
+          <button class="btn btn-p btn-sm" onclick="loadHistorique()">Afficher</button>
+          <button class="btn btn-sm" id="hist-xlsx-btn" style="background:#15803d;color:#fff;border:none;font-weight:700" onclick="exportHistoriqueExcel()">📥 Exporter Excel</button>
+        </div>
+      </div>
+      <div id="hist-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div>
+      <div id="hist-months"></div>
     </div>
 
     <!-- TABAC HISTORY -->
@@ -386,6 +411,7 @@ function showTab(name, el) {
   if (name === 'liste')    loadListe();
   if (name === 'nouvelle') initNouvelleFacture();
   if (name === 'clients')  loadClientsList();
+  if (name === 'historique') initHistorique();
   if (name === 'tabac')  { loadTabacHistory(); loadReleves('tabac'); }
   if (name === 'cafe')     loadReleves('cafe');
   if (name === 'service')  loadReleves('service');
@@ -542,6 +568,7 @@ async function loadClientsList() {
     <td>${esc(c.ice || '—')}</td>
     <td>${esc(c.adresse || '—')}</td>
     <td class="num" style="display:flex;gap:4px;justify-content:flex-end">
+      <button class="btn btn-xs" style="background:#dcfce7;color:#15803d;border:none;cursor:pointer;padding:3px 8px;border-radius:5px;font-weight:700" title="Historique des factures" onclick="openHistorique(_clientsList.find(x => x.id === ${c.id}).name)">📊 Historique</button>
       <button class="btn btn-g btn-xs" onclick="editClient(${c.id})">✏️</button>
       <button class="btn btn-d btn-xs" onclick="deleteClient(${c.id})">🗑️</button>
     </td>
@@ -755,6 +782,237 @@ async function loadTabacHistory() {
     <td class="num c-g">${fmt(totBen)} MAD</td>
     <td></td>
   </tr>`;
+}
+
+// ── HISTORIQUE CLIENT (factures par mois + export Excel) ──────
+const MOIS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const ymLabel = ym => { const [y, m] = ym.split('-'); return `${MOIS_FR[+m - 1]} ${y}`; };
+function addMonths(ym, n) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + n, 1));
+  return d.toISOString().slice(0, 7);
+}
+function monthsBetween(from, to) {
+  const out = [];
+  for (let ym = from; ym <= to; ym = addMonths(ym, 1)) out.push(ym);
+  return out;
+}
+let _histData = [], _histQuery = null;
+
+async function initHistorique() {
+  const fromEl = document.getElementById('hist-from'), toEl = document.getElementById('hist-to');
+  if (!toEl.value)   toEl.value   = _today.slice(0, 7);
+  if (!fromEl.value) fromEl.value = addMonths(toEl.value, -2);   // 3 derniers mois, mois en cours inclus
+  // Suggestions : clients enregistrés + tout nom déjà présent sur une facture
+  const [clients, factures] = await Promise.all([A('/api/factures/clients'), _listeFactures.length ? _listeFactures : A('/api/factures')]);
+  const names = new Map();
+  (Array.isArray(clients) ? clients : []).forEach(c => names.set(c.name.trim().toLowerCase(), c.name.trim()));
+  (Array.isArray(factures) ? factures : []).forEach(f => { const n = (f.client_name || '').trim(); if (n && !names.has(n.toLowerCase())) names.set(n.toLowerCase(), n); });
+  document.getElementById('hist-clients-dl').innerHTML =
+    [...names.values()].sort((a, b) => a.localeCompare(b)).map(n => `<option value="${esc(n)}"></option>`).join('');
+  loadHistorique();
+}
+
+function openHistorique(clientName) {
+  document.getElementById('hist-client').value = clientName || '';
+  showTab('historique', document.getElementById('nav-historique'));
+}
+
+function setHistPeriod(n) {
+  const to = _today.slice(0, 7);
+  document.getElementById('hist-to').value = to;
+  document.getElementById('hist-from').value = addMonths(to, -(n - 1));
+  loadHistorique();
+}
+
+async function loadHistorique() {
+  const client = document.getElementById('hist-client').value.trim();
+  const from = document.getElementById('hist-from').value, to = document.getElementById('hist-to').value;
+  const box = document.getElementById('hist-months');
+  if (!from || !to || from > to) { box.innerHTML = '<div class="section" style="padding:24px;text-align:center;color:var(--muted)">Choisissez une période valide.</div>'; return; }
+  box.innerHTML = '<div class="section" style="padding:24px;text-align:center;color:var(--muted)">Chargement…</div>';
+  const q = new URLSearchParams({ from, to, client });
+  const data = await A('/api/factures/historique?' + q);
+  if (!Array.isArray(data)) { box.innerHTML = ''; toast(data?.error || 'Erreur de chargement', 'er'); return; }
+  _histData = data;
+  _histQuery = { client, from, to };
+  renderHistorique();
+}
+
+// Regroupe les factures par mois (YYYY-MM), tous les mois de la période inclus
+function histByMonth() {
+  const groups = monthsBetween(_histQuery.from, _histQuery.to).map(ym => ({ ym, factures: [] }));
+  const idx = Object.fromEntries(groups.map((g, i) => [g.ym, i]));
+  _histData.forEach(f => { const i = idx[String(f.facture_date).slice(0, 7)]; if (i !== undefined) groups[i].factures.push(f); });
+  return groups;
+}
+const sumOf = (arr, k) => arr.reduce((s, x) => s + (parseFloat(x[k]) || 0), 0);
+const prixTtc = l => (parseFloat(l.prix_ht) || 0) * (1 + (parseFloat(l.taux_tva) || 0) / 100);
+
+function renderHistorique() {
+  const { client } = _histQuery;
+  const allClients = !client;
+  const groups = histByMonth();
+  const chip = (label, val, bg, fg) => `<div style="background:${bg};color:${fg};padding:10px 16px;border-radius:10px;font-weight:800;font-size:13px">${label} : <span style="font-size:15px">${val}</span></div>`;
+  document.getElementById('hist-summary').innerHTML =
+    chip('Client', esc(client || 'Tous les clients'), '#eef2ff', '#3730a3') +
+    chip('Factures', _histData.length, '#f1f5f9', '#0f172a') +
+    chip('Total HT', fmt(sumOf(_histData, 'total_ht')) + ' MAD', '#f1f5f9', '#0f172a') +
+    chip('Total TTC', fmt(sumOf(_histData, 'total_ttc')) + ' MAD', '#ecfdf5', '#15803d');
+
+  document.getElementById('hist-months').innerHTML = groups.slice().reverse().map(g => {
+    const head = `<div class="s-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="s-title">${ymLabel(g.ym)}</span>
+      <span style="font-size:13px;font-weight:700;color:var(--muted)">${g.factures.length} facture(s) · <span class="c-b">${fmt(sumOf(g.factures, 'total_ttc'))} MAD TTC</span></span>
+    </div>`;
+    if (!g.factures.length) return `<div class="section">${head}<div style="padding:18px;text-align:center;color:var(--muted)">Aucune facture ce mois-ci</div></div>`;
+    const rows = g.factures.map(f => {
+      const lignes = f.lignes.length ? f.lignes : [null];
+      return lignes.map((l, i) => `<tr${i === 0 ? ' style="border-top:2px solid var(--border)"' : ''}>
+        ${i === 0 ? `<td rowspan="${lignes.length}"><strong>${esc(f.numero)}</strong></td><td rowspan="${lignes.length}">${fmtDate(f.facture_date)}</td>${allClients ? `<td rowspan="${lignes.length}">${esc(f.client_name)}</td>` : ''}` : ''}
+        <td>${l ? esc(l.designation) : '—'}</td>
+        <td class="num">${l ? fmt(l.quantite, 2) : ''}</td>
+        <td class="num">${l ? fmt(prixTtc(l)) : ''}</td>
+        <td class="num">${l ? fmt(l.total_ht) : ''}</td>
+        <td class="num fw8">${l ? fmt(l.montant_ttc) : ''}</td>
+        ${i === 0 ? `<td rowspan="${lignes.length}" class="num fw8 c-b">${fmt(f.total_ttc)} MAD</td>` : ''}
+      </tr>`).join('');
+    }).join('');
+    return `<div class="section">${head}<div style="overflow-x:auto">
+      <table class="t" data-no-tools>
+        <thead><tr><th>N° Facture</th><th>Date</th>${allClients ? '<th>Client</th>' : ''}<th>Désignation</th><th class="num">Quantité</th><th class="num">Prix U. TTC</th><th class="num">Montant HT</th><th class="num">Montant TTC</th><th class="num">Total Facture</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="background:#f8fafc;font-weight:800"><td colspan="${allClients ? 6 : 5}">Total ${ymLabel(g.ym)}</td>
+          <td class="num">${fmt(sumOf(g.factures, 'total_ht'))}</td><td class="num">${fmt(sumOf(g.factures, 'total_ttc'))}</td><td class="num c-b">${fmt(sumOf(g.factures, 'total_ttc'))} MAD</td></tr></tfoot>
+      </table></div></div>`;
+  }).join('');
+}
+
+// ExcelJS chargé à la demande (seulement au clic sur Export)
+function loadExcelJS() {
+  if (window.ExcelJS) return Promise.resolve();
+  return new Promise((ok, ko) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+    s.onload = ok; s.onerror = () => ko(new Error('Impossible de charger ExcelJS'));
+    document.head.appendChild(s);
+  });
+}
+
+async function exportHistoriqueExcel() {
+  if (!_histQuery) await loadHistorique();
+  if (!_histQuery) return;
+  if (!_histData.length) { toast('Aucune facture sur cette période', 'er'); return; }
+  const btn = document.getElementById('hist-xlsx-btn');
+  btn.disabled = true; btn.textContent = '⏳ Export…';
+  try {
+    await loadExcelJS();
+    const { client, from, to } = _histQuery;
+    const allClients = !client;
+    const groups = histByMonth();
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'MENASTA ERP';
+    const MONEY = '#,##0.00';
+    const HEAD_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+    const TOT_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+    const thin = { style: 'thin', color: { argb: 'FFCBD5E1' } };
+    const BORDER = { top: thin, left: thin, bottom: thin, right: thin };
+    const periode = from === to ? ymLabel(from) : `${ymLabel(from)} → ${ymLabel(to)}`;
+    const toDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+
+    const titleBlock = (ws, title, ncols) => {
+      ws.mergeCells(1, 1, 1, ncols);
+      Object.assign(ws.getCell(1, 1), { value: title });
+      ws.getCell(1, 1).font = { bold: true, size: 14, color: { argb: 'FF1E3A8A' } };
+      ws.getCell(2, 1).value = 'STE MENASTA SARL AU';
+      ws.getCell(2, 1).font = { bold: true };
+      ws.getCell(3, 1).value = 'Client : ' + (client || 'Tous les clients');
+      ws.getCell(4, 1).value = 'Période : ' + periode;
+      return 6;   // ligne de l'en-tête du tableau (ligne 5 vide)
+    };
+    const r2 = n => Math.round(n * 100) / 100;
+    const headerRow = (ws, hr, values) => { const row = ws.getRow(hr); row.values = values; styleHeader(row); };
+    const styleHeader = row => row.eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = HEAD_FILL; c.border = BORDER; c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; });
+    const styleTotal  = row => row.eachCell({ includeEmpty: true }, c => { c.font = { bold: true }; c.fill = TOT_FILL; c.border = BORDER; });
+    const colLetter = n => String.fromCharCode(64 + n);
+
+    // ── Feuille 1 : Résumé par mois ──
+    const rs = wb.addWorksheet('Résumé', { views: [{ state: 'frozen', ySplit: 6 }] });
+    const sr = titleBlock(rs, 'Récapitulatif des factures par mois', 5);
+    headerRow(rs, sr, ['Mois', 'Nb factures', 'Total HT', 'TVA', 'Total TTC']);
+    const firstSum = sr + 1;
+    groups.forEach(g => {
+      const row = rs.addRow([ymLabel(g.ym), g.factures.length, r2(sumOf(g.factures, 'total_ht')), r2(sumOf(g.factures, 'montant_tva')), r2(sumOf(g.factures, 'total_ttc'))]);
+      row.eachCell(c => { c.border = BORDER; });
+    });
+    const lastSum = firstSum + groups.length - 1;
+    const totRow = rs.addRow(['TOTAL',
+      { formula: `SUM(B${firstSum}:B${lastSum})`, result: _histData.length },
+      { formula: `SUM(C${firstSum}:C${lastSum})`, result: r2(sumOf(_histData, 'total_ht')) },
+      { formula: `SUM(D${firstSum}:D${lastSum})`, result: r2(sumOf(_histData, 'montant_tva')) },
+      { formula: `SUM(E${firstSum}:E${lastSum})`, result: r2(sumOf(_histData, 'total_ttc')) }]);
+    styleTotal(totRow);
+    [20, 13, 16, 14, 16].forEach((w, i) => { rs.getColumn(i + 1).width = w; });
+    for (let i = firstSum; i <= lastSum + 1; i++) ['C', 'D', 'E'].forEach(c => { rs.getCell(c + i).numFmt = MONEY; });
+
+    // ── Une feuille par mois : chaque ligne de facture ──
+    const headers = ['N° Facture', 'Date', ...(allClients ? ['Client'] : []), 'Désignation', 'Quantité', 'Prix U. HT', 'Prix U. TTC', 'TVA %', 'Montant HT', 'Montant TVA', 'Montant TTC'];
+    const widths  = [16, 12, ...(allClients ? [28] : []), 30, 11, 12, 12, 8, 14, 13, 14];
+    const moneyCols = ['Prix U. HT', 'Prix U. TTC', 'Montant HT', 'Montant TVA', 'Montant TTC'];
+    const usedNames = new Set();
+    groups.filter(g => g.factures.length).forEach(g => {
+      let name = ymLabel(g.ym).slice(0, 31);
+      while (usedNames.has(name)) name = name.slice(0, 28) + '_' + usedNames.size;
+      usedNames.add(name);
+      const ws = wb.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 6 }] });
+      const hr = titleBlock(ws, `Factures — ${ymLabel(g.ym)}`, headers.length);
+      headerRow(ws, hr, headers);
+      const first = hr + 1;
+      g.factures.forEach(f => {
+        (f.lignes.length ? f.lignes : [null]).forEach(l => {
+          const row = ws.addRow([f.numero, toDate(f.facture_date), ...(allClients ? [f.client_name] : []),
+            l ? l.designation : '', l ? +l.quantite : null, l ? +l.prix_ht : null, l ? +prixTtc(l).toFixed(2) : null,
+            l ? +l.taux_tva : null, l ? +l.total_ht : null, l ? +l.montant_tva : null, l ? +l.montant_ttc : null]);
+          row.eachCell({ includeEmpty: true }, c => { c.border = BORDER; });
+        });
+      });
+      const last = ws.rowCount;
+      const totCells = headers.map((h, i) => {
+        if (i === 0) return `TOTAL ${ymLabel(g.ym).toUpperCase()}`;
+        if (i === 1) return `${g.factures.length} facture(s)`;
+        if (['Montant HT', 'Montant TVA', 'Montant TTC'].includes(h)) {
+          const L = colLetter(i + 1);
+          const key = { 'Montant HT': 'total_ht', 'Montant TVA': 'montant_tva', 'Montant TTC': 'total_ttc' }[h];
+          return { formula: `SUM(${L}${first}:${L}${last})`, result: r2(sumOf(g.factures, key)) };
+        }
+        return null;
+      });
+      styleTotal(ws.addRow(totCells));
+      headers.forEach((h, i) => {
+        const col = ws.getColumn(i + 1);
+        col.width = widths[i];
+        if (moneyCols.includes(h)) col.numFmt = MONEY;
+        if (h === 'Quantité') col.numFmt = '#,##0.00';
+        if (h === 'Date') col.numFmt = 'dd/mm/yyyy';
+      });
+      ws.autoFilter = { from: { row: hr, column: 1 }, to: { row: last, column: headers.length } };
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const safe = (client || 'Tous').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') || 'Client';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `Factures_${safe}_${from}_${to}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast('Fichier Excel exporté ✓');
+  } catch (e) {
+    console.error(e);
+    toast('Export Excel échoué : ' + e.message, 'er');
+  } finally {
+    btn.disabled = false; btn.textContent = '📥 Exporter Excel';
+  }
 }
 
 // ── LISTE ─────────────────────────────────────────────────────

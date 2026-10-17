@@ -125,6 +125,35 @@ router.delete('/releves/:id', requireAuth, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ── Historique client : factures + lignes sur une période de mois ──
+// GET /historique?from=YYYY-MM&to=YYYY-MM&client=<nom>  (client vide = tous)
+router.get('/historique', requireAuth, wrap(async (req, res) => {
+  const from = String(req.query.from || ''), to = String(req.query.to || '');
+  if (!/^\d{4}-\d{2}$/.test(from) || !/^\d{4}-\d{2}$/.test(to) || from > to)
+    return res.status(400).json({ error: 'Période invalide' });
+  const client = String(req.query.client || '').trim();
+
+  const params = [from + '-01', to + '-01'];
+  let where = "facture_date >= $1::date AND facture_date < ($2::date + INTERVAL '1 month')";
+  if (client) {
+    params.push(client.toLowerCase());
+    where += ' AND LOWER(TRIM(client_name)) = $3';
+  }
+  const { rows: factures } = await pool.query(
+    `SELECT id, numero, to_char(facture_date,'YYYY-MM-DD') AS facture_date, client_name, client_ice,
+            total_ht, montant_tva, total_ttc
+     FROM factures WHERE ${where}
+     ORDER BY factures.facture_date, factures.id`, params);
+
+  const ids = factures.map(f => f.id);
+  const { rows: lignes } = ids.length
+    ? await pool.query('SELECT * FROM facture_lignes WHERE facture_id = ANY($1::int[]) ORDER BY id', [ids])
+    : { rows: [] };
+  const byFacture = {};
+  for (const l of lignes) (byFacture[l.facture_id] ||= []).push(l);
+  res.json(factures.map(f => ({ ...f, lignes: byFacture[f.id] || [] })));
+}));
+
 // ── Lubrifiant products are pulled from the shared /api/products stock ──
 // (Huiles, Lubrifiants, Filtres, etc.) — no separate facture catalogue.
 
