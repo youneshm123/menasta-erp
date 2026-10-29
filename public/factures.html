@@ -82,6 +82,7 @@
     <div class="nav-item" onclick="newFacture(this)"><span class="ni"><i data-lucide="plus-circle"></i></span> Nouvelle Facture</div>
     <div class="nav-item" onclick="showTab('clients',this)"><span class="ni"><i data-lucide="users"></i></span> Clients</div>
     <div class="nav-item" id="nav-historique" onclick="showTab('historique',this)"><span class="ni"><i data-lucide="file-spreadsheet"></i></span> Historique Client</div>
+    <div class="nav-item" onclick="showTab('prix',this)"><span class="ni"><i data-lucide="trending-up"></i></span> Historique Prix</div>
     <div class="nav-item" onclick="showTab('tabac',this)"><span class="ni"><i data-lucide="cigarette"></i></span> Ventes Tabac</div>
     <div class="nav-item" onclick="showTab('cafe',this)"><span class="ni"><i data-lucide="coffee"></i></span> Relevé Café</div>
     <div class="nav-item" onclick="showTab('service',this)"><span class="ni"><i data-lucide="droplets"></i></span> Relevé Service</div>
@@ -254,7 +255,27 @@
         </div>
       </div>
       <div id="hist-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div>
+      <div id="hist-clients"></div>
       <div id="hist-months"></div>
+    </div>
+
+    <!-- HISTORIQUE PRIX CARBURANT (reconstruit depuis les postes) -->
+    <div id="tab-prix" class="tab-pane">
+      <div class="form-card" style="padding:16px 20px">
+        <h3>⛽ Historique des changements de prix</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <div class="fg" style="min-width:170px"><label>Mois</label><input type="month" id="prix-month" onchange="renderPrix()"/></div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-g btn-sm" onclick="shiftPrixMonth(-1)">◀ Mois préc.</button>
+            <button class="btn btn-g btn-sm" onclick="shiftPrixMonth(1)">Mois suiv. ▶</button>
+            <button class="btn btn-g btn-sm" onclick="document.getElementById('prix-month').value='';renderPrix()">Tout l'historique</button>
+          </div>
+          <button class="btn btn-sm" id="prix-xlsx-btn" style="background:#15803d;color:#fff;border:none;font-weight:700" onclick="exportPrixExcel()">📥 Exporter Excel</button>
+        </div>
+      </div>
+      <div id="prix-current" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div>
+      <div id="prix-month-box"></div>
+      <div id="prix-all-box"></div>
     </div>
 
     <!-- TABAC HISTORY -->
@@ -412,6 +433,7 @@ function showTab(name, el) {
   if (name === 'nouvelle') initNouvelleFacture();
   if (name === 'clients')  loadClientsList();
   if (name === 'historique') initHistorique();
+  if (name === 'prix')     loadPrix();
   if (name === 'tabac')  { loadTabacHistory(); loadReleves('tabac'); }
   if (name === 'cafe')     loadReleves('cafe');
   if (name === 'service')  loadReleves('service');
@@ -848,17 +870,57 @@ function histByMonth() {
 }
 const sumOf = (arr, k) => arr.reduce((s, x) => s + (parseFloat(x[k]) || 0), 0);
 const prixTtc = l => (parseFloat(l.prix_ht) || 0) * (1 + (parseFloat(l.taux_tva) || 0) / 100);
+const chip = (label, val, bg, fg) => `<div style="background:${bg};color:${fg};padding:10px 16px;border-radius:10px;font-weight:800;font-size:13px">${label} : <span style="font-size:15px">${val}</span></div>`;
+
+// Regroupe les factures par client (nom sans casse ni espaces), triés A→Z
+let _histClients = [];
+function histByClient() {
+  const map = new Map();
+  _histData.forEach(f => {
+    const k = (f.client_name || '').trim().toLowerCase();
+    if (!map.has(k)) map.set(k, { name: (f.client_name || '').trim() || '—', ice: '', factures: [] });
+    const c = map.get(k);
+    if (!c.ice && f.client_ice) c.ice = f.client_ice;
+    c.factures.push(f);
+  });
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+function pickHistClient(i) {
+  document.getElementById('hist-client').value = _histClients[i].name;
+  loadHistorique();
+}
 
 function renderHistorique() {
   const { client } = _histQuery;
   const allClients = !client;
   const groups = histByMonth();
-  const chip = (label, val, bg, fg) => `<div style="background:${bg};color:${fg};padding:10px 16px;border-radius:10px;font-weight:800;font-size:13px">${label} : <span style="font-size:15px">${val}</span></div>`;
   document.getElementById('hist-summary').innerHTML =
     chip('Client', esc(client || 'Tous les clients'), '#eef2ff', '#3730a3') +
     chip('Factures', _histData.length, '#f1f5f9', '#0f172a') +
     chip('Total HT', fmt(sumOf(_histData, 'total_ht')) + ' MAD', '#f1f5f9', '#0f172a') +
     chip('Total TTC', fmt(sumOf(_histData, 'total_ttc')) + ' MAD', '#ecfdf5', '#15803d');
+
+  // Tableau "Par client" : chaque client avec ses factures de la période
+  _histClients = allClients ? histByClient() : [];
+  document.getElementById('hist-clients').innerHTML = _histClients.length ? `<div class="section">
+    <div class="s-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="s-title">Par client</span>
+      <span style="font-size:13px;font-weight:700;color:var(--muted)">${_histClients.length} client(s) · cliquez un nom pour voir son détail</span>
+    </div>
+    <div style="overflow-x:auto"><table class="t" data-no-tools>
+      <thead><tr><th>Client</th><th>ICE</th><th class="num">Factures</th><th>N° Factures</th><th class="num">Total HT</th><th class="num">TVA</th><th class="num">Total TTC</th></tr></thead>
+      <tbody>${_histClients.map((c, i) => `<tr>
+        <td style="min-width:200px"><a href="#" onclick="pickHistClient(${i});return false" style="font-weight:800;color:var(--primary,#1e3a8a);text-decoration:none">${esc(c.name)}</a></td>
+        <td>${esc(c.ice || '—')}</td>
+        <td class="num">${c.factures.length}</td>
+        <td style="font-size:12px;color:var(--muted);min-width:240px">${c.factures.map(f => esc(f.numero)).join(', ')}</td>
+        <td class="num">${fmt(sumOf(c.factures, 'total_ht'))}</td>
+        <td class="num">${fmt(sumOf(c.factures, 'montant_tva'))}</td>
+        <td class="num fw8 c-b">${fmt(sumOf(c.factures, 'total_ttc'))} MAD</td>
+      </tr>`).join('')}</tbody>
+      <tfoot><tr style="background:#f8fafc;font-weight:800"><td colspan="2">TOTAL</td><td class="num">${_histData.length}</td><td></td>
+        <td class="num">${fmt(sumOf(_histData, 'total_ht'))}</td><td class="num">${fmt(sumOf(_histData, 'montant_tva'))}</td><td class="num c-b">${fmt(sumOf(_histData, 'total_ttc'))} MAD</td></tr></tfoot>
+    </table></div></div>` : '';
 
   document.getElementById('hist-months').innerHTML = groups.slice().reverse().map(g => {
     const head = `<div class="s-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -899,6 +961,26 @@ function loadExcelJS() {
   });
 }
 
+// Styles Excel partagés (export factures + export prix)
+const XL_MONEY = '#,##0.00';
+const XL_HEAD_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+const XL_TOT_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+const XL_THIN = { style: 'thin', color: { argb: 'FFCBD5E1' } };
+const XL_BORDER = { top: XL_THIN, left: XL_THIN, bottom: XL_THIN, right: XL_THIN };
+const xlStyleHeader = row => row.eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = XL_HEAD_FILL; c.border = XL_BORDER; c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; });
+const xlStyleTotal  = row => row.eachCell({ includeEmpty: true }, c => { c.font = { bold: true }; c.fill = XL_TOT_FILL; c.border = XL_BORDER; });
+const xlDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const xlCol = n => { let s = ''; for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s; };
+async function xlDownload(wb, filename) {
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
 async function exportHistoriqueExcel() {
   if (!_histQuery) await loadHistorique();
   if (!_histQuery) return;
@@ -912,13 +994,8 @@ async function exportHistoriqueExcel() {
     const groups = histByMonth();
     const wb = new ExcelJS.Workbook();
     wb.creator = 'MENASTA ERP';
-    const MONEY = '#,##0.00';
-    const HEAD_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
-    const TOT_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
-    const thin = { style: 'thin', color: { argb: 'FFCBD5E1' } };
-    const BORDER = { top: thin, left: thin, bottom: thin, right: thin };
+    const MONEY = XL_MONEY, BORDER = XL_BORDER, toDate = xlDate;
     const periode = from === to ? ymLabel(from) : `${ymLabel(from)} → ${ymLabel(to)}`;
-    const toDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
 
     const titleBlock = (ws, title, ncols) => {
       ws.mergeCells(1, 1, 1, ncols);
@@ -931,12 +1008,77 @@ async function exportHistoriqueExcel() {
       return 6;   // ligne de l'en-tête du tableau (ligne 5 vide)
     };
     const r2 = n => Math.round(n * 100) / 100;
+    const styleHeader = xlStyleHeader, styleTotal = xlStyleTotal, colLetter = xlCol;
     const headerRow = (ws, hr, values) => { const row = ws.getRow(hr); row.values = values; styleHeader(row); };
-    const styleHeader = row => row.eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = HEAD_FILL; c.border = BORDER; c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; });
-    const styleTotal  = row => row.eachCell({ includeEmpty: true }, c => { c.font = { bold: true }; c.fill = TOT_FILL; c.border = BORDER; });
-    const colLetter = n => String.fromCharCode(64 + n);
 
-    // ── Feuille 1 : Résumé par mois ──
+    if (allClients) {
+      const clients = histByClient();
+      const months = groups.map(g => g.ym);
+      const multi = months.length > 1;
+
+      // ── Feuille "Clients" : une ligne par client (+ TTC de chaque mois) ──
+      const cs = wb.addWorksheet('Clients', { views: [{ state: 'frozen', ySplit: 6, xSplit: 1 }] });
+      const ch = ['Client', 'ICE', 'Nb factures', 'N° Factures', 'Total HT', 'TVA', 'Total TTC', ...(multi ? months.map(ym => 'TTC ' + ymLabel(ym)) : [])];
+      const chr = titleBlock(cs, 'Factures par client', ch.length);
+      headerRow(cs, chr, ch);
+      const vals = clients.map(c => [c.name, c.ice || '', c.factures.length, c.factures.map(f => f.numero).join(', '),
+        r2(sumOf(c.factures, 'total_ht')), r2(sumOf(c.factures, 'montant_tva')), r2(sumOf(c.factures, 'total_ttc')),
+        ...(multi ? months.map(ym => r2(sumOf(c.factures.filter(f => String(f.facture_date).slice(0, 7) === ym), 'total_ttc')) || null) : [])]);
+      vals.forEach(v => cs.addRow(v).eachCell({ includeEmpty: true }, c => { c.border = BORDER; c.alignment = { vertical: 'top', wrapText: true }; }));
+      const cf = chr + 1, cl = chr + clients.length;
+      styleTotal(cs.addRow(ch.map((h, i) => {
+        if (i === 0) return `TOTAL (${clients.length} clients)`;
+        if (i === 1 || i === 3) return null;
+        const L = colLetter(i + 1);
+        return { formula: `SUM(${L}${cf}:${L}${cl})`, result: r2(vals.reduce((s, v) => s + (v[i] || 0), 0)) };
+      })));
+      ch.forEach((h, i) => {
+        const col = cs.getColumn(i + 1);
+        col.width = [34, 18, 11, 30, 15, 13, 15][i] || 15;
+        if (i >= 4) col.numFmt = MONEY;
+      });
+      cs.autoFilter = { from: { row: chr, column: 1 }, to: { row: cl, column: ch.length } };
+
+      // ── Feuille "Détail par client" : nom du client puis ses factures ──
+      const ds = wb.addWorksheet('Détail par client', { views: [{ state: 'frozen', ySplit: 6 }] });
+      const dh = ['N° Facture', 'Date', 'Désignation', 'Quantité', 'Prix U. TTC', 'Montant HT', 'Montant TVA', 'Montant TTC'];
+      const dhr = titleBlock(ds, 'Détail des factures par client', dh.length);
+      headerRow(ds, dhr, dh);
+      const CLIENT_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
+      const subRows = [];
+      clients.forEach(c => {
+        const hr = ds.addRow([`${c.name}${c.ice ? '   —   ICE : ' + c.ice : ''}   (${c.factures.length} facture(s))`]);
+        ds.mergeCells(hr.number, 1, hr.number, dh.length);
+        Object.assign(hr.getCell(1), { font: { bold: true, size: 12, color: { argb: 'FF1E3A8A' } }, fill: CLIENT_FILL, border: BORDER });
+        const first = hr.number + 1;
+        c.factures.forEach(f => (f.lignes.length ? f.lignes : [null]).forEach(l => {
+          ds.addRow([f.numero, toDate(f.facture_date), l ? l.designation : '', l ? +l.quantite : null, l ? +prixTtc(l).toFixed(2) : null,
+            l ? +l.total_ht : null, l ? +l.montant_tva : null, l ? +l.montant_ttc : null])
+            .eachCell({ includeEmpty: true }, x => { x.border = BORDER; });
+        }));
+        const last = ds.rowCount;
+        const tr = ds.addRow([`Total ${c.name}`, null, null, null, null,
+          { formula: `SUM(F${first}:F${last})`, result: r2(sumOf(c.factures, 'total_ht')) },
+          { formula: `SUM(G${first}:G${last})`, result: r2(sumOf(c.factures, 'montant_tva')) },
+          { formula: `SUM(H${first}:H${last})`, result: r2(sumOf(c.factures, 'total_ttc')) }]);
+        styleTotal(tr);
+        subRows.push(tr.number);
+        ds.addRow([]);
+      });
+      const grand = ds.addRow([`TOTAL GÉNÉRAL (${clients.length} clients)`, null, null, null, null,
+        ...['F', 'G', 'H'].map((L, j) => ({ formula: subRows.map(n => L + n).join('+'), result: r2(sumOf(_histData, ['total_ht', 'montant_tva', 'total_ttc'][j])) }))]);
+      styleTotal(grand);
+      grand.eachCell(c => { c.fill = XL_HEAD_FILL; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; });
+      dh.forEach((h, i) => {
+        const col = ds.getColumn(i + 1);
+        col.width = [16, 12, 32, 11, 13, 14, 13, 14][i];
+        if (i >= 4) col.numFmt = MONEY;
+        if (h === 'Quantité') col.numFmt = '#,##0.00';
+        if (h === 'Date') col.numFmt = 'dd/mm/yyyy';
+      });
+    }
+
+    // ── Feuille Résumé par mois ──
     const rs = wb.addWorksheet('Résumé', { views: [{ state: 'frozen', ySplit: 6 }] });
     const sr = titleBlock(rs, 'Récapitulatif des factures par mois', 5);
     headerRow(rs, sr, ['Mois', 'Nb factures', 'Total HT', 'TVA', 'Total TTC']);
@@ -998,14 +1140,171 @@ async function exportHistoriqueExcel() {
       ws.autoFilter = { from: { row: hr, column: 1 }, to: { row: last, column: headers.length } };
     });
 
-    const buf = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    // ── Changements de prix carburant pendant la période ──
+    const prix = await A('/api/factures/prix-historique').catch(() => null);
+    const inPeriod = prix && Array.isArray(prix.changes) ? prix.changes.filter(c => c.day.slice(0, 7) >= from && c.day.slice(0, 7) <= to) : [];
+    if (inPeriod.length) addPrixSheet(wb, 'Prix carburant', `Changements de prix carburant — ${periode}`, inPeriod, prix.fuels);
+
     const safe = (client || 'Tous').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') || 'Client';
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `Factures_${safe}_${from}_${to}.xlsx`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    await xlDownload(wb, `Factures_${safe}_${from}_${to}.xlsx`);
+    toast('Fichier Excel exporté ✓');
+  } catch (e) {
+    console.error(e);
+    toast('Export Excel échoué : ' + e.message, 'er');
+  } finally {
+    btn.disabled = false; btn.textContent = '📥 Exporter Excel';
+  }
+}
+
+// ── HISTORIQUE PRIX CARBURANT ─────────────────────────────────
+// Données reconstruites côté serveur depuis les postes : tout l'historique,
+// le filtre par mois se fait ici.
+let _prix = null;   // { fuels, changes }
+const fmtPrix = p => { const s = (+p).toFixed(3); return s.endsWith('0') ? s.slice(0, -1) : s; };
+// Heure de saisie du changement ; si saisi un autre jour que le poste, on montre aussi ce jour
+const fmtHeure = c => {
+  if (!c.at) return '';
+  const d = new Date(c.at), h = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('fr-CA') === c.day ? h : `saisi le ${d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} ${h}`;
+};
+const prixFuel = (fuels, id) => fuels.find(f => f.id === id) || { name: '?', color_hex: '#64748b' };
+const prixPoste = c => (c.source === 'poste' ? 'Poste #' : 'Avant poste #') + c.shift_id;
+
+async function loadPrix() {
+  const mEl = document.getElementById('prix-month');
+  if (!_prix && !mEl.value) mEl.value = _today.slice(0, 7);
+  const data = await A('/api/factures/prix-historique');
+  if (!data || !Array.isArray(data.changes)) { toast(data?.error || 'Erreur de chargement', 'er'); return; }
+  _prix = data;
+  renderPrix();
+}
+
+function shiftPrixMonth(n) {
+  const el = document.getElementById('prix-month');
+  el.value = addMonths(el.value || _today.slice(0, 7), n);
+  renderPrix();
+}
+
+// Prix en vigueur juste avant `day` (YYYY-MM-DD) pour un carburant
+function prixAvant(fuel, day) {
+  const fc = _prix.changes.filter(c => c.fuel_type_id === fuel.id);
+  const before = fc.filter(c => c.day < day);
+  if (before.length) return before[before.length - 1].price_after;
+  return fc.length ? fc[0].price_before : fuel.price_per_liter;
+}
+
+function prixRow(c, highlight) {
+  const f = prixFuel(_prix.fuels, c.fuel_type_id);
+  const d = c.price_after - c.price_before;
+  return `<tr${highlight ? ' style="background:#fefce8"' : ''}>
+    <td>${fmtDate(c.day)}</td>
+    <td>${fmtHeure(c) || '—'}</td>
+    <td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(f.color_hex)};margin-right:6px"></span><strong>${esc(f.name)}</strong></td>
+    <td class="num">${fmtPrix(c.price_before)}</td>
+    <td class="num fw8">${fmtPrix(c.price_after)}</td>
+    <td class="num fw8" style="color:${d > 0 ? '#dc2626' : '#15803d'}">${d > 0 ? '▲ +' : '▼ '}${fmtPrix(d)}</td>
+    <td>${prixPoste(c)}${c.pompiste ? ' · ' + esc(c.pompiste) : ''}</td>
+  </tr>`;
+}
+const PRIX_HEAD = '<thead><tr><th>Date</th><th>Heure</th><th>Carburant</th><th class="num">Ancien prix</th><th class="num">Nouveau prix</th><th class="num">Variation</th><th>Poste</th></tr></thead>';
+
+function renderPrix() {
+  if (!_prix) return;
+  const ym = document.getElementById('prix-month').value;
+  const { fuels, changes } = _prix;
+  document.getElementById('prix-current').innerHTML =
+    fuels.map(f => chip('Prix actuel ' + esc(f.name), fmtPrix(f.price_per_liter) + ' MAD/L', '#f1f5f9', '#0f172a')).join('') +
+    chip('Changements enregistrés', changes.length, '#eef2ff', '#3730a3');
+
+  // Mois choisi : prix au début → prix à la fin + chaque changement
+  const monthBox = document.getElementById('prix-month-box');
+  if (ym) {
+    const inMonth = changes.filter(c => c.day.slice(0, 7) === ym);
+    const next = addMonths(ym, 1) + '-01';
+    const evol = fuels.map(f => {
+      const a = prixAvant(f, ym + '-01'), b = prixAvant(f, next), d = b - a;
+      const n = inMonth.filter(c => c.fuel_type_id === f.id).length;
+      return `<div style="flex:1;min-width:220px;border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+        <div style="font-weight:800;margin-bottom:4px"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(f.color_hex)};margin-right:6px"></span>${esc(f.name)}</div>
+        <div style="font-size:15px;font-weight:800">${fmtPrix(a)} → ${fmtPrix(b)} MAD/L
+          ${Math.abs(d) > 1e-9 ? `<span style="color:${d > 0 ? '#dc2626' : '#15803d'};font-size:13px">(${d > 0 ? '+' : ''}${fmtPrix(d)})</span>` : ''}</div>
+        <div style="font-size:12px;color:var(--muted)">${n ? n + ' changement(s) ce mois' : 'Aucun changement ce mois'}</div>
+      </div>`;
+    }).join('');
+    monthBox.innerHTML = `<div class="section">
+      <div class="s-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="s-title">Changements de ${ymLabel(ym)}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--muted)">${inMonth.length} changement(s)</span>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 16px">${evol}</div>
+      ${inMonth.length ? `<div style="overflow-x:auto"><table class="t" data-no-tools>${PRIX_HEAD}<tbody>${inMonth.map(c => prixRow(c)).join('')}</tbody></table></div>`
+        : '<div style="padding:18px;text-align:center;color:var(--muted)">Aucun changement de prix ce mois-ci</div>'}
+    </div>`;
+  } else monthBox.innerHTML = '';
+
+  // Tout l'historique (plus récent en haut), groupé par mois ; le mois choisi est surligné
+  const byMonth = [];
+  changes.slice().reverse().forEach(c => {
+    const m = c.day.slice(0, 7);
+    if (!byMonth.length || byMonth[byMonth.length - 1].ym !== m) byMonth.push({ ym: m, list: [] });
+    byMonth[byMonth.length - 1].list.push(c);
+  });
+  document.getElementById('prix-all-box').innerHTML = `<div class="section">
+    <div class="s-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="s-title">Historique complet des changements de prix</span>
+      <span style="font-size:13px;font-weight:700;color:var(--muted)">${changes.length} changement(s) depuis le début</span>
+    </div>
+    ${changes.length ? `<div style="overflow-x:auto"><table class="t" data-no-tools>${PRIX_HEAD}<tbody>${byMonth.map(g => `
+      <tr><td colspan="7" style="background:#f1f5f9;font-weight:800">${ymLabel(g.ym)} · ${g.list.length} changement(s)</td></tr>
+      ${g.list.map(c => prixRow(c, g.ym === ym)).join('')}`).join('')}</tbody></table></div>`
+      : '<div style="padding:18px;text-align:center;color:var(--muted)">Aucun changement de prix enregistré</div>'}
+  </div>`;
+}
+
+// Une feuille Excel listant des changements de prix
+function addPrixSheet(wb, name, title, changes, fuels) {
+  const ws = wb.addWorksheet(name.slice(0, 31), { views: [{ state: 'frozen', ySplit: 4 }] });
+  const heads = ['Date', 'Heure', 'Carburant', 'Ancien prix', 'Nouveau prix', 'Variation', 'Variation %', 'Poste', 'Pompiste'];
+  ws.mergeCells(1, 1, 1, heads.length);
+  ws.getCell(1, 1).value = title;
+  ws.getCell(1, 1).font = { bold: true, size: 14, color: { argb: 'FF1E3A8A' } };
+  ws.getCell(2, 1).value = 'STE MENASTA SARL AU';
+  ws.getCell(2, 1).font = { bold: true };
+  const hr = ws.getRow(4);
+  hr.values = heads;
+  xlStyleHeader(hr);
+  changes.forEach(c => {
+    const d = c.price_after - c.price_before;
+    const row = ws.addRow([xlDate(c.day), fmtHeure(c), prixFuel(fuels, c.fuel_type_id).name, +c.price_before, +c.price_after,
+      +d.toFixed(4), c.price_before ? d / c.price_before : null, prixPoste(c), c.pompiste || '']);
+    row.eachCell({ includeEmpty: true }, x => { x.border = XL_BORDER; });
+    row.getCell(6).font = row.getCell(7).font = { bold: true, color: { argb: d > 0 ? 'FFDC2626' : 'FF15803D' } };
+  });
+  if (!changes.length) {
+    const r = ws.addRow(['Aucun changement de prix sur cette période']);
+    ws.mergeCells(r.number, 1, r.number, heads.length);
+    r.getCell(1).font = { italic: true };
+  } else ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: ws.rowCount, column: heads.length } };
+  [12, 19, 12, 12, 13, 11, 11, 16, 24].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  ws.getColumn(1).numFmt = 'dd/mm/yyyy';
+  ws.getColumn(4).numFmt = ws.getColumn(5).numFmt = '0.00#';
+  ws.getColumn(6).numFmt = '+0.00#;-0.00#;0';
+  ws.getColumn(7).numFmt = '+0.00%;-0.00%;0%';
+}
+
+async function exportPrixExcel() {
+  if (!_prix) await loadPrix();
+  if (!_prix) return;
+  const btn = document.getElementById('prix-xlsx-btn');
+  btn.disabled = true; btn.textContent = '⏳ Export…';
+  try {
+    await loadExcelJS();
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'MENASTA ERP';
+    const ym = document.getElementById('prix-month').value;
+    if (ym) addPrixSheet(wb, ymLabel(ym), `Changements de prix — ${ymLabel(ym)}`, _prix.changes.filter(c => c.day.slice(0, 7) === ym), _prix.fuels);
+    addPrixSheet(wb, 'Historique complet', 'Historique complet des changements de prix carburant', _prix.changes.slice().reverse(), _prix.fuels);
+    await xlDownload(wb, `Prix_carburant_${ym || 'historique'}.xlsx`);
     toast('Fichier Excel exporté ✓');
   } catch (e) {
     console.error(e);

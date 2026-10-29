@@ -154,6 +154,68 @@ router.get('/historique', requireAuth, wrap(async (req, res) => {
   res.json(factures.map(f => ({ ...f, lignes: byFacture[f.id] || [] })));
 }));
 
+// ── Historique des prix carburant ──
+// Reconstruit depuis les postes (rien à saisir) : chaque changement en cours de
+// poste (shift_price_changes) + tout écart de prix entre deux postes (le prix
+// figé dans les compteurs de départ, ex. prix modifié dans Paramètres).
+// Date = jour du poste (pas le jour de saisie). Tout l'historique est renvoyé,
+// le filtrage par mois se fait côté page.
+router.get('/prix-historique', requireAuth, wrap(async (_req, res) => {
+  const DAY = "to_char(s.opened_at AT TIME ZONE 'Africa/Casablanca','YYYY-MM-DD')";
+  const { rows: fuels } = await pool.query('SELECT id, name, price_per_liter, color_hex FROM fuel_types WHERE is_active=1 ORDER BY id');
+  const { rows: starts } = await pool.query(`
+    SELECT s.id AS shift_id, ${DAY} AS day, s.pompiste, p.fuel_type_id, MAX(pr.price_per_liter) AS price
+    FROM shifts s
+    JOIN pump_readings pr ON pr.shift_id=s.id AND pr.reading_type='start' AND pr.price_per_liter > 0
+    JOIN pumps p ON p.id=pr.pump_id
+    GROUP BY s.id, p.fuel_type_id
+    ORDER BY s.opened_at, s.id`);
+  // Une ligne par pompe dans shift_price_changes → regroupé par carburant
+  const { rows: mids } = await pool.query(`
+    SELECT pc.shift_id, ${DAY} AS day, s.pompiste, p.fuel_type_id, pc.price_before, pc.price_after,
+           MIN(pc.created_at) AS at
+    FROM shift_price_changes pc
+    JOIN pumps p  ON p.id=pc.pump_id
+    JOIN shifts s ON s.id=pc.shift_id
+    GROUP BY pc.shift_id, s.opened_at, s.pompiste, p.fuel_type_id, pc.price_before, pc.price_after
+    ORDER BY s.opened_at, pc.shift_id, MIN(pc.created_at)`);
+
+  const shiftOrder = [], midsByKey = {}, startByKey = {};
+  for (const r of starts) {
+    if (!shiftOrder.includes(r.shift_id)) shiftOrder.push(r.shift_id);
+    startByKey[r.shift_id + '_' + r.fuel_type_id] = r;
+  }
+  for (const m of mids) (midsByKey[m.shift_id + '_' + m.fuel_type_id] ||= []).push(m);
+  // Postes avec un changement mais sans prix figé au départ (anciens postes) : à leur place chronologique
+  for (const m of mids) if (!shiftOrder.includes(m.shift_id)) {
+    const i = shiftOrder.findIndex(id => (startByKey[id + '_' + m.fuel_type_id] || {}).day > m.day);
+    shiftOrder.splice(i < 0 ? shiftOrder.length : i, 0, m.shift_id);
+  }
+
+  const changes = [];
+  const r4 = n => Math.round(Number(n) * 10000) / 10000;
+  for (const ft of fuels) {
+    let last = null;
+    for (const sid of shiftOrder) {
+      const key = sid + '_' + ft.id, st = startByKey[key], ms = midsByKey[key] || [];
+      // Si le poste a un changement, son vrai prix de départ est price_before
+      // (le prix figé peut déjà être le nouveau si le poste a été rouvert).
+      const startPrice = ms.length ? r4(ms[0].price_before) : st ? r4(st.price) : null;
+      if (startPrice != null && last != null && startPrice !== last)
+        changes.push({ fuel_type_id: ft.id, day: (st || ms[0]).day, at: null, shift_id: sid,
+          pompiste: (st || ms[0]).pompiste, price_before: last, price_after: startPrice, source: 'entre_postes' });
+      if (startPrice != null) last = startPrice;
+      for (const m of ms) {
+        changes.push({ fuel_type_id: ft.id, day: m.day, at: m.at ? new Date(m.at).toISOString() : null, shift_id: sid, pompiste: m.pompiste,
+          price_before: r4(m.price_before), price_after: r4(m.price_after), source: 'poste' });
+        last = r4(m.price_after);
+      }
+    }
+  }
+  changes.sort((a, b) => a.day.localeCompare(b.day) || (a.at || '').localeCompare(b.at || '') || a.fuel_type_id - b.fuel_type_id);
+  res.json({ fuels, changes });
+}));
+
 // ── Lubrifiant products are pulled from the shared /api/products stock ──
 // (Huiles, Lubrifiants, Filtres, etc.) — no separate facture catalogue.
 
