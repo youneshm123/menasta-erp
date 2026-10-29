@@ -135,7 +135,8 @@
       <div class="form-card">
         <h3>Informations Client</h3>
         <div class="fgrid3" style="margin-bottom:12px">
-          <div class="fg"><label>Date Facture</label><input type="date" id="f-date"/></div>
+          <div class="fg"><label>Date Facture</label><input type="date" id="f-date" onchange="applyFuelPrices()"/>
+            <div id="f-date-prix" style="font-size:12px;color:var(--muted);margin-top:4px;font-weight:600"></div></div>
           <div class="fg">
             <label>Nom Client</label>
             <div class="cl-wrap">
@@ -502,6 +503,7 @@ function onCatChange(id) {
   } else {
     prodSel.style.display = 'none';
     hidden.value = cat; // 'Gazoil' / 'Essence' / ''
+    if (cat) applyFuelPrices(id); // prix du carburant au jour de la facture
     recalcLignes();
   }
 }
@@ -1061,7 +1063,7 @@ const prixPoste = c => (c.source === 'poste' ? 'Poste #' : 'Avant poste #') + c.
 
 async function loadPrix() {
   const mEl = document.getElementById('prix-month');
-  if (!_prix && !mEl.value) mEl.value = _today.slice(0, 7);
+  if (!mEl.dataset.init) { mEl.dataset.init = 1; if (!mEl.value) mEl.value = _today.slice(0, 7); }
   const data = await A('/api/factures/prix-historique');
   if (!data || !Array.isArray(data.changes)) { toast(data?.error || 'Erreur de chargement', 'er'); return; }
   _prix = data;
@@ -1080,6 +1082,48 @@ function prixAvant(fuel, day) {
   const before = fc.filter(c => c.day < day);
   if (before.length) return before[before.length - 1].price_after;
   return fc.length ? fc[0].price_before : fuel.price_per_liter;
+}
+
+// ── Prix carburant automatique sur la facture, selon sa date ──
+async function ensurePrix() {
+  if (_prix) return _prix;
+  const data = await A('/api/factures/prix-historique').catch(() => null);
+  if (data && Array.isArray(data.changes)) _prix = data;
+  return _prix;
+}
+
+// Prix du carburant le jour `day` (un changement fait ce jour-là compte déjà)
+function prixDuJour(fuelName, day) {
+  const fuel = _prix && _prix.fuels.find(f => f.name.toLowerCase() === String(fuelName).toLowerCase());
+  if (!fuel || !day) return null;
+  if (day >= _today.slice(0, 10)) return +fuel.price_per_liter;   // aujourd'hui : prix actuel
+  const fc = _prix.changes.filter(c => c.fuel_type_id === fuel.id);
+  const upTo = fc.filter(c => c.day <= day);
+  if (upTo.length) return +upTo[upTo.length - 1].price_after;
+  return fc.length ? +fc[0].price_before : +fuel.price_per_liter;
+}
+
+function showDatePrix() {
+  const el = document.getElementById('f-date-prix'), day = document.getElementById('f-date').value;
+  if (!el) return;
+  el.textContent = _prix && day ? '⛽ Prix ce jour : ' + _prix.fuels.map(f => `${f.name} ${fmtPrix(prixDuJour(f.name, day))}`).join(' · ') : '';
+}
+
+// Met le prix du jour de la facture sur les lignes Gazoil / Essence (toutes, ou la ligne `onlyId`)
+async function applyFuelPrices(onlyId) {
+  const day = document.getElementById('f-date').value;
+  if (!day || !(await ensurePrix())) return;
+  document.querySelectorAll('#lignes-body tr').forEach(tr => {
+    const id = tr.id.replace('ligne-', '');
+    if (onlyId != null && String(onlyId) !== id) return;
+    const cat = tr.querySelector('[data-f=desig_cat]')?.value;
+    if (cat !== 'Gazoil' && cat !== 'Essence') return;
+    const p = prixDuJour(cat, day);
+    if (p == null) return;
+    tr.querySelector('[data-f=prix_ttc]').value = String(Math.round(p * 1000) / 1000);
+    calcQtyFromMontant(id);
+  });
+  showDatePrix();
 }
 
 function prixRow(c, highlight) {
@@ -1392,6 +1436,7 @@ let ligneCount = 0;
 
 async function initNouvelleFacture() {
   await loadLubProductsList(); // make sure dropdowns have the latest catalogue
+  ensurePrix().then(showDatePrix);
   if (_editingFactureId) { recalcLignes(); return; } // edit form already built — keep it
   document.getElementById('lignes-body').innerHTML = '';
   ligneCount = 0;
