@@ -970,7 +970,6 @@ const XL_BORDER = { top: XL_THIN, left: XL_THIN, bottom: XL_THIN, right: XL_THIN
 const xlStyleHeader = row => row.eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = XL_HEAD_FILL; c.border = XL_BORDER; c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; });
 const xlStyleTotal  = row => row.eachCell({ includeEmpty: true }, c => { c.font = { bold: true }; c.fill = XL_TOT_FILL; c.border = XL_BORDER; });
 const xlDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
-const xlCol = n => { let s = ''; for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s; };
 async function xlDownload(wb, filename) {
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -981,6 +980,7 @@ async function xlDownload(wb, filename) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
+// Export Excel simple : pour chaque client, son nom puis Date | N° Facture | Montant, et le total
 async function exportHistoriqueExcel() {
   if (!_histQuery) await loadHistorique();
   if (!_histQuery) return;
@@ -990,160 +990,49 @@ async function exportHistoriqueExcel() {
   try {
     await loadExcelJS();
     const { client, from, to } = _histQuery;
-    const allClients = !client;
-    const groups = histByMonth();
+    const clients = histByClient();
+    const periode = from === to ? ymLabel(from) : `${ymLabel(from)} → ${ymLabel(to)}`;
+    const r2 = n => Math.round(n * 100) / 100;
     const wb = new ExcelJS.Workbook();
     wb.creator = 'MENASTA ERP';
-    const MONEY = XL_MONEY, BORDER = XL_BORDER, toDate = xlDate;
-    const periode = from === to ? ymLabel(from) : `${ymLabel(from)} → ${ymLabel(to)}`;
+    const ws = wb.addWorksheet('Factures');
+    [14, 20, 18].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
-    const titleBlock = (ws, title, ncols) => {
-      ws.mergeCells(1, 1, 1, ncols);
-      Object.assign(ws.getCell(1, 1), { value: title });
-      ws.getCell(1, 1).font = { bold: true, size: 14, color: { argb: 'FF1E3A8A' } };
-      ws.getCell(2, 1).value = 'STE MENASTA SARL AU';
-      ws.getCell(2, 1).font = { bold: true };
-      ws.getCell(3, 1).value = 'Client : ' + (client || 'Tous les clients');
-      ws.getCell(4, 1).value = 'Période : ' + periode;
-      return 6;   // ligne de l'en-tête du tableau (ligne 5 vide)
-    };
-    const r2 = n => Math.round(n * 100) / 100;
-    const styleHeader = xlStyleHeader, styleTotal = xlStyleTotal, colLetter = xlCol;
-    const headerRow = (ws, hr, values) => { const row = ws.getRow(hr); row.values = values; styleHeader(row); };
+    ws.mergeCells(1, 1, 1, 3);
+    ws.getCell(1, 1).value = `Factures — ${periode}`;
+    ws.getCell(1, 1).font = { bold: true, size: 14, color: { argb: 'FF1E3A8A' } };
+    ws.addRow([]);
 
-    if (allClients) {
-      const clients = histByClient();
-      const months = groups.map(g => g.ym);
-      const multi = months.length > 1;
-
-      // ── Feuille "Clients" : une ligne par client (+ TTC de chaque mois) ──
-      const cs = wb.addWorksheet('Clients', { views: [{ state: 'frozen', ySplit: 6, xSplit: 1 }] });
-      const ch = ['Client', 'ICE', 'Nb factures', 'N° Factures', 'Total HT', 'TVA', 'Total TTC', ...(multi ? months.map(ym => 'TTC ' + ymLabel(ym)) : [])];
-      const chr = titleBlock(cs, 'Factures par client', ch.length);
-      headerRow(cs, chr, ch);
-      const vals = clients.map(c => [c.name, c.ice || '', c.factures.length, c.factures.map(f => f.numero).join(', '),
-        r2(sumOf(c.factures, 'total_ht')), r2(sumOf(c.factures, 'montant_tva')), r2(sumOf(c.factures, 'total_ttc')),
-        ...(multi ? months.map(ym => r2(sumOf(c.factures.filter(f => String(f.facture_date).slice(0, 7) === ym), 'total_ttc')) || null) : [])]);
-      vals.forEach(v => cs.addRow(v).eachCell({ includeEmpty: true }, c => { c.border = BORDER; c.alignment = { vertical: 'top', wrapText: true }; }));
-      const cf = chr + 1, cl = chr + clients.length;
-      styleTotal(cs.addRow(ch.map((h, i) => {
-        if (i === 0) return `TOTAL (${clients.length} clients)`;
-        if (i === 1 || i === 3) return null;
-        const L = colLetter(i + 1);
-        return { formula: `SUM(${L}${cf}:${L}${cl})`, result: r2(vals.reduce((s, v) => s + (v[i] || 0), 0)) };
-      })));
-      ch.forEach((h, i) => {
-        const col = cs.getColumn(i + 1);
-        col.width = [34, 18, 11, 30, 15, 13, 15][i] || 15;
-        if (i >= 4) col.numFmt = MONEY;
+    const totals = [];
+    clients.forEach(c => {
+      const nameRow = ws.addRow([c.name]);
+      ws.mergeCells(nameRow.number, 1, nameRow.number, 3);
+      nameRow.getCell(1).font = { bold: true, size: 13 };
+      xlStyleHeader(ws.addRow(['Date', 'N° Facture', 'Montant']));
+      const first = ws.rowCount + 1;
+      c.factures.forEach(f => {
+        const row = ws.addRow([xlDate(f.facture_date), f.numero, r2(+f.total_ttc || 0)]);
+        row.getCell(1).numFmt = 'dd/mm/yyyy';
+        row.getCell(3).numFmt = XL_MONEY;
+        row.eachCell(x => { x.border = XL_BORDER; });
       });
-      cs.autoFilter = { from: { row: chr, column: 1 }, to: { row: cl, column: ch.length } };
+      const tot = ws.addRow(['Total', null, { formula: `SUM(C${first}:C${ws.rowCount})`, result: r2(sumOf(c.factures, 'total_ttc')) }]);
+      ws.mergeCells(tot.number, 1, tot.number, 2);
+      tot.getCell(1).alignment = { horizontal: 'right' };
+      tot.getCell(3).numFmt = XL_MONEY;
+      xlStyleTotal(tot);
+      totals.push(tot.number);
+      ws.addRow([]);
+      ws.addRow([]);
+    });
 
-      // ── Feuille "Détail par client" : nom du client puis ses factures ──
-      const ds = wb.addWorksheet('Détail par client', { views: [{ state: 'frozen', ySplit: 6 }] });
-      const dh = ['N° Facture', 'Date', 'Désignation', 'Quantité', 'Prix U. TTC', 'Montant HT', 'Montant TVA', 'Montant TTC'];
-      const dhr = titleBlock(ds, 'Détail des factures par client', dh.length);
-      headerRow(ds, dhr, dh);
-      const CLIENT_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
-      const subRows = [];
-      clients.forEach(c => {
-        const hr = ds.addRow([`${c.name}${c.ice ? '   —   ICE : ' + c.ice : ''}   (${c.factures.length} facture(s))`]);
-        ds.mergeCells(hr.number, 1, hr.number, dh.length);
-        Object.assign(hr.getCell(1), { font: { bold: true, size: 12, color: { argb: 'FF1E3A8A' } }, fill: CLIENT_FILL, border: BORDER });
-        const first = hr.number + 1;
-        c.factures.forEach(f => (f.lignes.length ? f.lignes : [null]).forEach(l => {
-          ds.addRow([f.numero, toDate(f.facture_date), l ? l.designation : '', l ? +l.quantite : null, l ? +prixTtc(l).toFixed(2) : null,
-            l ? +l.total_ht : null, l ? +l.montant_tva : null, l ? +l.montant_ttc : null])
-            .eachCell({ includeEmpty: true }, x => { x.border = BORDER; });
-        }));
-        const last = ds.rowCount;
-        const tr = ds.addRow([`Total ${c.name}`, null, null, null, null,
-          { formula: `SUM(F${first}:F${last})`, result: r2(sumOf(c.factures, 'total_ht')) },
-          { formula: `SUM(G${first}:G${last})`, result: r2(sumOf(c.factures, 'montant_tva')) },
-          { formula: `SUM(H${first}:H${last})`, result: r2(sumOf(c.factures, 'total_ttc')) }]);
-        styleTotal(tr);
-        subRows.push(tr.number);
-        ds.addRow([]);
-      });
-      const grand = ds.addRow([`TOTAL GÉNÉRAL (${clients.length} clients)`, null, null, null, null,
-        ...['F', 'G', 'H'].map((L, j) => ({ formula: subRows.map(n => L + n).join('+'), result: r2(sumOf(_histData, ['total_ht', 'montant_tva', 'total_ttc'][j])) }))]);
-      styleTotal(grand);
-      grand.eachCell(c => { c.fill = XL_HEAD_FILL; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; });
-      dh.forEach((h, i) => {
-        const col = ds.getColumn(i + 1);
-        col.width = [16, 12, 32, 11, 13, 14, 13, 14][i];
-        if (i >= 4) col.numFmt = MONEY;
-        if (h === 'Quantité') col.numFmt = '#,##0.00';
-        if (h === 'Date') col.numFmt = 'dd/mm/yyyy';
-      });
+    if (clients.length > 1) {
+      const g = ws.addRow(['TOTAL GÉNÉRAL', null, { formula: totals.map(n => 'C' + n).join('+'), result: r2(sumOf(_histData, 'total_ttc')) }]);
+      ws.mergeCells(g.number, 1, g.number, 2);
+      g.getCell(1).alignment = { horizontal: 'right' };
+      g.getCell(3).numFmt = XL_MONEY;
+      xlStyleHeader(g);
     }
-
-    // ── Feuille Résumé par mois ──
-    const rs = wb.addWorksheet('Résumé', { views: [{ state: 'frozen', ySplit: 6 }] });
-    const sr = titleBlock(rs, 'Récapitulatif des factures par mois', 5);
-    headerRow(rs, sr, ['Mois', 'Nb factures', 'Total HT', 'TVA', 'Total TTC']);
-    const firstSum = sr + 1;
-    groups.forEach(g => {
-      const row = rs.addRow([ymLabel(g.ym), g.factures.length, r2(sumOf(g.factures, 'total_ht')), r2(sumOf(g.factures, 'montant_tva')), r2(sumOf(g.factures, 'total_ttc'))]);
-      row.eachCell(c => { c.border = BORDER; });
-    });
-    const lastSum = firstSum + groups.length - 1;
-    const totRow = rs.addRow(['TOTAL',
-      { formula: `SUM(B${firstSum}:B${lastSum})`, result: _histData.length },
-      { formula: `SUM(C${firstSum}:C${lastSum})`, result: r2(sumOf(_histData, 'total_ht')) },
-      { formula: `SUM(D${firstSum}:D${lastSum})`, result: r2(sumOf(_histData, 'montant_tva')) },
-      { formula: `SUM(E${firstSum}:E${lastSum})`, result: r2(sumOf(_histData, 'total_ttc')) }]);
-    styleTotal(totRow);
-    [20, 13, 16, 14, 16].forEach((w, i) => { rs.getColumn(i + 1).width = w; });
-    for (let i = firstSum; i <= lastSum + 1; i++) ['C', 'D', 'E'].forEach(c => { rs.getCell(c + i).numFmt = MONEY; });
-
-    // ── Une feuille par mois : chaque ligne de facture ──
-    const headers = ['N° Facture', 'Date', ...(allClients ? ['Client'] : []), 'Désignation', 'Quantité', 'Prix U. HT', 'Prix U. TTC', 'TVA %', 'Montant HT', 'Montant TVA', 'Montant TTC'];
-    const widths  = [16, 12, ...(allClients ? [28] : []), 30, 11, 12, 12, 8, 14, 13, 14];
-    const moneyCols = ['Prix U. HT', 'Prix U. TTC', 'Montant HT', 'Montant TVA', 'Montant TTC'];
-    const usedNames = new Set();
-    groups.filter(g => g.factures.length).forEach(g => {
-      let name = ymLabel(g.ym).slice(0, 31);
-      while (usedNames.has(name)) name = name.slice(0, 28) + '_' + usedNames.size;
-      usedNames.add(name);
-      const ws = wb.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 6 }] });
-      const hr = titleBlock(ws, `Factures — ${ymLabel(g.ym)}`, headers.length);
-      headerRow(ws, hr, headers);
-      const first = hr + 1;
-      g.factures.forEach(f => {
-        (f.lignes.length ? f.lignes : [null]).forEach(l => {
-          const row = ws.addRow([f.numero, toDate(f.facture_date), ...(allClients ? [f.client_name] : []),
-            l ? l.designation : '', l ? +l.quantite : null, l ? +l.prix_ht : null, l ? +prixTtc(l).toFixed(2) : null,
-            l ? +l.taux_tva : null, l ? +l.total_ht : null, l ? +l.montant_tva : null, l ? +l.montant_ttc : null]);
-          row.eachCell({ includeEmpty: true }, c => { c.border = BORDER; });
-        });
-      });
-      const last = ws.rowCount;
-      const totCells = headers.map((h, i) => {
-        if (i === 0) return `TOTAL ${ymLabel(g.ym).toUpperCase()}`;
-        if (i === 1) return `${g.factures.length} facture(s)`;
-        if (['Montant HT', 'Montant TVA', 'Montant TTC'].includes(h)) {
-          const L = colLetter(i + 1);
-          const key = { 'Montant HT': 'total_ht', 'Montant TVA': 'montant_tva', 'Montant TTC': 'total_ttc' }[h];
-          return { formula: `SUM(${L}${first}:${L}${last})`, result: r2(sumOf(g.factures, key)) };
-        }
-        return null;
-      });
-      styleTotal(ws.addRow(totCells));
-      headers.forEach((h, i) => {
-        const col = ws.getColumn(i + 1);
-        col.width = widths[i];
-        if (moneyCols.includes(h)) col.numFmt = MONEY;
-        if (h === 'Quantité') col.numFmt = '#,##0.00';
-        if (h === 'Date') col.numFmt = 'dd/mm/yyyy';
-      });
-      ws.autoFilter = { from: { row: hr, column: 1 }, to: { row: last, column: headers.length } };
-    });
-
-    // ── Changements de prix carburant pendant la période ──
-    const prix = await A('/api/factures/prix-historique').catch(() => null);
-    const inPeriod = prix && Array.isArray(prix.changes) ? prix.changes.filter(c => c.day.slice(0, 7) >= from && c.day.slice(0, 7) <= to) : [];
-    if (inPeriod.length) addPrixSheet(wb, 'Prix carburant', `Changements de prix carburant — ${periode}`, inPeriod, prix.fuels);
 
     const safe = (client || 'Tous').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') || 'Client';
     await xlDownload(wb, `Factures_${safe}_${from}_${to}.xlsx`);
