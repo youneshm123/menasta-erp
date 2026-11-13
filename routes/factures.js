@@ -227,7 +227,7 @@ router.get('/:id', requireAuth, wrap(async (req, res) => {
 }));
 
 router.post('/', requireAuth, wrap(async (req, res) => {
-  const { facture_date, client_name, client_adresse, client_ice, lignes, notes } = req.body || {};
+  const { facture_date, client_name, client_adresse, client_ice, lignes, notes, mode_paiement } = req.body || {};
   if (!client_name || !lignes || !lignes.length) return res.status(400).json({ error: 'Client et lignes requis' });
 
   for (const l of lignes) {
@@ -264,9 +264,9 @@ router.post('/', requireAuth, wrap(async (req, res) => {
   try {
     await dbc.query('BEGIN');
     const { rows: [{ id }] } = await dbc.query(`
-      INSERT INTO factures (numero,facture_date,client_name,client_adresse,client_ice,total_ht,montant_tva,total_ttc,notes,recorded_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id
-    `, [numero, facture_date||new Date().toISOString().slice(0,10), client_name, client_adresse||null, client_ice||null, total_ht, montant_tva, total_ttc, notes||null, req.user.id]);
+      INSERT INTO factures (numero,facture_date,client_name,client_adresse,client_ice,total_ht,montant_tva,total_ttc,notes,recorded_by,mode_paiement)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id
+    `, [numero, facture_date||new Date().toISOString().slice(0,10), client_name, client_adresse||null, client_ice||null, total_ht, montant_tva, total_ttc, notes||null, req.user.id, mode_paiement||null]);
 
     for (const l of lignes) {
       await dbc.query(`
@@ -291,8 +291,9 @@ router.put('/:id', requireAuth, wrap(async (req, res) => {
   const { rows } = await pool.query('SELECT * FROM factures WHERE id=$1', [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Facture introuvable' });
 
-  const { facture_date, client_name, client_adresse, client_ice, lignes, notes } = req.body || {};
+  const { facture_date, client_name, client_adresse, client_ice, lignes, notes, mode_paiement } = req.body || {};
   if (!client_name || !lignes || !lignes.length) return res.status(400).json({ error: 'Client et lignes requis' });
+  const mode = mode_paiement !== undefined ? (mode_paiement || null) : (rows[0].mode_paiement || null);
 
   for (const l of lignes) {
     const qty = +l.quantite, prix = +l.prix_ht, tva = +l.taux_tva;
@@ -318,8 +319,8 @@ router.put('/:id', requireAuth, wrap(async (req, res) => {
     await dbc.query('BEGIN');
     await dbc.query(`
       UPDATE factures SET facture_date=$1,client_name=$2,client_adresse=$3,client_ice=$4,
-        total_ht=$5,montant_tva=$6,total_ttc=$7,notes=$8 WHERE id=$9
-    `, [facture_date||rows[0].facture_date, client_name, client_adresse||null, client_ice||null, total_ht, montant_tva, total_ttc, notes||null, req.params.id]);
+        total_ht=$5,montant_tva=$6,total_ttc=$7,notes=$8,mode_paiement=$10 WHERE id=$9
+    `, [facture_date||rows[0].facture_date, client_name, client_adresse||null, client_ice||null, total_ht, montant_tva, total_ttc, notes !== undefined ? (notes||null) : rows[0].notes, req.params.id, mode]);
 
     await dbc.query('DELETE FROM facture_lignes WHERE facture_id=$1', [req.params.id]);
     for (const l of lignes) {

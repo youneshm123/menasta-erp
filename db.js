@@ -354,6 +354,7 @@ async function initDB() {
     CREATE INDEX IF NOT EXISTS idx_logs_created ON activity_logs(created_at DESC);
   `);
 
+  await pgPool.query('ALTER TABLE factures ADD COLUMN IF NOT EXISTS mode_paiement TEXT');
   await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS avance REAL NOT NULL DEFAULT 0');
   await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS credit_paid REAL NOT NULL DEFAULT 0');
   await pgPool.query('ALTER TABLE shifts ADD COLUMN IF NOT EXISTS pompiste TEXT');

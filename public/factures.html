@@ -146,7 +146,16 @@
           </div>
           <div class="fg"><label>ICE Client</label><input type="text" id="f-ice" placeholder="002256198000012"/></div>
         </div>
-        <div class="fg"><label>Adresse Client</label><input type="text" id="f-adresse" placeholder="MNASRA"/></div>
+        <div class="fgrid3">
+          <div class="fg" style="grid-column:span 2"><label>Adresse Client</label><input type="text" id="f-adresse" placeholder="MNASRA"/></div>
+          <div class="fg"><label>Mode de paiement</label>
+            <select id="f-mode">
+              <option value="">— Non précisé —</option>
+              <option value="Chèque">Chèque</option>
+              <option value="Virement">Virement</option>
+              <option value="Espèces">Espèces</option>
+            </select></div>
+        </div>
       </div>
 
       <div class="form-card">
@@ -1372,7 +1381,7 @@ function captureDraft() {
     taux_tva:    tr.querySelector('[data-f=taux_tva]')?.value || '',
     quantite:    tr.querySelector('[data-f=quantite]')?.value || '',
   }));
-  const draft = { date:g('f-date'), client:g('f-client'), ice:g('f-ice'), adresse:g('f-adresse'), lub:g('lub-montant'), lignes };
+  const draft = { date:g('f-date'), client:g('f-client'), ice:g('f-ice'), adresse:g('f-adresse'), mode:g('f-mode'), lub:g('lub-montant'), lignes };
   const hasData = draft.client || draft.ice || draft.adresse || draft.lub ||
     lignes.some(l => l.designation || l.code || l.montant || l.cat);
   if (hasData) localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -1388,7 +1397,7 @@ function restoreDraft() {
   if (!d || typeof d !== 'object') return false;
   const setVal = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
   if (d.date) setVal('f-date', d.date);
-  setVal('f-client', d.client); setVal('f-ice', d.ice); setVal('f-adresse', d.adresse);
+  setVal('f-client', d.client); setVal('f-ice', d.ice); setVal('f-adresse', d.adresse); setVal('f-mode', d.mode);
   setVal('lub-montant', d.lub);
   document.getElementById('lignes-body').innerHTML = '';
   ligneCount = 0;
@@ -1545,6 +1554,7 @@ async function saveFacture() {
     client_name,
     client_adresse: document.getElementById('f-adresse').value.trim() || null,
     client_ice: document.getElementById('f-ice').value.trim() || null,
+    mode_paiement: document.getElementById('f-mode').value || null,
     lignes,
   };
 
@@ -1573,6 +1583,7 @@ function resetFormKeepPrices() {
   document.getElementById('f-client').value  = '';
   document.getElementById('f-ice').value     = '';
   document.getElementById('f-adresse').value = '';
+  document.getElementById('f-mode').value    = '';
   const lubM = document.getElementById('lub-montant'); if (lubM) lubM.value = '';
   document.querySelectorAll('#lignes-body tr').forEach(tr => {
     const codeEl = tr.querySelector('[data-f=code]');         if (codeEl) codeEl.value = '';
@@ -1595,6 +1606,7 @@ async function editFacture(id) {
   document.getElementById('f-client').value  = f.client_name;
   document.getElementById('f-ice').value     = f.client_ice || '';
   document.getElementById('f-adresse').value = f.client_adresse || '';
+  document.getElementById('f-mode').value    = f.mode_paiement || '';
   (f.lignes || []).forEach(l => {
     const id2 = ligneCount++;
     const tr = document.createElement('tr');
@@ -1820,10 +1832,10 @@ function buildPrintHtml(f) {
         <td style="border:1px solid #000;padding:6px 10px"><b>Date Facture :</b>&nbsp;${esc(dateStr)}</td>
         <td style="border:1px solid #000;padding:6px 10px"><b>Adresse :</b>&nbsp; ${esc(f.client_adresse || '')}</td>
       </tr>
-      ${f.client_ice ? `
+      ${f.client_ice || f.mode_paiement ? `
       <tr>
-        <td style="border:1px solid #000;padding:6px 10px"></td>
-        <td style="border:1px solid #000;padding:6px 10px;text-align:right"><b>ICE :</b>&nbsp; ${esc(f.client_ice)}</td>
+        <td style="border:1px solid #000;padding:6px 10px">${f.mode_paiement ? `<b>Mode de Paiement :</b>&nbsp; ${esc(f.mode_paiement)}` : ''}</td>
+        <td style="border:1px solid #000;padding:6px 10px;text-align:right">${f.client_ice ? `<b>ICE :</b>&nbsp; ${esc(f.client_ice)}` : ''}</td>
       </tr>` : ''}
     </table>
 

@@ -390,6 +390,10 @@
             <option value="lubrifiant">Lubrifiant — TVA 20%</option>
           </select>
         </div>
+        <div class="fg" style="grid-column:1/-1;display:none" id="bf-lub-wrap">
+          <label>Produit lubrifiant</label>
+          <select id="bf-lub" onchange="bfPickLub()"></select>
+        </div>
         <div class="fg"><label>Prix unitaire TTC</label><input type="number" id="bf-prix" step="0.01" min="0" oninput="bfFromPrix()"/></div>
         <div class="fg"><label>Quantité</label><input type="number" id="bf-qty" step="0.01" min="0" oninput="bfFromQty()"/></div>
         <div class="fg" style="grid-column:1/-1">
@@ -977,7 +981,8 @@ async function printTxnVoucher(id) {
   modeSel.querySelector('option[value="Effet"]').hidden = !isEffet;
   modeSel.value = PAY_METHOD[t.type] || 'Chèque';
   // Prix du carburant le jour de l'opération → quantité calculée depuis le montant.
-  await bfEnsurePrix();
+  await Promise.all([bfEnsurePrix(), bfEnsureLubs()]);
+  document.getElementById('bf-lub').value = '';
   bfSyncProduit();
   openModal('m-bank-fact');
 }
@@ -1003,10 +1008,43 @@ function bfPrixDuJour(fuelName, day) {
   if (upTo.length) return +upTo[upTo.length - 1].price_after;
   return fc.length ? +fc[0].price_before : +fuel.price_per_liter;
 }
-// Produit changé : Gazoil/Essence → prix du jour ; Lubrifiant → 1 × montant.
+// ── Produits lubrifiant (même catalogue que la page Factures) ──
+let _bfLubs = null;
+async function bfEnsureLubs() {
+  if (_bfLubs) return _bfLubs;
+  try {
+    const arr = await api('GET', '/products');
+    _bfLubs = (Array.isArray(arr) ? arr : []).map(p => ({ name: p.name, category: p.category || 'Autre', prix: parseFloat(p.price) || 0 }));
+  } catch (e) { _bfLubs = []; }
+  const cats = {};
+  _bfLubs.forEach(p => (cats[p.category] = cats[p.category] || []).push(p));
+  document.getElementById('bf-lub').innerHTML = '<option value="">— Choisir le produit —</option>' +
+    Object.keys(cats).sort().map(c => `<optgroup label="${esc(c)}">` +
+      cats[c].map(p => `<option value="${esc(p.name)}">${esc(p.name)} — ${fmt(p.prix,2)} MAD</option>`).join('') + '</optgroup>').join('');
+  return _bfLubs;
+}
+function bfLubPicked() {
+  const name = document.getElementById('bf-lub').value;
+  return name ? (_bfLubs || []).find(p => p.name === name) || null : null;
+}
+// Produit lubrifiant choisi → son prix, et la quantité depuis le montant.
+function bfPickLub() {
+  const p = bfLubPicked();
+  if (p && p.prix > 0) { document.getElementById('bf-prix').value = String(p.prix); bfFromPrix(); }
+  else bfSyncTva();
+}
+// Désignation imprimée : nom du produit lubrifiant si choisi, sinon GAZOIL / ESSENCE / LUBRIFIANT.
+function bfDesignation(prod) {
+  const p = document.getElementById('bf-produit').value === 'lubrifiant' ? bfLubPicked() : null;
+  return p ? p.name : prod.label;
+}
+
+// Produit changé : Gazoil/Essence → prix du jour ; Lubrifiant → prix du produit choisi.
 function bfSyncProduit() {
   const t = _bfTxn; if (!t) return;
   const key = document.getElementById('bf-produit').value;
+  document.getElementById('bf-lub-wrap').style.display = key === 'lubrifiant' ? '' : 'none';
+  if (key === 'lubrifiant' && bfLubPicked()) { bfPickLub(); return; }
   const ttc = parseFloat(t.amount) || 0;
   const p = (key === 'gazoil' || key === 'essence') ? bfPrixDuJour(key, ymd(t.txn_date)) : null;
   if (p) {
@@ -1086,7 +1124,8 @@ async function doGenerateBankFacture() {
   const noteParts = ['Banque · Mode de paiement: ' + payMethod];
   if (withCheck && t.check_number) noteParts.push('N° ' + t.check_number);
   if (withCheck && t.due_date)     noteParts.push('Échéance ' + ymd(t.due_date));
-  const opts = { qty, prixTtc, payMethod };
+  const designation = bfDesignation(prod);
+  const opts = { qty, prixTtc, payMethod, designation };
 
   closeModal('m-bank-fact');
 
@@ -1109,7 +1148,8 @@ async function doGenerateBankFacture() {
         client_adresse: adresse || null,
         client_ice: ice || null,
         notes: noteParts.join(' · '),
-        lignes: [{ code_produit: '', designation: prod.label, quantite: qty, prix_ht: prixTtc / (1 + prod.tva / 100), taux_tva: prod.tva }],
+        mode_paiement: payMethod,
+        lignes: [{ code_produit: '', designation, quantite: qty, prix_ht: prixTtc / (1 + prod.tva / 100), taux_tva: prod.tva }],
       });
       numero = created.numero;
       _allFactures = null;     // invalide le cache
@@ -1171,7 +1211,7 @@ function bankFactureInnerHtml(t, prod, ice, adresse, numero, clientName, opts) {
   const lignesHtml = `
     <tr>
       <td style="${TD}"></td>
-      <td style="${TD}">${E(prod.label)}</td>
+      <td style="${TD}">${E(opts.designation || prod.label)}</td>
       <td style="${TDR}">${fmt(qty,2)}</td>
       <td style="${TDR}">${fmt(prixTtc,2)}</td>
       <td style="${TDC}">${fmt(prod.tva,0)}.00 %</td>
