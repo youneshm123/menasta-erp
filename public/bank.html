@@ -384,10 +384,21 @@
         </div>
         <div class="fg" style="grid-column:1/-1">
           <label>Type de produit *</label>
-          <select id="bf-produit" onchange="bfSyncTva()">
+          <select id="bf-produit" onchange="bfSyncProduit()">
             <option value="gazoil">Gazoil — TVA 10%</option>
             <option value="essence">Essence — TVA 10%</option>
             <option value="lubrifiant">Lubrifiant — TVA 20%</option>
+          </select>
+        </div>
+        <div class="fg"><label>Prix unitaire TTC</label><input type="number" id="bf-prix" step="0.01" min="0" oninput="bfFromPrix()"/></div>
+        <div class="fg"><label>Quantité</label><input type="number" id="bf-qty" step="0.01" min="0" oninput="bfFromQty()"/></div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>Mode de paiement *</label>
+          <select id="bf-mode" onchange="bfSyncTva()">
+            <option value="Chèque">Chèque</option>
+            <option value="Virement">Virement</option>
+            <option value="Espèces">Espèces</option>
+            <option value="Effet">Effet</option>
           </select>
         </div>
         <div class="fg" style="grid-column:1/-1"><label>ICE Client <span style="font-weight:400;color:var(--muted)">— rempli automatiquement</span></label><input id="bf-ice" placeholder="Choisissez le client ci-dessus"/></div>
@@ -960,8 +971,74 @@ async function printTxnVoucher(id) {
   const matchIdx = (_factClients || []).findIndex(c => (c.name || '').trim().toLowerCase() === bn);
   sel.value = matchIdx >= 0 ? String(matchIdx) : '';
   bfPickClient();
-  bfSyncTva();
+  // Mode de paiement : deviné d'après le type d'opération, modifiable.
+  const isEffet = t.type === 'effet_in' || t.type === 'effet_out';
+  const modeSel = document.getElementById('bf-mode');
+  modeSel.querySelector('option[value="Effet"]').hidden = !isEffet;
+  modeSel.value = PAY_METHOD[t.type] || 'Chèque';
+  // Prix du carburant le jour de l'opération → quantité calculée depuis le montant.
+  await bfEnsurePrix();
+  bfSyncProduit();
   openModal('m-bank-fact');
+}
+
+// ── Prix carburant au jour de l'opération (même historique que la page Factures) ──
+let _bfPrix = null;
+let _bfLast = 'prix';       // dernier champ saisi : 'prix' ou 'qty'
+async function bfEnsurePrix() {
+  if (_bfPrix) return _bfPrix;
+  try {
+    const d = await api('GET', '/factures/prix-historique');
+    if (d && Array.isArray(d.changes)) _bfPrix = d;
+  } catch (e) { /* pas d'historique → prix saisi à la main */ }
+  return _bfPrix;
+}
+// Prix du carburant le jour `day` (un changement fait ce jour-là compte déjà).
+function bfPrixDuJour(fuelName, day) {
+  const fuel = _bfPrix && _bfPrix.fuels.find(f => String(f.name).toLowerCase() === String(fuelName).toLowerCase());
+  if (!fuel || !day) return null;
+  if (day >= today()) return +fuel.price_per_liter;
+  const fc = _bfPrix.changes.filter(c => c.fuel_type_id === fuel.id);
+  const upTo = fc.filter(c => c.day <= day);
+  if (upTo.length) return +upTo[upTo.length - 1].price_after;
+  return fc.length ? +fc[0].price_before : +fuel.price_per_liter;
+}
+// Produit changé : Gazoil/Essence → prix du jour ; Lubrifiant → 1 × montant.
+function bfSyncProduit() {
+  const t = _bfTxn; if (!t) return;
+  const key = document.getElementById('bf-produit').value;
+  const ttc = parseFloat(t.amount) || 0;
+  const p = (key === 'gazoil' || key === 'essence') ? bfPrixDuJour(key, ymd(t.txn_date)) : null;
+  if (p) {
+    document.getElementById('bf-prix').value = String(Math.round(p * 1000) / 1000);
+    bfFromPrix();
+  } else {
+    document.getElementById('bf-qty').value = '1';
+    bfFromQty();
+  }
+}
+function bfFromPrix() {
+  _bfLast = 'prix';
+  const ttc = parseFloat(_bfTxn && _bfTxn.amount) || 0;
+  const p = parseFloat(document.getElementById('bf-prix').value) || 0;
+  document.getElementById('bf-qty').value = p > 0 ? String(Math.round(ttc / p * 100) / 100) : '';
+  bfSyncTva();
+}
+function bfFromQty() {
+  _bfLast = 'qty';
+  const ttc = parseFloat(_bfTxn && _bfTxn.amount) || 0;
+  const q = parseFloat(document.getElementById('bf-qty').value) || 0;
+  document.getElementById('bf-prix').value = q > 0 ? String(Math.round(ttc / q * 1000) / 1000) : '';
+  bfSyncTva();
+}
+// Quantité + prix TTC exacts : le total reste toujours = montant de l'opération.
+function bfQtyPrix() {
+  const ttc = parseFloat(_bfTxn && _bfTxn.amount) || 0;
+  const p = parseFloat(document.getElementById('bf-prix').value) || 0;
+  const q = parseFloat(document.getElementById('bf-qty').value) || 0;
+  if (_bfLast === 'prix' && p > 0) return { qty: ttc / p, prixTtc: p };
+  if (q > 0) return { qty: q, prixTtc: ttc / q };
+  return { qty: 1, prixTtc: ttc };
 }
 
 // Remplit l'ICE + l'adresse à partir du client sélectionné dans la liste.
@@ -979,8 +1056,13 @@ function bfSyncTva() {
   const prod = FACT_PRODUITS[document.getElementById('bf-produit').value] || FACT_PRODUITS.gazoil;
   const ttc = parseFloat(t.amount) || 0;
   const ht  = ttc / (1 + prod.tva / 100);
+  const { qty, prixTtc } = bfQtyPrix();
+  const key = document.getElementById('bf-produit').value;
+  const pj = (key === 'gazoil' || key === 'essence') ? bfPrixDuJour(key, ymd(t.txn_date)) : null;
   const el = document.getElementById('bf-recap');
-  if (el) el.innerHTML = `TTC <b>${fmt(ttc,2)}</b> = HT <b>${fmt(ht,2)}</b> + TVA ${prod.tva}% <b>${fmt(ttc-ht,2)}</b> MAD`;
+  if (el) el.innerHTML =
+    (pj ? `⛽ Prix ${prod.label.toLowerCase()} le ${ymd(t.txn_date)} : <b>${fmt(pj,2)}</b> MAD<br>` : '') +
+    `${fmt(qty,2)} × ${fmt(prixTtc,2)} = TTC <b>${fmt(ttc,2)}</b> = HT <b>${fmt(ht,2)}</b> + TVA ${prod.tva}% <b>${fmt(ttc-ht,2)}</b> MAD`;
 }
 
 function _normTxt(s) { return String(s || '').trim().toLowerCase(); }
@@ -996,12 +1078,15 @@ async function doGenerateBankFacture() {
   if (!clientName) { toast('Nom du client requis', 'er'); return; }
 
   const ttc = parseFloat(t.amount) || 0;
-  const ht  = ttc / (1 + prod.tva / 100);                 // le montant = TTC → on retrouve le HT
+  const { qty, prixTtc } = bfQtyPrix();
+  if (!(qty > 0)) { toast('Quantité invalide', 'er'); return; }
   const dateStr = ymd(t.txn_date);
-  const payMethod = PAY_METHOD[t.type] || (VOUCHER_TYPE[t.type] || [txnLabel(t.type)])[0];
+  const payMethod = document.getElementById('bf-mode').value || 'Chèque';
+  const withCheck = payMethod === 'Chèque' || payMethod === 'Effet';
   const noteParts = ['Banque · Mode de paiement: ' + payMethod];
-  if (t.check_number) noteParts.push('N° ' + t.check_number);
-  if (t.due_date)     noteParts.push('Échéance ' + ymd(t.due_date));
+  if (withCheck && t.check_number) noteParts.push('N° ' + t.check_number);
+  if (withCheck && t.due_date)     noteParts.push('Échéance ' + ymd(t.due_date));
+  const opts = { qty, prixTtc, payMethod };
 
   closeModal('m-bank-fact');
 
@@ -1024,7 +1109,7 @@ async function doGenerateBankFacture() {
         client_adresse: adresse || null,
         client_ice: ice || null,
         notes: noteParts.join(' · '),
-        lignes: [{ code_produit: '', designation: prod.label, quantite: 1, prix_ht: ht, taux_tva: prod.tva }],
+        lignes: [{ code_produit: '', designation: prod.label, quantite: qty, prix_ht: prixTtc / (1 + prod.tva / 100), taux_tva: prod.tva }],
       });
       numero = created.numero;
       _allFactures = null;     // invalide le cache
@@ -1036,13 +1121,13 @@ async function doGenerateBankFacture() {
   }
 
   // 2) Génère le PDF (même méthode que la facture client → rendu impeccable).
-  await renderBankFacturePdf(t, prod, ice, adresse, numero, clientName);
+  await renderBankFacturePdf(t, prod, ice, adresse, numero, clientName, opts);
 }
 
 // Produit le PDF de la facture via html2canvas + jsPDF, exactement comme la
 // facture client (téléchargement Facture_<numero>.pdf).
-async function renderBankFacturePdf(t, prod, ice, adresse, numero, clientName) {
-  const inner = bankFactureInnerHtml(t, prod, ice, adresse, numero, clientName);
+async function renderBankFacturePdf(t, prod, ice, adresse, numero, clientName, opts) {
+  const inner = bankFactureInnerHtml(t, prod, ice, adresse, numero, clientName, opts);
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;padding:20px';
   container.innerHTML = inner;
@@ -1063,15 +1148,18 @@ async function renderBankFacturePdf(t, prod, ice, adresse, numero, clientName) {
 }
 
 // Contenu HTML de la facture banque — même mise en page que la facture client.
-function bankFactureInnerHtml(t, prod, ice, adresse, numero, clientName) {
+function bankFactureInnerHtml(t, prod, ice, adresse, numero, clientName, opts) {
   clientName = clientName || t.beneficiary || '';
+  opts = opts || {};
   const E = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const isEffet = t.type === 'effet_in' || t.type === 'effet_out';
-  const isCheck = t.type === 'cheque_in' || t.type === 'cheque_out' || isEffet;
-  const payMethod = PAY_METHOD[t.type] || (VOUCHER_TYPE[t.type] || [txnLabel(t.type)])[0];
+  const payMethod = opts.payMethod || PAY_METHOD[t.type] || (VOUCHER_TYPE[t.type] || [txnLabel(t.type)])[0];
+  const isEffet = payMethod === 'Effet';
+  const isCheck = payMethod === 'Chèque' || isEffet;
   const dateStr = ymd(t.txn_date);
 
   const ttc = parseFloat(t.amount) || 0;     // le montant de l'opération = TTC
+  const qty = opts.qty > 0 ? opts.qty : 1;
+  const prixTtc = opts.prixTtc > 0 ? opts.prixTtc : ttc;
   const ht  = ttc / (1 + prod.tva / 100);
   const tva = ttc - ht;
 
@@ -1084,8 +1172,8 @@ function bankFactureInnerHtml(t, prod, ice, adresse, numero, clientName) {
     <tr>
       <td style="${TD}"></td>
       <td style="${TD}">${E(prod.label)}</td>
-      <td style="${TDR}">${fmt(1,2)}</td>
-      <td style="${TDR}">${fmt(ttc,2)}</td>
+      <td style="${TDR}">${fmt(qty,2)}</td>
+      <td style="${TDR}">${fmt(prixTtc,2)}</td>
       <td style="${TDC}">${fmt(prod.tva,0)}.00 %</td>
       <td style="${TDR}">${fmt(ht,2)}</td>
       <td style="${TDR};font-weight:bold">${fmt(ttc,2)}</td>
