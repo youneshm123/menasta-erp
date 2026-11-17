@@ -303,6 +303,102 @@ router.post('/:id/price-change', requireAuth, wrap(async (req, res) => {
   res.json(await shiftDetail(shift));
 }));
 
+// A closed poste stores its totals; recompute them after a price-change edit.
+async function recalcIfClosed(client, shiftId) {
+  const { rows: [s] } = await client.query('SELECT status FROM shifts WHERE id=$1', [shiftId]);
+  if (!s || s.status !== 'closed') return;
+  const calc = await calcShift(shiftId, client);
+  await client.query(`
+    UPDATE shifts SET total_liters_sold=$1, total_fuel_revenue=$2, total_credit_deducted=$3,
+      total_product_sales=$4, net_cash=$5, credit_paid=$6 WHERE id=$7
+  `, [calc.totalLiters, calc.totalFuel, calc.totalCredit, calc.totalProduct, calc.netCash, calc.totalPayments, shiftId]);
+}
+
+// Is there a price change for this fuel recorded AFTER this shift's ones (another poste)?
+async function hasNewerChange(client, fuelTypeId, shiftId) {
+  const { rows } = await client.query(`
+    SELECT 1 FROM shift_price_changes pc2 JOIN pumps p2 ON p2.id=pc2.pump_id
+    WHERE p2.fuel_type_id=$1 AND pc2.shift_id<>$2 AND pc2.created_at > (
+      SELECT MAX(created_at) FROM shift_price_changes WHERE shift_id=$2
+    ) LIMIT 1
+  `, [fuelTypeId, shiftId]);
+  return rows.length > 0;
+}
+
+// ── Edit a mid-shift price change (fix a typo in price or meter) ──
+// The meter is per pump; the prices apply to every pump of that fuel changed
+// together in this poste (same old price_after), so all of them get fixed at once.
+router.put('/:id/price-change/:pcId', requireAuth, wrap(async (req, res) => {
+  const shiftId = parseInt(req.params.id), pcId = parseInt(req.params.pcId);
+  const mv = parseFloat(req.body && req.body.meter_value);
+  const pb = parseFloat(req.body && req.body.price_before);
+  const pa = parseFloat(req.body && req.body.price_after);
+  if (!isFinite(mv) || mv < 0) return res.status(400).json({ error: 'Compteur invalide' });
+  if (!isFinite(pb) || pb <= 0 || !isFinite(pa) || pa <= 0) return res.status(400).json({ error: 'Prix invalide' });
+
+  const { rows: [pc] } = await pool.query(`
+    SELECT pc.*, p.fuel_type_id FROM shift_price_changes pc JOIN pumps p ON p.id=pc.pump_id
+    WHERE pc.id=$1 AND pc.shift_id=$2`, [pcId, shiftId]);
+  if (!pc) return res.status(404).json({ error: 'Changement de prix introuvable' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('UPDATE shift_price_changes SET meter_value=$1 WHERE id=$2', [mv, pcId]);
+    // Same prices for every pump of that fuel changed together in this poste.
+    await client.query(`
+      UPDATE shift_price_changes pc SET price_before=$1, price_after=$2
+      FROM pumps p WHERE p.id=pc.pump_id AND pc.shift_id=$3 AND p.fuel_type_id=$4
+        AND pc.price_after=$5 AND pc.price_before=$6
+    `, [pb, pa, shiftId, pc.fuel_type_id, pc.price_after, pc.price_before]);
+    // Fix the live fuel price too, if it is still the mistaken one.
+    if (pa !== Number(pc.price_after) && !(await hasNewerChange(client, pc.fuel_type_id, shiftId)))
+      await client.query('UPDATE fuel_types SET price_per_liter=$1 WHERE id=$2 AND price_per_liter=$3',
+        [pa, pc.fuel_type_id, pc.price_after]);
+    await recalcIfClosed(client, shiftId);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+  const { rows: [shift] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [shiftId]);
+  res.json(await shiftDetail(shift));
+}));
+
+// ── Delete a mid-shift price change (all pumps of that fuel in this poste) ──
+router.delete('/:id/price-change/:pcId', requireAuth, wrap(async (req, res) => {
+  const shiftId = parseInt(req.params.id), pcId = parseInt(req.params.pcId);
+  const { rows: [pc] } = await pool.query(`
+    SELECT pc.*, p.fuel_type_id FROM shift_price_changes pc JOIN pumps p ON p.id=pc.pump_id
+    WHERE pc.id=$1 AND pc.shift_id=$2`, [pcId, shiftId]);
+  if (!pc) return res.status(404).json({ error: 'Changement de prix introuvable' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Put the old price back as the live price (only if nothing changed it since).
+    if (!(await hasNewerChange(client, pc.fuel_type_id, shiftId)))
+      await client.query('UPDATE fuel_types SET price_per_liter=$1 WHERE id=$2 AND price_per_liter=$3',
+        [pc.price_before, pc.fuel_type_id, pc.price_after]);
+    await client.query(`
+      DELETE FROM shift_price_changes pc USING pumps p
+      WHERE p.id=pc.pump_id AND pc.shift_id=$1 AND p.fuel_type_id=$2
+        AND pc.price_after=$3 AND pc.price_before=$4
+    `, [shiftId, pc.fuel_type_id, pc.price_after, pc.price_before]);
+    await recalcIfClosed(client, shiftId);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+  const { rows: [shift] } = await pool.query('SELECT * FROM shifts WHERE id=$1', [shiftId]);
+  res.json(await shiftDetail(shift));
+}));
+
 // ── Change the date of a shift (opened_at / closed_at) ──
 router.post('/:id/date', requireAuth, wrap(async (req, res) => {
   const { date } = req.body || {};            // expected "YYYY-MM-DD"

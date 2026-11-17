@@ -710,6 +710,27 @@
   </div>
 </div>
 
+<!-- EDIT MID-SHIFT PRICE CHANGE -->
+<div class="overlay" id="m-price-edit">
+  <div class="modal">
+    <div class="modal-hd"><span>✏️</span><h3>Modifier le Changement de Prix</h3><button class="x" onclick="closeModal('m-price-edit')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="pe-id"/>
+      <div class="msg msg-i mb3" style="font-size:12.5px;" id="pe-info"></div>
+      <div class="fgrid mb3">
+        <div class="fg"><label>Ancien Prix (MAD/L) *</label><input type="number" id="pe-before" step="0.001" min="0"/></div>
+        <div class="fg"><label>Nouveau Prix (MAD/L) *</label><input type="number" id="pe-after" step="0.001" min="0" style="font-size:18px;font-weight:800;color:var(--blue);"/></div>
+        <div class="fg"><label>Compteur au changement *</label><input type="number" id="pe-meter" step="0.1" min="0"/></div>
+      </div>
+      <div class="muted" style="font-size:12px;">Les prix sont corrigés pour toutes les pompes de ce carburant. Le compteur concerne seulement cette pompe.</div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-g" onclick="closeModal('m-price-edit')">Annuler</button>
+      <button class="btn btn-p" onclick="submitPriceEdit()">✅ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- SELL PRODUCT -->
 <div class="overlay" id="m-sell-product">
   <div class="modal">
@@ -1303,6 +1324,7 @@ async function loadShiftPage() {
   _pcByPump = {};
   for (const c of (shift.price_changes || [])) {
     (_pcByPump[c.pump_id] = _pcByPump[c.pump_id] || []).push({
+      id: c.id, pump_name: c.pump_name, fuel_name: c.fuel_name,
       meter: parseFloat(c.meter_value), price_before: parseFloat(c.price_before), price_after: parseFloat(c.price_after)
     });
   }
@@ -1328,7 +1350,9 @@ async function loadShiftPage() {
     const startFmt  = r.start != null ? r.start.toLocaleString('fr-FR',{minimumFractionDigits:1}) : '—';
     const savedEnd  = r.end != null ? r.end : (localStorage.getItem('er-' + shift.id + '-' + pid) || '');
     const pcNote = (_pcByPump[pid] || []).map(c =>
-      `<div style="font-size:11px;color:var(--orange);padding:2px 18px 0;">💱 Prix changé à <strong>${c.price_after.toFixed(3)} MAD/L</strong> au compteur <strong>${c.meter.toLocaleString('fr-FR',{minimumFractionDigits:1})}</strong> (avant : ${c.price_before.toFixed(3)})</div>`
+      `<div style="font-size:11px;color:var(--orange);padding:2px 18px 0;">💱 Prix changé à <strong>${c.price_after.toFixed(3)} MAD/L</strong> au compteur <strong>${c.meter.toLocaleString('fr-FR',{minimumFractionDigits:1})}</strong> (avant : ${c.price_before.toFixed(3)})
+        <button class="btn btn-g btn-sm" style="padding:1px 7px;font-size:11px;margin-left:6px;" title="Modifier ce changement de prix" onclick="openPriceEdit(${c.id})">✏️ Modifier</button>
+        <button class="btn btn-g btn-sm" style="padding:1px 7px;font-size:11px;" title="Supprimer ce changement de prix" onclick="deletePriceChange(${c.id})">🗑</button></div>`
     ).join('');
     return `
     <div style="display:flex;align-items:center;gap:16px;padding:11px 18px;border-bottom:${pcNote?'0':'1px solid var(--border-lt)'};">
@@ -3178,6 +3202,48 @@ async function submitPriceChange() {
     await api('POST', '/shifts/' + S.activeShift.id + '/price-change', { fuel_type_id: ftId, new_price: np, readings });
     closeModal('m-price-change');
     toast('Changement de prix enregistré ✓', 'g');
+    loadShiftPage();
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+function _findPc(id) {
+  for (const k in _pcByPump) { const c = _pcByPump[k].find(x => x.id === id); if (c) return c; }
+  return null;
+}
+
+function openPriceEdit(id) {
+  const c = _findPc(id); if (!c) return;
+  document.getElementById('pe-id').value = id;
+  document.getElementById('pe-info').innerHTML = `Pompe <strong>${c.pump_name || ''}</strong> — ${c.fuel_name || ''}`;
+  document.getElementById('pe-before').value = c.price_before;
+  document.getElementById('pe-after').value  = c.price_after;
+  document.getElementById('pe-meter').value  = c.meter;
+  openModal('m-price-edit');
+}
+
+async function submitPriceEdit() {
+  const id = parseInt(document.getElementById('pe-id').value);
+  const price_before = parseFloat(document.getElementById('pe-before').value);
+  const price_after  = parseFloat(document.getElementById('pe-after').value);
+  const meter_value  = parseFloat(document.getElementById('pe-meter').value);
+  if (!(price_before > 0) || !(price_after > 0)) { toast('Prix invalide', 'er'); return; }
+  if (!isFinite(meter_value) || meter_value < 0) { toast('Compteur invalide', 'er'); return; }
+  try {
+    await api('PUT', '/shifts/' + S.activeShift.id + '/price-change/' + id, { price_before, price_after, meter_value });
+    closeModal('m-price-edit');
+    toast('Changement de prix modifié ✓', 'g');
+    try { S.fuelTypes = await api('GET', '/pumps/fuel-types'); } catch(e) {}
+    loadShiftPage();
+  } catch (e) { toast(e.message, 'er'); }
+}
+
+async function deletePriceChange(id) {
+  const c = _findPc(id); if (!c) return;
+  if (!confirm(`Supprimer le changement de prix ${c.fuel_name || ''} (${c.price_before.toFixed(3)} → ${c.price_after.toFixed(3)}) pour toutes les pompes ?\nL'ancien prix redevient le prix actuel.`)) return;
+  try {
+    await api('DELETE', '/shifts/' + S.activeShift.id + '/price-change/' + id);
+    toast('Changement de prix supprimé ✓', 'g');
+    try { S.fuelTypes = await api('GET', '/pumps/fuel-types'); } catch(e) {}
     loadShiftPage();
   } catch (e) { toast(e.message, 'er'); }
 }
